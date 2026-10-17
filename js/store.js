@@ -443,7 +443,7 @@
     if (before == null) return null;
     const words = (a) => [...new Set((Array.isArray(a) ? a : [])
       .map((t) => String(t || "").trim().slice(0, 24))
-      .filter(Boolean))].slice(0, 8);
+      .filter(Boolean))].slice(0, 12);
     const OUTCOMES = ["none", "wait", "drank"];
     return {
       id: u.id || uid("ur"),
@@ -463,6 +463,8 @@
       triggerOther: String(u.triggerOther || "").trim().slice(0, 24),
       sceneOther: String(u.sceneOther || "").trim().slice(0, 24),
       after: lv(u.after),
+      /* しばらく後の強さを感じた時刻。持っていない古い記録は null（まだ決めていない）で足すだけ。 */
+      afterTime: KN.util.isTime(u.afterTime) ? u.afterTime : null,
       outcome: OUTCOMES.includes(u.outcome) ? u.outcome : null,
       memo: String(u.memo || "").trim().slice(0, 200),
       at: u.at || new Date().toISOString(),

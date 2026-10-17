@@ -1398,6 +1398,8 @@
     const host = sec.querySelector(".urge-sec-body");
     const chips = node(html`<div class="diet-chips"></div>`);
     host.append(chips);
+    const subs = o.subs ? node(html`<div class="diet-chips urge-sub js-sub"></div>`) : null;
+    if (subs) host.append(subs);
     const other = o.other != null ? node(html`<input class="input js-other" maxlength="24"
       value="${o.other}" placeholder="その他" autocomplete="off" enterkeyhint="done">`) : null;
     if (other) host.append(other);
@@ -1420,6 +1422,22 @@
         });
         chips.append(chip);
       });
+      if (subs) {
+        /* 親の札が点いているときだけ、下の候補。選ぶと「飲み物:炭酸水」の語が足される（複数可）。 */
+        subs.innerHTML = "";
+        subs.hidden = !has(o.subs.parent);
+        if (!subs.hidden) o.subs.items.forEach((item) => {
+          const word = o.subs.prefix + item;
+          const on = raw.includes(word);
+          const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+            aria-pressed="${String(on)}">${item}</button>`);
+          chip.addEventListener("click", () => {
+            if (on) raw.splice(raw.indexOf(word), 1); else raw.push(word);
+            paint(); KN.motion.fire("select");
+          });
+          subs.append(chip);
+        });
+      }
       if (other) other.hidden = !raw.includes("その他");
     }
     paint();
@@ -1439,6 +1457,7 @@
 
     let before  = editing ? editing.before : null;
     let after   = editing ? editing.after : null;
+    let afterTime = editing ? editing.afterTime || null : null;
     let outcome = editing ? urgeOutcome(editing) : null;
     const wasWait = !!editing && editing.outcome === "wait";
     let waitOff = false;   // 旧い「もう少し待つ」を、試したことから外したか
@@ -1453,12 +1472,13 @@
       <div class="urge-form">
         <div class="urge-top">
           <b class="urge-top-day">${U.formatDay(editing ? editing.day : day)}</b>
-          ${/* 時刻は打たせません。答えは常に一つ——押した瞬間（addUrge が控える）。
-                ここはそれを見せるだけ。決まった一件は時刻、まだの一件は経過分数。 */
-            editing ? html`<span class="urge-since">${icon("clock")}${
-              outcome ? urgeTime(editing) + "の記録"
-                : (elapsed != null ? urgeSpan(elapsed) + "たちました" : urgeTime(editing))
-            }</span>` : ""}
+          ${/* 時刻は、既定では押した瞬間（addUrge が控える）。あとから思い出して書くときのために、
+                押すと車輪で選び直せる。直したときだけ time を渡す。まだの一件は経過分数も添える。 */""}
+          <span class="urge-since">${icon("clock")}${
+            editing && !outcome && elapsed != null ? urgeSpan(elapsed) + "たちました" : ""}
+            <input type="hidden" class="input js-urge-time" data-when="time" aria-label="飲みたくなった時刻"
+                   value="${editing ? urgeTime(editing) : U.nowTime()}">
+          </span>
         </div>
         <div class="js-now"></div>
         <div class="js-want"></div>
@@ -1475,6 +1495,11 @@
         <div class="js-list"></div>
       </div>
     `);
+
+    KN.ui.whenFields(body);
+    const timeIn = body.querySelector(".js-urge-time");
+    let timeTouched = false;
+    timeIn.addEventListener("change", () => { timeTouched = true; });
 
     const foot = node(html`<button class="btn btn-primary btn-block js-save">${editing ? "保存" : "記録する"}</button>`);
     const h = KN.ui.sheet({
@@ -1502,6 +1527,7 @@
       other: editing ? editing.sceneOther || "" : "" });
     body.querySelector(".js-scene").append(sceneField.sec);
     const triedField = urgePick("tried", tried, { title: "試したこと", ico: "sprout",
+      subs: { parent: "別の飲み物", prefix: UC.drinkPrefix, items: UC.drinks },
       extraOn: (label) => label === "少し待つ" && wasWait && !waitOff,
       onDrop: (label) => { if (label === "少し待つ") waitOff = true; } });
     body.querySelector(".js-tried").append(triedField.sec);
@@ -1514,8 +1540,8 @@
 
     /* 結果の段は、書いたあとの紙にだけ。記録するときには聞きません。 */
     if (editing) {
-      const res = urgeResultFields(body, { after, outcome, day,
-        onAfter: (v) => { after = v; }, onOutcome: (v) => { outcome = v; },
+      const res = urgeResultFields(body, { after, afterTime, outcome, day,
+        onAfter: (v) => { after = v; }, onAfterTime: (v) => { afterTime = v; }, onOutcome: (v) => { outcome = v; },
         goDrink: () => save({ then: () => openDrinkSheet(day) }) });
       body.querySelector(".js-after").append(res.afterSec);
       body.querySelector(".js-outcome").append(res.outSec);
@@ -1545,7 +1571,7 @@
           <button class="row">
             <span class="row-main">
               <span class="row-title">${urgeTime(u)}　飲みたい ${u.before}${
-                u.after != null ? " → " + u.after : ""}</span>
+                u.after != null ? " → " + u.after + (u.afterTime ? `（${u.afterTime}）` : "") : ""}</span>
               <span class="row-sub">${urgeSummary(u) || "—"}</span>
             </span>
             <span class="row-chevron">${icon("edit")}</span>
@@ -1566,7 +1592,8 @@
         triggerOther: wantField.otherText(), sceneOther: sceneField.otherText(),
         memo: body.querySelector(".js-memo-in").value,
       };
-      if (editing) Object.assign(patch, { after }, waitPatch(editing, outcome, tried, waitOff));
+      if (timeTouched && timeIn.value) patch.time = timeIn.value;
+      if (editing) Object.assign(patch, { after, afterTime }, waitPatch(editing, outcome, tried, waitOff));
       if (editing) store.updateUrge(editing.id, patch);
       else store.addUrge(patch);
       h.close();
@@ -1600,6 +1627,18 @@
       after = v; o.onAfter(v); paintAfter();
     }, { label: "しばらく後の強さ" });
     paintAfter();
+    /* 感じた時刻。なければ空。あとで思い出して書くときも自分で選べる。 */
+    const timeRow = node(html`
+      <div class="time-row">
+        <span class="time-label">時刻</span>
+        <input type="hidden" class="input js-after-time" data-when="time" data-clear
+               aria-label="しばらく後の時刻" value="${o.afterTime || ""}">
+      </div>`);
+    afterSec.querySelector(".urge-sec-body").append(timeRow);
+    KN.ui.whenFields(timeRow);
+    timeRow.querySelector(".js-after-time").addEventListener("change", (e) => {
+      o.onAfterTime(e.target.value || null);
+    });
 
     const outSec = urgeSec("結果", "flag", { optional: true });
     const outHost = outSec.querySelector(".urge-sec-body");
@@ -1634,7 +1673,7 @@
 
   /** 「あとで記入」の小さな紙。しばらく後の強さと結果だけ。 */
   function openUrgeLater(u) {
-    let after = u.after, outcome = urgeOutcome(u);
+    let after = u.after, afterTime = u.afterTime || null, outcome = urgeOutcome(u);
     const body = node(html`
       <div class="urge-form">
         <div class="urge-top">
@@ -1652,12 +1691,13 @@
     const h = KN.ui.sheet({ title: "あとで記入", content: body, footer: foot, guard: true });
     const save = (then) => {
       const tried = u.tried.slice();
-      store.updateUrge(u.id, { after, ...waitPatch(u, outcome, tried, false) });
+      store.updateUrge(u.id, { after, afterTime, ...waitPatch(u, outcome, tried, false) });
       h.close(); render(); KN.motion.fire("save");
       if (then) then(); else KN.ui.toast("書きました");
     };
-    const res = urgeResultFields(body, { after, outcome,
-      onAfter: (v) => { after = v; }, onOutcome: (v) => { outcome = v; },
+    const res = urgeResultFields(body, { after, afterTime, outcome,
+      onAfter: (v) => { after = v; }, onAfterTime: (v) => { afterTime = v; },
+      onOutcome: (v) => { outcome = v; },
       goDrink: () => save(() => openDrinkSheet(u.day)) });
     body.querySelector(".js-res").append(res.afterSec, res.outSec);
     body.querySelector(".js-full").addEventListener("click", () => { h.close(); openUrgeSheet(u.day, u.id); });
@@ -1668,7 +1708,14 @@
   function urgeSummary(u) {
     const words = (field, otherKey) => urgeCats(u, field)
       .map((c) => (c === "その他" && u[otherKey] ? `その他（${u[otherKey]}）` : c)).join("・");
-    const parts = [words("scene", "sceneOther"), words("trigger", "triggerOther"), words("tried")]
+    /* 試したことは、「別の飲み物」に下の候補があれば「飲み物:炭酸水」と言う。 */
+    const tried = () => {
+      const drinks = (u.tried || []).filter((w) => w.startsWith(UC.drinkPrefix))
+        .map((w) => w.slice(UC.drinkPrefix.length));
+      return urgeCats(u, "tried")
+        .map((c) => (c === "別の飲み物" && drinks.length ? UC.drinkPrefix + drinks.join("・") : c)).join("・");
+    };
+    const parts = [words("scene", "sceneOther"), words("trigger", "triggerOther"), tried()]
       .filter(Boolean);
     if (urgeOutcome(u)) parts.push(urgeOutcomeLabel(urgeOutcome(u)));
     return parts.join(" ・ ");

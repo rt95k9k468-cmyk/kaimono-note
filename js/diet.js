@@ -1563,6 +1563,9 @@
     tried: ["別の飲み物", "何か食べる", "歯みがき", "お風呂・シャワー", "体を動かす・歩く",
             "好きな作業", "少し待つ", "人と話す"],
     OLD: URGE_OLD,
+    /* 「別の飲み物」の下の候補。選ぶと「飲み物:炭酸水」の一語が足され、札としては「別の飲み物」。 */
+    drinkPrefix: "飲み物:",
+    drinks: ["水", "炭酸水", "ノンアル", "お茶", "コーヒー", "ジュース"],
     legacy: {
       trigger: {
         "疲れた": "ストレス・疲れをほぐしたい", "いらいら": "ストレス・疲れをほぐしたい",
@@ -1583,6 +1586,7 @@
   /** 保存されている一語を、いまの札に。 */
   function urgeCat(field, w) {
     if (URGE[field].includes(w)) return w;
+    if (field === "tried" && w.startsWith(URGE.drinkPrefix)) return "別の飲み物";
     return URGE.legacy[field][w] || URGE_OLD;
   }
   /** 一件の、ある欄の札（重なりは落とす）。 */

@@ -2989,6 +2989,11 @@ button.section-note:active { opacity: var(--press-fade); }
   font-size: var(--fs-sm); color: var(--c-text-3); font-weight: var(--fw-regular);
 }
 .urge-since svg { width: var(--ico-sm); height: var(--ico-sm); }
+.urge-since .input { flex: none; width: auto; min-width: 84px; padding: 6px var(--sp-3); }
+/* 「別の飲み物」の下の候補。親の札のすぐ下に、少し控えめに。 */
+.urge-sub { padding-left: var(--sp-2); }
+.urge-sub[hidden] { display: none; }
+.urge-sub .chip { opacity: .92; }
 
 /* ---- 段 ---- */
 

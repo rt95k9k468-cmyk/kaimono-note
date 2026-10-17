@@ -102,6 +102,29 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   await page.keyboard.press("Escape");
   await waitClosed().catch(() => {});
 
+  /* ---- C2：別の飲み物の下の候補／時刻を選び直す／しばらく後の時刻 ---- */
+  await openSheet();
+  await page.click('.sheet.is-open .urge-lv[aria-label="2"]');
+  await page.click(".sheet.is-open .js-more");
+  const subsBefore = await page.$$eval(".sheet.is-open .js-sub .chip", (e) => e.length);
+  await chip("試したこと", "別の飲み物");
+  const subLabels = await page.$$eval(".sheet.is-open .js-sub .chip", (e) => e.map((x) => x.textContent.trim()));
+  await chip("試したこと", "炭酸水");
+  await chip("試したこと", "水");
+  await page.evaluate(() => { const i = document.querySelector(".sheet.is-open .js-urge-time"); i.value = "20:30"; i.dispatchEvent(new Event("change", { bubbles: true })); });
+  await page.click(".sheet.is-open .js-save");
+  await waitClosed();
+  u = await urges();
+  const d = u[u.length - 1];
+  t.check("別の飲み物を選ぶと下の候補が出て、飲み物:◯◯で残る", subsBefore === 0 && subLabels.includes("炭酸水") && subLabels.includes("ノンアル")
+    && JSON.stringify(d.tried) === '["別の飲み物","飲み物:炭酸水","飲み物:水"]', JSON.stringify([subsBefore, subLabels, d.tried]));
+  t.check("時刻を選び直せる", d.time === "20:30", d.time);
+  const sum = await page.evaluate((id) => KN.store.updateUrge(id, { after: 1, afterTime: "21:45" }), d.id);
+  t.check("しばらく後の時刻を持てる（古い記録は null）", sum.afterTime === "21:45" && u[0].afterTime === null, JSON.stringify([sum.afterTime, u[0].afterTime]));
+  await page.evaluate((id) => KN.store.removeUrge(id), d.id);
+  await page.reload();
+  await page.waitForSelector("#screen-diet .js-day-card");
+
   /* ---- D：あとで記入 ---- */
   const later = () => page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-day-card .js-later .urge-row")].length);
   const laterTitle = await page.evaluate(() => (document.querySelector("#screen-diet .urge-later-t") || {}).textContent);
