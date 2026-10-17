@@ -99,10 +99,26 @@ const DAY = "2026-09-30";
   const before = await todo(ids.a);
   let from = await beadAt("書類整理");
   c.check("連れ「書類整理」が道の上にある", !!from, String(from));
+  /* 0.2秒の様子はページの中で測る。押した瞬間に 200ms の時計を掛け、持ち上げの 380ms
+     より先に鳴らす（同じ押しで掛けた二つの時計は早いほうから鳴る）。台本の外で待つと、
+     負荷で問い合わせが 0.38秒を越えて揺れた。 */
+  await page.evaluate(() => {
+    window.__early = null;
+    window.addEventListener("pointerdown", () => {
+      const t0 = performance.now();
+      setTimeout(() => {
+        window.__early = {
+          ms: Math.round(performance.now() - t0),
+          carrying: KN.dayRoad.carrying(),
+          ghost: !!document.querySelector(".road-ghost"),
+        };
+      }, 200);
+    }, { capture: true, once: true });
+  });
   await touch("touchStart", from.x, from.y);
-  await wait(200);
-  let s = await state();
-  c.check("0.2秒ではまだ持ち上がらない", !s.carrying && !s.ghost, JSON.stringify(s));
+  await page.waitForFunction(() => window.__early);
+  const early = await page.evaluate(() => window.__early);
+  c.check("0.2秒ではまだ持ち上がらない", !early.carrying && !early.ghost, JSON.stringify(early));
   await wait(260);
   s = await state();
   c.check("0.38秒で持ち上がる（写しが浮き、元の丸は薄く）", s.carrying && s.ghost && s.lifted, JSON.stringify(s));
