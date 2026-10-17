@@ -1178,6 +1178,9 @@
     });
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
+    /* 前回の続き：その日に「別の問い」で進めた位置（設定 askLast。reconcile に足さず読むところで既定）から出す。 */
+    const last = (store.get().settings || {}).askLast;
+    if (askTurn.day !== day && last && last.day === day && last.n > 0) askTurn = { day, n: last.n, seen: new Set() };
     let cur;
     /* 問いの下に出典と文脈（そのときのこと）。思い出すきっかけなので畳まない。自分の問いには無い。 */
     const ctx = el.querySelector(".js-think-ctx"), from = el.querySelector(".js-think-from"), hint = el.querySelector(".js-think-hint");
@@ -1201,7 +1204,7 @@
         if (t && t !== cur.text) { other = other || n; if (!askTurn.seen.has(t)) pick = n; }
       }
       if (!pick && other) { askTurn.seen = new Set([cur.text]); pick = other; }
-      if (pick) askTurn.n = pick;
+      if (pick) { askTurn.n = pick; store.update((s) => { s.settings.askLast = { day, n: pick }; }); }
       paint();
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
