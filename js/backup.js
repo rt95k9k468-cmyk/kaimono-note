@@ -455,7 +455,9 @@
         if (lost) return "held";
       }
       const state = given || store.get();
-      if (isEmpty(state)) return "empty";
+      /* ノートだけある端末（記録は空）も守るものがある。記録を渡された控えは記録だけなので除く。 */
+      const nb = where === "idb" && !given ? notesNow() : null;
+      if (isEmpty(state) && !(nb && nb.n)) return "empty";
       const payload = JSON.stringify(state);
 
       // Skip an identical repeat, otherwise simply opening the app on quiet days
@@ -466,7 +468,6 @@
         lastPayload = last ? last.payload : null;
       }
       /* ノート（上の「ノートも控えへ」）。記録を渡された控え（減る前・戻す前）は記録だけ。 */
-      const nb = where === "idb" && !given ? notesNow() : null;
       if (payload === lastPayload && (!nb || nb.json === lastNotes) && !force) return "same";
 
       const snap = { at: today(), reason: reason || "自動", summary: summarize(state), size: payload.length, out: outCount(state) };
