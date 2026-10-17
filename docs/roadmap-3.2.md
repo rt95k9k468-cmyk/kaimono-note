@@ -120,7 +120,7 @@ Web の調べ（出典は最後）を突き合わせた**方針の案**。コー
 | 確かめ | T1 | 総点検（確かめ）：いまの main を試験と手で。直すのは確かめた小さいものだけ | 中 | なし（見るだけ。形は変えない） | dev・tests/README・notes（6つの棚）・notes-unify（並び・守り）・notes-structure（段1・2）・thinking（問いの元）・storage（試験の罠） || 済（10月17日。docs/log/inspection.md。直したのは棚の見出しの字の比と試験3つ） |
 | 見張り | G1 | `pill-morph` の揺れを台本の側で直す | 小 | なし | tests/README（試験の罠）・motion | 済（10月17日。始め・終わりを動きを止めて測る `__at`。`due-sheet` は「閉じたか」を `.is-open` で。毎朝の全部 #10 緑。手元の全部2回の別の揺れ `notes-meta`・`gesture-weight` は一本なら3回とも通る。`shop-add-v27` は消えかけの知らせが押しを取っていた——`.toast.is-out` に `pointer-events: none`、`undo-toast` が見張る。`road-carry` の「0.2秒ではまだ」は3本ずつの全部で一度落ちた——押した瞬間にページの中で 200ms の時計を掛けて測る形に。3本同時でも通る） |
 | 見張り | G2 | Actions を Node 24 の版へ | 小 | なし | dev（流し方） | 済（10月17日。checkout・setup-node・configure-pages v6、upload-pages-artifact・deploy-pages v5。門 #937 緑） |
-| 見張り | G3 | 毎朝の全部に WebKit の列（知らせるだけ・選んだ台本） | 中 | なし | dev・tests/README | 案（X22） |
+| 見張り | G3 | 毎朝の全部に WebKit の列（知らせるだけ・選んだ台本） | 中 | なし | dev・tests/README | 済（10月17日。X22 (a)） |
 | 守り | B1 | ノートだけの端末でも「…前」の控えを取る（`backup.js` の `isEmpty` がノートを数えない。T1 で見つけた） | 小 | 控え（取る条件。形は変えない） | storage・notes-unify（守り） | 案（利用者の判断待ち） |
 | 画面 | H1 | やることの空の画面を紙の中へ | 小 | なし | todo-timeline・look || 済（10月17日。説明の一文も外した。`todo-empty` が見張る） |
 | 画面 | H2 | 空の画面の説明文を外す・短い字に `text-wrap: balance` | 小 | なし | look | 済（10月17日。利用者が「後」を選んだ。`tests/empty-no-text.js`） |
@@ -250,6 +250,7 @@ Web の調べ（出典は最後）を突き合わせた**方針の案**。コー
 **X22 WebKit の列を足すか（G3）**
 - (a) 知らせるだけで足す　(b) 門にも入れる　(c) 作らない
 - おすすめ：**(a)**。門に入れると、Linux の WebKit だけの違いで配るのが止まる。
+- 決まった：**(a)**（10月17日）。
 
 **X23 問いをつくる紙の Enter（Q1）**——決まった：(b) 今のまま（10月17日、Q1 は要らない）。
 

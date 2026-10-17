@@ -78,8 +78,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
-  const { chromium } = require("playwright");
-  const browser = await chromium.launch();
+  /* KN_BROWSER=webkit：WebKit で開く（毎朝の全部の二つ目の列。roadmap-3.2 の G3）。CDP・page.coverage は Chromium だけ。 */
+  const browser = await require("playwright")[process.env.KN_BROWSER === "webkit" ? "webkit" : "chromium"].launch();
   /* KN_TZ=Asia/Tokyo：頁の時間帯（台本が timezoneId を渡していれば、そちらが勝つ）。機械と門は UTC なので、
      日本の朝（0〜9時。UTC ではまだ前の日）にだけ出る取り違えは、ふだんの回し方では見えない。
      台本の側の日付も揃えるなら、node にも同じ TZ を渡す（`TZ=Asia/Tokyo KN_TZ=Asia/Tokyo KN_CLOCK=07:30`）。 */

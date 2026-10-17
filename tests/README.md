@@ -14,7 +14,7 @@
   終了コードが 1。出すのは NG の行と「題: 通った/数えた」だけ（通った行も見るなら
   `KN_VERBOSE=1`。どこまで進んで落ちたかを追うとき）。伸びる欄を field-sizing の効かない端末の道
   （JS が測る）で回すなら `KN_NO_FIT=1`（`lib.js` の `noFit`。roadmap-3.1 の S2）。スクロールの錨の無い端末
-  （iOS 26 までの Safari）の道で回すなら `KN_NO_ANCHOR=1`（`noAnchor`。S1）。日付の境目で回すなら
+  （iOS 26 までの Safari）の道で回すなら `KN_NO_ANCHOR=1`（`noAnchor`。S1）。WebKit で開くなら `KN_BROWSER=webkit`（3.2 の G3。CDP・`page.coverage` は不可）。日付の境目で回すなら
   `KN_CLOCK=23:59:50`（今日のその時刻から頁の時計を進める。台本が自分で止めた時計が勝つ。N10）。`settings` は
   この差し替えと相性が悪く、昼でも30秒待ちきれない——日付とは無関係。`pill-morph` も同じ（何時に差し替えても
   48/49。差し替えは requestAnimationFrame・performance.now も作り物にするが、Web Animations は本物の時計で進む）。

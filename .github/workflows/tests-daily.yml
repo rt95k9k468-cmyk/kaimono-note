@@ -43,3 +43,30 @@ jobs:
           TZ: Asia/Tokyo
           KN_TZ: Asia/Tokyo
         run: node tests/run-all.js
+
+  # WebKit の列（roadmap-3.2 の G3・X22 (a)）：エンジンで違いが出る台本だけ。知らせるだけ——門にも配るのにも入れない。
+  # Linux の WebKit は iOS の Safari と同じではない。ここで落ちても、iPhone で確かめるまでアプリは直さない。
+  # CDP・page.coverage を使う台本は入れない（Chromium だけ）。
+  webkit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps webkit
+
+      - name: Run WebKit tests
+        env:
+          TZ: Asia/Tokyo
+          KN_TZ: Asia/Tokyo
+          KN_BROWSER: webkit
+        run: node tests/run-all.js scroll-anchor fit-fields typeface text-size top-tap feel-3
