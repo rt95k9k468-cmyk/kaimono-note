@@ -2671,12 +2671,12 @@
     `);
     if (sheet !== els.body) els.body.append(sheet);
 
+    /* 空の画面は紙の中に（外に出すと、白い紙が空のまま上に残る）。 */
     if (!all.length) {
-      els.body.append(node(html`
+      sheet.append(node(html`
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
           <h2 class="empty-title">やることはありません</h2>
-          <p class="empty-text">下の＋から追加できます。</p>
         </div>
       `));
       restoreTop(keepTop);
