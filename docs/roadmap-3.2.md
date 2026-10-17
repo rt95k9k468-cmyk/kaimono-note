@@ -117,10 +117,11 @@ Web の調べ（出典は最後）を突き合わせた**方針の案**。コー
 
 | 段 | ID | 名前 | 大きさ | データ | 先に読む docs | 状態 |
 |---|---|---|---|---|---|---|
-| 確かめ | T1 | 総点検（確かめ）：いまの main を試験と手で。直すのは確かめた小さいものだけ | 中 | なし（見るだけ。形は変えない） | dev・tests/README・notes（6つの棚）・notes-unify（並び・守り）・notes-structure（段1・2）・thinking（問いの元）・storage（試験の罠） | 案 |
-| 見張り | G1 | `pill-morph` の揺れを台本の側で直す | 小 | なし | tests/README（試験の罠）・motion | 案（#9 は緑。T1 の全部で見る） |
+| 確かめ | T1 | 総点検（確かめ）：いまの main を試験と手で。直すのは確かめた小さいものだけ | 中 | なし（見るだけ。形は変えない） | dev・tests/README・notes（6つの棚）・notes-unify（並び・守り）・notes-structure（段1・2）・thinking（問いの元）・storage（試験の罠） || 済（10月17日。docs/log/inspection.md。直したのは棚の見出しの字の比と試験3つ） |
+| 見張り | G1 | `pill-morph` の揺れを台本の側で直す | 小 | なし | tests/README（試験の罠）・motion | 案（T1 の全部でも緑。T1 で UTC+14 の `due-sheet` が一度揺れた） |
 | 見張り | G2 | Actions を Node 24 の版へ | 小 | なし | dev（流し方） | 案 |
 | 見張り | G3 | 毎朝の全部に WebKit の列（知らせるだけ・選んだ台本） | 中 | なし | dev・tests/README | 案（X22） |
+| 守り | B1 | ノートだけの端末でも「…前」の控えを取る（`backup.js` の `isEmpty` がノートを数えない。T1 で見つけた） | 小 | 控え（取る条件。形は変えない） | storage・notes-unify（守り） | 案（利用者の判断待ち） |
 | 画面 | H1 | やることの空の画面を紙の中へ | 小 | なし | todo-timeline・look | 案 |
 | 画面 | H2 | 空の画面の説明文を外す・短い字に `text-wrap: balance` | 小 | なし | look | 案（見比べ） |
 | 問い | Q1 | 問いをつくる：改行ごとに一つ | — | — | — | 要らない（10月17日、利用者） |
