@@ -1,5 +1,6 @@
 /* 「戻す」を揃える（docs/roadmap-2.0.md の V18・docs/look.md の「元に戻す」）。
    - 押せるものが付くトーストは次にほかを押すまで残る・上限 30 秒（無いものは 3.6 秒のまま。N13 の X18 (b)）
+   - 下がる途中の一枚は押しを受けない（下を押せる。css の .toast.is-out）
    - 裏へ回っているあいだは数えない・押せない知らせで「元に戻す」を上書きしない・押せるもの付きが
      続いたら新しいほう（docs/roadmap-seamless.md の N13）
    - 戻すボタンの言葉は「元に戻す」だけ（js の中に label: "戻す" が無い）
@@ -43,10 +44,13 @@ const { open, checker } = require("./lib");
     document.querySelector(".page-body, main, body").dispatchEvent(new Event("scroll"));
     const scrolled = live();
     document.body.click();
+    const out = document.querySelector(".toast.is-out"), r = out && out.getBoundingClientRect();
+    const through = !!r && !out.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
     await wait(50);
-    return { scrolled, gone: !live() };
+    return { scrolled, gone: !live(), through };
   });
   t.check("「元に戻す」はほかを押すと下がる（送るだけでは下がらない）", tapped.scrolled && tapped.gone, JSON.stringify(tapped));
+  t.check("下がる途中の一枚は押しを受けない（下を押せる）", tapped.through, JSON.stringify(tapped));
   const ui = src.find(([f]) => f === "ui.js")[1];
   t.check("押せるもの付きの上限は 30 秒", /TOAST_ACT_MS = 30000/.test(ui));
   await page.waitForTimeout(600);

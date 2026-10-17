@@ -1573,7 +1573,11 @@ button.hero-node:active { scale: var(--press-dot); }
   }
 }
 
-.toast.is-out { animation: toast-out var(--m-delete) var(--ease-in) forwards; }
+.toast.is-out {
+  animation: toast-out var(--m-delete) var(--ease-in) forwards;
+  /* 消えていく途中は押しを受けない——下を押した指が、消えかけの一枚に取られて効かなくなるので。 */
+  pointer-events: none;
+}
 .toast-msg { flex: 1; min-width: 0; }
 .toast-action {
   /* 押せる字も、生の薄緑でした。**選んだ基調色から出す**こと——暗い地の
