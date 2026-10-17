@@ -1494,12 +1494,12 @@
     syncSave();
 
     const wantField = urgePick("trigger", trigger, { title: "いま何を求めている？", ico: "heart",
-      single: true, other: editing ? editing.triggerOther || "" : "" });
+      other: editing ? editing.triggerOther || "" : "" });
     body.querySelector(".js-want").append(wantField.sec);
 
     /* ---- 詳細 ---- */
     const sceneField = urgePick("scene", scene, { title: "場面", ico: "clock",
-      single: true, other: editing ? editing.sceneOther || "" : "" });
+      other: editing ? editing.sceneOther || "" : "" });
     body.querySelector(".js-scene").append(sceneField.sec);
     const triedField = urgePick("tried", tried, { title: "試したこと", ico: "sprout",
       extraOn: (label) => label === "少し待つ" && wasWait && !waitOff,

@@ -79,8 +79,10 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   await page.click('.sheet.is-open .urge-lv[aria-label="3"]');
   await chip("いま何を求めている？", "その他");
   await page.fill(".sheet.is-open .js-want .js-other", "退屈");
+  await chip("いま何を求めている？", "暇・手持ちぶさた");
   await page.click(".sheet.is-open .js-more");
   await chip("場面", "その他");
+  await chip("場面", "帰宅後");
   await page.fill(".sheet.is-open .js-scene .js-other", "散歩の帰り");
   await chip("試したこと", "別の飲み物");
   await chip("試したこと", "少し待つ");
@@ -89,8 +91,9 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   await waitClosed();
   u = await urges();
   const c = u[1];
-  t.check("その他の一言を保存する", c && JSON.stringify(c.trigger) === '["その他"]' && c.triggerOther === "退屈"
-    && JSON.stringify(c.scene) === '["その他"]' && c.sceneOther === "散歩の帰り"
+  t.check("その他の一言を保存する（求めているものも場面も重ねて選べる）", c
+    && JSON.stringify(c.trigger) === '["その他","暇・手持ちぶさた"]' && c.triggerOther === "退屈"
+    && JSON.stringify(c.scene) === '["その他","帰宅後"]' && c.sceneOther === "散歩の帰り"
     && JSON.stringify(c.tried) === '["別の飲み物","少し待つ"]' && c.memo === "試験のメモ", JSON.stringify(c));
   await openSheet();
   const c2 = await sheetInfo();
