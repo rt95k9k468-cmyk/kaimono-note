@@ -49,6 +49,8 @@ const { open, checker } = require("./lib");
   t.check("フォルダ直下・上書き", glanceCalls()[0].arg.path === "/glance.json" && glanceCalls()[0].arg.mode === "overwrite");
   t.check("仕事の予定だけ（時刻・名前・side）", a.events.length === 1 && a.events[0].name === "会議" && a.events[0].time === "10:00" && a.events[0].side === "work", JSON.stringify(a));
   t.check("今週の印は名前だけ・仕事だけ", a.marks.length === 1 && a.marks[0] === "資料を直す" && !!a.at && a.workOnly === true, JSON.stringify(a));
+  t.check("戻す道の宛先（id と見た日）", a.events[0].id && a.events[0].due && a.todo.length === 1 && a.todo[0].name === "資料を直す" && !!a.todo[0].id, JSON.stringify(a));
+  t.check("今週の外のやることは later に（印の無い用事）", a.later.some((x) => x.name === "印の無い用事" && x.id) && !a.later.some((x) => x.name === "資料を直す"), JSON.stringify(a.later));
   t.check("期限・数は入れない", !/deadline|count|slips/.test(files.get("/glance.json")));
   t.check("kurashi-latest.json には書かない（別のファイル）", !files.has("/kurashi-latest.json") || !files.get("/kurashi-latest.json").includes('"marks"'));
 

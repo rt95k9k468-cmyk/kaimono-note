@@ -2626,6 +2626,7 @@
     const st = store.get();
     return JSON.stringify([
       day, todayKey(), face, weekMore, workOnly, laterOpen,
+      glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
       (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
@@ -2843,6 +2844,9 @@
   let face = faceFixed ? "today" : "week";
   let weekMore = false;   // 今週の「ほか n」を開いているか
   let laterOpen = false;  // 週の面の「これから」を開いているか（保存しない）
+  // PC の写し（copyBlock）。読んだ写し・その「これから」を開いているか・命令を置いた行（"kind:id" → { at, due }）。
+  let glanceCopyData = null, glanceAsked = false, copyLaterOpen = false;
+  const copySent = new Map();
   /* 週の面の頭の右の「仕事だけ」。端末ごと（記録にもバックアップにも入れない）。 */
   const WORK_KEY = "kaimono-note-todo-work";
   let workOnly = (() => { try { return localStorage.getItem(WORK_KEY) === "1"; } catch (_) { return false; } })();
@@ -3004,9 +3008,11 @@
     return el;
   }
 
-  /** PC で見る iPhone の写し（段4の④）。受け箱へ置く端末だけ。読むだけ（済ませる・直すは iPhone）。
-     読めるまでは何も出さない。「◯時の写し」で古さを隠さない。 */
-  let glanceCopyData = null, glanceAsked = false;
+  /** PC で見る iPhone の写し（段4の④）。受け箱へ置く端末だけ。読めるまでは何も出さない。「◯時の写し」で古さを隠さない。
+     戻す道（段4の②）：やることの丸は済ませる、名前を押せば 今週へ・今日・明日・日を選ぶ。どれも受け箱に命令を置く
+     だけで、当てるのは iPhone（記録が見たときのままなら）。置いた行は写しが変わるまで薄く。id の無い古い写しは読むだけ。 */
+  const COPY_WAIT = 5 * 60 * 1000;   // これより新しい写しで変わっていなければ、iPhone が当てなかった
+  const COPY_DAY = /^\d{4}-\d{2}-\d{2}$/;
   function copyBlock() {
     if (store.get().settings.inboxPost !== true || !KN.dropbox || !KN.dropbox.glanceRead) return null;
     if (!glanceAsked) {
@@ -3014,17 +3020,83 @@
       KN.dropbox.glanceRead().then((d) => { glanceCopyData = d; glanceAsked = false; if (d) render(); }, () => { glanceAsked = false; });
     }
     const d = glanceCopyData;
-    if (!d || (!d.events.length && !d.marks.length)) return null;
+    const later = Array.isArray(d && d.later) ? d.later : [];
+    if (!d || (!d.events.length && !d.marks.length && !later.length)) return null;
+    const todo = Array.isArray(d.todo) ? d.todo : d.marks.map((m) => ({ name: m }));
     const at = new Date(d.at);
+    const lists = { event: d.events, todo, later };
+    copySent.forEach((s, k) => {
+      const [kind, id] = [k.slice(0, k.indexOf(":")), k.slice(k.indexOf(":") + 1)];
+      const it = (lists[kind] || []).find((x) => x && x.id === id);
+      if (!it || (it.due || null) !== s.due || +at - s.at > COPY_WAIT) copySent.delete(k);
+    });
     const when = Number.isFinite(+at) ? `${at.getMonth() + 1}/${at.getDate()} ${at.getHours()}時${String(at.getMinutes()).padStart(2, "0")}分の写し` : "";
     const box = node(html`<div class="wk-copy"><h2 class="wk-h">iPhone<span class="wk-range">${when}</span></h2><div class="wk-list"></div></div>`);
     const lst = box.querySelector(".wk-list");
-    const line = (side, time, name) => lst.append(node(html`
-      <div class="wk-row">${side ? html`<span class="chip-dot" style="--cat:${SIDE({ side })}"></span>` : ""}
-      <span class="wk-name">${name}</span>${time ? html`<span class="wk-fact">${wkClock(time)}</span>` : ""}</div>`));
-    d.events.forEach((e) => line(e.side, e.time, String(e.name || "")));
-    d.marks.forEach((m) => line("", "", String(m || "")));
+    const line = (to, kind, it, fact) => {
+      const name = String(it.name || "");
+      const live = typeof it.id === "string";
+      const sent = live && copySent.has(`${kind}:${it.id}`);
+      const r = node(html`
+        <div class="wk-row ${sent ? "is-sent" : ""}">${it.side ? html`<span class="chip-dot" style="--cat:${SIDE({ side: it.side })}"></span>` : ""}
+        <button type="button" class="wk-name">${name}</button>${fact ? html`<span class="wk-fact">${fact}</span>` : ""}
+        ${kind === "todo" && live ? html`<button class="check" role="checkbox" aria-checked="${String(sent)}" aria-label="${name} を終わりにする">${icon("check")}</button>` : ""}</div>`);
+      const b = r.querySelector(".wk-name");
+      b.disabled = !live || sent || (kind !== "later" && it.rep);
+      b.addEventListener("click", () => copyPop(b, kind, it, name));
+      const c = r.querySelector(".check");
+      if (c) {
+        c.disabled = sent;
+        c.addEventListener("click", (e) => { e.stopPropagation(); copySend("done", kind, it, name); });
+      }
+      to.append(r);
+    };
+    d.events.forEach((e) => line(lst, "event", e, e.time ? wkClock(e.time) : ""));
+    todo.forEach((t) => line(lst, "todo", t, t.due === d.day ? "今日" : ""));
+    if (later.length) {
+      const head = node(html`<button type="button" class="wk-h wk-later-h" aria-expanded="${String(copyLaterOpen)}">これから<span class="wk-twist">${icon("chevron")}</span></button>`);
+      head.addEventListener("click", () => { haptic(); copyLaterOpen = !copyLaterOpen; render(); });
+      box.append(head);
+      if (copyLaterOpen) {
+        const l = node(html`<div class="wk-list"></div>`);
+        later.forEach((t) => line(l, "later", t, t.due && COPY_DAY.test(t.due) ? mdJa(t.due) : ""));
+        box.append(l);
+      }
+    }
     return box;
+  }
+  /** 写しの一行の小窓。これからは 今週へ、日の動かせるものは 今日・明日・日を選ぶ。 */
+  function copyPop(anchor, kind, it, name) {
+    haptic();
+    const today = todayKey();
+    const box = node(html`<div class="pk-acts">
+      ${kind === "later" ? html`<button type="button" class="chip" data-op="week">今週へ</button>` : ""}
+      ${it.rep ? "" : html`<button type="button" class="chip" data-day="${today}">今日</button>
+        <button type="button" class="chip" data-day="${KN.util.shiftDay(today, 1)}">明日</button>
+        <input type="date" class="chip copy-day" aria-label="日を選ぶ" min="${today}">`}
+    </div>`);
+    const pop = KN.ui.popOver(anchor, { side: "left", label: name, cls: "is-choose" });
+    const go = (op, day) => { pop.close(); copySend(op, kind, it, name, day); };
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (b) go(b.dataset.op || "day", b.dataset.day);
+    });
+    const pick = box.querySelector(".copy-day");
+    if (pick) pick.addEventListener("change", () => { if (COPY_DAY.test(pick.value)) go("day", pick.value); });
+    pop.el.append(box);
+    pop.place();
+  }
+  function copySend(op, kind, it, name, day) {
+    haptic();
+    const k = `${kind}:${it.id}`;
+    KN.dropbox.inboxOp(op, it, day).then((path) => {
+      copySent.set(k, { at: Date.now(), due: it.due || null });
+      KN.motion.fire("save");
+      render();
+      KN.ui.toast(`「${name}」を受け箱へ`, { action: { label: "元に戻す", onClick: () => KN.dropbox.inboxDrop(path).then((ok) => {
+        if (ok) { copySent.delete(k); render(); } else KN.ui.toast("もう iPhone に届いています");
+      }) } });
+    }, () => KN.ui.toast("受け箱へ置けませんでした"));
   }
 
   /** これから（畳む。開いたかは保存しない）。上の期限・今週・二週の行に出ていないやること。

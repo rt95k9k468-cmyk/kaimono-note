@@ -571,9 +571,21 @@
     const events = todos
       .filter((t) => t.kind === "event" && (t.endDay ? t.due <= day && day <= t.endDay : store.fallsOn(t, day)))
       .sort((a, b) => ((a.time || "99") < (b.time || "99") ? -1 : (a.time || "99") > (b.time || "99") ? 1 : 0))
-      .map((t) => ({ time: t.time || "", name: t.title, side: t.side === "work" ? "work" : "life" }));
-    const marks = todos.filter((t) => t.kind !== "event" && !t.done && store.inWeek(t, day)).map((t) => t.title);
-    return { v: 1, day, workOnly: s.settings.glanceWork !== false, events, marks };
+      .map((t) => ({ time: t.time || "", name: t.title, side: t.side === "work" ? "work" : "life", ...ref(t) }));
+    const marked = todos.filter((t) => t.kind !== "event" && !t.done && store.inWeek(t, day));
+    /* PC から戻す道（段4の②）の宛先。marks は名前のまま（小窓が読む）、todo に id と見た日。
+       later は今週の外のやること（棚の無いもの・くり返さないもの・日の早い順に 20 件まで）。 */
+    const later = todos.filter((t) => t.kind !== "event" && !t.done && !t.repeat && !t.shelf && !store.inWeek(t, day))
+      .sort((a, b) => ((a.due || "~") < (b.due || "~") ? -1 : (a.due || "~") > (b.due || "~") ? 1 : (a.order || 0) - (b.order || 0)))
+      .slice(0, 20).map((t) => ({ name: t.title, ...ref(t) }));
+    return { v: 1, day, workOnly: s.settings.glanceWork !== false, events, marks: marked.map((t) => t.title),
+      todo: marked.map((t) => ({ name: t.title, ...ref(t) })), later };
+  }
+  /** 写しの一件の宛先。due は「見た日」（命令が当たるのは、iPhone の記録がまだこの日のときだけ）。 */
+  function ref(t) {
+    const r = { id: t.id, due: t.due || null };
+    if (t.repeat || t.endDay) r.rep = true;
+    return r;
   }
 
   async function glance(force) {
@@ -601,19 +613,54 @@
 
   /* ---- 職場の「足すだけ」受け箱 inbox/（docs/todo-items.md 段4の③）----
      PC が＋の一行を一件ずつ置き（inboxPut・mode "add"）、控えを送る端末（iPhone）が開いたとき取り込んで消す。
-     取り込みは週の面の一行と同じ読み（weekAdd）で、仕事の用事として。PC からは何も消せない・読めない。 */
+     取り込みは週の面の一行と同じ読み（weekAdd）で、仕事の用事として。PC は iPhone の記録を消せない。
+     命令（段4の②）は op-<時刻>-<乱数>.json——古い版は名前の型が違うので触らない（読まずに消さない）。 */
   const INBOX = "/inbox";
   const INBOX_RE = /^\d{13}-[0-9a-f]{6}\.json$/;
+  const OP_RE = /^op-\d{13}-[0-9a-f]{6}\.json$/;
+  const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
   const taken = new Set();
   let taking = false;
+  const stamp = () => `${Date.now()}-${Math.random().toString(16).slice(2, 8).padEnd(6, "0")}`;
 
   async function inboxPut(text) {
     text = String(text || "").trim().slice(0, 500);
     if (!text) return "empty";
     await recovered;
     if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8).padEnd(6, "0")}`;
-    return upload(`${INBOX}/${id}.json`, JSON.stringify({ v: 1, text }), "add");
+    return upload(`${INBOX}/${stamp()}.json`, JSON.stringify({ v: 1, text }), "add");
+  }
+
+  /** PC から写しの一件へ命令を置く（done・day・week）。返すのは置いた道（取り消しに使う）。 */
+  async function inboxOp(op, item, day) {
+    if (!item || typeof item.id !== "string" || !["done", "day", "week"].includes(op)) throw new Error("宛先がありません");
+    if (op === "day" && !DAY_RE.test(day || "")) throw new Error("日がありません");
+    await recovered;
+    if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
+    const path = `${INBOX}/op-${stamp()}.json`;
+    const o = { v: 2, op, id: item.id, seen: item.due || null };
+    if (op === "day") o.day = day;
+    await upload(path, JSON.stringify(o), "add");
+    return path;
+  }
+  /** 置いたばかりの命令を、iPhone が取り込む前に引っ込める。消せたら true（もう届いていれば false）。 */
+  async function inboxDrop(path) {
+    path = String(path || "");
+    if (!path.startsWith(`${INBOX}/`) || !OP_RE.test(path.slice(INBOX.length + 1))) return false;
+    try {
+      const r = await call(API, "/2/files/delete_v2", { json: { path } });
+      return r.res.ok;
+    } catch (_) { return false; }
+  }
+  /* iPhone で命令を当てる。PC が見たときと記録が変わっていれば（日が違う・済んだ・無い）当てない——
+     iPhone で直したほうが勝つ。済ませるは済ませるだけ（戻さない）。くり返し・またがる予定の日は動かさない。 */
+  function applyOp(o) {
+    const t = o && o.v === 2 && typeof o.id === "string" ? store.getTodo(o.id) : null;
+    if (!t || t.archived || t.trace || t.done || (t.due || null) !== (o.seen || null)) return false;
+    if (o.op === "done" && t.kind !== "event") { store.toggleTodo(t.id); return true; }
+    if (o.op === "day" && DAY_RE.test(o.day || "") && !t.repeat && !t.endDay) { store.updateTodo(t.id, { due: o.day }); return true; }
+    if (o.op === "week" && t.kind !== "event" && !t.repeat) { store.pickWeek(t.id, false); return true; }
+    return false;
   }
 
   async function inboxTake() {
@@ -627,14 +674,21 @@
     try {
       const r = await call(API, "/2/files/list_folder", { json: { path: INBOX, limit: 200 } });
       if (!r.res.ok) return 0;
-      const names = (r.body.entries || []).filter((e) => e[".tag"] === "file" && INBOX_RE.test(e.name)).map((e) => e.name).sort();
+      // 足す一行と命令は、置いた時刻の順に（命令の頭の op- を外して並べる）。
+      const when = (s) => s.replace(/^op-/, "");
+      const names = (r.body.entries || []).filter((e) => e[".tag"] === "file" && (INBOX_RE.test(e.name) || OP_RE.test(e.name)))
+        .map((e) => e.name).sort((a, b) => (when(a) < when(b) ? -1 : when(a) > when(b) ? 1 : 0));
       for (const name of names) {
         if (taken.has(name)) continue;
         const d = await call(CONTENT, "/2/files/download", { arg: { path: `${INBOX}/${name}` }, raw: true });
         if (!d.res.ok) continue;
-        let text = "";
-        try { text = String(JSON.parse(await d.res.text()).text || "").trim(); } catch (_) { text = ""; }
-        if (text) { todo.weekAdd(text, { side: "work", quiet: true }); n++; }
+        let o = null;
+        try { o = JSON.parse(await d.res.text()); } catch (_) { o = null; }
+        if (OP_RE.test(name)) { if (applyOp(o)) n++; }
+        else {
+          const text = String((o && o.text) || "").trim();
+          if (text) { todo.weekAdd(text, { side: "work", quiet: true }); n++; }
+        }
         taken.add(name);
         await call(API, "/2/files/delete_v2", { json: { path: `${INBOX}/${name}` } });
       }
@@ -714,5 +768,5 @@
     await post("/2/files/upload_session/finish", { cursor: { session_id, offset: at }, commit }, file.slice(at));
   }
 
-  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, glanceRead, inboxPut, inboxTake, KEEP, api };
+  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, glanceRead, inboxPut, inboxOp, inboxDrop, inboxTake, KEEP, api };
 })();

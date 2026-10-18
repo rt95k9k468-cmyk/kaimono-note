@@ -64,6 +64,40 @@ const { open, checker } = require("./lib");
   t.check("時刻があれば予定", todos.some((x) => x.kind === "event" && x.time === "10:00" && x.side === "work"), JSON.stringify(todos));
   t.check("二度は取り込まない", (await page.evaluate(() => KN.dropbox.inboxTake())) === 0 && todos.length === (await page.evaluate(() => KN.store.get().todos.length)));
 
+  /* 戻す道（段4の②）：PC が写しの一件へ命令を置き、iPhone は記録が見たときのままなら当てる。 */
+  const ids = await page.evaluate(() => {
+    const S = KN.store, d = KN.util.todayKey(), U = KN.util;
+    const mk = (o) => S.addTodo({ side: "work", ...o }).id || S.get().todos[S.get().todos.length - 1].id;
+    return {
+      d, tomorrow: U.shiftDay(d, 1),
+      week: mk({ title: "送る用事" }), done: mk({ title: "済ませる用事", due: d }),
+      moved: mk({ title: "日を変える用事", due: d }), stale: mk({ title: "古い命令の用事", due: d }),
+      ev: mk({ title: "予定", due: d, time: "09:00", kind: "event" }), rep: mk({ title: "毎日", due: d, repeat: "daily" }),
+    };
+  });
+  await page.evaluate(() => KN.store.update((x) => { x.settings.inboxPost = true; }));
+  const ops = await page.evaluate(async (o) => {
+    const P = KN.dropbox.inboxOp;
+    return [
+      await P("week", { id: o.week, due: null }), await P("done", { id: o.done, due: o.d }),
+      await P("day", { id: o.moved, due: o.d }, o.tomorrow), await P("done", { id: o.stale, due: "2020-01-01" }),
+      await P("done", { id: o.ev, due: o.d }), await P("day", { id: o.rep, due: o.d }, o.tomorrow),
+    ];
+  }, ids);
+  const opKeys = [...files.keys()].filter((k) => /\/inbox\/op-/.test(k));
+  t.check("命令は op- の名前で一件ずつ（古い版の型に合わない）", opKeys.length === 6 && opKeys.every((k) => files.get(k).mode === "add" && !/^\d{13}-[0-9a-f]{6}\.json$/.test(k.slice(7))), opKeys.join());
+  const extra = await page.evaluate(() => KN.dropbox.inboxOp("week", { id: "x", due: null }));
+  t.check("取り込む前なら引っ込められる", (await page.evaluate((p) => KN.dropbox.inboxDrop(p), extra)) === true && deleted.includes(extra));
+  t.check("受け箱の外は消さない", (await page.evaluate(() => KN.dropbox.inboxDrop("/kurashi-latest.json"))) === false && !deleted.includes("/kurashi-latest.json"));
+  await page.evaluate(() => KN.store.update((x) => { x.settings.inboxPost = false; }));
+  const m = await page.evaluate(() => KN.dropbox.inboxTake());
+  const got = await page.evaluate((o) => { const g = (id) => KN.store.getTodo(id) || {}; return {
+    week: KN.store.inWeek(g(o.week)), done: !!g(o.done).done, moved: g(o.moved).due, stale: !!g(o.stale).done,
+    ev: !!g(o.ev).done, rep: g(o.rep).due }; }, ids);
+  t.check("当たるのは三つ（今週へ・済ませる・日を変える）", m === 3 && got.week && got.done && got.moved === ids.tomorrow, JSON.stringify([m, got]));
+  t.check("見た日が違えば当てない・予定は済ませない・くり返しの日は動かさない", !got.stale && !got.ev && got.rep === ids.d, JSON.stringify(got));
+  t.check("当てなかった命令も受け箱から消す", ops.every((p) => deleted.includes(p)), JSON.stringify(ops));
+
   t.check("JS のエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
   t.done();
