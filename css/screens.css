@@ -4886,6 +4886,25 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
 .wk-range { margin-left: var(--sp-2); font-family: var(--font-num); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--c-text-2); }
+/* 今週の右の「選ぶ」。まだ選んでいない週は塗って促す。選ぶ紙は各行の下に 今週へ・今日へ・いつかへ。 */
+.wk-pick {
+  margin-left: auto; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-pill, 999px);
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
+}
+.wk-pick.is-ask { background: var(--c-primary); color: #fff; }
+.wk-pick:active { opacity: var(--press-fade); }
+.note-pop.is-choose { width: min(380px, calc(100vw - 16px)); padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+.pk-h {
+  display: flex; align-items: center; min-height: 40px; margin: var(--sp-2) 0 0;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
+}
+.pk-review { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; min-height: 36px; color: var(--c-primary); }
+.pk-review svg { width: var(--ico-sm); height: var(--ico-sm); }
+.pk-row { padding: var(--sp-2) 0; border-top: 1px solid var(--c-border); }
+.pk-top { display: flex; align-items: center; gap: var(--sp-2); min-height: 32px; }
+.pk-name { flex: 1; min-width: 0; font-size: var(--fs-md); color: var(--c-text); overflow-wrap: anywhere; }
+.pk-acts { display: flex; gap: var(--sp-2); margin-top: var(--sp-1); }
+.pk-acts .chip { height: 36px; }
 /* これから（畳む）。その下の 待つ・いつか は小見出し。 */
 .wk-later { margin-top: var(--sp-2); }
 .wk-later-h { width: 100%; text-align: left; }

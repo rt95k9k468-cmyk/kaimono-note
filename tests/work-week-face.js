@@ -64,7 +64,7 @@ const { open, checker } = require("./lib");
   let a = await look();
   c.check("開いたときは週", a.pressed === "週" && !!a.week && !a.road, JSON.stringify(a));
   c.check("見出しは 期限 → 今週 → 来週 → これから（数は出さない）",
-    JSON.stringify(a.heads.map((h) => h.replace(/\d.*$/, ""))) === JSON.stringify(["期限", "今週", "来週", "これから"])
+    JSON.stringify(a.heads.map((h) => h.replace(/\d.*$|選ぶ$/, ""))) === JSON.stringify(["期限", "今週", "来週", "これから"])
     && /10月26日〜11月1日/.test(a.heads[2]), JSON.stringify(a.heads));
   c.check("期限は日まで（赤くしない）", a.rows[0] === "経費の精算" && /23日（金）まで/.test(a.facts[0]) && !a.red, JSON.stringify(a.facts));
   c.check("今週は5行まで・ほかは畳む", a.rows.length === 6 && a.more[0] === "ほか 2", JSON.stringify([a.rows, a.more]));

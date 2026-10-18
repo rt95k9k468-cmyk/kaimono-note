@@ -2962,8 +2962,15 @@
         el.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`))));
       }
       marked = tasks.filter((t) => store.inWeek(t, today) && !dues.includes(t));
+      /* 今週の右に「選ぶ」。まだ何も選んでいない週で、選べるものがあれば塗って促す（開きはしない）。 */
+      const picks = pickGroups(today).length > 0;
+      const ask = picks && !tasks.some((t) => store.inWeek(t, today));
+      if (marked.length || picks) {
+        const h = node(html`<h2 class="wk-h">今週<button type="button" class="wk-pick ${ask ? "is-ask" : ""}">選ぶ</button></h2>`);
+        h.querySelector(".wk-pick").addEventListener("click", (e) => { haptic(); pickSheet(e.currentTarget); });
+        el.append(h);
+      }
       if (marked.length) {
-        el.append(node(html`<h2 class="wk-h">今週</h2>`));
         const box = list((weekMore ? marked : marked.slice(0, 5))
           .map((t) => row(t, t.due === today ? "今日" : "")));
         if (marked.length > 5) {
@@ -3029,6 +3036,81 @@
     part(rest.filter((t) => t.shelf === "wait"), "待つ");
     part(rest.filter((t) => t.shelf === "someday"), "いつか");
     return box;
+  }
+
+  /** 選ぶ紙に並べるもの（今週の印の無いやること）。期限の近いもの → 見直す日が来たもの → 先週選んだもの → 新しいもの。
+     一件は先の組にだけ。日の決まったもの（七日の行・これからに居る）は期限の組にだけ。 */
+  function pickGroups(today) {
+    const U = KN.util;
+    const w = U.weekOf(today);
+    const lastFrom = U.shiftDay(w.from, -7);
+    const soon = U.shiftDay(today, 14);
+    const weekAgo = U.shiftDay(today, -7);
+    const pool = store.openTodos().filter((t) => t.kind !== "event" && !t.trace && !t.repeat
+      && (!workOnly || t.side === "work") && !store.inWeek(t, today));
+    const ids = new Set(pool.map((t) => t.id));
+    const seen = new Set();
+    const take = (rows) => rows.filter((t) => !seen.has(t.id) && seen.add(t.id));
+    const groups = [
+      ["deadline", "期限が近い", take(pool.filter((t) => t.deadline && t.deadline <= soon)
+        .sort((a, b) => (a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0)))],
+      ["review", "見直す", take(store.reviewDue().filter((t) => ids.has(t.id)))],
+      ["last", "先週選んだ", take(pool.filter((t) => !t.due && t.weekMark && U.weekOf(t.weekMark).from === lastFrom))],
+      ["new", "新しい", take(pool.filter((t) => !t.due && !t.shelf && dayOfStamp(t.createdAt) >= weekAgo))],
+    ];
+    return groups.filter((g) => g[2].length).map(([key, title, rows]) => ({ key, title, rows }));
+  }
+
+  /** 選ぶ紙（今週の「選ぶ」から ふくらむ小窓）。各行に 今週へ・今日へ・いつかへ。選んだ行は消える。
+      見直すの組の頭の「一件ずつ」は、前の頭の一行の見直しの小窓（今日の面の頭からここへ移した）。 */
+  function pickSheet(anchor) {
+    const box = node(html`<div class="pick-week"></div>`);
+    let pop = null;
+    const say = (msg, undo) => {
+      haptic();
+      KN.motion.fire("save");
+      KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
+    };
+    function paint() {
+      const groups = pickGroups(todayKey());
+      if (!groups.length) { if (pop) pop.close(); return; }
+      box.innerHTML = "";
+      groups.forEach((g) => {
+        box.append(node(html`<h3 class="pk-h" data-group="${g.key}">${g.title}${g.key === "review"
+          ? html`<button type="button" class="pk-review">一件ずつ${icon("chevron")}</button>` : ""}</h3>`));
+        g.rows.forEach((t) => box.append(node(html`
+          <div class="pk-row" data-id="${t.id}">
+            <div class="pk-top">${wkDot(t)}<span class="pk-name">${t.title}</span>${t.deadline && g.key === "deadline"
+              ? html`<span class="wk-fact">${mdJa(t.deadline)}まで</span>` : ""}</div>
+            <div class="pk-acts">
+              <button type="button" class="chip" data-to="week">今週へ</button>
+              <button type="button" class="chip" data-to="today">今日へ</button>
+              <button type="button" class="chip" data-to="someday">いつかへ</button>
+            </div>
+          </div>
+        `)));
+      });
+      if (pop) pop.place();
+    }
+    box.addEventListener("click", (e) => {
+      if (e.target.closest(".pk-review")) {
+        if (pop) pop.close();
+        setTimeout(() => reviewSheet(document.querySelector("#screen-todo .wk-pick") || anchor), 40);
+        return;
+      }
+      const b = e.target.closest("[data-to]");
+      const t = b && store.getTodo(b.closest("[data-id]").dataset.id);
+      if (!t) return;
+      const to = b.dataset.to;
+      if (to === "someday") say(`「${t.title}」をいつかへ`, store.pickSomeday(t.id));
+      else say(`「${t.title}」を${to === "today" ? "今日" : "今週"}へ`, store.pickWeek(t.id, to === "today"));
+      paint();
+    });
+    paint();
+    if (!box.childElementCount) return;
+    pop = KN.ui.popOver(anchor, { side: "left", label: "選ぶ", cls: "is-choose", lift: true, onClose: () => { pop = null; } });
+    pop.el.append(box);
+    pop.place();
   }
 
   /** 七日の行。何日にもまたがる予定（endDay）は、日の列と予定の列のあいだを縦に通る帯。 */
@@ -3780,7 +3862,7 @@
     const host = els.late;
     const oldBar = host && host.querySelector(".tl-late");
     if (oldBar) oldBar.remove();
-    // 頭の札（期限切れ・運んだもの・時刻を過ぎたもの・見直す）は今日の面だけ。週の面には出さない。
+    // 頭の札（期限切れ・運んだもの・時刻を過ぎたもの）は今日の面だけ。週の面には出さない。
     const late = host && dayFace() && shownDay() === today
       ? (open || []).filter((t) => t.due && t.due < today && t.kind !== "event") : [];
     if (late.length) {
@@ -3816,21 +3898,7 @@
       host.append(bar);
     }
     paintPassed(true);
-    /* 見直す（3.0 の B1）。見直す日が来たものの数と、一件ずつの紙への口。色は変えない。 */
-    const oldReview = host && host.querySelector(".tl-review");
-    if (oldReview) oldReview.remove();
-    const due = host && dayFace() && shownDay() === today ? store.reviewDue() : [];
-    if (due.length) {
-      const bar = node(html`
-        <button type="button" class="tl-late tl-review">
-          <span class="tl-late-n">${due.length}</span>
-          <span>見直す</span>
-          <span class="tl-late-go">一件ずつ${icon("chevron")}</span>
-        </button>
-      `);
-      bar.addEventListener("click", () => { haptic(); reviewSheet(bar); });
-      host.append(bar);
-    }
+    // 見直す（3.0 の B1）の頭の一行は、週の面の選ぶ紙へ移した（pickSheet）。
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
     markWeek(sec, hereDay || today);

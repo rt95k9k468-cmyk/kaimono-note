@@ -7,7 +7,7 @@
    - 「先送り」「失敗」「原因」・!・赤を出さない
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/slips.js */
-const { open, checker } = require("./lib");
+const { open, checker, openReview } = require("./lib");
 
 const TODAY = "2026-10-06";
 const YEST = "2026-10-05";
@@ -180,10 +180,7 @@ const YEST = "2026-10-05";
   }, f.z);
   await page.evaluate(() => KN.app.showScreen("todo"));
   await wait(600);
-  if (rv) {
-    await page.locator("#screen-todo .tl-review").click();
-    await wait(600);
-  }
+  if (rv) await openReview(page);
   const head = await page.evaluate(() => {
     const s = document.querySelector(".note-pop.is-review.is-open");
     const row = s && [...s.querySelectorAll(".review-row")].find((r) => /D1 の材料/.test(r.textContent));

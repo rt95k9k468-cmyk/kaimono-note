@@ -5,12 +5,12 @@
    - 日を決めれば shelf は外れる。運ばれた（期限が過ぎた）待つ・いつかも外れる
    - 画面：欄は「これから」、下に「待つ n」「いつか n」を畳む。開けば待つものに「返事」
    - 道のくぼみは「これから」だけ
-   - 頭に「見直す n」→ 一件ずつの紙：事実（◯月◯日から・期限）と選択肢。どれも元に戻せる
+   - 週の面の「選ぶ」の見直すの組 →「一件ずつ」の小窓：事実（◯月◯日から・期限）と選択肢。どれも元に戻せる
    - 詳細の紙の「⋯」から待つへ（何を待つかは札から）
    - 評価の言葉・赤・!を出さない
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/shelf.js */
-const { open, checker } = require("./lib");
+const { open, checker, openReview } = require("./lib");
 
 const TODAY = "2026-10-06";
 
@@ -175,19 +175,15 @@ const TODAY = "2026-10-06";
     && !beads.some((b) => /見積もりの返事|ギターを習う/.test(b)), JSON.stringify(beads));
 
   /* 見直す */
-  const bar = await page.evaluate(() => {
-    const b = document.querySelector("#screen-todo .tl-review");
-    return b ? { text: b.textContent.replace(/\s+/g, ""), color: getComputedStyle(b).color } : null;
-  });
-  c.check("頭に「見直す 1」", !!bar && /^1見直す/.test(bar.text), JSON.stringify(bar));
+  c.check("今日の面の頭に見直すの一行は出さない（選ぶ紙へ移した）", await page.evaluate(() =>
+    ![...document.querySelectorAll("#screen-todo .tl-late")].some((b) => /見直す/.test(b.textContent))));
   const rv = () => page.evaluate(() => {
     const p = document.querySelector(".note-pop.is-review.is-open");
     return p ? { text: p.textContent } : null;
   });
-  await page.locator("#screen-todo .tl-review").click();
-  await wait(700);
+  c.check("選ぶ → 一件ずつ で開く", await openReview(page));
   let sh = await rv();
-  c.check("頭の一行からふくらむ小窓（下から出る紙ではない）に事実（9月12日から · 期限 10月31日）",
+  c.check("ふくらむ小窓（下から出る紙ではない）に事実（9月12日から · 期限 10月31日）",
     !!sh && /押し入れの整理/.test(sh.text) && /9月12日から · 期限 10月31日/.test(sh.text)
     && await page.evaluate(() => !document.querySelector(".sheet.is-open")), sh && sh.text);
   c.check("小窓は下の帯より上（紙の高さ）", await page.evaluate(() =>
@@ -243,14 +239,13 @@ const TODAY = "2026-10-06";
   /* 今日：空きの時刻へ */
   await page.keyboard.press("Escape");
   await wait(400);
-  await page.locator("#screen-todo .tl-review").click();
-  await wait(700);
+  await openReview(page);
   await page.locator(".note-pop.is-review .rv-day", { hasText: "今日" }).click();
   await wait(600);
   t = await get("t-old");
   c.check("今日：今日の空いた時刻（9:00）に置く", t.due === TODAY && t.time === "09:00", JSON.stringify([t.due, t.time]));
-  c.check("見直すものが無くなれば頭の一行も消え、小窓も閉じる", await page.evaluate(() =>
-    !document.querySelector("#screen-todo .tl-review") && !document.querySelector(".note-pop.is-review.is-open")));
+  c.check("見直すものが無くなれば小窓も閉じる", await page.evaluate(() =>
+    !document.querySelector(".note-pop.is-review.is-open")));
 
   /* 詳細の紙の「⋯」から待つへ */
   const yid = "t-young";

@@ -2880,7 +2880,7 @@
   }
   /* 書き換える前の控え（元に戻すが全部を戻すように）。 */
   const SHELF_KEYS = ["due", "time", "lead", "part", "deadline", "carried", "shelf", "waitFor", "review",
-                      "editedAt", "archived", "archivedAt", "minutes", "slips"];
+                      "editedAt", "archived", "archivedAt", "minutes", "slips", "weekMark"];
   function keepFields(id) {
     const t0 = getTodo(id);
     if (!t0) return () => {};
@@ -3026,6 +3026,28 @@
     const undo = keepFields(id);
     updateTodo(id, KN.util.isTime(time) ? { due: day, time } : { due: day });
     update((s) => { const t = s.todos.find((x) => x.id === id); if (t) delete t.carried; });
+    return undo;
+  }
+  /** 選ぶ紙の「今週へ」「今日へ」（today＝今日の道へも）。今週の印を付け、見直す日は来週へ・いつかから出す。元に戻すつき。 */
+  function pickWeek(id, today) {
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    const undo = keepFields(id);
+    const day = KN.util.todayKey();
+    updateTodo(id, today ? { due: day, weekMark: day } : { weekMark: day });
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      if (t.shelf === "someday") t.shelf = null;
+      if (!t.due) t.review = KN.util.shiftDay(KN.util.weekOf(day).to, 1);
+      delete t.carried;
+    });
+    return undo;
+  }
+  /** 選ぶ紙の「いつかへ」。今週の印も外す。 */
+  function pickSomeday(id) {
+    const undo = setShelf(id, "someday");
+    updateTodo(id, { weekMark: null }, { slip: false });
     return undo;
   }
   function stopTodo(id) {
@@ -5015,7 +5037,7 @@
     addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite, setEntryNote,
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, stopTodo, replan, applyRefit, importUnfold, slipFacts,
+    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,

@@ -10,7 +10,7 @@
    - 見直しの紙の「小さく分ける」・置き直しの紙の「小さくする」から開く
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/ai-unfold.js */
-const { open, checker } = require("./lib");
+const { open, checker, openReview } = require("./lib");
 
 const TODAY = "2026-10-06";
 
@@ -196,10 +196,8 @@ const BROKEN = [
   await wait(300);
   await page.click('.tab[data-tab="todo"]');
   await wait(700);
-  const hasReview = await page.evaluate(() => !!document.querySelector("#screen-todo .tl-review"));
+  const hasReview = await openReview(page);
   if (hasReview) {
-    await page.locator("#screen-todo .tl-review").click();
-    await wait(600);
     await page.locator(".note-pop.is-review .rv-go", { hasText: "小さく分ける" }).first().click();
     await page.waitForTimeout(300);
     await page.locator(".note-pop.is-review .rv-pick", { hasText: "AIに分けてもらう" }).first().click();
@@ -215,9 +213,7 @@ const BROKEN = [
   await page.keyboard.press("Escape");
   await wait(600);
   let hand = null;
-  if (await page.evaluate(() => !!document.querySelector("#screen-todo .tl-review"))) {
-    await page.locator("#screen-todo .tl-review").click();
-    await wait(600);
+  if (await openReview(page)) {
     await page.locator(".note-pop.is-review .rv-go", { hasText: "小さく分ける" }).first().click();
     await wait(300);
     await page.locator(".note-pop.is-review .rv-pick", { hasText: "自分で分ける" }).first().click();

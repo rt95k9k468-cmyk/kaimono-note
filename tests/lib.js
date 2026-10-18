@@ -173,4 +173,20 @@ const ASKS = [
   ["働く", 3, "試験の出典I", "試験の文脈I", "仕事は人生の中の何なのか？"],
 ].map(([g, w, from, hint, q]) => ({ g, w, from, hint, q }));
 
-module.exports = { open, checker, ensureServer, noFit, noAnchor, URL, ROOT, ASKS };
+/* 見直しの小窓を開く。頭の一行は週の面の選ぶ紙へ移った（docs/todo-items.md の段3）：週 → 選ぶ → 一件ずつ。
+   見直すものが無ければ false（開いた小窓は閉じる）。 */
+async function openReview(page) {
+  await page.locator('#screen-todo .wk-faces .seg-btn[data-face="week"]').first().click();
+  await page.waitForTimeout(500);
+  const pick = page.locator("#screen-todo .wk-pick");
+  if (!(await pick.count())) return false;
+  await pick.first().click();
+  await page.waitForTimeout(600);
+  const one = page.locator(".note-pop.is-choose.is-open .pk-review");
+  if (!(await one.count())) { await page.keyboard.press("Escape"); await page.waitForTimeout(300); return false; }
+  await one.click();
+  await page.waitForTimeout(700);
+  return true;
+}
+
+module.exports = { open, checker, ensureServer, noFit, noAnchor, openReview, URL, ROOT, ASKS };
