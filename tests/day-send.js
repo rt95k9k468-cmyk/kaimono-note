@@ -82,22 +82,6 @@ const { open, checker } = require("./lib");
   t.check("着いたら写しは消える", await page.evaluate(() => !document.querySelector(".day-send")));
   t.check("日は明日に移っている", await page.evaluate((x) => KN.store.getTodo(x.a).due === x.tomorrow, ids));
 
-  /* ---- 時刻を過ぎたものの紙で「明日」 ---- */
-  if (ids.past) {
-    await page.waitForTimeout(400);
-    const bar = page.locator(".screen.is-active .tl-passed");
-    t.check("時刻を過ぎたものの札がある", (await bar.count()) === 1);
-    await bar.click();
-    await page.waitForTimeout(700);
-    const rec2 = record();
-    await page.locator(".sheet.is-open .carry-row .js-passed[data-key=\"tomorrow\"]").first().click();
-    const r2 = await rec2;
-    t.check("過ぎたものの「明日」：写しが飛ぶ", r2.n > 3 && r2.last.y < r2.first.y, JSON.stringify([r2.first, r2.last]));
-    t.check("過ぎたものの「明日」：日が移る", await page.evaluate((x) => KN.store.getTodo(x.past).due === x.tomorrow, ids));
-    await page.keyboard.press("Escape").catch(() => {});
-    await page.waitForTimeout(500);
-  }
-
   /* ---- 動きを減らす設定 ---- */
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(500);

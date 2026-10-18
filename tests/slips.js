@@ -2,9 +2,7 @@
    - 控え（slips）を書くのは：日の変わり目に運んだ（carry）・段3の紙で明日／今週・段5の紙で明日／時刻を外す（passed）・
      自分で due を後ろへ（hand）。くり返しには書かない。前へ動かしても書かない。20件まで
    - 元に戻すと控えも戻る
-   - 3回目から、段3・段5 の紙のその行に「3回目」と、選択肢（今日は15分だけ・時間を変える・待つへ・いつかへ）
-   - 2回目までは何も足さない
-   - 「先送り」「失敗」「原因」・!・赤を出さない
+   - 段3・段5 の紙と頭の一行は出さない（10月18日）。控えは設定の奥と見直しの頭にだけ
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/slips.js */
 const { open, checker, openReview } = require("./lib");
@@ -55,85 +53,16 @@ const YEST = "2026-10-05";
   c.check("控えは20件まで", r.h3 === 20, String(r.h3));
   c.check("くり返しには書かない", r.rep.length === 0 && r.repDue === TODAY, JSON.stringify(r));
 
-  /* ---------------- 段3の紙：3回目から ---------------- */
-  await page.evaluate(([today, yest]) => {
-    const S = KN.store;
-    const slip = (d) => ({ on: d, from: d, time: null, how: "carry" });
-    const x = S.addTodo({ title: "確定申告の準備", due: yest });
-    S.update((s) => { s.todos.find((t) => t.id === x.id).slips = [slip("2026-09-20"), slip("2026-09-27")]; });
-    S.addTodo({ title: "ふつうの用事", due: yest });
-    S.rescheduleOverdue();
-  }, [TODAY, YEST]);
-  await page.click('.tab[data-tab="todo"]');
-  await wait(700);
-  await page.locator("#screen-todo .tl-carry").click();
-  await wait(600);
-  const sheetRows = () => page.evaluate(() => {
-    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
-    return {
-      text: s.textContent,
-      rows: [...s.querySelectorAll(".carry-row")].map((row) => ({
-        title: row.querySelector(".carry-title").textContent.trim(),
-        n: (row.querySelector(".carry-n") || {}).textContent || null,
-        acts: [...row.querySelectorAll("button")].map((b) => b.textContent.trim()),
-        nColor: row.querySelector(".carry-n") ? getComputedStyle(row.querySelector(".carry-n")).color : null,
-      })),
-    };
-  });
-  let sr = await sheetRows();
-  const big = sr.rows.find((x) => x.title === "確定申告の準備");
-  const plain = sr.rows.find((x) => x.title === "ふつうの用事");
-  c.check("3回目の行に「3回目」", !!big && big.n === "3回目", JSON.stringify(big));
-  c.check("選択肢を足す（今日は15分だけ・時間を変える・待つへ・いつかへ）",
-    !!big && ["今日は15分だけ", "時間を変える", "待つへ", "いつかへ"].every((w) => big.acts.includes(w)), JSON.stringify(big && big.acts));
-  c.check("2回目までは何も足さない", !!plain && !plain.n && !plain.acts.includes("今日は15分だけ"), JSON.stringify(plain));
-  c.check("責める言葉・!を出さない", !/先送り|失敗|原因|サボ|!|！/.test(sr.text), sr.text);
-  c.check("回数の字は赤くしない", !!big && !/rgb\(2[0-9]{2}, [0-9]{1,2}, [0-9]{1,2}\)/.test(big.nColor), big && big.nColor);
-  await page.locator(".sheet.is-open .carry-row", { hasText: "確定申告の準備" }).locator(".js-slip", { hasText: "今日は15分だけ" }).click();
-  await wait(500);
-  let t = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "確定申告の準備"));
-  c.check("今日は15分だけ：今日・15分・運んだ印は外れる", t.due === TODAY && t.minutes === 15 && !t.carried, JSON.stringify(t));
-  const toast = await page.evaluate(() => (document.querySelector(".toast") || {}).textContent || "");
-  c.check("知らせに「元に戻す」", /元に戻す/.test(toast), toast);
-  await page.locator(".toast-action", { hasText: "元に戻す" }).click();
-  await wait(400);
-  t = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "確定申告の準備"));
-  c.check("元に戻すと長さも印も戻る", t.minutes == null && !!t.carried, JSON.stringify(t));
-  await page.keyboard.press("Escape");
-  await wait(500);
-
-  /* ---------------- 段5の紙：時間を変える ---------------- */
+  /* ---------------- 3回目の控え：頭の一行も紙も出さない（置き直しの口は無い） ---------------- */
   await page.evaluate((today) => {
     const S = KN.store;
-    const y = S.addTodo({ title: "見積もりを書く", due: today, time: "09:00", minutes: 60 });
-    S.update((s) => { s.todos.find((t) => t.id === y.id).slips = [
-      { on: "2026-10-01", from: "2026-10-01", time: "09:00", how: "passed" },
-      { on: "2026-10-03", from: "2026-10-03", time: "09:00", how: "passed" }]; });
+    const slip = (d) => ({ on: d, from: d, time: null, how: "carry" });
+    const x = S.addTodo({ title: "確定申告の準備", due: today });
+    S.update((s) => { s.todos.find((t) => t.id === x.id).slips = [slip("2026-09-20"), slip("2026-09-27"), slip("2026-10-05")]; });
   }, TODAY);
-  await page.click('.tab[data-tab="archive"]');
-  await wait(300);
   await page.click('.tab[data-tab="todo"]');
   await wait(700);
-  await page.locator("#screen-todo .tl-passed").click();
-  await wait(600);
-  sr = await sheetRows();
-  const pr = sr.rows.find((x) => x.title === "見積もりを書く");
-  c.check("段5の紙：控え2件なら、いま選ぶのが3回目", !!pr && pr.n === "3回目", JSON.stringify(pr));
-  await page.locator(".sheet.is-open .carry-row", { hasText: "見積もりを書く" }).locator(".js-slip", { hasText: "時間を変える" }).click();
-  await wait(600);
-  const ask = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open")].pop().querySelector(".sheet-title").textContent.trim());
-  c.check("時間を変える：時刻と長さの紙", ask === "時間を変える", ask);
-  await page.evaluate(() => {
-    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
-    const [h, m] = s.querySelectorAll(".note-wheel");
-    h.scrollTop = 15 * 40; m.scrollTop = 0;
-    [...s.querySelectorAll(".tw-mins .chip")].find((x) => x.textContent.trim() === "30分").click();
-  });
-  await wait(250);
-  await page.locator(".sheet.is-open .js-ok").last().click();
-  await wait(600);
-  t = await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "見積もりを書く"));
-  c.check("15:00・30分に置き直る（控えは増やさない）", t.time === "15:00" && t.minutes === 30 && t.slips.length === 2, JSON.stringify(t));
+  c.check("頭に札は出ない", await page.evaluate(() => !document.querySelector("#screen-todo .tl-carry, #screen-todo .tl-passed")));
 
   /* 読み直しても残る */
   await wait(400);

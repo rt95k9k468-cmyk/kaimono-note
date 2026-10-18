@@ -65,76 +65,15 @@ const { open, checker } = require("./lib");
   t.check("選び直すと、もう過ぎたものに数えない", se.left === 0, String(se.left));
   t.check("どれも元に戻せる", se.undone);
 
-  /* ---- 画面 ---- */
-  const ids = await page.evaluate(() => {
+  /* ---- 画面：頭の一行は出さない ---- */
+  await page.evaluate(() => {
     const S = KN.store, today = KN.util.todayKey();
     S.update((s) => { s.todos = []; });
-    return {
-      doc: S.addTodo({ title: "書類整理", due: today, time: "10:00" }).id,
-      shop: S.addTodo({ title: "買い物", due: today, time: "11:05" }).id,
-      clinic: S.addTodo({ title: "病院", due: today, time: "13:00", minutes: 60 }).id,
-    };
+    S.addTodo({ title: "書類整理", due: today, time: "10:00" });
   });
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(700);
-  const bar = () => page.evaluate(() => {
-    const b = document.querySelector("#screen-todo .tl-passed");
-    return b ? b.textContent.replace(/\s+/g, " ").trim() : null;
-  });
-  let b = await bar();
-  t.check("頭に「1 時刻を過ぎたもの · 置き直す」", !!b && /^1 時刻を過ぎたもの/.test(b) && /置き直す/.test(b), String(b));
-
-  await page.click("#screen-todo .tl-passed");
-  await page.waitForTimeout(700);
-  const sheet = await page.evaluate(() => {
-    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
-    if (!sh) return null;
-    return {
-      title: sh.querySelector(".sheet-title").textContent.trim(),
-      rows: [...sh.querySelectorAll(".carry-row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()),
-      picks: [...sh.querySelectorAll(".js-passed")].map((x) => x.textContent.trim()),
-      inputs: sh.querySelectorAll("input, textarea, [contenteditable]").length,
-      text: sh.textContent,
-    };
-  });
-  t.check("紙の題は「時刻を過ぎたもの」、一件「書類整理 10:00 の予定」",
-    !!sheet && sheet.title === "時刻を過ぎたもの" && sheet.rows.length === 1
-    && /書類整理/.test(sheet.rows[0]) && /10:00 の予定/.test(sheet.rows[0]), JSON.stringify(sheet));
-  t.check("五択（いまから（11:15）・時刻を外す・明日・これからへ・やめる）",
-    !!sheet && JSON.stringify(sheet.picks) === JSON.stringify(["いまから（11:15）", "時刻を外す", "明日", "これからへ", "やめる"]),
-    sheet && JSON.stringify(sheet.picks));
-  t.check("紙に入力欄は無い", !!sheet && sheet.inputs === 0);
-  t.check("紙も評価しない・絵文字なし",
-    !!sheet && !/遅れ|予定通り|達成|未達|できなかった|%|％/.test(sheet.text) && !/\p{Extended_Pictographic}/u.test(sheet.text),
-    sheet && sheet.text);
-  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/passed-sheet.png` });
-
-  await page.locator(".sheet.is-open .js-passed", { hasText: "いまから" }).click();
-  await page.waitForTimeout(800);
-  const doc = await page.evaluate((id) => KN.store.getTodo(id), ids.doc);
-  t.check("いまから：11:15 が付く", doc.time === "11:15", JSON.stringify(doc));
-  t.check("片づけ終えたら紙が閉じ、頭の一行も消える",
-    await page.evaluate(() => !document.querySelector(".sheet.is-open .carry-row")) && (await bar()) === null, String(await bar()));
-  const road = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .road-label")].map((x) => x.textContent.replace(/\s+/g, " ").trim()));
-  t.check("道の停留所も 11:15 に", (await road()).some((l) => l.includes("11:15") && l.includes("書類整理")), JSON.stringify(await road()));
-  await page.locator(".toast button", { hasText: "元に戻す" }).click();
-  await page.waitForTimeout(700);
-  const doc2 = await page.evaluate((id) => KN.store.getTodo(id), ids.doc);
-  b = await bar();
-  t.check("元に戻すで 10:00 に戻り、頭の一行も戻る", doc2.time === "10:00" && !!b && /^1 /.test(b), JSON.stringify([doc2.time, b]));
-
-  /* 見ているあいだに 11:05 の買い物が過ぎる（11:35）→ 30秒の見回りで「2」に */
-  await page.clock.setFixedTime(new Date(2026, 8, 29, 11, 36));
-  await page.waitForTimeout(31500);
-  b = await bar();
-  t.check("見ているあいだに時刻が過ぎれば、見回りで数え直す（2件）", !!b && /^2 /.test(b), String(b));
-
-  /* 先の日を見ているときは出さない */
-  await page.evaluate(() => KN.screens.todo.goDay(KN.util.shiftDay(KN.util.todayKey(), 1)));
-  await page.waitForTimeout(900);
-  t.check("今日でない日を見ているときは出さない", (await bar()) === null, String(await bar()));
-  await page.evaluate(() => KN.screens.todo.goDay(KN.util.todayKey()));
-  await page.waitForTimeout(900);
+  t.check("時刻を過ぎたものの札は出ない", await page.evaluate(() => !document.querySelector("#screen-todo .tl-passed")));
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();

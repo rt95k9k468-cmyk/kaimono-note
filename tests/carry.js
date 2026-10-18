@@ -110,7 +110,7 @@ const { open, checker } = require("./lib");
   t.check("元に戻す：今週", se.weekBack.due === se.day && se.weekBack.carried && !se.weekBack.deadline);
   t.check("戻したぶん carriedToday に戻る", se.n2 === 2, String(se.n2));
 
-  /* ---- 画面 ---- */
+  /* ---- 画面：頭の一行は出さない（運んだものは今日に居るだけ・段3の「出さない」） ---- */
   await page.evaluate(() => {
     const S = KN.store, U = KN.util;
     const y = U.shiftDay(U.todayKey(), -1);
@@ -121,54 +121,10 @@ const { open, checker } = require("./lib");
     KN.app.showScreen("todo");
   });
   await page.waitForTimeout(500);
-  const bar = await page.evaluate(() => {
-    const b = document.querySelector("#screen-todo .tl-carry");
-    return b ? { text: b.textContent.replace(/\s+/g, " ").trim(), color: getComputedStyle(b).color } : null;
-  });
-  t.check("頭に「前の日から運んだもの」", bar && /2\s*前の日から運んだもの\s*置き直す/.test(bar.text), JSON.stringify(bar));
-  const lateBar = await page.evaluate(() => !!document.querySelector("#screen-todo .tl-late:not(.tl-carry)"));
-  t.check("期限切れの札は出ない（運んだので）", !lateBar);
+  t.check("頭に札は出ない（運んだもの・期限切れ）", await page.evaluate(() => !document.querySelector("#screen-todo .tl-late")));
   const roadStop = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .day-road .road-marks button")]
     .some((b) => /13:00/.test(b.textContent) && /病院/.test(b.textContent)));
   t.check("道に「13:00 病院」の停留所が立たない", !roadStop);
-
-  await page.click("#screen-todo .tl-carry");
-  await page.waitForTimeout(500);
-  const sheet = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll(".carry-row")];
-    return {
-      n: rows.length,
-      labels: rows[0] ? [...rows[0].querySelectorAll(".js-carry")].map((b) => b.textContent.trim()) : [],
-      was: [...document.querySelectorAll(".carry-was")].map((x) => x.textContent.trim()),
-      text: (document.querySelector(".carry-list") || {}).textContent || "",
-    };
-  });
-  t.check("紙に二件", sheet.n === 2, JSON.stringify(sheet));
-  t.check("五つの選択肢", sheet.labels.length === 5 && sheet.labels[0] === "今日のどこか" && sheet.labels[1] === "明日"
-    && /^(今週|来週)$/.test(sheet.labels[2]) && sheet.labels[3] === "これからへ" && sheet.labels[4] === "やめる", JSON.stringify(sheet.labels));
-  t.check("外した時刻を「前は」で言う", JSON.stringify(sheet.was) === JSON.stringify(["前は 13:00"]), JSON.stringify(sheet.was));
-  t.check("評価の言葉を出さない", !/できなかった|遅れ|失敗|未達|持ち越し|期限切れ/.test(sheet.text + bar.text));
-  t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(sheet.text + bar.text));
-
-  // 一件目「明日」、二件目「今日のどこか」。
-  // 「明日」は行の写し（.carry-row のまま body に出る）が暦へ飛ぶので、紙の中だけを数える。
-  await page.evaluate(() => document.querySelectorAll(".carry-row")[0].querySelector('.js-carry[data-key="tomorrow"]').click());
-  await page.waitForTimeout(300);
-  const mid = await page.evaluate(() => ({
-    rows: document.querySelectorAll(".sheet.is-open .carry-row").length,
-    toast: [...document.querySelectorAll(".toast")].map((x) => x.textContent).join(" "),
-  }));
-  t.check("選んだ行は消える", mid.rows === 1, JSON.stringify(mid));
-  t.check("報せに「元に戻す」", /明日へ/.test(mid.toast) && /元に戻す/.test(mid.toast), mid.toast);
-  await page.evaluate(() => document.querySelector('.carry-row .js-carry[data-key="today"]').click());
-  await page.waitForTimeout(700);
-  const end = await page.evaluate(() => ({
-    rows: document.querySelectorAll(".carry-row").length,
-    bar: !!document.querySelector("#screen-todo .tl-carry"),
-    left: KN.store.carriedToday().length,
-  }));
-  t.check("片づけ終えたら紙が閉じる", end.rows === 0, JSON.stringify(end));
-  t.check("頭の一行も消える", !end.bar && end.left === 0, JSON.stringify(end));
 
   /* ---- 同じ日に二回目に開く（読み直し）：印が reconcile を通って残る ----
      一回目に開いたとき運んで印が付き、二回目は due が今日なのでもう運ばない。
@@ -188,17 +144,14 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(500);
   const again = await page.evaluate(() => {
-    const b = document.querySelector("#screen-todo .tl-carry");
     const S = KN.store;
     return {
-      bar: b ? b.textContent.replace(/\s+/g, " ").trim() : null,
       list: S.carriedToday().map((x) => x.title).sort(),
       was: (S.get().todos.find((x) => x.title === "病院") || {}).carried || null,
     };
   });
   t.check("二回目に開いても印が残る", JSON.stringify(again.list) === JSON.stringify(["書類", "病院"]), JSON.stringify(again));
   t.check("二回目に開いても「前は」の時刻が残る", again.was && again.was.time === "13:00", JSON.stringify(again.was));
-  t.check("二回目に開いても頭の一行が出る", again.bar && /2\s*前の日から運んだもの\s*置き直す/.test(again.bar), JSON.stringify(again.bar));
 
   /* 形の崩れた印は落とす。印の無い記録に欄を足さない（既存の記録は書き換えない）。 */
   await page.evaluate(() => {

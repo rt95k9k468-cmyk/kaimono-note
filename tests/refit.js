@@ -114,7 +114,7 @@ const TODAY = "2026-10-06";
   c.check("これから：片付けは日なし（見直す日つき）・後日：洗車は 10/10",
     !t.tidy.due && !t.tidy.shelf && t.tidy.review === "2026-10-20" && t.wash.due === "2026-10-10", JSON.stringify(t));
 
-  /* 入りきっていても、時刻を過ぎたものが2件以上なら「組み直す」 */
+  /* 入りきっていれば、時刻を過ぎたものが2件以上でも「組み直す」は出さない */
   const pure = await page.evaluate((d) => {
     const P = KN.plan;
     const a = { id: "a", title: "a", due: d, time: "08:00", minutes: 30, order: 1 };
@@ -138,7 +138,7 @@ const TODAY = "2026-10-06";
     const b = document.querySelector("#screen-todo .js-refit");
     return b ? b.textContent.trim() : null;
   });
-  c.check("時刻を過ぎたもの2件・入りきる日は「組み直す」", btn2 === "組み直す", String(btn2));
+  c.check("時刻を過ぎたもの2件でも、入りきる日は「組み直す」を出さない", btn2 === null, String(btn2));
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();

@@ -3943,7 +3943,7 @@
     const host = els.late;
     const oldBar = host && host.querySelector(".tl-late");
     if (oldBar) oldBar.remove();
-    // 頭の札（期限切れ・運んだもの・時刻を過ぎたもの）は今日の面だけ。週の面には出さない。
+    // 頭の札（期限切れ）は今日の面だけ。週の面には出さない。
     const late = host && dayFace() && shownDay() === today
       ? (open || []).filter((t) => t.due && t.due < today && t.kind !== "event") : [];
     if (late.length) {
@@ -3961,24 +3961,6 @@
       });
       host.append(bar);
     }
-    /* 段3：前の日から運んできたもの。**あることと、置き直す口だけ**言います。
-       押さなければ今日に居続ける（9月27日の「期限切れは作らない」のまま）。
-       数は件数だけ——「できなかった」「◯日持ち越し」は言いません。 */
-    const oldCarry = host && host.querySelector(".tl-carry");
-    if (oldCarry) oldCarry.remove();
-    const carried = host && dayFace() && shownDay() === today ? store.carriedToday() : [];
-    if (carried.length) {
-      const bar = node(html`
-        <button type="button" class="tl-late tl-carry">
-          <span class="tl-late-n">${carried.length}</span>
-          <span>前の日から運んだもの</span>
-          <span class="tl-late-go">置き直す${icon("chevron")}</span>
-        </button>
-      `);
-      bar.addEventListener("click", () => { haptic(); carrySheet(); });
-      host.append(bar);
-    }
-    paintPassed(true);
     // 見直す（3.0 の B1）の頭の一行は、週の面の選ぶ紙へ移した（pickSheet）。
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。
@@ -4173,39 +4155,6 @@
     pop.place();
   }
 
-  /* 置き直しの回数（3.0 の B2。docs/todo-timeline.md の「置き直しの回数」）。3回目から、行に「n回目」と
-     事実を一つ、選択肢を足す。「先送り」「また」「失敗」「この時間帯が原因」は言わない。!も赤も出さない。
-     n は控え（slips）の数。段3 は運んだときにもう書いてあるので数そのまま、段5 はこれから書くので＋1。 */
-  const SLIP_FROM = 3;
-  function slipPicks(row, t, n, o) {
-    if (n < SLIP_FROM) return;
-    row.querySelector(".carry-head").append(node(html`<span class="carry-n">${n}回目</span>`));
-    const acts = row.querySelector(".carry-acts");
-    [
-      { k: "short", label: "今日は15分だけ" },
-      KN.activity ? { k: "time", label: "時間を変える" } : null,
-      KN.unfold ? { k: "small", label: "小さくする" } : null,
-      { k: "wait", label: "待つへ" },
-      { k: "someday", label: "いつかへ" },
-    ].filter(Boolean).forEach((m) => {
-      const b = node(html`<button type="button" class="btn btn-soft btn-sm js-slip" data-k="${m.k}">${m.label}</button>`);
-      b.addEventListener("click", () => {
-        if (m.k === "short") {
-          o.finish(`「${t.title}」を今日は15分に`, store.replan(t.id, { due: todayKey(), minutes: 15, ...(o.short || {}) }));
-        } else if (m.k === "time") {
-          KN.activity.askSpan({
-            title: "時間を変える", ok: "決める", at: t.time || (t.carried && t.carried.time) || null, minutes: t.minutes || 30,
-            onPick: (at, minutes) => o.finish(`「${t.title}」を ${at} に`, store.replan(t.id, { due: todayKey(), time: at, minutes })),
-          });
-        } else if (m.k === "small") {
-          o.close();
-          setTimeout(() => KN.unfold.open(t.id), 40);
-        } else moveShelf(t.id, m.k, () => o.finish(null, null));
-      });
-      acts.append(b);
-    });
-  }
-
   /* ---------------- 組み直し（3.0 の B3。docs/todo-timeline.md の「組み直し」） ----------------
 
      今日の残りに入るもの・入らないものを分けて見せ、入らないものに一件ずつ行き先の札。既定は明日、
@@ -4282,152 +4231,6 @@
       if (handle) handle.close();
       KN.ui.toast(`${moves.length}件を組み直しました`, { action: { label: "元に戻す", onClick: undo } });
     });
-  }
-
-  /* 段3：運んできたものを、一件ずつ選び直す紙（docs/todo-timeline.md
-     「崩れたときの置き直し」）。選ぶと行が消え、報せに「元に戻す」。
-     片づけ終えたら紙は閉じる（通知から来た紙 due-sheet.js と同じ拍）。 */
-  function carrySheet() {
-    const rows = store.carriedToday();
-    if (!rows.length) return;
-    const week = store.carryWeek();
-    const picks = [
-      { key: "today", label: "今日のどこか", done: "今日のどこかに" },
-      { key: "tomorrow", label: "明日", done: "明日へ" },
-      { key: "week", label: week.next ? "来週" : "今週", done: week.next ? "来週中に" : "今週中に" },
-      { key: "someday", label: "これからへ", done: "これからへ" },
-      { key: "stop", label: "やめる", done: "アーカイブしました" },
-    ];
-    const box = node(html`<div class="carry-list"></div>`);
-    let handle = null;
-    let left = rows.length;
-    rows.forEach((t) => {
-      const was = t.carried && t.carried.time;
-      const row = node(html`
-        <div class="carry-row" data-id="${t.id}">
-          <div class="carry-head">
-            <span class="carry-title">${t.title}</span>
-            ${was ? html`<span class="carry-was">前は ${was}</span>` : ""}
-          </div>
-          <div class="carry-acts">
-            ${picks.map((p) => html`<button type="button" class="btn btn-soft btn-sm js-carry" data-key="${p.key}">${p.label}</button>`)}
-          </div>
-        </div>
-      `);
-      slipPicks(row, t, (t.slips || []).length, {
-        close: () => { if (handle) handle.close(); },
-        finish: (msg, undo) => {
-          haptic();
-          KN.motion.fire("save");
-          row.remove();
-          if (!--left && handle) { handle.close(); handle = null; }
-          if (msg) KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
-        },
-      });
-      row.querySelectorAll(".js-carry").forEach((b) => b.addEventListener("click", () => {
-        const p = picks.find((x) => x.key === b.dataset.key);
-        const undo = store.settleCarried(t.id, p.key);
-        /* 明日へ：行が暦の明日へ飛んでいく（V15）。消す前に測るので、ここで。 */
-        if (p.key === "tomorrow") KN.ui.sendToDay(row, (store.getTodo(t.id) || {}).due);
-        haptic();
-        KN.motion.fire("save");
-        row.remove();
-        if (!--left && handle) { handle.close(); handle = null; }
-        KN.ui.toast(`「${t.title}」を${p.done}`, {
-          action: { label: "元に戻す", onClick: undo },
-        });
-      }));
-      box.append(row);
-    });
-    handle = KN.ui.sheet({ title: "前の日から運んだもの", content: box, onClose: () => { handle = null; } });
-  }
-
-  /* 段5：その日のうちの置き直し（docs/todo-timeline.md「その日のうちの置き直し」）。
-     時刻を過ぎたのにまだのものが**あることと、置き直す口だけ**を、段3の札の隣に
-     言います。件数だけで、赤くしません——「遅れ」「できなかった」は言いません。
-     組み直しを待たず、30秒の見回りでも数え直します（見ているあいだに時刻が過ぎる
-     ことのほうが多いので）。数が変わらなければ触りません。 */
-  function paintPassed(force) {
-    const host = els.late;
-    if (!host) return;
-    const old = host.querySelector(".tl-passed");
-    const list = dayFace() && shownDay() === todayKey() ? store.passedToday() : [];
-    if (!force && (old ? Number(old.dataset.n) : 0) === list.length) return;
-    if (old) old.remove();
-    if (!list.length) return;
-    const bar = node(html`
-      <button type="button" class="tl-late tl-passed" data-n="${String(list.length)}">
-        <span class="tl-late-n">${list.length}</span>
-        <span>時刻を過ぎたもの</span>
-        <span class="tl-late-go">置き直す${icon("chevron")}</span>
-      </button>
-    `);
-    bar.addEventListener("click", () => { haptic(); passedSheet(); });
-    host.append(bar);
-  }
-
-  /* 段5の紙。段3の紙（carrySheet）と同じ形で、一件ずつ選び直します。
-     「いまから」はいまの次の15分きざみ。「時刻を外す」と連れに戻り、道の空いた
-     ところを押せば、また時刻を付けられます（段2）。 */
-  function passedSheet() {
-    const rows = store.passedToday();
-    if (!rows.length) return;
-    const now = KN.plan.toMin(KN.util.nowTime());
-    const soon = Math.ceil((now + 1) / 15) * 15;
-    const soonAt = soon < 24 * 60 ? KN.plan.toTime(soon) : null;
-    const picks = [
-      soonAt && { key: "now", label: `いまから（${soonAt.replace(/^0/, "")}）`, done: `${soonAt.replace(/^0/, "")} に` },
-      { key: "loose", label: "時刻を外す", done: "連れに戻しました" },
-      { key: "tomorrow", label: "明日", done: "明日へ" },
-      { key: "someday", label: "これからへ", done: "これからへ" },
-      { key: "stop", label: "やめる", done: "アーカイブしました" },
-    ].filter(Boolean);
-    const box = node(html`
-      <div class="carry-list">
-        <p class="passed-note">時刻を外すと「連れ」に戻ります。</p>
-      </div>
-    `);
-    let handle = null;
-    let left = rows.length;
-    rows.forEach((t) => {
-      const row = node(html`
-        <div class="carry-row" data-id="${t.id}">
-          <div class="carry-head">
-            <span class="carry-title">${t.title}</span>
-            <span class="carry-was">${t.time.replace(/^0/, "")} の予定</span>
-          </div>
-          <div class="carry-acts">
-            ${picks.map((p) => html`<button type="button" class="btn btn-soft btn-sm js-passed" data-key="${p.key}">${p.label}</button>`)}
-          </div>
-        </div>
-      `);
-      slipPicks(row, t, (t.slips || []).length + 1, {
-        short: soonAt ? { time: soonAt } : { time: null },
-        close: () => { if (handle) handle.close(); },
-        finish: (msg, undo) => {
-          haptic();
-          KN.motion.fire("save");
-          row.remove();
-          if (!--left && handle) { handle.close(); handle = null; }
-          if (msg) KN.ui.toast(msg, { action: { label: "元に戻す", onClick: undo } });
-        },
-      });
-      row.querySelectorAll(".js-passed").forEach((b) => b.addEventListener("click", () => {
-        const p = picks.find((x) => x.key === b.dataset.key);
-        const undo = store.settlePassed(t.id, p.key, soonAt);
-        /* 明日へ：行が暦の明日へ飛んでいく（V15）。消す前に測るので、ここで。 */
-        if (p.key === "tomorrow") KN.ui.sendToDay(row, (store.getTodo(t.id) || {}).due);
-        haptic();
-        KN.motion.fire("save");
-        row.remove();
-        if (!--left && handle) { handle.close(); handle = null; }
-        KN.ui.toast(`「${t.title}」を${p.done}`, {
-          action: { label: "元に戻す", onClick: undo },
-        });
-      }));
-      box.append(row);
-    });
-    handle = KN.ui.sheet({ title: "時刻を過ぎたもの", content: box, onClose: () => { handle = null; } });
   }
 
   function groupSection(g, rows, tiles) {
@@ -4706,8 +4509,7 @@
     /* 済んだものは畳める（2026年10月2日）。道が上に来て、済んだ行が残ると
        スクロールが長いので。畳み方は次に開いたときも覚えています。 */
     const doneN = plan.items.filter((it) => it.todo.done || it.todo.archived).length;
-    /* 組み直しの口（3.0 の B3）。入りきらない（over）か、時刻を過ぎたものが2件以上のときだけ。 */
-    const refitWhy = isToday && !plan.over && store.passedToday().length >= 2;
+    /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。 */
     const sec = node(html`
       <div class="tl ${tlDoneOpen ? "" : "is-done-shut"}">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
@@ -4717,13 +4519,13 @@
               超過（はみ出し）だけは残します——これは「読めば分かる」では
               なく、**詰め込みすぎている**という注意なので、他の事実とは
               性格が違います。 */""}
-        ${plan.over || doneN || refitWhy
+        ${plan.over || doneN
           ? html`<div class="tl-sum">
               ${/* 押せば組み直しの紙（3.0 の B3）。今日だけ。 */""}
               ${plan.over ? (isToday
                 ? html`<button type="button" class="tl-over js-refit">寝る時刻を ${P.humanSpan(plan.over)} すぎます${icon("chevron")}</button>`
                 : html`<span class="tl-over">寝る時刻を ${P.humanSpan(plan.over)} すぎます</span>`)
-                : refitWhy ? html`<button type="button" class="tl-over js-refit">組み直す${icon("chevron")}</button>` : ""}
+                : ""}
               ${doneN ? html`<button type="button" class="tl-done-toggle" aria-expanded="${String(tlDoneOpen)}">
                 済み ${doneN}件<span class="tl-subs-arrow">${icon("chevron")}</span></button>` : ""}
             </div>` : ""}
@@ -5148,7 +4950,6 @@
       if (typeof el.__paint === "function") el.__paint();
     });
     if (KN.dayRoad) KN.dayRoad.paintAll(root);
-    paintPassed(false);
   }
 
   /* **戻ってきたら、すぐ一度。** 30秒の見回りだけでは、アプリへ戻ってから
