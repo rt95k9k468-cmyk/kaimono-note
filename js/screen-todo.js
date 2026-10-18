@@ -2626,7 +2626,7 @@
   function sheetDigest(day) {
     const st = store.get();
     return JSON.stringify([
-      day, todayKey(), face, weekMore,
+      day, todayKey(), face, weekMore, workOnly, laterOpen,
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
       (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
@@ -2844,6 +2844,10 @@
   const faceFixed = (() => { try { return sessionStorage.getItem("kn-todo-face") === "today"; } catch (_) { return false; } })();
   let face = faceFixed ? "today" : "week";
   let weekMore = false;   // 今週の「ほか n」を開いているか
+  let laterOpen = false;  // 週の面の「これから」を開いているか（保存しない）
+  /* 週の面の頭の右の「仕事だけ」。端末ごと（記録にもバックアップにも入れない）。 */
+  const WORK_KEY = "kaimono-note-todo-work";
+  let workOnly = (() => { try { return localStorage.getItem(WORK_KEY) === "1"; } catch (_) { return false; } })();
   const weekFace = () => oneDay() && face === "week";
   const dayFace = () => oneDay() && face !== "week";
   /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
@@ -2901,9 +2905,18 @@
           <button type="button" class="seg-btn" data-face="today" aria-pressed="${String(face !== "week")}">今日</button>
           <button type="button" class="seg-btn" data-face="week" aria-pressed="${String(face === "week")}">週</button>
         </div>
+        ${face === "week" ? html`<button type="button" class="chip wk-work" aria-pressed="${String(workOnly)}"
+          style="--cat:var(--side-work)"><span class="chip-dot"></span>仕事だけ</button>` : ""}
       </div>
     `);
     el.addEventListener("click", (e) => {
+      if (e.target.closest(".wk-work")) {
+        haptic();
+        workOnly = !workOnly;
+        try { if (workOnly) localStorage.setItem(WORK_KEY, "1"); else localStorage.removeItem(WORK_KEY); } catch (_) {}
+        render();
+        return;
+      }
       const b = e.target.closest(".seg-btn");
       if (!b || b.dataset.face === (face === "week" ? "week" : "today")) return;
       setFace(b.dataset.face, b.dataset.face === "today" ? todayKey() : shownDay());
@@ -2915,12 +2928,14 @@
   const wkDot = (t) => html`<span class="chip-dot" style="--cat:${SIDE(t)}"></span>`;
   const wkClock = (hm) => (KN.util.isTime(hm) ? hm.replace(/^0/, "") : "");
 
-  function weekSlide(day, open) {
+  function weekSlide(day, openAll) {
     const U = KN.util;
     const today = todayKey();
     const w = U.weekOf(day);
     const now = today >= w.from && today <= w.to;
-    const all = store.get().todos;
+    const mine = (t) => !workOnly || t.side === "work";
+    const open = openAll.filter(mine);
+    const all = store.get().todos.filter(mine);
     const el = node(html`<div class="day-slide wk" data-week="${w.from}"></div>`);
 
     const row = (t, fact) => {
@@ -2937,15 +2952,16 @@
     };
     const list = (rows) => { const box = node(html`<div class="wk-list"></div>`); rows.forEach((r) => box.append(r)); return box; };
 
+    const tasks = open.filter((t) => t.kind !== "event" && !t.trace);
+    let dues = [], marked = [];
     if (now) {
-      const tasks = open.filter((t) => t.kind !== "event" && !t.trace);
-      const dues = tasks.filter((t) => t.deadline && t.deadline <= w.to)
+      dues = tasks.filter((t) => t.deadline && t.deadline <= w.to)
         .sort((a, b) => (a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0));
       if (dues.length) {
         el.append(node(html`<h2 class="wk-h">期限</h2>`));
         el.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`))));
       }
-      const marked = tasks.filter((t) => store.inWeek(t, today) && !dues.includes(t));
+      marked = tasks.filter((t) => store.inWeek(t, today) && !dues.includes(t));
       if (marked.length) {
         el.append(node(html`<h2 class="wk-h">今週</h2>`));
         const box = list((weekMore ? marked : marked.slice(0, 5))
@@ -2960,6 +2976,14 @@
     }
 
     el.append(weekDays(w, open, all, today));
+    if (now) {
+      // 来週の七日。見出しの右に日付の幅。
+      const nx = U.weekOf(U.shiftDay(w.from, 7));
+      const a = U.dayDate(nx.from), z = U.dayDate(nx.to);
+      el.append(node(html`<h2 class="wk-h">来週<span class="wk-range">${mdJa(nx.from)}〜${a.getMonth() === z.getMonth() ? `${z.getDate()}日` : mdJa(nx.to)}</span></h2>`));
+      el.append(weekDays(nx, open, all, today));
+      el.append(laterBlock(tasks, dues, marked, w.from, nx.to));
+    }
     el.addEventListener("click", (e) => {
       const n = e.target.closest(".js-open");
       if (n) { haptic(); openSheet(n.closest("[data-id]").dataset.id, null); return; }
@@ -2967,6 +2991,44 @@
       if (d) setFace("today", d.dataset.day);
     });
     return el;
+  }
+
+  /** これから（畳む。開いたかは保存しない）。上の期限・今週・二週の行に出ていないやること。
+     日の決まったものは日を、期限は期限を、待つものは何を待つかを小さく。その下に 待つ・いつか。 */
+  function laterBlock(tasks, dues, marked, from, to) {
+    const box = node(html`<div class="wk-later"></div>`);
+    const head = node(html`<button type="button" class="wk-h wk-later-h" aria-expanded="${String(laterOpen)}">これから<span class="wk-twist">${icon("chevron")}</span></button>`);
+    head.addEventListener("click", () => { haptic(); laterOpen = !laterOpen; render(); });
+    box.append(head);
+    if (!laterOpen) return box;
+    const rest = tasks.filter((t) => !dues.includes(t) && !marked.includes(t)
+      && !(t.due && t.due >= from && t.due <= to) && !(t.repeat && t.due));
+    const fact = (t) => (t.shelf === "wait" ? (t.waitFor || "")
+      : t.deadline ? `${mdJa(t.deadline)}まで` : t.due ? mdJa(t.due) : "");
+    const rowOf = (t) => {
+      const r = node(html`
+        <div class="wk-row" data-id="${t.id}">
+          ${wkDot(t)}<button type="button" class="wk-name js-open">${t.title}</button>
+          ${fact(t) ? html`<span class="wk-fact">${fact(t)}</span>` : ""}
+          <button class="check" role="checkbox" aria-checked="false" aria-label="${t.title} を終わりにする">${icon("check")}</button>
+        </div>
+      `);
+      r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
+      return r;
+    };
+    const byDay = (a, b) => ((a.due || a.deadline || "~") < (b.due || b.deadline || "~") ? -1
+      : (a.due || a.deadline || "~") > (b.due || b.deadline || "~") ? 1 : (a.order || 0) - (b.order || 0));
+    const part = (rows, sub) => {
+      if (!rows.length) return;
+      if (sub) box.append(node(html`<h3 class="wk-h is-sub">${sub}</h3>`));
+      const l = node(html`<div class="wk-list"></div>`);
+      rows.slice().sort(byDay).forEach((t) => l.append(rowOf(t)));
+      box.append(l);
+    };
+    part(rest.filter((t) => !t.shelf), "");
+    part(rest.filter((t) => t.shelf === "wait"), "待つ");
+    part(rest.filter((t) => t.shelf === "someday"), "いつか");
+    return box;
   }
 
   /** 七日の行。何日にもまたがる予定（endDay）は、日の列と予定の列のあいだを縦に通る帯。 */

@@ -4864,7 +4864,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* ---- 今日｜週（docs/todo-items.md「仕事の予定とやること」の段3） ----
    仕事とくらしの色は棚の色の並びから。暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
 #screen-todo { --side-work: #5b9bd5; --side-life: #5ea55a; }
-.wk-faces { padding: 0 var(--sp-4) var(--sp-1); }
+.wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-1); }
+.wk-work { flex: none; }
 .wk-faces .seg { width: 124px; }
 .wk-faces .seg-btn { min-height: 34px; padding: 0 var(--sp-2); }
 .wk .chip-dot { width: 8px; height: 8px; }
@@ -4884,6 +4885,15 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   display: block; width: 100%; min-height: 40px; border-top: 1px solid var(--c-border); text-align: left;
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
+.wk-range { margin-left: var(--sp-2); font-family: var(--font-num); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--c-text-2); }
+/* これから（畳む）。その下の 待つ・いつか は小見出し。 */
+.wk-later { margin-top: var(--sp-2); }
+.wk-later-h { width: 100%; text-align: left; }
+.wk-later-h:active { opacity: var(--press-fade); }
+.wk-twist { display: grid; margin-left: auto; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
+.wk-twist svg { width: var(--ico-sm); height: var(--ico-sm); }
+.wk-later-h[aria-expanded="true"] .wk-twist { rotate: 90deg; }
+.wk-h.is-sub { min-height: 36px; padding-top: var(--sp-2); font-size: var(--fs-sm); color: var(--c-text-2); }
 /* 七日の行。何日にもまたがる予定は、日の列と予定の列のあいだの筋を縦に通る帯。 */
 .wk-week { display: grid; margin: var(--sp-2) var(--sp-4) 0; }
 .wk-day {
