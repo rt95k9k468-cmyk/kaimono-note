@@ -10,7 +10,7 @@
   const { html, node, icon, formatDate } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow, dangerRow, render, fieldCard } = S;
+  const { go, TINT, card, foot, navRow, dangerRow, switchRow, render, fieldCard } = S;
 
   /* ---------------- data ---------------- */
 
@@ -993,6 +993,16 @@
         navRow({ ico: "undo", tint: TINT.sub, title: "Dropbox の控えから戻す", onTap: openDropboxBackups })
       ),
       foot(s.sender ? last + err : "控えはほかの端末から送っています。"),
+      card(
+        switchRow({
+          title: "小窓へ写す", on: store.get().settings.glance === true,
+          onTap: (v) => { store.update((x) => { x.settings.glance = v; }); if (v) db.glance(true); render(); },
+        }),
+        switchRow({
+          title: "仕事だけ", on: store.get().settings.glanceWork !== false,
+          onTap: (v) => { store.update((x) => { x.settings.glanceWork = v; }); db.glance(true); render(); },
+        })
+      ),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",
         onTap: async () => {

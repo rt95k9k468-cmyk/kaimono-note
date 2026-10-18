@@ -556,6 +556,49 @@
     timer = setTimeout(() => { timer = null; sync(); }, SOON);
   }
 
+  /* ---- ショートカットの小窓へ写す glance.json（docs/todo-items.md 段4）----
+     今日の予定と今週の印のやることだけ。フォルダ直下に一つ、いつも上書き。バックアップ（kurashi-latest.json）
+     とは別で、復元・日付の控えには入らない。書けなくても控えの error には出さない（控えの邪魔をしない）。 */
+  const GLANCE = "/glance.json";
+  const GLANCE_GAP = 5 * 60 * 1000;   // 開き直すたびに書かない
+  let glanceTimer = null, glanceBody = "", glanceAt = 0;
+
+  function glanceData(now) {
+    const s = store.get();
+    const day = dayKey(now);
+    const mine = (t) => s.settings.glanceWork === false || t.side === "work";
+    const todos = s.todos.filter((t) => t && !t.archived && !t.trace && mine(t));
+    const events = todos
+      .filter((t) => t.kind === "event" && (t.endDay ? t.due <= day && day <= t.endDay : store.fallsOn(t, day)))
+      .sort((a, b) => ((a.time || "99") < (b.time || "99") ? -1 : (a.time || "99") > (b.time || "99") ? 1 : 0))
+      .map((t) => ({ time: t.time || "", name: t.title, side: t.side === "work" ? "work" : "life" }));
+    const marks = todos.filter((t) => t.kind !== "event" && !t.done && store.inWeek(t, day)).map((t) => t.title);
+    return { v: 1, day, workOnly: s.settings.glanceWork !== false, events, marks };
+  }
+
+  async function glance(force) {
+    await recovered;
+    if (!connected() || !cfg.appKey || store.get().settings.glance !== true) return "off";
+    if (store.isBlank(store.get())) return "empty";
+    const now = new Date();
+    const data = glanceData(now);
+    const body = JSON.stringify(data);
+    if (!force && body === glanceBody) return "same";
+    if (force && body === glanceBody && Date.now() - glanceAt < GLANCE_GAP) return "same";
+    try {
+      await upload(GLANCE, JSON.stringify({ ...data, at: now.toISOString() }), "overwrite");
+      glanceBody = body;
+      glanceAt = Date.now();
+      return "sent";
+    } catch (err) { return "failed"; }
+  }
+
+  /** 用事を直した。SOON のあとに一度だけ（その間はまとめる）。 */
+  function glanceSoon() {
+    if (!connected() || store.get().settings.glance !== true || glanceTimer) return;
+    glanceTimer = setTimeout(() => { glanceTimer = null; glance(); }, SOON);
+  }
+
   function status() {
     return {
       appKey: cfg.appKey || "",
@@ -572,14 +615,16 @@
   }
 
   store.subscribe(soon);
+  store.subscribe(glanceSoon);
   document.addEventListener("visibilitychange", () => {
     if (!connected()) return;
+    if (document.visibilityState === "visible") glance(true);
     /* 隠れるときは書き換えの残りだけ（途中で切られることがある）。前に出て
        きたときは、ほかで変わっていないかも含めて見る。 */
     if (document.visibilityState === "hidden") { if (dirty) sync(); }
     else sync();
   });
-  setTimeout(() => { prepare(); sync(); }, FIRST);
+  setTimeout(() => { prepare(); sync(); glance(true); }, FIRST);
 
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
   /* `api` はノートの同期（js/notes-sync.js）が呼ぶ口。鍵の取り直しはこちらに任せる。 */
@@ -609,5 +654,5 @@
     await post("/2/files/upload_session/finish", { cursor: { session_id, offset: at }, commit }, file.slice(at));
   }
 
-  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, KEEP, api };
+  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, KEEP, api };
 })();

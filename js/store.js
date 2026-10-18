@@ -125,6 +125,9 @@
         /* 使っていない面は既定で畳む（roadmap-3.1 の S4。利用者が選んだ三つ）。設定から戻せる。
            そろそろ切れそう・これからの二週間・ノートを道に置く。 */
         showLow: false, showUpcoming: false, noteRoad: false,
+        /* ショートカットの小窓へ、今日の予定と今週の印を Dropbox の glance.json に写す（docs/todo-items.md 段4）。
+           既定は切。入れても書くのは仕事だけ（glanceWork）。 */
+        glance: false, glanceWork: true,
         /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
            → "todo" | "list"。既定は空（js/capture.js の learn）。 */
         captureDest: {},
@@ -741,6 +744,8 @@
     out.settings.showSeason = out.settings.showSeason !== false;
     out.settings.reviewSekki = out.settings.reviewSekki === true;
     for (const k of ["showLow", "showUpcoming", "noteRoad"]) out.settings[k] = out.settings[k] === true;
+    out.settings.glance = out.settings.glance === true;
+    out.settings.glanceWork = out.settings.glanceWork !== false;
     out.settings.v2 = out.settings.v2 === true;
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
