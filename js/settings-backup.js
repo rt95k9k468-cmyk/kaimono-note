@@ -1004,6 +1004,10 @@
         }),
         navRow({ ico: "calendar", tint: TINT.sync, title: "小窓の組み方", onTap: () => go("glanceHow") })
       ),
+      card(switchRow({
+        title: "受け箱へ置く", on: store.get().settings.inboxPost === true,
+        onTap: (v) => { store.update((x) => { x.settings.inboxPost = v; }); render(); },
+      })),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",
         onTap: async () => {

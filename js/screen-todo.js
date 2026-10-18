@@ -3412,6 +3412,13 @@
       e.preventDefault();
       const title = input.value.trim();
       if (!title) return;
+      if (store.get().settings.inboxPost === true && KN.dropbox) {
+        p.close();
+        KN.dropbox.inboxPut(title).then(
+          () => KN.ui.toast(`「${title}」を受け箱へ`),
+          () => KN.ui.toast("受け箱へ置けませんでした"));
+        return;
+      }
       if (week) { weekAdd(title); p.close(); return; }
       const rec = store.addTodo({ title, minutes: KN.plan.DEFAULT_MINUTES });
       haptic(12);
@@ -3432,7 +3439,7 @@
   }
 
   /** 週の面の一行を入れる。時刻があれば予定。日が今週なら今週の印、日が無ければこれから。 */
-  function weekAdd(text) {
+  function weekAdd(text, { side = workOnly ? "work" : null, quiet = false } = {}) {
     const W = KN.whenParse, today = todayKey();
     const res = W ? W.parse(text, { today }) : null;
     const found = !!res && W.found(res) && !!String(res.title || "").trim();
@@ -3448,9 +3455,10 @@
       minutes: (found && res.minutes) || (v.repeat ? null : KN.plan.DEFAULT_MINUTES),
       deadline: found ? res.deadline || null : null,
       repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth, repeatEvery: v.repeatEvery,
-      kind: event ? "event" : null, side: workOnly ? "work" : null,
+      kind: event ? "event" : null, side,
       repeatWeeks: v.repeat === "weekly" && res.repeatWeeks > 1 ? res.repeatWeeks : null, weekMark: mark });
     if (!rec) return;
+    if (quiet) return rec;
     haptic(12);
     const where = !due ? "これから" : due === today ? "今日" : mark ? "今週" : formatDay(due);
     KN.ui.toast(`「${rec.title}」を${where}へ`, { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } });
@@ -6287,7 +6295,7 @@
 
   KN.screens = KN.screens || {};
   /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
-  KN.screens.todo = { mount, render, dockButton, onEnter, again, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
+  KN.screens.todo = { mount, render, weekAdd, dockButton, onEnter, again, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
     /* ほかから「その日を見せて」（これからの二週間・js/upcoming.js）。暦の月も
        その日へ合わせます——一日ずつの紙でなければ、その日の棚まで運びます
        （「今日へ戻る」と同じ二通り）。 */

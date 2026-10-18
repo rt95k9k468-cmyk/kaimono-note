@@ -128,6 +128,8 @@
         /* ショートカットの小窓へ、今日の予定と今週の印を Dropbox の glance.json に写す（docs/todo-items.md 段4）。
            既定は切。入れても書くのは仕事だけ（glanceWork）。 */
         glance: false, glanceWork: true,
+        /* PC 側：＋の一行を Dropbox の受け箱（inbox/）へ置く（段4の③）。取り込むのは控えを送る端末。既定は切。 */
+        inboxPost: false,
         /* どの＋からでも行き先を言い直せる（R4）。札を押して行き先を変えた字
            → "todo" | "list"。既定は空（js/capture.js の learn）。 */
         captureDest: {},
@@ -746,6 +748,7 @@
     for (const k of ["showLow", "showUpcoming", "noteRoad"]) out.settings[k] = out.settings[k] === true;
     out.settings.glance = out.settings.glance === true;
     out.settings.glanceWork = out.settings.glanceWork !== false;
+    out.settings.inboxPost = out.settings.inboxPost === true;
     out.settings.v2 = out.settings.v2 === true;
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }

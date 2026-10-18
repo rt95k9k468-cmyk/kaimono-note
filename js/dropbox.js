@@ -599,6 +599,49 @@
     glanceTimer = setTimeout(() => { glanceTimer = null; glance(); }, SOON);
   }
 
+  /* ---- 職場の「足すだけ」受け箱 inbox/（docs/todo-items.md 段4の③）----
+     PC が＋の一行を一件ずつ置き（inboxPut・mode "add"）、控えを送る端末（iPhone）が開いたとき取り込んで消す。
+     取り込みは週の面の一行と同じ読み（weekAdd）で、仕事の用事として。PC からは何も消せない・読めない。 */
+  const INBOX = "/inbox";
+  const INBOX_RE = /^\d{13}-[0-9a-f]{6}\.json$/;
+  const taken = new Set();
+  let taking = false;
+
+  async function inboxPut(text) {
+    text = String(text || "").trim().slice(0, 500);
+    if (!text) return "empty";
+    await recovered;
+    if (!connected() || !cfg.appKey) throw new Error("Dropbox とつながっていません");
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2, 8).padEnd(6, "0")}`;
+    return upload(`${INBOX}/${id}.json`, JSON.stringify({ v: 1, text }), "add");
+  }
+
+  async function inboxTake() {
+    if (taking) return 0;
+    await recovered;
+    if (!connected() || !cfg.appKey || store.get().settings.inboxPost === true || cfg.sender === false) return 0;
+    const todo = KN.screens && KN.screens.todo;
+    if (!todo || !todo.weekAdd) return 0;
+    taking = true;
+    let n = 0;
+    try {
+      const r = await call(API, "/2/files/list_folder", { json: { path: INBOX, limit: 200 } });
+      if (!r.res.ok) return 0;
+      const names = (r.body.entries || []).filter((e) => e[".tag"] === "file" && INBOX_RE.test(e.name)).map((e) => e.name).sort();
+      for (const name of names) {
+        if (taken.has(name)) continue;
+        const d = await call(CONTENT, "/2/files/download", { arg: { path: `${INBOX}/${name}` }, raw: true });
+        if (!d.res.ok) continue;
+        let text = "";
+        try { text = String(JSON.parse(await d.res.text()).text || "").trim(); } catch (_) { text = ""; }
+        if (text) { todo.weekAdd(text, { side: "work", quiet: true }); n++; }
+        taken.add(name);
+        await call(API, "/2/files/delete_v2", { json: { path: `${INBOX}/${name}` } });
+      }
+    } catch (_) { /* 黙る。次に開いたとき */ } finally { taking = false; }
+    return n;
+  }
+
   function status() {
     return {
       appKey: cfg.appKey || "",
@@ -618,13 +661,13 @@
   store.subscribe(glanceSoon);
   document.addEventListener("visibilitychange", () => {
     if (!connected()) return;
-    if (document.visibilityState === "visible") glance(true);
+    if (document.visibilityState === "visible") { glance(true); inboxTake(); }
     /* 隠れるときは書き換えの残りだけ（途中で切られることがある）。前に出て
        きたときは、ほかで変わっていないかも含めて見る。 */
     if (document.visibilityState === "hidden") { if (dirty) sync(); }
     else sync();
   });
-  setTimeout(() => { prepare(); sync(); glance(true); }, FIRST);
+  setTimeout(() => { prepare(); sync(); glance(true); inboxTake(); }, FIRST);
 
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
   /* `api` はノートの同期（js/notes-sync.js）が呼ぶ口。鍵の取り直しはこちらに任せる。 */
@@ -654,5 +697,5 @@
     await post("/2/files/upload_session/finish", { cursor: { session_id, offset: at }, commit }, file.slice(at));
   }
 
-  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, KEEP, api };
+  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, inboxPut, inboxTake, KEEP, api };
 })();
