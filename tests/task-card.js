@@ -70,11 +70,18 @@ const { open, checker } = require("./lib");
 
   async function roundTrip(label, title, block) {
     const row = rowOf(title);
-    await row.evaluate((el, b) => el.scrollIntoView({ block: b }), block);
+    /* "above"：頭に 今日｜週 が載って紙の上端が下がったので（da9bc12）、行の頭をそこへ揃えただけでは
+       紙より上にならない。行の高さの四分の三ぶん、さらに送る。 */
+    await row.evaluate((el, b) => {
+      el.scrollIntoView({ block: b === "above" ? "start" : b });
+      if (b === "above") KN.app.scrollerOf(el.closest(".screen")).scrollTop += el.offsetHeight * 0.75;
+    }, block);
     await page.waitForTimeout(400);
     const from = await boxOf(row);
     await record();
-    await row.locator(".tl-open").click();
+    /* 頭に隠れた行は、Playwright の click だと見える所まで送り直されるので、じかに押す。 */
+    if (block === "above") await row.locator(".tl-open").evaluate((el) => el.click());
+    else await row.locator(".tl-open").click();
     const opened = await stopRec(900);
     t.check(`${label}：四隅の丸いカード`, await isCard());
     const rest = await page.evaluate(() => {
@@ -106,7 +113,7 @@ const { open, checker } = require("./lib");
   /* 行が紙の箱の中（ふつう）。 */
   await roundTrip("真ん中の行", "試験の用事", "center");
   /* 行が紙より上：紙ごと寄せて、窓は行から出る。 */
-  const top = await roundTrip("上の行", "試験の用事", "start");
+  const top = await roundTrip("上の行", "試験の用事", "above");
   t.check("上の行：行は紙の上端より上にいた", top.from.y < top.rest.y - top.rest.h / 2,
     `${top.from.y} / ${top.rest.y - top.rest.h / 2}`);
 

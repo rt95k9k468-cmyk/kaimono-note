@@ -7100,6 +7100,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .qa-card { display: flex; flex-direction: column; gap: var(--sp-3); }
 .qa-title { font-size: var(--fs-lg); }
 .qa-foot { display: flex; gap: var(--sp-2); }
+.qa-card .dest-chip { align-self: flex-start; margin-top: 0; }   /* 週の面の＋の一行の行き先の札（R4） */
 .qa-foot .btn { flex: 1; }
 .tl-someday-plus { margin-left: auto; display: inline-flex; color: var(--c-primary); }
 .tl-someday-plus svg { width: var(--ico); height: var(--ico); }

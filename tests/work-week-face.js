@@ -5,6 +5,7 @@
    （予定とやることの時刻と名前・またがる予定は帯・毎日のくり返しは出さない・過ぎた日は予定だけ薄く）→ 来週の七日 →
    これから（畳む・開くと 待つ・いつか も）。頭の右に「仕事だけ」（端末ごと＝localStorage・記録に書かない）。
    席をもう一度押しても行き来。日を押せばその日の面。払えば次の週。頭の札（期限切れほか）は今日の面だけ。
+   右下の＋は一行（キーボードは勝手に出さない・R4 の札。時刻があれば予定、日が今週なら今週の印、無ければこれから）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-week-face.js */
 const { open, checker } = require("./lib");
@@ -153,6 +154,33 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
   const done = await page.evaluate(() => KN.store.get().todos.find((t) => t.title === "経費の精算").done);
   c.check("期限の行から済ませられる", done === true);
+
+  // 右下の＋は一行（キーボードは勝手に出さない・R4 の札）。時刻があれば予定、日が今週なら今週の印、日が無ければこれから
+  await page.click(".add-fab.js-open-add");
+  await page.waitForTimeout(500);
+  const pop = await page.evaluate(() => ({ quick: !!document.querySelector(".note-pop.is-quick .js-qa-title"),
+    sheet: !!document.querySelector(".sheet.is-open"), focus: document.activeElement.classList.contains("js-qa-title") }));
+  c.check("＋：週の面では一行（紙でなく・キーボードは出さない）", pop.quick && !pop.sheet && !pop.focus, JSON.stringify(pop));
+  await page.fill(".js-qa-title", "牛乳");
+  const chip = await page.evaluate(() => { const b = document.querySelector(".js-qa-dest"); return b && !b.hidden ? b.textContent : null; });
+  c.check("＋：買うものらしければ R4 の札", chip === "→ 買うもの", String(chip));
+  const addLine = async (text) => {
+    if (!(await page.$(".note-pop.is-quick"))) { await page.$eval(".add-fab.js-open-add", (b) => b.click()); await page.waitForTimeout(400); }   // 出たトーストが＋に重なるので
+    await page.fill(".js-qa-title", text);
+    await page.press(".js-qa-title", "Enter");
+    await page.waitForTimeout(400);
+  };
+  await addLine("資料を作る 金曜");
+  await addLine("歯医者 明日 15時");
+  await addLine("棚を拭く");
+  await addLine("今日 書類を出す");
+  const got = await page.evaluate(() => ["資料を作る", "歯医者", "棚を拭く", "書類を出す"].map((n) => {
+    const t = KN.store.get().todos.find((x) => x.title === n);
+    return t ? [t.due || "", t.weekMark || "", t.kind || "", t.time || ""].join("/") : null;
+  }));
+  c.check("＋：日が今週なら今週の印・時刻があれば予定・日が無ければこれから・今日なら今日も",
+    JSON.stringify(got) === JSON.stringify(["2026-10-23/2026-10-23//", "2026-10-22//event/15:00", "///", "2026-10-21/2026-10-21//"]),
+    JSON.stringify(got));
 
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();

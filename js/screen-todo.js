@@ -3364,12 +3364,15 @@
 
   /* 「これから」に足す小窓（下から出る紙ではなく、見出しからふくらむ角丸のカード）。
      キーボードは勝手に出さない——出すと画面が大きく動くので、欄を押したときだけ。
-     日は持たせない。打った字から日付も読まない（日を決めないための入口なので）。 */
-  function quickAdd(anchor) {
+     日は持たせない。打った字から日付も読まない（日を決めないための入口なので）。
+     week … 週の面の右下の＋の一行（docs/todo-items.md「仕事の予定とやること」）。こちらは打った字の「いつ」を読み、
+     時刻があれば予定。日が今週ならその週の印（今日なら今日の印も）、日が無ければこれから。R4 の札も出す。 */
+  function quickAdd(anchor, { week = false } = {}) {
     const box = node(html`
       <form class="qa-card">
         <input class="input qa-title js-qa-title" type="text" enterkeyhint="done" placeholder="やること"
                autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="やること">
+        ${week ? html`<button type="button" class="dest-chip js-qa-dest" hidden></button>` : ""}
         <div class="qa-foot">
           <button type="button" class="btn btn-soft js-qa-more">詳しく</button>
           <button type="submit" class="btn btn-primary js-qa-add" disabled>追加</button>
@@ -3378,7 +3381,7 @@
     `);
     const vv = window.visualViewport;
     const replace = () => p.place();
-    const p = KN.ui.popOver(anchor, { side: "left", label: "これからに足す", cls: "is-quick", lift: true,
+    const p = KN.ui.popOver(anchor, { side: "left", label: week ? "やることを足す" : "これからに足す", cls: "is-quick", lift: true,
       onClose: () => {
         if (vv) vv.removeEventListener("resize", replace);
         if (p.el.contains(document.activeElement)) document.activeElement.blur();
@@ -3390,10 +3393,26 @@
     const input = box.querySelector(".js-qa-title");
     const add = box.querySelector(".js-qa-add");
     input.addEventListener("input", () => { add.disabled = !input.value.trim(); });
+    if (week && KN.capture) {
+      const paintDest = KN.capture.bindChip(box.querySelector(".js-qa-dest"), {
+        from: "todo",
+        text: () => input.value,
+        go: (g) => {
+          const got = KN.capture.toList(g.title);
+          p.close();
+          if (!got) return;
+          haptic(12);
+          if (!got.item) { KN.ui.toast(`「${got.product.name}」はもうリストにあります`); return; }
+          KN.ui.toast(`買うものに「${got.product.name}」を入れました`, { action: { label: "元に戻す", onClick: got.undo } });
+        },
+      });
+      input.addEventListener("input", () => { paintDest(); p.place(); });
+    }
     box.addEventListener("submit", (e) => {
       e.preventDefault();
       const title = input.value.trim();
       if (!title) return;
+      if (week) { weekAdd(title); p.close(); return; }
       const rec = store.addTodo({ title, minutes: KN.plan.DEFAULT_MINUTES });
       haptic(12);
       KN.ui.toast(`「${title}」をこれからへ`,
@@ -3406,9 +3425,35 @@
       const title = input.value.trim();
       p.el.classList.add("is-handoff");
       p.close();
+      if (week) { openSheet(null, null, { title, home: () => document.querySelector(".add-fab.js-open-add") }); return; }
       openSheet(null, null, { noDue: true, title,
         home: () => document.querySelector("#screen-todo .tl-someday-plus") });
     });
+  }
+
+  /** 週の面の一行を入れる。時刻があれば予定。日が今週なら今週の印、日が無ければこれから。 */
+  function weekAdd(text) {
+    const W = KN.whenParse, today = todayKey();
+    const res = W ? W.parse(text, { today }) : null;
+    const found = !!res && W.found(res) && !!String(res.title || "").trim();
+    const v = { title: found ? res.title : text, due: found ? res.due || null : null, time: found ? res.time || null : null,
+      repeat: found ? res.repeat || null : null, repeatDays: found ? res.repeatDays || [] : [],
+      repeatNth: found ? res.repeatNth || null : null, repeatEvery: found ? res.repeatEvery || null : null };
+    if ((v.time || v.repeat) && !v.due) v.due = today;
+    const due = v.due ? store.snapToRule(v, v.due) : null;
+    const event = !!v.time;
+    const wk = KN.util.weekOf(today);
+    const mark = !event && !v.repeat && due && wk.from <= due && due <= wk.to ? due : null;
+    const rec = store.addTodo({ title: v.title, due, time: due ? v.time : null,
+      minutes: (found && res.minutes) || (v.repeat ? null : KN.plan.DEFAULT_MINUTES),
+      deadline: found ? res.deadline || null : null,
+      repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth, repeatEvery: v.repeatEvery,
+      kind: event ? "event" : null, side: workOnly ? "work" : null,
+      repeatWeeks: v.repeat === "weekly" && res.repeatWeeks > 1 ? res.repeatWeeks : null, weekMark: mark });
+    if (!rec) return;
+    haptic(12);
+    const where = !due ? "これから" : due === today ? "今日" : mark ? "今週" : formatDay(due);
+    KN.ui.toast(`「${rec.title}」を${where}へ`, { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } });
   }
 
   /** 長期タスクの一行。時間割の行と同じ組みで、時刻の列だけが空。 */
@@ -6316,7 +6361,11 @@
         <button class="add-fab js-open-add" aria-label="やることを追加">${icon("plus")}</button>
       </div>
     `);
-    fab.querySelector(".js-open-add").addEventListener("click", () => openSheet(null));
+    /* 週の面では一行（キーボードは勝手に出さない）。今日の面と一覧はいまどおり紙。 */
+    fab.querySelector(".js-open-add").addEventListener("click", (e) => {
+      if (weekFace()) quickAdd(e.currentTarget, { week: true });
+      else openSheet(null);
+    });
     return fab;
   }
 
