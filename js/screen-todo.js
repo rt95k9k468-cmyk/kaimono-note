@@ -149,7 +149,6 @@
           </div>
         </div>
 
-        <div class="js-late"></div>
         <div class="js-body"></div>
       </div>
     `);
@@ -164,7 +163,6 @@
       search:    chrome.querySelector(".js-search"),
       searchClear: chrome.querySelector(".js-search-clear"),
       body:      chrome.querySelector(".js-body"),
-      late:      chrome.querySelector(".js-late"),
       mine,
     };
 
@@ -2040,7 +2038,8 @@
     const U = KN.util;
     const out = [];
 
-    out.push({ id: "late", label: "期限切れ", color: "#b23a2e", late: true, drop: null });
+    /* 日の過ぎたまだのやること。書き換えずに元の日のまま居る（決めごと1）。赤くしない。 */
+    out.push({ id: "late", label: "前の日から", color: NONE_COLOR, late: true, drop: null });
 
     // 今日 — the panel, and the three parts of the day inside it.
     /* Dropping onto one of these is a statement about the time of day, so it
@@ -2112,7 +2111,8 @@
     if (!t.due) return "none";
     const n = daysUntil(t.due);
     // 過ぎた予定は過ぎるだけ（X25）。どの棚にも置かない（期限切れにしない）。
-    if (n < 0 && t.kind === "event") return "past";
+    // 買い物の一件も、その日のもの（一日に一つ）。過ぎたら過ぎるだけ。
+    if (n < 0 && (t.kind === "event" || t.shop)) return "past";
     if (n < 0) return "late";
     // 今日はひと棚。毎朝も毎晩もここに入り、並び順だけが日の両端に置きます。
     if (n === 0) return "today";
@@ -2310,7 +2310,6 @@
   function todoRow(t, tiles, groups, shelf) {
     const closed = t.done || t.archived;
     const when = closed ? store.todoClosedAt(t) : null;
-    const late = !closed && t.kind !== "event" && t.due && daysUntil(t.due) < 0;
     /* The shelf already says which day, and often which part of it, so the row
        does not repeat it. 「今日」 written on a row sitting under a heading that
        says 今日 is a word that has to be read to learn nothing. Kept where the
@@ -2349,7 +2348,7 @@
     if (t.archived && !t.done) meta.push(html`<span class="todo-tag">しまった</span>`);
     if (closed && when) meta.push(html`<span class="item-when">${KN.util.formatStamp(when)}</span>`);
     else if (t.due && !sameDay) {
-      meta.push(html`<span class="item-when ${late ? "is-late" : ""}">${formatDay(t.due)}</span>`);
+      meta.push(html`<span class="item-when">${formatDay(t.due)}</span>`);
     }
 
     const wrap = node(html`
@@ -2768,10 +2767,9 @@
          ・遠くの日へ … 上の週の帯を押す（＋ ‹ › と左右に払う）
          ・日付を変える … その用事を、週の帯の日へ運ぶ（下の wireDayDrop）
 
-       期限切れ・もっと先・済んだものは、一日の中には居場所がありません。
-       **一覧で見る**ほうがその受け皿です（設定で切り替え）。時間割の頭に、
-       期限切れがあることだけ出します——黙って隠すと、見に行く理由すら
-       無くなるので。 */
+       前の日から・もっと先・済んだものは、一日の中には居場所がありません。
+       **一覧で見る**ほうがその受け皿です（設定で切り替え）。日の過ぎたまだの
+       やることは、週の面の今週・これからに居ます（決めごと1）。 */
     if (oneDay()) {
       /* 一日ぶんの中身は、横に払える一枚（.day-slide）にまとめて入れます。
          払っているあいだ、隣の日の紙が指のぶんだけ入ってきます。 */
@@ -2952,7 +2950,8 @@
     };
     const list = (rows) => { const box = node(html`<div class="wk-list"></div>`); rows.forEach((r) => box.append(r)); return box; };
 
-    const tasks = open.filter((t) => t.kind !== "event" && !t.trace);
+    // 過ぎた買い物の一件は、予定と同じく過ぎるだけ（その日に一つのもの）。
+    const tasks = open.filter((t) => t.kind !== "event" && !t.trace && !(t.shop && t.due && t.due < today));
     let dues = [], marked = [];
     if (now) {
       const cp = copyBlock();
@@ -2963,7 +2962,10 @@
         el.append(node(html`<h2 class="wk-h">期限</h2>`));
         el.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`))));
       }
-      marked = tasks.filter((t) => store.inWeek(t, today) && !dues.includes(t));
+      /* 日の過ぎたまだのやることは、書き換えずに今週へ戻って見える（決めごと1「元の場所へ戻るだけ」）。
+         七日の行の過ぎた日には出さない（同じものを二か所に置かない）。先週より前のものはこれから。 */
+      const back = (t) => !t.repeat && t.due && t.due >= w.from && t.due < today;
+      marked = tasks.filter((t) => (store.inWeek(t, today) || back(t)) && !dues.includes(t));
       /* 今週の右に「選ぶ」。まだ何も選んでいない週で、選べるものがあれば塗って促す（開きはしない）。 */
       const picks = pickGroups(today).length > 0;
       const ask = picks && !tasks.some((t) => store.inWeek(t, today));
@@ -3154,11 +3156,11 @@
       return { t, l, a: a < 0 ? 0 : a, z: z < 0 ? 6 : z };
     });
     const n = ends.length;
-    /* 今日から先はくり返しも立てる（store.fallsOn）。過ぎた日は、その日の予定（済の印に関わらず）と、
-       まだ済んでいないやることだけ。 */
+    /* 今日から先はくり返しも立てる（store.fallsOn）。過ぎた日は、その日の予定（済の印に関わらず）だけ。
+       まだのやることは今週・これからへ戻る（決めごと1）。 */
     const onDay = (k) => (k >= today
       ? open.filter((t) => !t.endDay && t.repeat !== "daily" && store.fallsOn(t, k))
-      : all.filter((t) => !t.endDay && t.due === k && !t.archived && (t.kind === "event" || !t.done)))
+      : all.filter((t) => !t.endDay && t.due === k && !t.archived && t.kind === "event"))
       .sort((a, b) => ((a.time || "99") < (b.time || "99") ? -1 : (a.time || "99") > (b.time || "99") ? 1 : 0));
     const covered = (l, i) => placed.some((p) => p.l === l && p.a <= i && i <= p.z);
     const col = 2 + n;
@@ -3559,7 +3561,7 @@
 
   function head(g, count) {
     return node(html`
-      <h2 class="todo-head ${g.late ? "is-late" : ""} ${count ? "" : "is-empty"}" style="--cat:${g.color}">
+      <h2 class="todo-head ${count ? "" : "is-empty"}" style="--cat:${g.color}">
         <span class="todo-head-dot"></span>
         <span>${g.label}</span>
         ${count ? html`<span class="cat-head-count">${count}</span>` : ""}
@@ -3959,41 +3961,7 @@
       毎回これだけは置き直します（どれも安い）。 */
   function fillCalTail(sec, open) {
     const today = todayKey();
-    /* 期限切れ。一日の中には居場所がないので、**あることだけ**言って、
-       受け皿（一覧）への口を出します。
-
-       ここ（貼りつく帯の中）に置くのが肝です。紙の中に置いていたら、
-       開いた瞬間に「いま」のところへ送られて（toNow）、そのまま帯の裏へ
-       隠れました——**見えない注意は、無いのと同じ**です。帯の中なら、
-       どこまで送っても居ます。
-
-       今日を見ているときだけ。過ぎた日を見ているときに「期限切れ」と
-       言われても、することがありません。 */
-    /* 札の置き場は、暦の中ではなく**帯のすぐ下（この画面の頭）**です。
-       暦は全タブで一つの帯に居るので、中に置くと、やることの暦だけが
-       札のぶん背が高くなり、タブを移るたびに紙が上下します。画面の頭も
-       紙の外で送られないので、「どこまで送っても居る」はそのまま。 */
-    const host = els.late;
-    const oldBar = host && host.querySelector(".tl-late");
-    if (oldBar) oldBar.remove();
-    // 頭の札（期限切れ）は今日の面だけ。週の面には出さない。
-    const late = host && dayFace() && shownDay() === today
-      ? (open || []).filter((t) => t.due && t.due < today && t.kind !== "event") : [];
-    if (late.length) {
-      const bar = node(html`
-        <button type="button" class="tl-late js-late">
-          <span class="tl-late-n">${late.length}</span>
-          <span>期限切れがあります</span>
-          <span class="tl-late-go">一覧で見る${icon("chevron")}</span>
-        </button>
-      `);
-      bar.addEventListener("click", () => {
-        haptic();
-        store.update((st) => { st.settings.todoTimeline = false; });
-        KN.ui.toast("一覧で出します。設定から戻せます");
-      });
-      host.append(bar);
-    }
+    /* 頭の「期限切れがあります」の札は外した（決めごと4・10月18日）。日の過ぎたまだのやることは週の面の今週・これから。 */
     // 見直す（3.0 の B1）の頭の一行は、週の面の選ぶ紙へ移した（pickSheet）。
 
     // 隠すぶんを先に決めます——輪は並んだ位置から測るので、隠したあとで。

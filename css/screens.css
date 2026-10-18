@@ -855,8 +855,6 @@
   background: var(--cat, var(--c-border-2));
   flex: none;
 }
-.todo-head.is-late { color: var(--c-danger); }
-.todo-head.is-late .cat-head-count { color: var(--c-danger); }
 
 /* An empty shelf is still a shelf — it is where a row goes when it is carried
    there, so it has to be visible and aimable. But it is not news, so it costs
@@ -923,7 +921,6 @@
   outline-offset: -2px;
 }
 
-.item-when.is-late { color: #fff; background: var(--c-danger); }
 
 /* 「毎週 火・金」 is a standing fact about the row, not news about today. It
    has to be readable when looked for and easy to look past when not, so it
@@ -4995,49 +4992,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 @media (prefers-reduced-motion: reduce) {
   .tl-sheet { transition: none; }
 }
-
-/* 期限切れ。一日ずつの画面には居場所がないので、**あることだけ**言って、
-   受け皿（一覧）への口を出します。赤くしません——期限切れは失敗ではなく
-   「まだ残っている」で、責める色を当てる話ではないので。 */
-.tl-late {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: 100%;
-  /* 貼りつく帯（.cal）の中にいます。帯の左右の余白はすでに効いているので、
-     ここは上下だけ。 */
-  margin-top: var(--sp-2);
-  padding: 8px 0 2px;
-  color: var(--c-text-2);
-  font-size: var(--fs-sm);
-  text-align: left;
-  border-top: 1px solid var(--c-border);
-}
-.tl-late-n {
-  display: grid; place-items: center;
-  min-width: 20px; height: 20px;
-  padding: 0 6px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-  color: var(--c-text-2);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-}
-.tl-late-go {
-  display: inline-flex; align-items: center; gap: 1px;
-  margin-left: auto;
-  color: var(--c-primary);
-  font-weight: var(--fw-bold);
-}
-.tl-late-go svg { width: var(--ico-sm); height: var(--ico-sm); }
-.tl-late:active { opacity: var(--press-fade); }
-/* 札の置き場は、暦の中から**やることの頭（帯のすぐ下）**へ移りました
-   （docs/shared-header.md の段2）。暦は全タブで一つの帯に居るので、中に
-   置くとやることの暦だけ札のぶん背が高くなり、タブを移るたびに紙が
-   上下します。左右の余白は、暦の中に居たときに暦が持っていたぶん。 */
-#screen-todo .js-late:not(:empty) { padding: 0 var(--sp-4) var(--sp-2); }
-#screen-todo .js-late > .tl-late { margin-top: 0; }
 
 /* 用事を運んでいるあいだ、指の下にある日。ここへ落とすと日付が変わります
    ——棚を縦に積んでいたころ、下の棚へ運んでいたのと同じことです。 */

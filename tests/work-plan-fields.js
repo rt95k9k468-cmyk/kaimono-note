@@ -1,7 +1,7 @@
 /* 仕事の予定とやること・段1（docs/todo-items.md「仕事の予定とやること」の足す欄）。
    - reconcile：欄を持たない古い記録は形も変えない（null を足さない）。持つものは読み直しても残り、
      成り立たないもの（due より前の終わりの日・毎週でない◯週ごと・知らない種類）は落ちる。
-   - 予定は運ばない：過ぎた予定（くり返さない）はその日のまま、やることは今日へ、くり返す予定は次の日へ。
+   - 予定もやることも運ばない：過ぎた予定・やること（くり返さない）はその日のまま（決めごと1）、くり返す予定は次の日へ。
      時刻を過ぎた予定は置き直し（passedToday）に出ない。
    - ◯週ごと（隔週）と毎年：fallsOn と nextDue。今週の印は週が変われば外れたと読む（inWeek）。
 
@@ -22,7 +22,7 @@ const t = checker("work-plan-fields");
     // 足さないときは欄が無い
     const plain = S.addTodo({ title: "ふつう", due: today });
     out.plainKeys = PLAN.filter((k) => k in S.getTodo(plain.id));
-    // 予定は運ばない／やることは運ぶ／くり返す予定は次の日へ
+    // 予定もやることも運ばない／くり返す予定は次の日へ
     const ev = S.addTodo({ title: "会議", due: U.shiftDay(today, -2), time: "10:00", kind: "event", side: "work" });
     const task = S.addTodo({ title: "書類", due: U.shiftDay(today, -2) });
     const rep = S.addTodo({ title: "定例", due: U.shiftDay(today, -3), repeat: "daily", kind: "event" });
@@ -31,6 +31,8 @@ const t = checker("work-plan-fields");
     out.evTime = S.getTodo(ev.id).time;
     out.evCarried = !!S.getTodo(ev.id).carried;
     out.taskDue = S.getTodo(task.id).due;
+    out.taskWas = U.shiftDay(today, -2);
+    out.today = today;
     out.repDue = S.getTodo(rep.id).due;
     // 時刻を過ぎた今日の予定は置き直しに出ない（00:00 の30分は、00:30 を過ぎればいつも過ぎている）
     const evToday = S.addTodo({ title: "朝会", due: today, time: "00:00", kind: "event" });
@@ -65,10 +67,10 @@ const t = checker("work-plan-fields");
     return out;
   });
   t.check("足さなければ欄は無い", st.plainKeys.length === 0, st.plainKeys.join());
-  t.check("過ぎた予定は運ばない（日も時刻もそのまま）", st.evDue !== st.taskDue && st.evTime === "10:00" && !st.evCarried,
+  t.check("過ぎた予定は運ばない（日も時刻もそのまま）", st.evDue === st.taskWas && st.evTime === "10:00" && !st.evCarried,
     JSON.stringify([st.evDue, st.evTime, st.evCarried]));
-  t.check("過ぎたやることは今日へ", st.taskDue && st.repDue && st.taskDue === st.repDue, st.taskDue);
-  t.check("くり返す予定は次の日へ（ルーティンと同じ）", st.repDue === st.taskDue, st.repDue);
+  t.check("過ぎたやることも運ばない（元の日のまま）", st.taskDue === st.taskWas, st.taskDue);
+  t.check("くり返す予定は次の日へ（ルーティンと同じ）", st.repDue === st.today, st.repDue);
   if (st.late) {
     t.check("時刻を過ぎた予定は置き直しに出ない", !st.passedEv && st.passedTask, JSON.stringify([st.passedEv, st.passedTask]));
   }

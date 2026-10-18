@@ -1,15 +1,13 @@
-/* 段3：崩れたときの置き直し（docs/todo-timeline.md の「崩れたときの置き直し」・
-   docs/todo-items.md の「期限切れは作らない」）。2026年9月29日。
+/* 元の場所へ戻るだけ（docs/todo-items.md の X25〜X30 の決めごと1・「期限切れは作らない」。2026年10月18日）。
+   前は 段3（9月29日）で、過ぎた用事を今日へ運び、時刻を外して印 `carried` を付けていた。
 
-   - store：くり返しでない用事が過ぎたら今日へ運ぶ（前のまま）。そのとき**時刻を
-     外して**、印 `carried = { on: 今日, time: 元の時刻 }` を付ける。期限の過ぎた
-     長期タスクにも印。ルーティン・買い物の一件には付けない。二日続けて運べば、
-     最初の時刻を持ち続ける。
-   - settleCarried：今日のどこか（今日のまま印だけ外す）・明日・今週（長期タスクに
-     して期限を週の終わりへ。週末なら来週）・長期タスクへ（過ぎた期限は外す）・
-     やめる（アーカイブ。消さない）。どれも元に戻せる。日か時刻を自分で直しても印は外れる。
-   - 画面：今日の頭に「前の日から運んだもの · 置き直す」。押すと紙、選べば行が消え、
-     片づけ終えたら紙が閉じ、頭の一行も消える。評価の言葉を出さない。
+   - store：くり返しでない用事・期限の過ぎた長期タスクは**書き換えない**（日も時刻も、印も控えも足さない）。
+     ルーティンだけ次に当たる日へ（時刻は持ったまま）。何も動かさないときは書かない。
+   - 前の版が付けた印 `carried` は消さない。settleCarried は印の付いた記録をいままでどおり選び直せる。
+   - 数（todosDue＝バッジ）は過ぎた日のものを数えない。
+   - 画面：頭に札を出さない。昨日の用事は道に立たない。週の面では、今週の過ぎた日のものは今週に、
+     先週より前のものはこれからに。七日の行の過ぎた日にはやることを出さない。過ぎた買い物の一件はどこにも出さない。
+   - 形の崩れた印は読み直しで落とす。印の無い記録に欄を足さない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/carry.js */
 const { open, checker } = require("./lib");
@@ -29,129 +27,101 @@ const { open, checker } = require("./lib");
     const c = S.addTodo({ title: "申し込み", deadline: y });
     const r = S.addTodo({ title: "薬", due: y, time: "08:00", repeat: "daily" });
     const f = S.addTodo({ title: "先の用事", due: U.shiftDay(today, 2), time: "10:00" });
+    const sh = S.addTodo({ title: "買い物へ行く", due: y, shop: true });
+    const before = JSON.stringify(S.get().todos.filter((x) => x.id !== r.id));
     S.rescheduleOverdue();
     const g = (id) => ({ ...S.getTodo(id) });
     const out = {
-      today, a: g(a.id), b: g(b.id), c: g(c.id), r: g(r.id), f: g(f.id),
-      list: S.carriedToday().map((x) => x.title).sort(),
+      today, y, a: g(a.id), b: g(b.id), c: g(c.id), r: g(r.id), f: g(f.id), sh: g(sh.id),
+      untouched: JSON.stringify(S.get().todos.filter((x) => x.id !== r.id)) === before,
+      list: S.carriedToday().length,
+      due: S.todosDue().map((x) => x.title),
     };
-    // 二日続けて：昨日の印のまま、また過ぎた
-    S.update((s) => { const x = s.todos.find((q) => q.id === a.id); x.due = y; x.carried = { on: y, time: "13:00" }; });
-    S.rescheduleOverdue();
-    out.a2 = g(a.id);
     // 何も動かさないときは書かない
-    const before = JSON.stringify(S.get().todos);
+    const all = JSON.stringify(S.get().todos);
     S.rescheduleOverdue();
-    out.idle = JSON.stringify(S.get().todos) === before;
+    out.idle = JSON.stringify(S.get().todos) === all;
     return out;
   });
-  t.check("過ぎた用事は今日へ（前のまま）", st.a.due === st.today && st.b.due === st.today);
-  t.check("運んだら時刻を外す", st.a.time == null, JSON.stringify(st.a));
-  t.check("外した時刻は印に控える", st.a.carried && st.a.carried.on === st.today && st.a.carried.time === "13:00");
-  t.check("時刻の無いものは印の時刻が null", st.b.carried && st.b.carried.time === null);
-  t.check("期限の過ぎた長期タスクも今日へ・印", st.c.due === st.today && st.c.carried && st.c.carried.on === st.today);
-  t.check("ルーティンは印を付けず時刻も持ったまま", !st.r.carried && st.r.time === "08:00" && st.r.due === st.today);
-  t.check("先の用事には触れない", !st.f.carried && st.f.time === "10:00");
-  t.check("carriedToday は運んだ三件", JSON.stringify(st.list) === JSON.stringify(["書類", "申し込み", "病院"]), JSON.stringify(st.list));
-  t.check("二日続けて運ぶと最初の時刻を持ち続ける", st.a2.carried.time === "13:00" && st.a2.carried.on === st.today && st.a2.time == null);
+  t.check("過ぎた用事は元の日のまま（時刻も）", st.a.due === st.y && st.a.time === "13:00" && st.b.due === st.y, JSON.stringify(st.a));
+  t.check("印も控えも足さない", !st.a.carried && !st.b.carried && !(st.a.slips || []).length && st.list === 0);
+  t.check("期限の過ぎた長期タスクも動かさない", !st.c.due && st.c.deadline === st.y && !st.c.carried);
+  t.check("過ぎた買い物の一件も動かさない", st.sh.due === st.y);
+  t.check("ほかの記録は一字も変わらない", st.untouched);
+  t.check("ルーティンは次の日へ・時刻は持ったまま", st.r.due === st.today && st.r.time === "08:00" && !st.r.carried);
+  t.check("先の用事には触れない", st.f.due !== st.today && st.f.time === "10:00");
+  t.check("過ぎた日のものはバッジに数えない", !st.due.some((n) => /病院|書類|申し込み|買い物/.test(n)), JSON.stringify(st.due));
   t.check("何も動かさないときは書かない", st.idle);
 
+  /* ---- 前の版が付けた印：消さず、選び直せる ---- */
   const se = await page.evaluate(() => {
     const S = KN.store, U = KN.util;
     const today = U.todayKey();
-    const y = U.shiftDay(today, -1);
-    const mk = (title, extra) => {
-      const x = S.addTodo({ title, due: y, ...extra });
-      return x.id;
-    };
     S.update((s) => { s.todos = []; });
-    const ids = {
-      today: mk("今日"), tomorrow: mk("明日"), week: mk("今週"), someday: mk("長期"), stop: mk("やめる"),
-      lapsed: S.addTodo({ title: "期限切れ長期", deadline: y }).id,
-      edit: mk("直す", { time: "09:00" }),
-    };
+    const mk = (title) => S.addTodo({ title, due: today }).id;
+    const ids = { today: mk("今日"), tomorrow: mk("明日"), week: mk("今週"), keep: mk("残す") };
+    S.update((s) => s.todos.forEach((x) => { x.carried = { on: today, time: "09:00" }; }));
     S.rescheduleOverdue();
     const out = { day: today, wk: S.carryWeek(), n0: S.carriedToday().length };
     const undo = {};
-    ["today", "tomorrow", "week", "someday", "stop"].forEach((k) => { undo[k] = S.settleCarried(ids[k], k); });
-    undo.lapsed = S.settleCarried(ids.lapsed, "someday");
+    ["today", "tomorrow", "week"].forEach((k) => { undo[k] = S.settleCarried(ids[k], k); });
     const g = (id) => ({ ...S.getTodo(id) });
     Object.keys(ids).forEach((k) => { out[k] = g(ids[k]); });
-    S.updateTodo(ids.edit, { time: "15:00" });
-    out.edited = g(ids.edit);
-    out.n1 = S.carriedToday().length;
-    // 見回りが運び返さない
-    S.rescheduleOverdue();
-    out.lapsedAfter = g(ids.lapsed);
-    out.somedayAfter = g(ids.someday);
-    // 元に戻す
-    undo.stop(); undo.week();
-    out.stopBack = g(ids.stop);
+    undo.week();
     out.weekBack = g(ids.week);
-    out.n2 = S.carriedToday().length;
-    // 週の終わり
-    const end = U.weekOf(today).to;
-    out.weekOk = out.wk.next ? end <= U.shiftDay(today, 1) && out.wk.day === U.weekOf(U.shiftDay(end, 1)).to
-      : out.wk.day === end && end > U.shiftDay(today, 1);
     return out;
   });
-  t.check("置き直す前は七件", se.n0 === 7, String(se.n0));
-  t.check("今日のどこか：今日のまま、印だけ外す", se.today.due === se.day && !se.today.carried && se.today.time == null);
+  t.check("前の版の印は残る", se.n0 === 4 && se.keep.carried && se.keep.carried.time === "09:00", JSON.stringify(se.keep));
+  t.check("今日のどこか：今日のまま、印だけ外す", se.today.due === se.day && !se.today.carried);
   t.check("明日：やる日が明日", se.tomorrow.due > se.day && !se.tomorrow.carried);
-  t.check("今週：長期タスク・期限は週の終わり", se.week.due == null && se.week.deadline === se.wk.day && !se.week.carried && se.weekOk,
-    JSON.stringify({ deadline: se.week.deadline, wk: se.wk }));
-  t.check("長期タスクへ：やる日を外す", se.someday.due == null && !se.someday.carried);
-  t.check("やめる：アーカイブ（消さない）", se.stop.archived === true && se.stop.title === "やめる");
-  t.check("過ぎた期限は外して長期タスクへ", se.lapsed.due == null && se.lapsed.deadline == null);
-  t.check("見回りが運び返さない", se.lapsedAfter.due == null && se.somedayAfter.due == null);
-  t.check("時刻を自分で決めたら印が外れる", !se.edited.carried && se.edited.time === "15:00");
-  t.check("選んだぶん carriedToday から消える", se.n1 === 0, String(se.n1));
-  t.check("元に戻す：やめる", !se.stopBack.archived && se.stopBack.carried && se.stopBack.due === se.day);
+  t.check("今週：長期タスク・期限は週の終わり", se.week.due == null && se.week.deadline === se.wk.day && !se.week.carried);
   t.check("元に戻す：今週", se.weekBack.due === se.day && se.weekBack.carried && !se.weekBack.deadline);
-  t.check("戻したぶん carriedToday に戻る", se.n2 === 2, String(se.n2));
 
-  /* ---- 画面：頭の一行は出さない（運んだものは今日に居るだけ・段3の「出さない」） ---- */
-  await page.evaluate(() => {
+  /* ---- 画面 ---- */
+  const scr = await page.evaluate(() => {
     const S = KN.store, U = KN.util;
-    const y = U.shiftDay(U.todayKey(), -1);
+    const today = U.todayKey();
+    const y = U.shiftDay(today, -1);
+    const w = U.weekOf(today);
+    const old = U.shiftDay(w.from, -3);
     S.update((s) => { s.todos = []; s.settings.todoTimeline = true; });
     S.addTodo({ title: "病院", due: y, time: "13:00" });
-    S.addTodo({ title: "書類", due: y });
+    S.addTodo({ title: "先週の書類", due: old });
+    S.addTodo({ title: "買い物へ行く", due: y, shop: true });
     S.rescheduleOverdue();
-    KN.app.showScreen("todo");
+    return { y, sameWeek: y >= w.from };
   });
-  await page.waitForTimeout(500);
-  t.check("頭に札は出ない（運んだもの・期限切れ）", await page.evaluate(() => !document.querySelector("#screen-todo .tl-late")));
-  const roadStop = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .day-road .road-marks button")]
-    .some((b) => /13:00/.test(b.textContent) && /病院/.test(b.textContent)));
-  t.check("道に「13:00 病院」の停留所が立たない", !roadStop);
-
-  /* ---- 同じ日に二回目に開く（読み直し）：印が reconcile を通って残る ----
-     一回目に開いたとき運んで印が付き、二回目は due が今日なのでもう運ばない。
-     印が読み直しで落ちると、頭の一行が黙って消える。 */
-  await page.evaluate(() => {
-    const S = KN.store, U = KN.util;
-    const y = U.shiftDay(U.todayKey(), -1);
-    S.update((s) => { s.todos = []; s.settings.todoTimeline = true; });
-    S.addTodo({ title: "病院", due: y, time: "13:00" });
-    S.addTodo({ title: "書類", due: y });
-    S.rescheduleOverdue();
-    S.flush();
-  });
-  await page.reload();
-  await page.waitForFunction(() => window.KN && KN.store && KN.app);
-  await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(500);
-  const again = await page.evaluate(() => {
-    const S = KN.store;
+  await page.evaluate(() => { const b = document.querySelector('.wk-faces .seg-btn[data-face="week"]');
+    if (b && b.getAttribute("aria-pressed") !== "true") b.click(); });
+  await page.waitForTimeout(400);
+  const later = await page.$(".wk-later-h");
+  if (later && (await later.getAttribute("aria-expanded")) !== "true") { await later.click(); await page.waitForTimeout(300); }
+  const wk = await page.evaluate(() => {
+    const scr = document.querySelector("#screen-todo");
+    const names = (sel) => [...scr.querySelectorAll(sel)].map((e) => e.textContent.trim());
     return {
-      list: S.carriedToday().map((x) => x.title).sort(),
-      was: (S.get().todos.find((x) => x.title === "病院") || {}).carried || null,
+      late: scr.querySelectorAll(".tl-late").length,
+      week: names(".wk > .wk-list .wk-row .wk-name"),
+      later: names(".wk-later .wk-row .wk-name"),
+      evs: names(".wk-evs .wk-n"),
+      all: names(".wk .js-open"),
     };
   });
-  t.check("二回目に開いても印が残る", JSON.stringify(again.list) === JSON.stringify(["書類", "病院"]), JSON.stringify(again));
-  t.check("二回目に開いても「前は」の時刻が残る", again.was && again.was.time === "13:00", JSON.stringify(again.was));
+  t.check("頭に札は出ない", wk.late === 0);
+  t.check(scr.sameWeek ? "昨日の用事は今週に" : "昨日の用事は（週の頭なので）これからに",
+    scr.sameWeek ? wk.week.includes("病院") : wk.later.includes("病院"), JSON.stringify(wk));
+  t.check("先週より前のものはこれからに", wk.later.includes("先週の書類"), JSON.stringify(wk.later));
+  t.check("七日の行の過ぎた日にやることを出さない", !wk.evs.some((n) => /病院|書類/.test(n)), JSON.stringify(wk.evs));
+  t.check("過ぎた買い物の一件はどこにも出さない", !wk.all.some((n) => /買い物へ行く/.test(n)), JSON.stringify(wk.all));
+  await page.evaluate(() => { const b = document.querySelector('.wk-faces .seg-btn[data-face="today"]'); if (b) b.click(); });
+  await page.waitForTimeout(500);
+  const day = await page.evaluate(() => ({
+    late: document.querySelectorAll("#screen-todo .tl-late").length,
+    stop: [...document.querySelectorAll("#screen-todo .day-road .road-marks button")].some((b) => /病院/.test(b.textContent)),
+  }));
+  t.check("今日の面にも札は出ない・昨日の用事は道に立たない", day.late === 0 && !day.stop, JSON.stringify(day));
 
   /* 形の崩れた印は落とす。印の無い記録に欄を足さない（既存の記録は書き換えない）。 */
   await page.evaluate(() => {

@@ -2,7 +2,7 @@
    - 状態は保存しない：due と shelf から読む（今日・予定あり・これから・待つ・いつか）
    - 今ある長期タスクは書き換えない（review を持たない）。読むときに作った日＋2週間で見直す
    - 新しく日の無いものを足す・日を外す → review が今日＋14。待つは＋7・いつかは＋30（設定で変わる）
-   - 日を決めれば shelf は外れる。運ばれた（期限が過ぎた）待つ・いつかも外れる
+   - 日を決めれば shelf は外れる。期限が過ぎた待つ・いつかは運ばない（決めごと1）
    - 画面：欄は「これから」、下に「待つ n」「いつか n」を畳む。開けば待つものに「返事」
    - 道のくぼみは「これから」だけ
    - 週の面の「選ぶ」の見直すの組 →「一件ずつ」の小窓：事実（◯月◯日から・期限）と選択肢。どれも元に戻せる
@@ -265,7 +265,7 @@ const TODAY = "2026-10-06";
   t = await get(yid);
   c.check("待つへ移り、何を待つかは「連絡」", t.shelf === "wait" && t.waitFor === "連絡" && t.review === "2026-10-13", JSON.stringify(t));
 
-  /* 期限が過ぎた待つは、見回りで今日へ（待つから外れる） */
+  /* 期限が過ぎた待つも、見回りは動かさない（待つのまま・期限の欄に居る。決めごと1） */
   r = await page.evaluate((d) => {
     const S = KN.store;
     const z = S.addTodo({ title: "期限の過ぎた待つ", deadline: KN.util.shiftDay(d, -1) });
@@ -273,7 +273,7 @@ const TODAY = "2026-10-06";
     S.rescheduleOverdue();
     return { ...S.getTodo(z.id) };
   }, TODAY);
-  c.check("期限の過ぎた待つは今日へ運ばれ、待つから外れる", r.due === TODAY && r.shelf === null, JSON.stringify(r));
+  c.check("期限の過ぎた待つは運ばず、待つのまま", !r.due && r.shelf === "wait" && r.waitFor === "返事", JSON.stringify(r));
 
   /* 読み直しても残る */
   await wait(400);

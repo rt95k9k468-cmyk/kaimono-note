@@ -4,7 +4,8 @@
    期限（今週と過ぎたもの・赤くしない）→ 今週（今週の印・5行まで・ほかは畳む）→ 七日の行
    （予定とやることの時刻と名前・またがる予定は帯・毎日のくり返しは出さない・過ぎた日は予定だけ薄く）→ 来週の七日 →
    これから（畳む・開くと 待つ・いつか も）。頭の右に「仕事だけ」（端末ごと＝localStorage・記録に書かない）。
-   席をもう一度押しても行き来。日を押せばその日の面。払えば次の週。頭の札（期限切れほか）は今日の面だけ。
+   席をもう一度押しても行き来。日を押せばその日の面。払えば次の週。頭の札（期限切れ）はどちらの面にも出さない。
+   日の過ぎたまだのやることは、書き換えずに今週へ（七日の行の過ぎた日には出さない・決めごと1）。
    右下の＋は一行（キーボードは勝手に出さない・R4 の札。時刻があれば予定、日が今週なら今週の印、無ければこれから）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-week-face.js */
@@ -68,11 +69,12 @@ const { open, checker } = require("./lib");
     JSON.stringify(a.heads.map((h) => h.replace(/\d.*$|選ぶ$/, ""))) === JSON.stringify(["期限", "今週", "来週", "これから"])
     && /10月26日〜11月1日/.test(a.heads[2]), JSON.stringify(a.heads));
   c.check("期限は日まで（赤くしない）", a.rows[0] === "経費の精算" && /23日（金）まで/.test(a.facts[0]) && !a.red, JSON.stringify(a.facts));
-  c.check("今週は5行まで・ほかは畳む", a.rows.length === 6 && a.more[0] === "ほか 2", JSON.stringify([a.rows, a.more]));
+  c.check("今週は5行まで・ほかは畳む", a.rows.length === 6 && a.more[0] === "ほか 3", JSON.stringify([a.rows, a.more]));
   c.check("七日の行と来週の七日", a.days === 14);
   const ev = (k) => (a.evs.find((e) => e.day === k) || { names: [] });
   c.check("予定とやることが日の行に（時刻の順）", JSON.stringify(ev("2026-10-22").names) === JSON.stringify(["定例", "電球を替える"]), JSON.stringify(ev("2026-10-22")));
   c.check("毎日のくり返しは出さない", !a.evs.some((e) => e.names.includes("朝の体操")));
+  c.check("過ぎた日にまだのやることは出さない（今週へ戻る）", !a.evs.some((e) => e.names.includes("昨日の用事")), JSON.stringify(ev("2026-10-20")));
   c.check("過ぎた日の予定は残る（薄く）", W.inWeek ? ev("2026-10-19").past && ev("2026-10-19").names.includes("打ち合わせ") : true, JSON.stringify(ev("2026-10-19")));
   c.check("またがる予定は帯（二日ぶん）", a.bands.length === 1 && a.bands[0].t === "出張" && /\/\s*span 2|\d+ \/ \d+/.test(a.bands[0].row), JSON.stringify(a.bands));
   c.check("頭の札は週の面に出さない", a.late === 0, String(a.late));
@@ -110,13 +112,15 @@ const { open, checker } = require("./lib");
   await page.click(".wk-more");
   await page.waitForTimeout(300);
   a = await look();
-  c.check("ほかを開くと全部", a.rows.length === 8 && a.more[0] === "畳む", JSON.stringify(a.rows));
+  c.check("ほかを開くと全部", a.rows.length === 9 && a.more[0] === "畳む", JSON.stringify(a.rows));
+  c.check("昨日のまだのやることは今週に（日は書き換えない）", a.rows.includes("昨日の用事")
+    && await page.evaluate(() => KN.store.get().todos.find((x) => x.title === "昨日の用事").due === "2026-10-20"), JSON.stringify(a.rows));
 
   await page.click('.wk-faces .seg-btn[data-face="today"]');
   await page.waitForTimeout(500);
   a = await look();
   c.check("今日を押すと今日の面", a.pressed === "今日" && a.road && !a.week && a.dayOf === "2026-10-21", JSON.stringify(a));
-  c.check("頭の札は今日の面に", a.late >= 1, String(a.late));
+  c.check("頭の札は今日の面にも出さない", a.late === 0, String(a.late));
 
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(500);

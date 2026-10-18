@@ -3077,36 +3077,28 @@
    * 「19:30 に薬」 is not something the icon should be nagging about over
    * breakfast: a 1 sitting there all day for a thing that cannot be done yet
    * is the kind of number you learn to stop reading. So a timed todo joins the
-   * count when its clock comes round, and yesterday's stays counted whatever
-   * time it said — being late is not a thing that waits for an hour.
+   * count when its clock comes round. Yesterday's is not counted: it went back
+   * to 今週・これから, and a number that only grows is one more 済まなかった数.
    */
   function todosDue() {
     const now = KN.util.nowTime();
     return openTodos().filter((t) => {
       if (!t.due) return false;
-      const n = KN.util.daysUntil(t.due);
-      if (n < 0) return true;
-      if (n > 0) return false;
+      // 過ぎた日のものは数えない（決めごと4：済まなかった数は出さない）。
+      if (KN.util.daysUntil(t.due) !== 0) return false;
       return !t.time || t.time <= now;
     });
   }
 
   /**
-   * 日が変わったら、**期限切れを作らない**ように運びます（利用者の希望。
-   * docs/todo-items.md の「期限切れは作らない」）。
+   * 日が変わったら、**ルーティンだけ**を次に当たる日へ進めます（docs/todo-items.md の
+   * 「期限切れは作らない」）。逃したものは、今日から先で決まりに当たる最初の日へ。
+   * 毎日なら今日、毎週火曜なら次の火曜。逃した日には何も残しません。
    *
-   * ① くり返しでない用事で、やる日（due）が過ぎたもの → 今日へ。時刻は
-   *    **外して**印（carried）に控えます（2026年9月29日・段3。前は持ったまま
-   *    だった——昨日の「10:00 病院」が、今日の約束として道に立っていた）。
-   * ② 長期タスク（due なし）で、期限（deadline）が過ぎたもの → 今日へ。
-   *    やる日を決めないまま締め切りを越えたので、今日の時間割に出します。
-   * ③ くり返しの用事（ルーティン）で、次にやる日を逃したもの → **今日から
-   *    先で、決まりに当たる最初の日**へ。毎日なら今日、毎週火曜なら次の火曜。
-   *    逃した日は「やった」にも「やらなかった」にもしません（何も残さない）。
-   *
-   * ③が無かったころは、逃したルーティンが「期限切れ」に並び続け、今日
-   * 済ませると、その「やった」が逃した日のほうに付いて、今日のぶんは
-   * 済んでいないまま残りました（`toggleTodo` は due の日に写しを残すので）。
+   * くり返しでない用事は**書き換えません**（X25〜X30 の決めごと1「元の場所へ戻るだけ」・
+   * 2026年10月18日、利用者）。日の過ぎたまだのやることは、週の面が読むときに今週か
+   * これからへ見せ、期限の過ぎた長期タスクは期限の欄に居ます。前は今日へ運び、時刻を
+   * 外して印（carried）と控え（slips）に書いていた——その記録は消さずに残してあります。
    *
    * 呼ぶ側（app.js）が、起動したとき・日の変わり目・戻ってきたときに呼びます。
    * 何も動かさないときは、何も書きません。
@@ -3114,48 +3106,16 @@
   function rescheduleOverdue() {
     const today = KN.util.todayKey();
     const moves = new Map();          // id → 新しい due
-    /* 買い物の一件（`shop`）は、その日に一つ。今日にもうあるなら、昨日の
-       ぶんを運ぶと二つ並ぶので、運びません。 */
-    const shopToday = get().todos.some((t) => t.shop && t.due === today && !t.archived && !t.trace);
-    const carry = new Set();          // ①② のぶん（朝に置き直せるもの）
     openTodos().forEach((t) => {
-      if (t.repeat) {
-        if (!t.due || t.due >= today) return;
-        // 「済ませてから◯日」は、決まりに当たる日が今日から先に無い
-        // （fallsOn は due の日だけ）。逃したら、今日へ。
-        const next = t.repeat === "after" ? today : firstFallOn(t, today);
-        if (next && next !== t.due) moves.set(t.id, next);
-        return;
-      }
-      /* 予定は過ぎるだけ（X25）。会議は済の印が無くても、翌朝の「運んだもの」に積まない。
-         くり返しの予定は上でルーティンと同じく次の日へ（逃した日には何も残さない）。 */
-      if (t.kind === "event") return;
-      const late = (t.due && t.due < today) || (!t.due && t.deadline && t.deadline < today);
-      if (!late) return;
-      if (t.shop && shopToday) return;
-      moves.set(t.id, today);
-      carry.add(t.id);
+      if (!t.repeat || !t.due || t.due >= today) return;
+      // 「済ませてから◯日」は、決まりに当たる日が今日から先に無い
+      // （fallsOn は due の日だけ）。逃したら、今日へ。
+      const next = t.repeat === "after" ? today : firstFallOn(t, today);
+      if (next && next !== t.due) moves.set(t.id, next);
     });
     if (!moves.size) return;
     update((s) => {
-      s.todos.forEach((t) => {
-        if (!moves.has(t.id)) return;
-        const fromDue = t.due || null, fromTime = t.time || null;
-        t.due = moves.get(t.id);
-        if (!carry.has(t.id)) return;
-        /* 日が付いたので、待つ・いつかから外れる（B1。期限の過ぎた待つ・いつかも今日へ）。 */
-        if (t.shelf) { t.shelf = null; t.waitFor = null; }
-        /* 置き直しの控え（B2）。前の日・前の時刻と「運んだ」。 */
-        pushSlip(t, "carry", fromDue, fromTime);
-        /* 段3（2026年9月29日・利用者が選んだ）。**時刻は外して「連れ」に**
-           します——昨日の「13:00」は、今日の約束ではないので（一日の道では
-           停留所＝本人が決めた約束）。外した時刻は印に控えて、置き直しの紙で
-           「前は 13:00」と言うのにだけ使います。二日続けて運んだら、最初の
-           時刻を持ち続けます。 */
-        const was = t.carried && t.carried.time;
-        t.carried = { on: today, time: t.time || was || null };
-        t.time = null;
-      });
+      s.todos.forEach((t) => { if (moves.has(t.id)) t.due = moves.get(t.id); });
     });
   }
 

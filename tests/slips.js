@@ -1,6 +1,7 @@
 /* 置き直しの回数と選択肢（3.0 の B2、docs/roadmap-3.0.md・docs/todo-timeline.md の「置き直しの回数」。2026年10月6日）。
-   - 控え（slips）を書くのは：日の変わり目に運んだ（carry）・段3の紙で明日／今週・段5の紙で明日／時刻を外す（passed）・
-     自分で due を後ろへ（hand）。くり返しには書かない。前へ動かしても書かない。20件まで
+   - 控え（slips）を書くのは：段3の紙で明日／今週（carry）・段5の紙で明日／時刻を外す（passed）・
+     自分で due を後ろへ（hand）。日の変わり目はもう運ばないので書かない（決めごと1・10月18日）。
+     くり返しには書かない。前へ動かしても書かない。20件まで
    - 元に戻すと控えも戻る
    - 段3・段5 の紙と頭の一行は出さない（10月18日）。控えは設定の奥と見直しの頭にだけ
 
@@ -41,11 +42,11 @@ const YEST = "2026-10-05";
     const rp = S.getTodo(rep.id);
     return { a1: a1.slips, a2: a2.slips, a3: a3.slips, b1: b1.slips, h1, h2, h3, rep: rp.slips || [], repDue: rp.due };
   }, [TODAY, YEST]);
-  c.check("運んだら控え（前の日・前の時刻・carry）",
-    r.a1.length === 1 && r.a1[0].on === TODAY && r.a1[0].from === YEST && r.a1[0].time === "13:00" && r.a1[0].how === "carry",
-    JSON.stringify(r.a1));
-  c.check("段3の紙で明日を選ぶと、もう一つ", r.a2.length === 2 && r.a2[1].from === TODAY && r.a2[1].how === "carry", JSON.stringify(r.a2));
-  c.check("元に戻すと控えも戻る", r.a3.length === 1, JSON.stringify(r.a3));
+  c.check("日の変わり目は運ばず、控えも書かない", (r.a1 || []).length === 0, JSON.stringify(r.a1));
+  c.check("段3の紙で明日を選ぶと控え（前の日・前の時刻・carry）",
+    r.a2.length === 1 && r.a2[0].on === TODAY && r.a2[0].from === YEST && r.a2[0].time === "13:00" && r.a2[0].how === "carry",
+    JSON.stringify(r.a2));
+  c.check("元に戻すと控えも戻る", (r.a3 || []).length === 0, JSON.stringify(r.a3));
   c.check("段5の紙で時刻を外すと passed（前の時刻）",
     r.b1.length === 1 && r.b1[0].how === "passed" && r.b1[0].time === "09:00", JSON.stringify(r.b1));
   c.check("自分で後ろへ動かすと hand", r.h1.length === 1 && r.h1[0].how === "hand", JSON.stringify(r.h1));
