@@ -46,6 +46,7 @@
     { id: "daily",   label: "毎日" },
     { id: "weekly",  label: "毎週" },
     { id: "monthly", label: "毎月" },
+    { id: "yearly",  label: "毎年" },
     /* 暦ではなく、済ませた日から数える（R6）。「14日ごと（済ませた日から）」。 */
     { id: "after",   label: "済ませてから" },
   ];
@@ -78,15 +79,21 @@
   const partLabel = (id) => (BOOKENDS.find((p) => p.id === id) || {}).label || "";
   const isBookend = (id) => id === "dawn" || id === "dusk";
 
+  /** 毎週の◯週ごと（store.planField の repeatWeeks）。二週は「隔週」。 */
+  const weeksWord = (n) => (n === 2 ? "隔週" : `${n}週ごと`);
+
   /** The rule in as few characters as fit under a circle: 火・金, 第2火, 毎日. */
   function repeatShort(t) {
     if (!t.repeat) return "";
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
     if (t.repeat === "after") return `${t.repeatEvery || 7}日ごと`;
+    if (t.repeat === "yearly") return "毎年";
     if (t.repeat === "weekly") {
       const d = t.repeatDays || [];
-      return d.length ? d.map((n) => WD[n]).join("・") : "毎週";
+      const on = d.map((n) => WD[n]).join("・");
+      if (t.repeatWeeks > 1) return on ? `${weeksWord(t.repeatWeeks)} ${on}` : weeksWord(t.repeatWeeks);
+      return on || "毎週";
     }
     const n = t.repeatNth;
     if (!n) return "毎月";
@@ -101,12 +108,14 @@
     if (isBookend(t.part)) return partLabel(t.part);
     if (t.repeat === "daily") return "毎日";
     if (t.repeat === "after") return `済ませてから${t.repeatEvery || 7}日ごと`;
+    if (t.repeat === "yearly") return "毎年";
     if (t.repeat === "weekly") {
       // 表示だけ月曜はじまりに揃えます（保存している repeatDays の並びは
       // 変えません——曜日チップの並びと同じ理由です）。
       const d = (t.repeatDays || []).slice()
         .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
-      return d.length ? `毎週 ${d.map((n) => WD[n]).join("・")}` : "毎週";
+      const w = t.repeatWeeks > 1 ? weeksWord(t.repeatWeeks) : "毎週";
+      return d.length ? `${w} ${d.map((n) => WD[n]).join("・")}` : w;
     }
     const n = t.repeatNth;
     if (!n) return "毎月";
@@ -524,6 +533,12 @@
     let repeatNth = editing ? (t.repeatNth ? { ...t.repeatNth } : null) : null;
     // 「済ませてから◯日」の◯。ほかの種類のあいだも覚えておく（選び直したとき用）。
     let repeatEvery = editing && t.repeatEvery ? t.repeatEvery : 7;
+    // 毎週の◯週ごと（1＝毎週）。予定かやることか・仕事かくらし（store.planField。無ければやること・くらし）。
+    let repeatWeeks = editing && t.repeatWeeks > 1 ? t.repeatWeeks : 1;
+    let kind = editing && t.kind === "event" ? "event" : "task";
+    let side = editing && t.side === "work" ? "work" : "life";
+    /* 打った字に時刻があれば予定（決めごと3）。札を自分で押したら、もう替えない。 */
+    let kindHand = editing;
     let flagged = editing ? !!t.flagged : false;
     /* 新しい用事は30分から（2026年10月16日、利用者）。くり返しは長さに触らなければ null のまま
        保存する（いつもの長さ＝段4を殺さないため。`newMins`）。 */
@@ -566,6 +581,10 @@
       <div class="sheet-detail">
         ${/* ---- 決めごと ---- */""}
         <div class="d-card">
+          <div class="d-segs">
+            <div class="seg js-kind" role="group"><button type="button" class="seg-btn" data-v="task">やること</button><button type="button" class="seg-btn" data-v="event">予定</button></div>
+            <div class="seg js-side" role="group"><button type="button" class="seg-btn" data-v="work">仕事</button><button type="button" class="seg-btn" data-v="life">くらし</button></div>
+          </div>
           <button type="button" class="d-row js-row-due">
             <span class="d-ico">${icon("calendar")}</span>
             <span class="d-label js-due-label"></span>
@@ -1025,7 +1044,8 @@
       /* 左は「くりかえし」、右に決まり（無ければ「なし」）。前は「くりかえさない」で右が
          空いていて、決めていないのか読み取れなかった（2026年10月2日）。 */
       row(".js-row-repeat", "くりかえし",
-          [rid ? rw : "なし", repeat === "weekly" && repeatDays.length
+          [rid ? (repeat === "weekly" && repeatWeeks > 1 ? weeksWord(repeatWeeks) : rw) : "なし",
+            repeat === "weekly" && repeatDays.length
             ? orderedRepeatDays.map((d) => WD[d]).join("・")
             : repeat === "after" ? `${repeatEvery}日ごと` : ""].filter(Boolean).join(" "));
       paintHeroFacts();
@@ -1505,7 +1525,7 @@
               if (!(id === "daily" && isBookend(part))) part = null;
               repeat = id || null;
             }
-            if (repeat !== "weekly") repeatDays = [];
+            if (repeat !== "weekly") { repeatDays = []; repeatWeeks = 1; }
             if (repeat !== "monthly") repeatNth = null;
             paintRepeat();
             paintPart();
@@ -1560,6 +1580,12 @@
       }
 
       if (repeat === "weekly") {
+        const picks = [1, 2, 3, 4].includes(repeatWeeks) ? [1, 2, 3, 4] : [1, 2, 3, 4, repeatWeeks];
+        KN.ui.chipRow(detailEl.appendChild(node(html`<div class="js-weeks"></div>`)),
+          picks.map((n) => ({ id: String(n), label: n === 1 ? "毎週" : weeksWord(n) })), {
+            activeId: String(repeatWeeks),
+            onPick: (id) => { repeatWeeks = Number(id) || 1; paintRepeatDetail(); haptic(); },
+          });
         const row = node(html`<div class="chip-row js-days"></div>`);
         /* 見出しと同じ月曜はじまりの並び。`n` は保存している実際の曜日番号
            （0=日〜6=土）で、`repeatDays` の意味はここでは変えません
@@ -1710,6 +1736,29 @@
       if (!iconKey) paintIcon();
     }
 
+    /* 予定｜やること・仕事｜くらし の札（docs/todo-items.md「仕事の予定とやること」）。 */
+    function paintPlan() {
+      body.querySelectorAll(".js-kind .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === kind)));
+      body.querySelectorAll(".js-side .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === side)));
+    }
+    /** しまう欄。既定（やること・くらし・毎週）は null で渡し、planField に落とさせる。 */
+    function planPick(rep, weeks, k) {
+      const w = weeks === undefined ? repeatWeeks : weeks;
+      return { kind: (k || kind) === "event" ? "event" : null, side: side === "work" ? "work" : null,
+        repeatWeeks: rep === "weekly" && w > 1 ? w : null };
+    }
+    body.querySelector(".js-kind").addEventListener("click", (e) => {
+      const b = e.target.closest(".seg-btn");
+      if (!b) return;
+      kind = b.dataset.v; kindHand = true; paintPlan(); haptic();
+    });
+    body.querySelector(".js-side").addEventListener("click", (e) => {
+      const b = e.target.closest(".seg-btn");
+      if (!b) return;
+      side = b.dataset.v; paintPlan(); haptic();
+    });
+    paintPlan();
+
     /** 日付・時刻まわりの欄と札を、まとめて描き直します。 */
     function repaintWhen() {
       dueEl.value = due || "";
@@ -1731,7 +1780,7 @@
       const res = W.parse(titleEl.value);
       if (!W.found(res)) return;
       const back = { title: titleEl.value, due, time, minutes, part, deadline,
-        repeat, repeatDays: repeatDays.slice(), repeatNth, repeatEvery };
+        repeat, repeatDays: repeatDays.slice(), repeatNth, repeatEvery, repeatWeeks, kind };
       setTitle(res.title);
       if (res.due) due = res.due;
       if (res.time) time = res.time;
@@ -1742,6 +1791,7 @@
         repeatDays = res.repeatDays || [];
         repeatNth = res.repeatNth || null;
         if (res.repeatEvery) repeatEvery = res.repeatEvery;
+        repeatWeeks = res.repeatWeeks || 1;
         /* 毎朝・毎晩は記録の上では「毎日＋日の端」です。くり返しを言い直された
            のだから、古い端は外します。 */
         if (isBookend(part)) part = null;
@@ -1750,7 +1800,9 @@
          時刻を持たせると、保存のところで時刻ごと落ちます
          （`const at = fixed ? time : null`）。 */
       if (time && !due) due = (oneDay() ? shownDay() : todayKey()) || todayKey();
+      if (!kindHand && res.time) kind = "event";
       repaintWhen();
+      paintPlan();
       /* 保存のときは黙って移します——すぐ後ろに「◯◯を9/14 15:00までに」が
          続くので、同じことを二枚のトーストで言うことになります。 */
       if (opts && opts.quiet) return;
@@ -1763,8 +1815,9 @@
             due = back.due; time = back.time; minutes = back.minutes; part = back.part;
             deadline = back.deadline;
             repeat = back.repeat; repeatDays = back.repeatDays; repeatNth = back.repeatNth;
-            repeatEvery = back.repeatEvery;
+            repeatEvery = back.repeatEvery; repeatWeeks = back.repeatWeeks; kind = back.kind;
             repaintWhen();
+            paintPlan();
           },
         },
       });
@@ -1854,7 +1907,7 @@
         const patch = { title, due: fixed, deadline,
           part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes,
-          lead: at ? lead : null, icon: iconKey };
+          lead: at ? lead : null, icon: iconKey, ...planPick(repeat) };
         const cur = store.getTodo(todoId);
         const finish = (scope, onDay) => {
           /* 手順は別に置きます。updateTodo は書いてよい欄を選ぶので、
@@ -1881,7 +1934,7 @@
       } else {
         const rec = store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null, time: at,
           repeat, repeatDays, repeatNth, repeatEvery, memo, flagged, minutes: newMins(repeat),
-          lead: at ? lead : null, subs, icon: iconKey });
+          lead: at ? lead : null, subs, icon: iconKey, ...planPick(repeat) });
         const undoDone = doneNow(rec);
         if (undoDone) KN.ui.toast(`「${title}」を済ませました ${tlClock(doneAt)}`, { action: { label: "元に戻す", onClick: undoDone } });
         else KN.ui.toast(fixed
@@ -1901,7 +1954,7 @@
       const W = KN.whenParse;
       const made = [];
       lines.forEach((line) => {
-        let v = { title: line, due, time, minutes: minsPicked ? minutes : null, part, deadline, repeat, repeatDays, repeatNth, repeatEvery };
+        let v = { title: line, due, time, minutes: minsPicked ? minutes : null, part, deadline, repeat, repeatDays, repeatNth, repeatEvery, repeatWeeks, kind };
         const res = W ? W.parse(line) : null;
         if (res && W.found(res)) {
           v.title = res.title;
@@ -1914,15 +1967,18 @@
             v.repeatDays = res.repeatDays || [];
             v.repeatNth = res.repeatNth || null;
             if (res.repeatEvery) v.repeatEvery = res.repeatEvery;
+            v.repeatWeeks = res.repeatWeeks || 1;
             if (isBookend(v.part)) v.part = null;
           }
           if (v.time && !v.due) v.due = (oneDay() ? shownDay() : todayKey()) || todayKey();
+          if (!kindHand && res.time) v.kind = "event";
         }
         const fx = v.due ? store.snapToRule(v, v.due) : v.due;
         const rec = store.addTodo({ title: v.title, due: fx, deadline: v.deadline,
           part: fx ? v.part : null, time: fx ? v.time : null,
           repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth,
-          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes || (v.repeat ? null : KN.plan.DEFAULT_MINUTES) });
+          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes || (v.repeat ? null : KN.plan.DEFAULT_MINUTES),
+          ...planPick(v.repeat, v.repeatWeeks, v.kind) });
         if (rec) { doneNow(rec); made.push(rec.id); }
       });
       haptic(12);
@@ -1939,7 +1995,7 @@
             const fixed = due ? store.snapToRule({ repeat, repeatDays, repeatNth }, due) : due;
             doneNow(store.addTodo({ title, due: fixed, deadline, part: fixed ? part : null,
               time: fixed ? time : null, repeat, repeatDays, repeatNth, repeatEvery,
-              memo, flagged, minutes: newMins(repeat), icon: iconKey }));
+              memo, flagged, minutes: newMins(repeat), icon: iconKey, ...planPick(repeat) }));
             KN.ui.toast(`「${title}」ひとつにしました`);
           },
         },

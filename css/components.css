@@ -1112,7 +1112,15 @@ button.hero-node:active { scale: var(--press-dot); }
   transition: background var(--m-press) var(--ease);
 }
 .d-row + .d-row,
+.d-segs + .d-row,
 .d-add { border-top: 1px solid var(--c-border); }
+/* 予定｜やること・仕事｜くらし（docs/todo-items.md「仕事の予定とやること」）。 */
+.d-segs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
 .d-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
 .d-row:disabled { opacity: var(--press-off); }
 .d-ico {

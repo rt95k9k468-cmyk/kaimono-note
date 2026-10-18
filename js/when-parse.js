@@ -220,6 +220,45 @@
     return { repeat: "after", repeatEvery: n };
   }
 
+  /* 「月曜」「月・金曜」「火曜日と金曜日」。**最後の一つには必ず「曜」が要る**——ここを緩めて
+     裸の一字を許すと、「毎週水やり」の「水」を曜日として食べます（実際に食べました）。
+     あいだの一字は、区切り（・、と）が続くときだけ曜日として読みます。 */
+  const WD_LIST = "(?:の?[日月火水木金土](?:曜日?)?[・、,と])*の?[日月火水木金土]曜日?";
+
+  /** WD_LIST に当たった字を、毎週のその曜日に。 */
+  function weeklyOn(str, c) {
+    const days = [];
+    /* 「曜」「曜日」を先に落とすこと——落とさないと「火曜日」の
+       **日**を日曜として数えます（実測：火金のつもりが日火金）。 */
+    String(str).replace(/曜日?/g, "・").replace(/[日月火水木金土]/g, (w) => {
+      const n = WDS.indexOf(w);
+      if (days.indexOf(n) < 0) days.push(n);
+      return "";
+    });
+    days.sort((a, b) => a - b);
+    /* その日をいつにするかは、いちばん早く来る曜日。保存のときに
+       store.snapToRule が同じことをしますが、打った直後の紙にも
+       出ていないと「入ったのかどうか」が読めません。 */
+    let due = null;
+    for (let i = 0; i < 7 && !due; i++) {
+      const k = U.shiftDay(c.today, i);
+      if (days.indexOf(U.dayOfWeek(k)) >= 0) due = k;
+    }
+    return { repeat: "weekly", repeatDays: days, due };
+  }
+
+  /** ◯週ごと。**曜日か時刻もいっしょに言えば暦の◯週ごと、どちらも無ければ済ませてから◯×7日**
+      （10月18日、利用者。会議は暦、シーツは済ませた日から）。曜日がくっついていれば
+      ここで暦に決め、離れた曜日・時刻は parse() の最後で `weeks` を見て決め直す。 */
+  function everyWeeks(n, wdStr, c) {
+    if (wdStr && Number.isInteger(n) && n >= 1 && n <= 52) {
+      const w = weeklyOn(wdStr, c);
+      return n > 1 ? { ...w, repeatWeeks: n } : w;
+    }
+    const r = everyDays(n * 7);
+    return r && r.repeat === "after" && n <= 52 ? { ...r, weeks: n } : r;
+  }
+
   const RAW = [
     /* ---- くり返し ---- */
     { kind: "repeat", re: "毎月第([1-5])" + RE_WD,
@@ -229,31 +268,18 @@
     { kind: "repeat", re: "毎月(\\d{1,2})日",
       read: (m, c) => { const due = nextDom(Number(m[1]), c); return due ? { repeat: "monthly", due } : null; } },
     { kind: "repeat", re: "毎月", read: () => ({ repeat: "monthly" }) },
-    /* 「毎週月曜」「毎週月・金曜」「毎週火曜日と金曜日」。
-       **最後の一つには必ず「曜」が要る**——ここを緩めて裸の一字を許すと、
-       「毎週水やり」の「水」を曜日として食べます（実際に食べました）。
-       あいだの一字は、区切り（・、と）が続くときだけ曜日として読みます。 */
-    { kind: "repeat", re: "毎週(?:の?[日月火水木金土](?:曜日?)?[・、,と])*の?[日月火水木金土]曜日?", read: (m, c) => {
-        const days = [];
-        /* 「曜」「曜日」を先に落とすこと——落とさないと「火曜日」の
-           **日**を日曜として数えます（実測：火金のつもりが日火金）。 */
-        String(m[0]).slice(2).replace(/曜日?/g, "・").replace(/[日月火水木金土]/g, (w) => {
-          const n = WDS.indexOf(w);
-          if (days.indexOf(n) < 0) days.push(n);
-          return "";
-        });
-        days.sort((a, b) => a - b);
-        /* その日をいつにするかは、いちばん早く来る曜日。保存のときに
-           store.snapToRule が同じことをしますが、打った直後の紙にも
-           出ていないと「入ったのかどうか」が読めません。 */
-        let due = null;
-        for (let i = 0; i < 7 && !due; i++) {
-          const k = U.shiftDay(c.today, i);
-          if (days.indexOf(U.dayOfWeek(k)) >= 0) due = k;
-        }
-        return { repeat: "weekly", repeatDays: days, due };
-      } },
+    /* 「毎週月曜」「毎週月・金曜」「毎週火曜日と金曜日」（WD_LIST の決めごと）。 */
+    { kind: "repeat", re: "毎週" + WD_LIST, read: (m, c) => weeklyOn(m[0].slice(2), c) },
     { kind: "repeat", re: "毎週", read: () => ({ repeat: "weekly", repeatDays: [] }) },
+    /* 隔週は暦の二週ごと（月曜はじまりの週を due から数える。store.planField の repeatWeeks）。 */
+    { kind: "repeat", re: "隔週(" + WD_LIST + ")?",
+      read: (m, c) => ({ ...(m[1] ? weeklyOn(m[1], c) : { repeat: "weekly", repeatDays: [] }), repeatWeeks: 2 }) },
+    /* 毎年：日を言えばその日（過ぎていれば来年。2月29日は次のうるう年）、言わなければ紙の日。 */
+    { kind: "repeat", re: "毎年(\\d{1,2})月(\\d{1,2})日",
+      read: (m, c) => { const due = nextMd(+m[1], +m[2], c); return due ? { repeat: "yearly", due } : null; } },
+    { kind: "repeat", re: "毎年(\\d{1,2})/(\\d{1,2})",
+      read: (m, c) => { const due = nextMd(+m[1], +m[2], c); return due ? { repeat: "yearly", due } : null; } },
+    { kind: "repeat", re: "毎年", read: () => ({ repeat: "yearly" }) },
 
     /* 「3日ごと」「2週間ごと」「10日に1回」→ 済ませてから◯日（R6）。
      *
@@ -265,12 +291,12 @@
      * 月の「ごと」も読みません（暦の毎月と、日数のどちらか決まらないので）。 */
     { kind: "repeat", re: "(\\d{1,3})日(?:ごと|毎)" + EVERY_END,
       read: (m) => everyDays(Number(m[1])) },
-    { kind: "repeat", re: "(\\d{1,2})週間?(?:ごと|毎)" + EVERY_END,
-      read: (m) => everyDays(Number(m[1]) * 7) },
+    { kind: "repeat", re: "(\\d{1,2})週間?(?:ごと|毎)(?:に?の?(" + WD_LIST + ")|" + EVERY_END + ")",
+      read: (m, c) => everyWeeks(Number(m[1]), m[2], c) },
     { kind: "repeat", re: "(\\d{1,3})日に[1１一]回" + EVERY_END,
       read: (m) => everyDays(Number(m[1])) },
-    { kind: "repeat", re: "(\\d{1,2})週間?に[1１一]回" + EVERY_END,
-      read: (m) => everyDays(Number(m[1]) * 7) },
+    { kind: "repeat", re: "(\\d{1,2})週間?に[1１一]回(?:の?(" + WD_LIST + ")|" + EVERY_END + ")",
+      read: (m, c) => everyWeeks(Number(m[1]), m[2], c) },
     { kind: "repeat", re: "毎日", read: () => ({ repeat: "daily" }) },
 
     /* ---- 期限（まで）----
@@ -417,7 +443,7 @@
    * @param {{today?: string}} [opts]  今日（試験のために外から渡せる）
    * @returns {{title: string, hits: Array, due?: string, time?: string,
    *            minutes?: number, repeat?: string, repeatDays?: number[],
-   *            repeatNth?: object, deadline?: string}}
+   *            repeatNth?: object, repeatWeeks?: number, deadline?: string}}
    *          見つからなかった欄は**置きません**（null と「言っていない」を
    *          分けるため。画面の側は、来た欄だけを書き換えます）。
    */
@@ -441,6 +467,17 @@
       taken[hit.kind] = true;
       out.hits.push({ text: hit.text, kind: hit.kind });
     }
+    /* 離れて打った「2週ごと 月曜」「10:00 2週ごと」は暦の◯週ごと（everyWeeks）。 */
+    if (out.weeks) {
+      const wd = out.hits.some((h) => h.kind === "date" && /[日月火水木金土]曜/.test(h.text));
+      if (wd || out.time) {
+        out.repeat = "weekly";
+        out.repeatDays = wd && out.due ? [U.dayOfWeek(out.due)] : [];
+        if (out.weeks > 1) out.repeatWeeks = out.weeks;
+        delete out.repeatEvery;
+      }
+      delete out.weeks;
+    }
     out.title = cur.trim();
     return out;
   }
@@ -452,9 +489,11 @@
   function repeatWord(res) {
     if (res.repeat === "daily") return "毎日";
     if (res.repeat === "after") return `済ませてから${res.repeatEvery || 7}日ごと`;
+    if (res.repeat === "yearly") return "毎年";
     if (res.repeat === "weekly") {
       const d = res.repeatDays || [];
-      return d.length ? "毎週 " + d.map((n) => WDS[n]).join("・") : "毎週";
+      const w = res.repeatWeeks > 1 ? (res.repeatWeeks === 2 ? "隔週" : `${res.repeatWeeks}週ごと`) : "毎週";
+      return d.length ? w + " " + d.map((n) => WDS[n]).join("・") : w;
     }
     if (res.repeat === "monthly") {
       const n = res.repeatNth;
