@@ -80,8 +80,10 @@ const PREV = "2026-09-29";
   const carryTo = async (name, to, peek) => {
     const from = await toolAt(name);
     await touch("touchStart", from.x, from.y);
-    await wait(460);
-    const lifted = await state();
+    /* 持ち上がるのは長押し（KN.gesture.HOLD）のあと。一度目は 370〜530ms とぶれるので、決まった待ちでなく浮くまで待つ。 */
+    const t0 = Date.now();
+    let lifted = await state();
+    while (!lifted.carrying && Date.now() - t0 < 1200) { await wait(40); lifted = await state(); }
     await glide(from, to, 10);
     const over = peek ? await state() : null;
     await touch("touchEnd");

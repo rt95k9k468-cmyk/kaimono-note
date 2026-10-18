@@ -99,7 +99,7 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   /* ＋の新しいノートは先にノートブックの小窓（2026年10月15日）。確かめる台本だけ `bookFirst: true`。 */
   if (!bookFirst) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-book-first", "off"); } catch (_) {} });
-  /* やることは開いたときは週の面（2026年10月18日）。ほかの台本は今までどおり今日の面から。確かめる台本だけ `weekFirst: true`。 */
+  /* やることは開いたときは週の面（2026年10月18日）。ほかの台本は今までどおり今日の面から（席の二度押しは何もしない）。確かめる台本だけ `weekFirst: true`。 */
   if (!weekFirst) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-todo-face", "today"); } catch (_) {} });
   /* KN_NO_FIT=1：伸びる欄を、field-sizing の効かない端末の道（JS が測る）で回す（roadmap-3.1 の S2）。 */
   if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);

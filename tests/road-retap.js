@@ -5,6 +5,7 @@ const { open, checker } = require("./lib");
 (async () => {
   const c = checker("road-retap");
   const { browser, page, errors } = await open({
+    weekFirst: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 9, 40)); },
   });
   await page.evaluate(() => {
@@ -21,16 +22,16 @@ const { open, checker } = require("./lib");
     return { top: sc.scrollTop, road: !!scr.querySelector(".day-road"), week: !!scr.querySelector(".wk") };
   });
   const a = await where();
-  c.check("今日の面は道（いちばん上）", a.road && a.top === 0, JSON.stringify(a));
+  c.check("入ったときは週の面", a.week && !a.road, JSON.stringify(a));
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(700);
   const b = await where();
-  c.check("もう一度押すと週の面", b.week && !b.road, JSON.stringify(b));
+  c.check("もう一度押すと今日の面の道（いちばん上）", b.road && b.top === 0, JSON.stringify(b));
   await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 200; });
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(700);
   const d = await where();
-  c.check("また押すと今日の面の道へ", d.road && d.top === 0, JSON.stringify(d));
+  c.check("また押すと週の面", d.week && !d.road, JSON.stringify(d));
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();
   c.done();

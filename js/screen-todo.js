@@ -2839,8 +2839,10 @@
   let viewDay = null;
   const shownDay = () => viewDay || todayKey();
   /* 紙の頭の「今日｜週」（docs/todo-items.md「仕事の予定とやること」の段3）。開いたときは週。
-     どちらを見ているかは保存しない。試験の台本は sessionStorage の kn-todo-face=today で今日から（tests/lib.js）。 */
-  let face = (() => { try { return sessionStorage.getItem("kn-todo-face") === "today" ? "today" : "week"; } catch (_) { return "week"; } })();
+     どちらを見ているかは保存しない。試験の台本は sessionStorage の kn-todo-face=today で今日から、席の二度押しでも
+     何もしない（台本の多くは開いたままの tasks の席を押して入るので。tests/lib.js）。 */
+  const faceFixed = (() => { try { return sessionStorage.getItem("kn-todo-face") === "today"; } catch (_) { return false; } })();
+  let face = faceFixed ? "today" : "week";
   let weekMore = false;   // 今週の「ほか n」を開いているか
   const weekFace = () => oneDay() && face === "week";
   const dayFace = () => oneDay() && face !== "week";
@@ -6239,6 +6241,7 @@
      置き換え）。一覧で見ているときは断ります（帯は今までどおり組み直す）。 */
   function again() {
     if (!oneDay()) return false;
+    if (faceFixed) return true;   // 試験の台本：面は替えず、組み直しもしない
     setFace(face === "week" ? "today" : "week", todayKey());
     return true;
   }
