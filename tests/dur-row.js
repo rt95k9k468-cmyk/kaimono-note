@@ -83,8 +83,9 @@ const { open, checker } = require("./lib");
     await page.evaluate(() => !document.querySelector('.note-pop input[type="date"]')));
   await page.locator('.note-pop.is-cal .pop-cal-day').nth(19).click();
   await page.waitForTimeout(400);
+  // 近い日は札が「明後日」などの呼び名になる（日付依存で落ちた：2026年10月18日）。
   c.check("日を押すと暦が閉じ、札に日付", await page.evaluate(() =>
-    !document.querySelector(".note-pop.is-cal.is-open") && /\d+\/\d+/.test(document.querySelector(".note-pop .js-limit").textContent)),
+    !document.querySelector(".note-pop.is-cal.is-open") && /\d+\/\d+|今日|明日|明後日|昨日|日[前後]/.test(document.querySelector(".note-pop .js-limit").textContent)),
     await page.evaluate(() => document.querySelector(".note-pop .js-limit").textContent));
   await page.locator(".note-pop .js-limit-sw").click();
   await page.keyboard.press("Escape");
