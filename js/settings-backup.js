@@ -1001,7 +1001,8 @@
         switchRow({
           title: "仕事だけ", on: store.get().settings.glanceWork !== false,
           onTap: (v) => { store.update((x) => { x.settings.glanceWork = v; }); db.glance(true); render(); },
-        })
+        }),
+        navRow({ ico: "calendar", tint: TINT.sync, title: "小窓の組み方", onTap: () => go("glanceHow") })
       ),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",

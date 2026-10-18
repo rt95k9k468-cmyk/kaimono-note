@@ -299,6 +299,42 @@
     ];
   }
 
+  /** 小窓（ショートカットのウィジェット）の組み方。Dropbox の glance.json を読んで出す
+      （docs/todo-items.md 段4）。書き方は calHowRows と同じく端末に出る字のとおり。 */
+  function glanceHowRows() {
+    const file = "glance.json";
+    const nameCard = node(html`
+      <div class="set-card is-pad">
+        <div class="diet-relaykey"><code>${file}</code></div>
+        <button type="button" class="btn btn-soft btn-block js-copy mt-2">ファイル名をコピー</button>
+      </div>
+    `);
+    nameCard.querySelector(".js-copy").addEventListener("click", () => copyText(file, "名前"));
+    const steps = node(html`
+      <div class="set-card is-pad">
+        <ol class="diet-steps">
+          <li>「ショートカット」App を開き、下の<b>「ショートカット」</b>タブで、右上の<b>＋</b>を押し、名前を<b>小窓</b>などにする</li>
+          <li>下の検索欄（<b>「アクションを検索」</b>）に <b>ファイル</b> と打ち、<b>「ファイルを取得」</b>を押す</li>
+          <li>行の<b>「ファイルピッカー」</b>を<b>「パス」</b>に切り替え（または<b>「ファイルが見つからないときはエラー」</b>の隣の矢印を開き）、Dropbox の<b>アプリ</b>の中のこのアプリのフォルダにある <b>${file}</b> を選ぶ</li>
+          <li><b>辞書</b> と打ち、<b>「入力から辞書を取得」</b>を押す</li>
+          <li><b>繰り返す</b> と打ち、<b>「それぞれを繰り返す」</b>を押す。入力は、辞書から<b>キーの値を取得</b>（キーは <b>events</b>）にする</li>
+          <li>繰り返しの中に<b>「テキスト」</b>を置き、<b>time</b> と <b>name</b> を「キーの値を取得」で並べる（間は半角の空白）</li>
+          <li>もう一つ、<b>marks</b> でも同じ繰り返しを作る（中は <b>name</b> ではなく、そのままの値）</li>
+          <li>最後に<b>「テキストを結合」</b>で全部を改行でつなぎ、末尾に<b>「日付をフォーマット」</b>で <b>at</b> を「時刻」にして「◯時の写し」と足す</li>
+          <li><b>「結果を表示」</b>を置いて、右上の<b>「完了」</b></li>
+          <li>ホーム画面を長押し → 左上の<b>＋</b> → <b>ショートカット</b>で、この小窓を置く</li>
+        </ol>
+      </div>
+    `);
+    return [
+      head("ファイル名"),
+      nameCard,
+      head("組み方"),
+      steps,
+      foot("先に Dropbox の紙で「小窓へ写す」をオンに。日をまたぐと、開くまで前の日のままです。"),
+    ];
+  }
+
   /* 置き直しの控え（3.0 の D1。docs/todo-timeline.md の「崩れ方の事実」）。この4週間の数を並べるだけ。
      多い・少ない・原因は言わない。値の行は押せない（字だけ）。 */
   function slipRows() {
@@ -315,5 +351,5 @@
     ];
   }
 
-  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows, slipRows });
+  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows, glanceHowRows, slipRows });
 })();

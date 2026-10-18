@@ -518,6 +518,7 @@
     cats:   { title: "カテゴリ",              build: () => [S.categoriesGroup()] },
     icons:  { title: "アイコンについて",       build: () => [S.iconGapsGroup(), S.iconReportsGroup()] },
     calHow:   { title: "ショートカットの組み方", build: () => S.calHowRows() },
+    glanceHow: { title: "小窓の組み方", build: () => S.glanceHowRows() },
     relay:    { title: "中継所",   build: () => S.relayRows() },
     relayHow: { title: "建てかた", build: () => S.relayHowRows() },
     notesBooks: { title: "ノートブック", build: () => S.notesLabelList("nb") },
