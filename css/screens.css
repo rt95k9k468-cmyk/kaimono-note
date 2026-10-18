@@ -784,6 +784,18 @@
    白抜きにします——既定の `--ico`（20px）のままだと丸(15px)からはみ出し、
    色も currentColor が地の字色のままで白抜きになりません。 */
 .cal-mark .ui-ico { width: 11px; height: 11px; color: var(--c-surface); }  /* 入れもの：日の丸 */
+/* またがる予定の帯と期限の縁（やることの月の段）。マスの高さを変えない——帯は下の余白に重ね、縁は内側の線。 */
+.cal-span {
+  position: absolute; left: 0; right: 0; bottom: calc(1px + var(--lane, 0) * 3px); height: 2px;
+  background: color-mix(in srgb, var(--cat) 70%, var(--c-bg)); pointer-events: none;
+}
+.cal-span.is-s { left: 6px; border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+.cal-span.is-e { right: 6px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+.cal-due {
+  position: absolute; inset: 1px; border-radius: var(--r-md); pointer-events: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cat) 75%, var(--c-bg));
+}
+.head-ghost .cal-span, .head-ghost .cal-due { display: none; }
 .cal-mark .todo-dot {
   width: 5px; height: 5px; border-radius: var(--r-full);
   background: var(--c-bg);
@@ -4863,7 +4875,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
 /* ---- 今日｜週（docs/todo-items.md「仕事の予定とやること」の段3） ----
    仕事とくらしの色は棚の色の並びから。暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
-#screen-todo { --side-work: #5b9bd5; --side-life: #5ea55a; }
+/* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
+#screen-todo, #head { --side-work: #5b9bd5; --side-life: #5ea55a; }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-1); }
 .wk-work { flex: none; }
 .wk-faces .seg { width: 124px; }

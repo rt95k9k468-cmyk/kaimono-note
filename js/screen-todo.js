@@ -3685,6 +3685,11 @@
       if (!t.due) return;
       parts.push(t.id, t.due, t.repeat ? 1 : 0, t.icon || "", t.title);
     });
+    // 帯と期限の縁（calEdges）。済んだ予定の帯も残るので全件から。
+    store.get().todos.forEach((t) => {
+      if (t.endDay || t.deadline) parts.push("e", t.id, t.due || "", t.endDay || "", t.deadline || "",
+        t.side || "", t.kind || "", t.done ? 1 : 0, t.archived ? 1 : 0, t.title);
+    });
     store.get().todos.forEach((t) => {
       if (!t.due || t.due >= today || t.repeat || t.trace || !(t.done || t.archived)) return;
       parts.push("d", t.id, t.due, t.icon || "", t.title);
@@ -3796,17 +3801,46 @@
      空のままにすると「翌月1日は何もない」と嘘をつくことになります。
      件数（読み上げ）はその月のぶんだけ。押せばその日へ行けるので、月末の週から
      翌月の頭へそのまま進めます。 */
-  function calMarkOf(load, marks) {
+  function calMarkOf(load, marks, edge) {
     return (key, out) => {
       const n = out ? 0 : (load.get(key) || 0);
+      const e = edge.get(key) || { spans: [], dues: [] };
+      const nodes = (marks.get(key) || []).map((t) => node(html`
+        <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
+      `));
+      // またがる予定の帯（日のマスの下の細い筋）と期限の縁。名前は入れない（読み上げにだけ）。
+      e.spans.forEach((p) => nodes.push(node(html`
+        <i class="cal-span ${p.t.due === key ? "is-s" : ""} ${p.t.endDay === key ? "is-e" : ""}"
+           style="--cat:${SIDE(p.t)};--lane:${p.l}"></i>`)));
+      if (e.dues.length) nodes.push(node(html`<i class="cal-due" style="--cat:${SIDE(e.dues[0])}"></i>`));
       return {
         cat: dayColor(key),
-        label: n ? ` やること${n}件` : "",
-        nodes: (marks.get(key) || []).map((t) => node(html`
-          <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
-        `)),
+        label: (n ? ` やること${n}件` : "") + e.spans.map((p) => ` ${p.t.title}`).join("")
+          + e.dues.map((t) => ` ${t.title}の期限`).join(""),
+        nodes,
       };
     };
+  }
+
+  /** 月の段の帯と期限の縁（docs/todo-items.md「仕事の予定とやること」の画面）。筋は二本まで。 */
+  function calEdges(from, to) {
+    const U = KN.util;
+    const edge = new Map();
+    const at = (k) => { if (!edge.has(k)) edge.set(k, { spans: [], dues: [] }); return edge.get(k); };
+    const all = store.get().todos;
+    const ends = [];
+    all.filter((t) => t.endDay && t.due && !t.archived && (!t.done || t.kind === "event")
+      && t.due <= to && t.endDay >= from)
+      .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0))
+      .forEach((t) => {
+        let l = ends.findIndex((e) => e < t.due);
+        if (l < 0) { l = ends.length; ends.push(t.endDay); } else ends[l] = t.endDay;
+        if (l > 1) return;
+        for (let k = t.due < from ? from : t.due; k <= t.endDay && k <= to; k = U.shiftDay(k, 1)) at(k).spans.push({ t, l });
+      });
+    all.filter((t) => t.deadline && !t.done && !t.archived && !t.trace && t.kind !== "event"
+      && t.deadline >= from && t.deadline <= to).forEach((t) => at(t.deadline).dues.push(t));
+    return edge;
   }
 
   /**
@@ -3874,9 +3908,13 @@
        数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
        輪はどこにも移らず、押しても何も起きないように見えます。
        押した日を見ている——それがいちばん確かなことなので、先に言います。 */
+    const outer = KN.util.outDays(year, month);
+    const pad = (n) => String(n).padStart(2, "0");
+    const edge = calEdges(outer.lead[0] || `${year}-${pad(month + 1)}-01`,
+      outer.trail[outer.trail.length - 1] || KN.util.dayKey(new Date(year, month + 1, 0)));
     KN.calGrid.fill(sec, {
       year, month, outFocus: true,
-      mark: calMarkOf(load, marks),
+      mark: calMarkOf(load, marks, edge),
       pick: (key) => openDay(key),
     });
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
@@ -4439,13 +4477,29 @@
   function openDay(day) {
     haptic();
     if (oneDay()) {
-      // 週の面で日を押したら、その日の面へ。
-      if (face === "week") { setFace("today", day); return; }
+      // 週の面で日を押したら、その日の面へ。月の段からはその週（暦は週へ畳む）。
+      if (face === "week") {
+        if (calOpen()) { weekAt(day); return; }
+        setFace("today", day);
+        return;
+      }
       goDay(day);
       return;
     }
     markDay(day, true);
     jumpToDay(day);
+  }
+
+  /** 月の段で押した日の週を出し、その日の行へ送る。 */
+  function weekAt(day) {
+    store.setCalPref("todo", { open: false });
+    if (day !== shownDay()) goDay(day); else markDay(day, true);
+    requestAnimationFrame(() => {
+      const r = root && root.querySelector(`.wk-day[data-day="${day}"]`);
+      if (!r) return;
+      const sc = KN.app.scrollerOf(root);
+      KN.app.glideTo(sc, Math.max(0, sc.scrollTop + r.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8));
+    });
   }
 
   /* ---------------- 左右に払って、日を送る ----------------
