@@ -3908,10 +3908,8 @@
        数え直させると、その日に棚が無ければ（やることの無い日は棚が出ない）
        輪はどこにも移らず、押しても何も起きないように見えます。
        押した日を見ている——それがいちばん確かなことなので、先に言います。 */
-    const outer = KN.util.outDays(year, month);
-    const pad = (n) => String(n).padStart(2, "0");
-    const edge = calEdges(outer.lead[0] || `${year}-${pad(month + 1)}-01`,
-      outer.trail[outer.trail.length - 1] || KN.util.dayKey(new Date(year, month + 1, 0)));
+    // 隣の月のマスにも出すので、前後一週ぶん広く引く。
+    const edge = calEdges(KN.util.dayKey(new Date(year, month, -6)), KN.util.dayKey(new Date(year, month + 1, 7)));
     KN.calGrid.fill(sec, {
       year, month, outFocus: true,
       mark: calMarkOf(load, marks, edge),
