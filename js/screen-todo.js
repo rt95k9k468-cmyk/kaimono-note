@@ -2055,6 +2055,8 @@
   function groupIdOf(t, groups) {
     if (!t.due) return "none";
     const n = daysUntil(t.due);
+    // 過ぎた予定は過ぎるだけ（X25）。どの棚にも置かない（期限切れにしない）。
+    if (n < 0 && t.kind === "event") return "past";
     if (n < 0) return "late";
     // 今日はひと棚。毎朝も毎晩もここに入り、並び順だけが日の両端に置きます。
     if (n === 0) return "today";
@@ -2252,7 +2254,7 @@
   function todoRow(t, tiles, groups, shelf) {
     const closed = t.done || t.archived;
     const when = closed ? store.todoClosedAt(t) : null;
-    const late = !closed && t.due && daysUntil(t.due) < 0;
+    const late = !closed && t.kind !== "event" && t.due && daysUntil(t.due) < 0;
     /* The shelf already says which day, and often which part of it, so the row
        does not repeat it. 「今日」 written on a row sitting under a heading that
        says 今日 is a word that has to be read to learn nothing. Kept where the
@@ -3518,7 +3520,7 @@
     const oldBar = host && host.querySelector(".tl-late");
     if (oldBar) oldBar.remove();
     const late = host && oneDay() && shownDay() === today
-      ? (open || []).filter((t) => t.due && t.due < today) : [];
+      ? (open || []).filter((t) => t.due && t.due < today && t.kind !== "event") : [];
     if (late.length) {
       const bar = node(html`
         <button type="button" class="tl-late js-late">

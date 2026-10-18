@@ -912,6 +912,7 @@
       /* 3.0 の受け皿（docs/roadmap-3.0.md の T0）。書く画面より先に、読んで残すだけ。
          ここに無い欄は保存のたびに消えるので。どれも持っていない記録は既定に落ちます。 */
       ...actField(t.act),
+      ...planField({ ...t, repeat: cleanRepeat(t.repeat) }),
       shelf: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? null : cleanShelf(t.shelf),   // 日のあるものは待つ・いつかに居ない
       waitFor: cleanWaitFor(t.waitFor),
       review: /^\d{4}-\d{2}-\d{2}$/.test(t.review) ? t.review : null,
@@ -1026,6 +1027,22 @@
     if (!a || typeof a !== "object" || !TYPES.includes(a.type)) return {};
     const id = (v) => (typeof v === "string" && v ? v : null);
     return { act: { type: a.type, entry: id(a.entry), note: id(a.note) } };
+  }
+  /* 仕事の予定とやること（docs/todo-items.md「仕事の予定とやること」の足す欄）。**既定の値は持たせず、
+     持っているものだけ返します**——欠けた記録に null を足すと、開いただけで全件の形が変わる（既存の記録は
+     書き換えない）。kind "event"＝予定（無ければやること）／side "work"＝仕事（無ければくらし）／
+     endDay＝何日にもまたがる予定の終わりの日（due より後だけ）／repeatWeeks＝毎週の「◯週ごと」（2〜52）／
+     weekMark＝今週の印（印を付けた週のどこかの日。週が変われば読むときに外れる：`inWeek`）。 */
+  function planField(t) {
+    const out = {};
+    const DAY = /^\d{4}-\d{2}-\d{2}$/;
+    if (t.kind === "event") out.kind = "event";
+    if (t.side === "work") out.side = "work";
+    if (DAY.test(t.endDay) && DAY.test(t.due) && t.endDay > t.due) out.endDay = t.endDay;
+    const w = Number(t.repeatWeeks);
+    if (t.repeat === "weekly" && Number.isInteger(w) && w >= 2 && w <= 52) out.repeatWeeks = w;
+    if (DAY.test(t.weekMark)) out.weekMark = t.weekMark;
+    return out;
   }
   function cleanShelf(v) { return v === "wait" || v === "someday" ? v : null; }
   function cleanWaitFor(v) {
@@ -1145,7 +1162,7 @@
    * 種類の表を const で下に置くと TDZ で落ちます（CLAUDE.md の約束事）。
    */
   function cleanRepeat(v) {
-    return v === "daily" || v === "weekly" || v === "monthly" || v === "after" ? v : null;
+    return v === "daily" || v === "weekly" || v === "monthly" || v === "yearly" || v === "after" ? v : null;
   }
 
   /** 「済ませてから◯日」の◯。1〜365 の整数、それ以外は既定の 7。 */
@@ -1794,13 +1811,16 @@
   function addTodo({ title, due = null, deadline = null, part = null, time = null,
                      repeat = null, repeatDays = [],
                      repeatNth = null, repeatEvery = null, memo = "", flagged = false, minutes = null,
-                     lead = null, shop = false, subs = [], icon = null, act = null } = {}) {
+                     lead = null, shop = false, subs = [], icon = null, act = null,
+                     kind = null, side = null, endDay = null, repeatWeeks = null, weekMark = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
     const rec = {
       // 活動（3.0 の A1）。種類（読書・学習・種）を持つ予定。
       ...actField(act),
+      // 予定かやることか・仕事かくらしほか。持つものだけ（reconcile と同じ形）。
+      ...planField({ kind, side, endDay, repeatWeeks, weekMark, due, repeat: cleanRepeat(repeat) }),
       id: uid("t"),
       title: name,
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
@@ -2266,6 +2286,13 @@
         const a = actField(patch.act).act;
         if (a) t.act = a; else delete t.act;
       }
+      /* 足す欄（planField）。渡されたものを入れ替え、日やくり返しが変わって成り立たなくなったもの
+         （終わりの日が due より前・毎週でない◯週ごと）も一緒に落とす。 */
+      const PLAN = ["kind", "side", "endDay", "repeatWeeks", "weekMark"];
+      const merged = { ...t };
+      PLAN.forEach((k) => { if (k in patch) merged[k] = patch[k]; });
+      const plan = planField(merged);
+      PLAN.forEach((k) => { if (k in plan) t[k] = plan[k]; else delete t[k]; });
     });
   }
 
@@ -2369,6 +2396,15 @@
         const days = todo.repeatDays || [];
         // 「毎週 火・金」 is two bin days a week, not one every seven — so the
         // next one is the next named day, which may be two days away.
+        // 「◯週ごと」は、休みの週を飛ばして次に立つ日（数えるのは fallsOn と同じく due の週から）。
+        const w = todo.repeatWeeks || 1;
+        if (w > 1) {
+          const rule = { ...todo, skipDays: [] };
+          for (let i = 1; i <= 7 * w + 7; i++) {
+            const cand = U.shiftDay(next, i);
+            if (fallsOn(rule, cand)) { next = cand; return; }
+          }
+        }
         if (days.length) {
           for (let i = 1; i <= 7; i++) {
             const cand = U.shiftDay(next, i);
@@ -2376,6 +2412,16 @@
           }
         }
         next = U.shiftDay(next, 7);
+        return;
+      }
+
+      /* 毎年は同じ月日。2月29日は、うるう年まで飛ばします（毎月と同じく丸めない）。 */
+      if (todo.repeat === "yearly") {
+        const [m, d] = (todo.due || next).slice(5).split("-").map(Number);
+        for (let y = Number(next.slice(0, 4)) + 1, i = 0; i < 8; i++, y++) {
+          if (new Date(y, m - 1, d).getDate() === d) { next = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`; return; }
+        }
+        next = U.shiftMonth(next, 12);
         return;
       }
 
@@ -2434,6 +2480,8 @@
 
     if (todo.repeat === "weekly") {
       const days = todo.repeatDays || [];
+      // 「◯週ごと」（隔週＝2）。休みの週には立たない。週は月曜はじまりで数える（設定の週の頭に左右されない）。
+      if (todo.repeatWeeks > 1 && weeksApart(todo.due, day) % todo.repeatWeeks) return false;
       if (days.length) return days.includes(U.dayOfWeek(day));
       // 曜日を選んでいない「毎週」は、due と同じ曜日。
       return U.dayOfWeek(day) === U.dayOfWeek(todo.due);
@@ -2451,7 +2499,25 @@
       return day.slice(8) === todo.due.slice(8);
     }
 
+    if (todo.repeat === "yearly") return day.slice(5) === todo.due.slice(5);
+
     return false;
+  }
+
+  /** 二つの日の、月曜はじまりの週の隔たり（b が後なら正）。 */
+  function weeksApart(a, b) {
+    const mon = (k) => {
+      const [y, m, d] = k.split("-").map(Number);
+      const n = Date.UTC(y, m - 1, d) / 864e5;
+      return n - ((new Date(n * 864e5).getUTCDay() + 6) % 7);
+    };
+    return Math.round((mon(b) - mon(a)) / 7);
+  }
+
+  /** 今週の印が、いまの週のものか（weekMark）。週が変われば、書き換えずに外れたと読む。 */
+  function inWeek(t, day) {
+    const U = KN.util;
+    return !!(t && t.weekMark) && U.weekOf(t.weekMark).from === U.weekOf(day || U.todayKey()).from;
   }
 
   /** The first day on or after `from` that the repeat rule actually falls on. */
@@ -3031,6 +3097,9 @@
         if (next && next !== t.due) moves.set(t.id, next);
         return;
       }
+      /* 予定は過ぎるだけ（X25）。会議は済の印が無くても、翌朝の「運んだもの」に積まない。
+         くり返しの予定は上でルーティンと同じく次の日へ（逃した日には何も残さない）。 */
+      if (t.kind === "event") return;
       const late = (t.due && t.due < today) || (!t.due && t.deadline && t.deadline < today);
       if (!late) return;
       if (t.shop && shopToday) return;
@@ -3133,7 +3202,8 @@
     const toMin = (hm) => { const m = /^(\d{1,2}):(\d{2})$/.exec(hm); return m ? +m[1] * 60 + +m[2] : null; };
     const now = toMin(U.nowTime());
     return openTodos().filter((t) => {
-      if (t.repeat || t.trace || t.due !== today || !U.isTime(t.time)) return false;
+      // 予定は過ぎるだけ（X25）。時刻を過ぎても置き直しに出さない。
+      if (t.repeat || t.trace || t.kind === "event" || t.due !== today || !U.isTime(t.time)) return false;
       const end = toMin(t.time) + (Number(t.minutes) > 0 ? Number(t.minutes) : 30);
       return end <= now;
     }).sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
@@ -4923,7 +4993,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

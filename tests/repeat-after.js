@@ -134,7 +134,7 @@ TABLE.forEach(([text, title, rep, every]) => {
       { id: "old-1", title: "古い毎週", due: today, repeat: "weekly", repeatDays: [1] },
       { id: "new-1", title: "新しい", due: today, repeat: "after", repeatEvery: 30 },
       { id: "new-2", title: "◯なし", due: today, repeat: "after" },
-      { id: "bad-1", title: "知らない種類", due: today, repeat: "yearly", repeatEvery: 3 },
+      { id: "bad-1", title: "知らない種類", due: today, repeat: "hourly", repeatEvery: 3 },
     ];
     localStorage.setItem("kaimono-note-v2", JSON.stringify(raw));
   });
