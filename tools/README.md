@@ -76,6 +76,15 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
   上の見本と同じく、保存の道具は一つも呼ばない。偽のノートは閉じると消える。
 - 決まったら消す。
 
+## todo-proto.html — やることの見本（仕事の予定とやること）
+
+`docs/todo-items.md` の「仕事の予定とやること」。今のアプリの見た目（`css/` をそのまま読む）で、週・今日・月の紙・選ぶ紙を触るページ。
+`.../tools/todo-proto.html`、今日の面から開くなら `?start=today`。
+
+- 読むのは保存に触れない部品だけ（`util.js`・`icons.js`・`icons-phosphor.js`・季節の絵・空・`when-parse.js`。`KN.store` は記憶だけの身代わり）。
+  保存の道具は一つも呼ばない。偽の記録は開いた日から作り、閉じると消える。
+- 決まったら消す。
+
 ## vendor/
 
 - `pdf.min.mjs` / `pdf.worker.min.mjs` — Mozilla の pdf.js v4.10.38。

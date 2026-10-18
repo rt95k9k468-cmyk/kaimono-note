@@ -1,0 +1,713 @@
+<!doctype html>
+<!--
+  やることの見本（tools/todo-proto.html。docs/todo-items.md の「仕事の予定とやること」）。
+  仕事の予定とやることを、偽の記録で触るための一回きりのページ。アプリ本体には入らない
+  （index.html・sw.js・build-standalone.js に載せない）。
+  ・面は 週（既定）と 今日。紙の頭の「今日｜週」か、下の帯の tasks をもう一度押して行き来する。?start=today で今日から開く。
+  ・月の紙は 週の面の頭の「月」と、上の帯の暦の絵から。升目を押すとその週（今週・来週ならその行へ送る）。
+  ・選ぶ紙は 今週の「選ぶ」から：期限の近いもの → 見直す日が来たもの → 先週選んだもの → 新しいもの。
+  ・右下の＋は一行。打った字に時刻か期間（「22〜24日」）があれば予定、無ければやること。字は js/when-parse.js（アプリと同じ）が読む。
+  ・本物のデータ（localStorage・IndexedDB・キャッシュ）には読みも書きもしない。偽の記録は記憶の中だけで、閉じると消える。
+    日付は開いた日から作る（いつ開いても、今週と来週に予定が並ぶ）。?day=2026-10-21 で、その日を今日として開く（週の半ばを見る）。
+-->
+<html lang="ja" class="has-fab" data-icons="phosphor">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>やること — 見本</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/screens.css">
+<style>
+/* 見本だけの足し。色・字・間はアプリの名前（--c-*・--sp-*・--fs-*）から引く。仕事とくらしの色は棚の色の並びから。 */
+:root { --tp-work: #5b9bd5; --tp-life: #5ea55a; }
+#screen-todo { --cal-h: 0px; --topbar-h: 0px; }
+/* 紙が送る器（アプリと同じ。#screen-todo は overflow: hidden）。 */
+#screen-todo > .tl-sheet { height: 100%; overflow-y: auto; overscroll-behavior-y: none;
+  padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + var(--sp-8) + var(--sp-6)); }
+
+/* 紙の頭：今日｜週。週の面だけ右に「月」「仕事だけ」。 */
+.tp-top { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-1); }
+.tp-top .seg { flex: none; width: 124px; }
+.tp-top .seg-btn { min-height: 34px; padding: 0 var(--sp-2); }
+.tp-tools { display: flex; gap: var(--sp-2); margin-left: auto; }
+.tp-tools[hidden], .tp-tools .chip[hidden] { display: none; }
+.tp-top .chip { height: 34px; }
+.tp-top .chip .chip-dot { width: 8px; height: 8px; }
+
+/* 見出し（.todo-head の形） */
+.tp-h { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: 44px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-1); font-size: var(--fs-md); font-weight: var(--fw-bold);
+  color: var(--c-text); text-align: left; }
+.tp-h .tp-range { font-family: var(--font-num); font-weight: var(--fw-regular); font-size: var(--fs-sm); color: var(--c-text-2); }
+.tp-h > .chip { margin-left: auto; height: 32px; }
+.tp-twist { display: grid; color: var(--c-text-2); transition: transform var(--m-state) var(--ease); }
+.tp-twist svg { width: 15px; height: 15px; }
+.tp-h[aria-expanded="true"] .tp-twist { transform: rotate(90deg); }
+.tp-h.is-sub { min-height: 34px; padding-top: var(--sp-2); font-size: var(--fs-sm); color: var(--c-text-2); }
+
+/* やることの行 */
+.tp-list { margin: 0 var(--sp-4); }
+.tp-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 46px; border-top: 1px solid var(--c-border); }
+.tp-row > .chip-dot { width: 8px; height: 8px; }
+.tp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-md); }
+.tp-fact { flex: none; font-family: var(--font-num); font-size: var(--fs-xs); color: var(--c-text-2); }
+.tp-row.is-done .tp-name { color: var(--c-text-3); text-decoration: line-through; }
+.tp-more { display: block; width: 100%; min-height: 40px; border-top: 1px solid var(--c-border); text-align: left;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
+
+/* 七日の行。何日にもまたがる予定は、日の列と予定の列のあいだの筋を縦に通る帯。 */
+.tp-week { display: grid; margin: 0 var(--sp-4); }
+.tp-day { grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 0 7px; border-top: 1px solid var(--c-border); line-height: 1; }
+.tp-wd { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.tp-dn { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-full);
+  font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.tp-day.is-today .tp-wd { color: var(--c-primary); }
+.tp-day.is-today .tp-dn { background: var(--c-primary); color: #fff; }
+.tp-gap { border-top: 1px solid var(--c-border); }
+.tp-evs { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; min-height: 58px;
+  padding: 6px 0 6px var(--sp-2); border-top: 1px solid var(--c-border); }
+.tp-ev { display: flex; align-items: center; gap: 7px; min-width: 0; min-height: 24px; font-size: var(--fs-md); }
+.tp-ev .chip-dot { width: 8px; height: 8px; }
+.tp-t { flex: none; min-width: 2.7em; font-family: var(--font-num); font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.tp-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-rep { display: grid; flex: none; color: var(--c-text-3); }
+.tp-rep svg { width: 13px; height: 13px; }
+.tp-evs.is-past .tp-ev { color: var(--c-text-2); }
+.tp-evs.is-past .chip-dot, .tp-band.is-past { opacity: .45; }
+/* 名前は一字ずつ縦に積む（writing-mode は縦の字幅を持たない字形で字が重なる）。 */
+.tp-band { display: flex; flex-direction: column; align-items: center; margin: 6px 3px; padding: 8px 0; border-radius: 9px;
+  overflow: hidden; line-height: 1.2; font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-sheet));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cat) var(--cat-line), var(--c-sheet)); }
+.tp-flash { animation: tp-flash 1.6s var(--ease); }
+@keyframes tp-flash { 0%, 50% { background-color: var(--c-primary-soft); } }
+
+/* 今日の面：終日の予定と、道の上の「いま」 */
+.tp-allday { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4) 0; }
+.tp-allday span { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 var(--sp-3);
+  border-radius: var(--r-full); font-size: var(--fs-sm); font-weight: var(--fw-bold);
+  background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-sheet)); }
+.tp-allday em { font-style: normal; font-weight: var(--fw-regular); color: var(--c-text-2); }
+.tp-me { fill: var(--c-primary); stroke: var(--c-sheet); stroke-width: 3; }
+
+/* 月の紙：升目に名前（4字まで）、またがる帯、期限は縁だけ */
+.tp-msheet .sheet-body { gap: 0; padding: 0 var(--sp-2) var(--sp-3); }
+.tp-mtitle { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.tp-mtitle .icon-btn { width: 36px; height: 36px; }
+.tp-mwds, .tp-mw { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.tp-mwds { padding-bottom: 4px; text-align: center; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.tp-mw { border-top: 1px solid var(--c-border); }
+.tp-mc { min-height: 94px; border-left: 1px solid var(--c-border); -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--m-state) var(--ease); }
+.tp-mc.is-mon { border-left: 0; }
+.tp-mc.is-out { background: color-mix(in srgb, var(--c-text) 3%, transparent); }
+.tp-mc:active { background: var(--press-sink); }
+.tp-mn, .tp-mb, .tp-ml { pointer-events: none; }
+.tp-mn { justify-self: center; display: grid; place-items: center; width: 22px; height: 22px; margin: 3px 0 2px;
+  border-radius: var(--r-full); font-family: var(--font-num); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.tp-mn.is-today { background: var(--c-primary); color: #fff; }
+.tp-mn.is-out { color: var(--c-text-3); }
+.tp-mb { align-self: center; height: 17px; margin: 1px 2px; padding: 0 4px; border-radius: 5px; overflow: hidden;
+  white-space: nowrap; font-size: var(--fs-xs); line-height: 17px; font-weight: var(--fw-bold);
+  background: color-mix(in srgb, var(--cat) var(--cat-line), var(--c-sheet)); }
+.tp-mb.is-l { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.tp-mb.is-r { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.tp-ml { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 1px 2px 4px; }
+.tp-ml span { display: block; height: 17px; padding: 0 2px; border-radius: 4px; overflow: hidden; white-space: nowrap;
+  font-size: var(--fs-xs); line-height: 17px; background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-sheet)); }
+.tp-ml span.is-due { background: none; box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--cat) 75%, var(--c-sheet)); }
+.tp-ml span.is-n { background: none; color: var(--c-text-2); font-weight: var(--fw-bold); }
+
+/* 選ぶ紙 */
+.tp-psheet .sheet-body { gap: 0; }
+.tp-pick-h { padding: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.tp-pick { padding: var(--sp-3) 0; border-top: 1px solid var(--c-border); }
+.tp-pick-name { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.tp-pick-name .chip-dot { width: 8px; height: 8px; }
+.tp-pick-fact { margin: 2px 0 0 16px; font-family: var(--font-num); font-size: var(--fs-xs); color: var(--c-text-2); }
+.tp-pick-go { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-top: var(--sp-2); }
+.tp-pick-go .chip { justify-content: center; height: 36px; }
+
+/* 一行（右下の＋） */
+.tp-add { display: flex; flex-direction: column; gap: var(--sp-3); }
+.tp-add-row { display: flex; gap: var(--sp-2); }
+.tp-add-row .seg { flex: 1; }
+.tp-when { margin: 0; font-family: var(--font-num); font-size: var(--fs-sm); color: var(--c-text-2); }
+.tp-when:empty, .tp-add .chip[hidden] { display: none; }
+.tp-add > .chip { align-self: flex-start; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <main class="screens" id="screens">
+    <div class="deck" id="deck">
+      <div class="head" id="head">
+        <header class="topbar"><div class="topbar-row">
+          <div class="topbar-dayrow">
+            <button type="button" class="topbar-day" tabindex="-1"><span class="topbar-title" id="tp-title"></span></button>
+          </div>
+          <button class="icon-btn js-cal" aria-label="月" data-ico="calendar"></button>
+          <button class="icon-btn" aria-label="さがす" tabindex="-1" data-ico="search"></button>
+          <button class="icon-btn head-gear" aria-label="設定" tabindex="-1" data-ico="gear"></button>
+        </div></header>
+        <div class="head-cal"><section class="cal is-week" aria-label="今週">
+          <div class="cal-wds"><span class="cal-wd">月</span><span class="cal-wd">火</span><span class="cal-wd">水</span><span class="cal-wd">木</span><span class="cal-wd">金</span><span class="cal-wd is-sat">土</span><span class="cal-wd is-sun">日</span></div>
+          <div class="cal-clip"><div class="cal-slide"><div class="cal-grid" id="tp-strip"></div></div></div>
+        </section></div>
+      </div>
+      <div class="panes" id="panes">
+        <section class="screen is-active" id="screen-todo" data-screen="todo" role="tabpanel" aria-label="tasks">
+          <div class="tl-sheet">
+            <span class="tl-grip" aria-hidden="true"><i></i></span>
+            <div class="tp-top">
+              <div class="seg tp-seg" role="group" aria-label="面"><button class="seg-btn" data-face="today">今日</button><button class="seg-btn" data-face="week">週</button></div>
+              <div class="tp-tools" id="tp-tools">
+                <button class="chip js-now" hidden>今週</button>
+                <button class="chip js-month">月</button>
+                <button class="chip js-work" style="--cat: var(--tp-work)" aria-pressed="false"><span class="chip-dot"></span>仕事だけ</button>
+              </div>
+            </div>
+            <div id="tp-face"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <div class="dock" id="dock"><div class="quick-add"><button class="add-fab js-open-add" aria-label="一行で入れる"></button></div></div>
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="メインナビゲーション"></nav>
+</div>
+<div id="sheet-root"></div>
+<div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
+
+<script>
+/* 季節の絵と空が設定を引くための身代わり（記憶だけ。保存の道具ではない）。 */
+window.KN = { store: { get: () => ({ settings: {} }), subscribe: () => {} } };
+</script>
+<script src="js/util.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/icons-phosphor.js"></script>
+<script src="js/season.js"></script>
+<script src="js/season-art.js"></script>
+<script src="js/sky.js"></script>
+<script src="js/when-parse.js"></script>
+<script>
+(() => {
+  "use strict";
+  const U = KN.util;
+  const { html, node, icon, raw } = U;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  /* ---------- 日付（端末の時刻。YYYY-MM-DD） ---------- */
+  const pad = (n) => String(n).padStart(2, "0");
+  const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const dateOf = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+  const add = (k, n) => { const d = dateOf(k); d.setDate(d.getDate() + n); return keyOf(d); };
+  const monOf = (k) => add(k, -((dateOf(k).getDay() + 6) % 7));
+  const diff = (a, b) => Math.round((dateOf(b) - dateOf(a)) / 864e5);
+  const wd = (k) => "日月火水木金土"[dateOf(k).getDay()];
+  const md = (k) => `${dateOf(k).getMonth() + 1}月${dateOf(k).getDate()}日`;
+  const dw = (k) => `${dateOf(k).getDate()}日（${wd(k)}）`;
+  const range = (mon) => { const e = add(mon, 6); return `${md(mon)}〜${mon.slice(5, 7) === e.slice(5, 7) ? dateOf(e).getDate() + "日" : md(e)}`; };
+  const toMin = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const hm = (m) => `${Math.floor(m / 60)}:${pad(m % 60)}`;
+  const tOf = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+
+  const q = new URLSearchParams(location.search);
+  const NOW = new Date();
+  const T = /^\d{4}-\d{2}-\d{2}$/.test(q.get("day") || "") ? q.get("day") : keyOf(NOW);
+  const W0 = monOf(T), W1 = add(W0, 7), WP = add(W0, -7), END = add(W0, 6);
+  const NOWM = NOW.getHours() * 60 + NOW.getMinutes();
+
+  /* ---------- 偽の記録（一般の言葉だけ。今週の月曜から数える） ---------- */
+  const w = (n) => add(W0, n);
+  const lastYear = (k) => `${Number(k.slice(0, 4)) - 1}${k.slice(4)}`;
+  let seq = 0;
+  const ev = (o) => ({ id: "e" + seq++, kind: "event", side: "work", ...o });
+  const tk = (o) => ({ id: "t" + seq++, kind: "task", side: "work", made: add(T, -20), ...o });
+  const items = [
+    ev({ title: "朝のメール", on: w(-30), time: "08:30", end: "08:45", repeat: "daily" }),
+    ev({ title: "定例", on: w(-28), time: "09:30", end: "10:30", repeat: "weekly" }),
+    ev({ title: "面談", on: w(-12), time: "16:00", end: "16:30", repeat: "biweekly" }),
+    ev({ title: "健康診断", on: lastYear(w(11)), time: "09:00", end: "11:00", repeat: "yearly" }),
+    ev({ title: "棚卸し", on: w(-11), until: w(-10) }),
+    ev({ title: "打ち合わせ", on: w(-6), time: "15:00", end: "16:00" }),
+    ev({ title: "説明会", on: w(-4), time: "13:30", end: "15:00" }),
+    ev({ title: "打ち合わせ", on: w(1), time: "13:00", end: "14:00" }),
+    ev({ title: "来客", on: w(2), time: "10:00", end: "11:00" }),
+    ev({ title: "出張", on: w(3), until: w(4) }),
+    ev({ title: "歯医者", on: w(4), time: "18:30", end: "19:00", side: "life" }),
+    ev({ title: "美容院", on: w(5), time: "10:00", end: "11:00", side: "life" }),
+    ev({ title: "朝会", on: w(8), time: "08:45", end: "09:00" }),
+    ev({ title: "見積もりの説明", on: w(8), time: "14:00", end: "15:00" }),
+    ev({ title: "面接", on: w(8), time: "16:00", end: "17:00" }),
+    ev({ title: "電話", on: w(8), time: "17:30", end: "17:45" }),
+    ev({ title: "研修", on: w(9), until: w(10) }),
+    ev({ title: "送別会", on: w(11), time: "19:00", end: "21:00" }),
+    ev({ title: "旅行", on: w(12), until: w(13), side: "life" }),
+    ev({ title: "打ち合わせ", on: w(15), time: "11:00", end: "12:00" }),
+    ev({ title: "展示会", on: w(16), until: w(18) }),
+    ev({ title: "歯医者", on: w(18), time: "18:30", end: "19:00", side: "life" }),
+    ev({ title: "町内の掃除", on: w(20), time: "09:00", end: "10:00", side: "life" }),
+    ev({ title: "引き継ぎ", on: w(22), time: "10:00", end: "11:00" }),
+    ev({ title: "出張", on: w(23), until: w(25) }),
+    ev({ title: "説明会", on: w(24), time: "13:30", end: "15:00" }),
+    tk({ title: "経費の精算", deadline: w(0) }),
+    tk({ title: "見積もりを出す", deadline: w(3) }),
+    tk({ title: "報告書", deadline: w(11) }),
+    tk({ title: "年末調整の書類", deadline: w(24), side: "life" }),
+    tk({ title: "資料をまとめる", week: W0 }),
+    tk({ title: "議事録を送る", week: W0, today: T }),
+    tk({ title: "請求書の確認", week: W0 }),
+    tk({ title: "電球を替える", week: W0, today: T, side: "life" }),
+    tk({ title: "会議室を取る", week: W0 }),
+    tk({ title: "名刺を頼む", week: W0 }),
+    tk({ title: "クリーニングを出す", week: W0, side: "life" }),
+    tk({ title: "朝礼の資料", week: W0, today: T, done: true }),
+    tk({ title: "名簿の整理", week: WP }),
+    tk({ title: "自転車の空気", week: WP, side: "life" }),
+    tk({ title: "企画書の下書き", review: T, made: add(T, -14) }),
+    tk({ title: "本棚を片づける", side: "life", review: add(T, 9) }),
+    tk({ title: "見積もりの型を作る", made: add(T, -1), review: add(T, 13) }),
+    tk({ title: "契約書の返送", shelf: "wait", waitFor: "返事", review: add(T, 4) }),
+    tk({ title: "資格の勉強", shelf: "someday", review: add(T, -2), made: add(T, -32) }),
+    tk({ title: "旅行の計画", shelf: "someday", side: "life", review: add(T, 20) }),
+  ];
+
+  /* ---------- 読むときに決める（保存しない） ---------- */
+  const st = { face: q.get("start") === "today" ? "today" : "week", work: false, anchor: W0, more: false, later: false };
+  const cat = (x) => (x.side === "life" ? "var(--tp-life)" : "var(--tp-work)");
+  const dot = (x) => html`<span class="chip-dot" style="--cat:${cat(x)}"></span>`;
+  const shown = (x) => !st.work || x.side === "work";
+  /* 今日の印はその日だけ、今週の印はその週だけ。外れたものは元の場所（今週かこれから）に居る。 */
+  const isToday = (x) => x.today === T;
+  const inWeek = (x) => x.week === W0 && !x.shelf;
+  const byTime = (a, b) => (a.time || "").localeCompare(b.time || "");
+
+  function falls(e, k) {
+    if (e.kind !== "event" || e.until || k < e.on) return false;
+    const n = diff(e.on, k);
+    switch (e.repeat) {
+      case "daily": return true;
+      case "weekly": return n % 7 === 0;
+      case "biweekly": return n % 14 === 0;
+      case "yearly": return k.slice(5) === e.on.slice(5);
+      default: return n === 0;
+    }
+  }
+  /* 毎日のくり返しは七日の行と月の紙に出さない（今日の道にだけ）。 */
+  const dayEvents = (k) => items.filter((e) => falls(e, k) && e.repeat !== "daily" && shown(e)).sort(byTime);
+  const spans = (a, z) => items.filter((e) => e.kind === "event" && e.until && e.on <= z && e.until >= a && shown(e));
+  function lanes(bands, mon) {
+    const ends = [];
+    const placed = bands.sort((a, b) => a.on.localeCompare(b.on)).map((b) => {
+      let l = ends.findIndex((e) => e < b.on);
+      if (l < 0) { l = ends.length; ends.push(b.until); } else ends[l] = b.until;
+      return { b, l, a: Math.max(0, diff(mon, b.on)), z: Math.min(6, diff(mon, b.until)) };
+    });
+    return { placed, n: ends.length };
+  }
+
+  /* ---------- 週の面 ---------- */
+  const check = (x) => html`<button class="check" role="checkbox" aria-checked="${String(!!x.done)}" aria-label="${x.title} を終わりにする">${icon("check")}</button>`;
+  const row = (x, fact) => html`<div class="tp-row ${x.done ? "is-done" : ""}" data-id="${x.id}">${dot(x)}<span class="tp-name">${x.title}</span>${fact ? html`<span class="tp-fact">${fact}</span>` : ""}${check(x)}</div>`;
+
+  function weekFace() {
+    const now = st.anchor === W0;
+    const open = items.filter((x) => x.kind === "task" && !x.done && shown(x));
+    const dues = open.filter((x) => x.deadline && x.deadline <= END).sort((a, b) => a.deadline.localeCompare(b.deadline));
+    const week = open.filter((x) => inWeek(x) && !dues.includes(x));
+    const top = st.more ? week : week.slice(0, 5);
+    return html`
+      ${now && dues.length ? html`<h2 class="tp-h">期限</h2><div class="tp-list">${dues.map((x) => row(x, `${dw(x.deadline)}まで`))}</div>` : ""}
+      ${now ? html`<h2 class="tp-h">今週<button class="chip js-pick">選ぶ</button></h2>
+        <div class="tp-list">${top.map((x) => row(x, isToday(x) ? "今日" : ""))}${week.length > 5
+          ? html`<button class="tp-more js-more">${st.more ? "畳む" : `ほか ${week.length - 5}`}</button>` : ""}</div>` : ""}
+      ${days(st.anchor, "")}
+      ${days(add(st.anchor, 7), now ? "来週" : "")}
+      ${now ? later(open) : ""}`;
+  }
+
+  function days(mon, label) {
+    const ks = [...Array(7)].map((_, i) => add(mon, i));
+    const { placed, n } = lanes(spans(ks[0], ks[6]), mon);
+    const col = 2 + n;
+    const covered = (l, i) => placed.some((p) => p.l === l && p.a <= i && i <= p.z);
+    return html`<h2 class="tp-h">${label || range(mon)}${label ? html`<span class="tp-range">${range(mon)}</span>` : ""}</h2>
+      <div class="tp-week" style="grid-template-columns: 46px ${n ? `repeat(${n}, 26px) ` : ""}minmax(0, 1fr)">
+      ${ks.map((k, i) => html`
+        <div class="tp-day ${k === T ? "is-today" : ""}" style="grid-row:${i + 1}" data-day="${k}"><span class="tp-wd">${wd(k)}</span><span class="tp-dn">${dateOf(k).getDate()}</span></div>
+        ${[...Array(n)].map((_, l) => (covered(l, i) ? "" : html`<i class="tp-gap" style="grid-row:${i + 1};grid-column:${2 + l}"></i>`))}
+        <div class="tp-evs ${k < T ? "is-past" : ""}" style="grid-row:${i + 1};grid-column:${col}" data-day="${k}">${dayEvents(k).map((e) => html`
+          <span class="tp-ev">${dot(e)}<span class="tp-t">${e.time ? hm(toMin(e.time)) : ""}</span><span class="tp-n">${e.title}</span>${e.repeat ? html`<span class="tp-rep">${icon("repeat")}</span>` : ""}</span>`)}</div>`)}
+      ${placed.map((p) => html`<div class="tp-band ${p.b.until < T ? "is-past" : ""}" style="--cat:${cat(p.b)};grid-column:${2 + p.l};grid-row:${p.a + 1} / ${p.z + 2}">${[...p.b.title].map((c) => html`<span>${c === "ー" ? "｜" : c}</span>`)}</div>`)}
+      </div>`;
+  }
+
+  function later(open) {
+    const next = open.filter((x) => !x.shelf && !inWeek(x) && !(x.deadline && x.deadline <= END));
+    const wait = open.filter((x) => x.shelf === "wait"), some = open.filter((x) => x.shelf === "someday");
+    const fact = (x) => (x.deadline ? `${dw(x.deadline)}まで` : x.waitFor || "");
+    return html`<button class="tp-h js-later" aria-expanded="${String(st.later)}">これから<span class="tp-twist">${icon("chevron")}</span></button>
+      ${st.later ? html`<div class="tp-list">${next.map((x) => row(x, fact(x)))}</div>
+        ${wait.length ? html`<h3 class="tp-h is-sub">待つ</h3><div class="tp-list">${wait.map((x) => row(x, fact(x)))}</div>` : ""}
+        ${some.length ? html`<h3 class="tp-h is-sub">いつか</h3><div class="tp-list">${some.map((x) => row(x, ""))}</div>` : ""}` : ""}`;
+  }
+
+  /* ---------- 今日の面：一日の道（day-road.js の形をなぞった絵）と今日のやること ---------- */
+  /* 5:00〜23:00 を蛇行する一本。直線は一時間 98.4、折り返しは半径 47（day-road.js の寸法）。 */
+  const ROAD = "M81.6 46H303A47 47 0 0 1 303 140H57A47 47 0 0 0 57 234H303A47 47 0 0 1 303 328H57A47 47 0 0 0 57 422H278.4";
+  const RR = 47;
+  const SEG = [
+    { x0: 81.6, x1: 303, y: 46 }, { cx: 303, cy: 93, s: 1 }, { x0: 303, x1: 57, y: 140 }, { cx: 57, cy: 187, s: -1 },
+    { x0: 57, x1: 303, y: 234 }, { cx: 303, cy: 281, s: 1 }, { x0: 303, x1: 57, y: 328 }, { cx: 57, cy: 375, s: -1 },
+    { x0: 57, x1: 278.4, y: 422 },
+  ].map((g) => ({ ...g, len: g.s ? Math.PI * RR : Math.abs(g.x1 - g.x0) }));
+  const LEN = SEG.reduce((n, g) => n + g.len, 0);
+  const sOf = (m) => ((Math.min(Math.max(m, 300), 1380) - 300) * LEN) / 1080;
+  function pointAt(s) {
+    for (const g of SEG) {
+      if (s <= g.len) {
+        if (!g.s) return { x: g.x0 + Math.sign(g.x1 - g.x0) * s, y: g.y };
+        const a = s / RR;
+        return { x: g.cx + g.s * RR * Math.sin(a), y: g.cy - RR * Math.cos(a) };
+      }
+      s -= g.len;
+    }
+    return { x: 278.4, y: 422 };
+  }
+  const pct = (v, of) => `${((v / of) * 100).toFixed(2)}%`;
+
+  function road(evs) {
+    const went = sOf(NOWM);
+    const dash = (s, len) => `stroke-dasharray="${len.toFixed(1)} 4000" stroke-dashoffset="${(-s).toFixed(1)}"`;
+    const stops = evs.map((e) => { const a = toMin(e.time), z = e.end ? toMin(e.end) : a + 30; return { e, a, z, s: sOf(a), len: Math.max(sOf(z) - sOf(a), 3) }; });
+    let svg = `<svg class="road-svg" viewBox="0 0 360 452" aria-hidden="true" focusable="false"><path class="road-base" d="${ROAD}"/>`;
+    if (went > 1) svg += `<path class="road-went" d="${ROAD}" ${dash(0, went)}/>`;
+    stops.forEach((p) => {
+      svg += `<g class="road-stop"><path class="road-stop-edge" d="${ROAD}" ${dash(p.s, p.len)}/><path class="road-stop-in" d="${ROAD}" ${dash(p.s, p.len)}/>`;
+      if (went > p.s) svg += `<path class="road-stop-went" d="${ROAD}" ${dash(p.s, Math.min(p.len, went - p.s))}/>`;
+      svg += "</g>";
+    });
+    svg += '<g class="road-hours" font-size="7.4">';
+    for (let h = 6; h <= 22; h++) {
+      const s = sOf(h * 60), pt = pointAt(s);
+      const under = stops.some((p) => s >= p.s - 6 && s <= p.s + p.len + 6);
+      svg += `<text x="${pt.x.toFixed(1)}" y="${pt.y.toFixed(1)}" class="${under ? "is-under" : s <= went ? "is-went" : ""}">${h}</text>`;
+    }
+    svg += "</g>";
+    const me = NOWM >= 300 && NOWM <= 1380 ? pointAt(went) : null;
+    if (me) svg += `<circle class="tp-me" cx="${me.x.toFixed(1)}" cy="${me.y.toFixed(1)}" r="6"/>`;
+    svg += "</svg>";
+    /* 札は道の上に。いまの時刻の札とぶつかるときは道の下へ。折り返しの上の停留所は、輪の内側へ。 */
+    const labels = stops.map((p) => {
+      const c = pointAt(p.s + p.len / 2), arc = SEG.find((g) => g.s && Math.abs(g.cy - c.y) <= RR && Math.abs(g.cx - c.x) <= RR + 1 && (g.s > 0 ? c.x > 303 : c.x < 57));
+      const near = me && Math.abs(me.y - c.y) < 4 && Math.abs(me.x - c.x) < 80;
+      const x = arc ? c.x + (arc.s > 0 ? -130 : 16) : Math.min(Math.max(c.x - 52, 4), 236);
+      const y = arc ? Math.min(Math.max(c.y, arc.cy - 24), arc.cy + 24) : c.y + (near ? 17 : -17);
+      return html`<button type="button" class="road-label" style="left:${pct(x, 360)};top:${pct(y, 452)};width:34%"><b>${hm(p.a)}</b><span>${p.e.title}</span></button>`;
+    });
+    const cur = stops.find((p) => p.a <= NOWM && NOWM < p.z), nxt = stops.find((p) => p.a > NOWM);
+    const say = [cur ? html`いまは <b>${cur.e.title}</b>（${hm(cur.z)}まで）` : "", nxt ? html`次は <b>${hm(nxt.a)} ${nxt.e.title}</b>` : ""].filter(Boolean);
+    return html`<div class="day-road is-today" role="group" aria-label="一日の道">
+      <div class="road-map" style="aspect-ratio:360 / 452">${raw(svg)}<div class="road-marks">
+        <span class="road-edge is-under" style="left:14.05%;top:13.07%">5:00</span>
+        <span class="road-edge is-under" style="left:85.95%;top:96.26%">23:00</span>
+        ${me ? html`<span class="road-now" style="left:${pct(me.x, 360)};top:${pct(me.y - 17, 452)}">${hm(NOWM)}</span>` : ""}
+        ${labels}</div></div>
+      ${say.length ? html`<p class="road-next">${say.map((s, i) => html`${i ? " · " : ""}${s}`)}</p>` : ""}
+    </div>`;
+  }
+
+  function todayFace() {
+    const evs = items.filter((e) => falls(e, T) && e.time).sort(byTime);
+    const allDay = items.filter((e) => e.kind === "event" && ((e.until && e.on <= T && e.until >= T) || (!e.time && falls(e, T))));
+    const todo = items.filter((x) => x.kind === "task" && isToday(x)).sort((a, b) => a.done - b.done);
+    return html`
+      ${allDay.length ? html`<div class="tp-allday">${allDay.map((e) => html`<span style="--cat:${cat(e)}">${dot(e)}${e.title}${e.until ? html`<em>〜${dw(e.until)}</em>` : ""}</span>`)}</div>` : ""}
+      ${road(evs)}
+      ${todo.length ? html`<h2 class="tp-h">やること</h2><div class="tp-list">${todo.map((x) => row(x, ""))}</div>` : ""}`;
+  }
+
+  /* ---------- 描く ---------- */
+  const face = $("#tp-face");
+  function render() {
+    $$(".tp-seg .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.face === st.face)));
+    $("#tp-tools").hidden = st.face !== "week";
+    $(".js-now").hidden = st.anchor === W0;
+    $(".js-work").setAttribute("aria-pressed", String(st.work));
+    face.innerHTML = (st.face === "week" ? weekFace() : todayFace()).value;
+  }
+
+  /* その日へ：今週・来週なら行まで送る。ほかの週なら、その週から二週を並べる。 */
+  function goDay(k) {
+    const mon = monOf(k);
+    st.face = "week";
+    st.anchor = mon === W0 || mon === W1 ? W0 : mon;
+    render();
+    const scr = $("#screen-todo > .tl-sheet"), cells = $$(`[data-day="${k}"]`, face);
+    if (!cells.length) return;
+    const top = cells[0].getBoundingClientRect().top - scr.getBoundingClientRect().top + scr.scrollTop - 96;
+    scr.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    cells.forEach((c) => { c.classList.remove("tp-flash"); void c.offsetWidth; c.classList.add("tp-flash"); });
+  }
+
+  /* ---------- 紙（ui.js の sheet と同じ形。開く・閉じるだけ） ---------- */
+  function sheet({ title, cls = "", content, titleNode, onClose }) {
+    const back = node(html`<div class="sheet-backdrop"></div>`);
+    const el = node(html`<div class="sheet ${cls}" role="dialog" aria-modal="true" aria-label="${title}">
+      <div class="sheet-handle"></div>
+      <header class="sheet-head"><button class="icon-btn js-close" aria-label="閉じる">${icon("close")}</button><h2 class="sheet-title">${titleNode ? "" : title}</h2></header>
+      <div class="sheet-body"></div></div>`);
+    if (titleNode) $(".sheet-title", el).append(titleNode);
+    $(".sheet-body", el).append(content);
+    $("#sheet-root").append(back, el);
+    requestAnimationFrame(() => requestAnimationFrame(() => { back.classList.add("is-open"); el.classList.add("is-open"); }));
+    let shut = false;
+    const close = () => {
+      if (shut) return;
+      shut = true;
+      back.classList.remove("is-open");
+      el.classList.remove("is-open");
+      setTimeout(() => { back.remove(); el.remove(); }, 420);
+      if (onClose) onClose();
+    };
+    back.addEventListener("click", close);
+    $(".js-close", el).addEventListener("click", close);
+    return { el, close };
+  }
+
+  let toastTimer = 0;
+  function toast(msg, undo) {
+    const root = $("#toast-root");
+    root.innerHTML = "";
+    const el = node(html`<div class="toast"><span class="toast-msg">${msg}</span>${undo ? html`<button class="toast-action">戻す</button>` : ""}</div>`);
+    if (undo) $(".toast-action", el).addEventListener("click", () => { undo(); el.remove(); });
+    root.append(el);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.remove(), 3200);
+  }
+
+  /* ---------- 月の紙 ---------- */
+  const shiftMonth = (mk, n) => { const [y, m] = mk.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
+  function cellNames(k) {
+    const list = [
+      ...dayEvents(k).map((e) => ({ t: e.title, x: e })),
+      ...items.filter((x) => x.kind === "task" && x.deadline === k && !x.done && shown(x)).map((x) => ({ t: x.title, x, due: true })),
+    ];
+    const vis = list.length > 3 ? list.slice(0, 2) : list;
+    return html`${vis.map((o) => html`<span class="${o.due ? "is-due" : ""}" style="--cat:${cat(o.x)}">${[...o.t].slice(0, 4).join("")}</span>`)}${list.length > 3 ? html`<span class="is-n">+${list.length - 2}</span>` : ""}`;
+  }
+  function monthWeek(mon, mk) {
+    const ks = [...Array(7)].map((_, i) => add(mon, i));
+    const { placed, n } = lanes(spans(ks[0], ks[6]), mon);
+    const names = 2 + n;
+    return html`<div class="tp-mw" style="grid-template-rows: auto ${n ? `repeat(${n}, 19px) ` : ""}1fr">
+      ${ks.map((k, i) => html`<button class="tp-mc ${k.slice(0, 7) !== mk ? "is-out" : ""} ${i ? "" : "is-mon"}" style="grid-column:${i + 1};grid-row:1 / ${names + 1}" data-day="${k}" aria-label="${md(k)}"></button>`)}
+      ${ks.map((k, i) => html`<span class="tp-mn ${k === T ? "is-today" : ""} ${k.slice(0, 7) !== mk ? "is-out" : ""}" style="grid-column:${i + 1};grid-row:1">${dateOf(k).getDate()}</span>`)}
+      ${placed.map((p) => html`<span class="tp-mb ${p.b.on < ks[0] ? "is-l" : ""} ${p.b.until > ks[6] ? "is-r" : ""}" style="--cat:${cat(p.b)};grid-column:${p.a + 1} / ${p.z + 2};grid-row:${2 + p.l}">${p.b.title}</span>`)}
+      ${ks.map((k, i) => html`<span class="tp-ml" style="grid-column:${i + 1};grid-row:${names}">${cellNames(k)}</span>`)}
+    </div>`;
+  }
+  function monthHTML(mk) {
+    const [y, m] = mk.split("-").map(Number);
+    const last = keyOf(new Date(y, m, 0)), weeks = [];
+    for (let k = monOf(mk + "-01"); k <= last; k = add(k, 7)) weeks.push(k);
+    return html`<div class="tp-mwds">${[..."月火水木金土日"].map((c) => html`<span>${c}</span>`)}</div>${weeks.map((k) => monthWeek(k, mk))}`;
+  }
+  function openMonth(from) {
+    let mk = from.slice(0, 7);
+    const body = node(html`<div class="tp-mbody"></div>`);
+    const head = node(html`<span class="tp-mtitle"><button class="icon-btn js-prev" aria-label="前の月">${icon("chevron-left")}</button><span class="js-mname"></span><button class="icon-btn js-next" aria-label="次の月">${icon("chevron")}</button></span>`);
+    const paint = () => { const [y, m] = mk.split("-").map(Number); $(".js-mname", head).textContent = `${y}年${m}月`; body.innerHTML = monthHTML(mk).value; };
+    const sh = sheet({ title: "月", cls: "tp-msheet", content: body, titleNode: head });
+    $(".js-prev", head).addEventListener("click", () => { mk = shiftMonth(mk, -1); paint(); });
+    $(".js-next", head).addEventListener("click", () => { mk = shiftMonth(mk, 1); paint(); });
+    body.addEventListener("click", (e) => {
+      const c = e.target.closest(".tp-mc");
+      if (!c) return;
+      sh.close();
+      setTimeout(() => goDay(c.dataset.day), 200);
+    });
+    paint();
+  }
+
+  /* ---------- 選ぶ紙（今週の「選ぶ」） ---------- */
+  function openPick() {
+    const soon = add(T, 14), used = new Set();
+    const pool = items.filter((x) => x.kind === "task" && !x.done && !inWeek(x));
+    const take = (f) => pool.filter((x) => !used.has(x) && f(x)).map((x) => (used.add(x), x));
+    const groups = [
+      ["期限", take((x) => x.deadline && x.deadline <= soon).sort((a, b) => a.deadline.localeCompare(b.deadline))],
+      ["見直す", take((x) => x.review && x.review <= T)],
+      ["先週", take((x) => x.week === WP)],
+      ["新しい", take((x) => x.made >= add(T, -7))],
+    ].filter((g) => g[1].length);
+    const fact = (x) => (x.deadline ? `${dw(x.deadline)}まで`
+      : x.shelf === "someday" ? `いつか · ${md(x.made)}から`
+      : x.shelf === "wait" ? `待つ · ${x.waitFor}`
+      : x.week === WP ? `先週 · ${md(x.made)}から`
+      : `${md(x.made)}から`);
+    const keep = new Map(pool.map((x) => [x.id, { week: x.week, today: x.today, shelf: x.shelf }]));
+    const body = node(html`<div class="tp-pbody">${groups.map(([h, xs]) => html`<h3 class="tp-pick-h">${h}</h3>${xs.map((x) => html`
+      <div class="tp-pick" data-id="${x.id}">
+        <div class="tp-pick-name">${dot(x)}<span>${x.title}</span></div>
+        <div class="tp-pick-fact">${fact(x)}</div>
+        <div class="tp-pick-go"><button class="chip" data-go="week" aria-pressed="false">今週へ</button><button class="chip" data-go="today" aria-pressed="false">今日へ</button><button class="chip" data-go="someday" aria-pressed="false">いつかへ</button></div>
+      </div>`)}`)}</div>`);
+    body.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-go]");
+      if (!b) return;
+      const box = b.closest(".tp-pick"), x = items.find((i) => i.id === box.dataset.id);
+      const again = b.getAttribute("aria-pressed") === "true";
+      Object.assign(x, keep.get(x.id));
+      if (!again) {
+        if (b.dataset.go === "someday") Object.assign(x, { shelf: "someday", week: null, today: null });
+        else Object.assign(x, { shelf: null, week: W0, today: b.dataset.go === "today" ? T : x.today });
+      }
+      $$("[data-go]", box).forEach((c) => c.setAttribute("aria-pressed", String(!again && c === b)));
+    });
+    sheet({ title: "選ぶ", cls: "tp-psheet", content: body, onClose: render });
+  }
+
+  /* ---------- 一行（右下の＋）。キーボードは勝手に出さない ---------- */
+  const SHOP = /^(牛乳|卵|パン|電池|洗剤|ティッシュ|トイレットペーパー|米)$|を買う$/;
+  function dayOfMonth(n, after) {
+    if (!(n >= 1 && n <= 31)) return null;
+    const from = after || T, [y, m] = from.split("-").map(Number);
+    const k = keyOf(new Date(y, m - 1, n));
+    return k >= from ? k : keyOf(new Date(y, m, n));
+  }
+  /* 日付・時刻・くり返しは js/when-parse.js。期間（「22〜24日」）と隔週・毎年だけここで読む（見本の足し）。 */
+  function guess(s) {
+    let text = String(s || "").trim(), from = null, until = null, rep = null;
+    const m = text.match(/(\d{1,2})日?\s*[〜~～]\s*(\d{1,2})日/);
+    if (m) {
+      const a = dayOfMonth(+m[1]), z = a && dayOfMonth(+m[2], a);
+      if (a && z && z > a) { from = a; until = z; text = (text.slice(0, m.index) + text.slice(m.index + m[0].length)).trim(); }
+    }
+    const r = text.match(/隔週|毎年/);
+    if (r) { rep = r[0] === "隔週" ? "biweekly" : "yearly"; text = text.replace(r[0], "").trim(); }
+    const p = KN.whenParse.parse(text, { today: T });
+    return { title: (p.title || "").replace(/^[のにで\s]+/, ""), day: from || p.due || null, until, time: p.time || null,
+      minutes: p.minutes || null, deadline: p.deadline || null, repeat: rep || (p.repeat === "weekly" || p.repeat === "daily" ? p.repeat : null) };
+  }
+  const REP = { daily: "毎日", weekly: "毎週", biweekly: "隔週", yearly: "毎年" };
+  function whenText(g, kind) {
+    if (!g.title) return "";
+    if (kind === "event") {
+      const d = g.day || T;
+      return [g.repeat ? REP[g.repeat] : "", g.until ? `${dw(d)}〜${dw(g.until)}` : dw(d), g.time ? hm(toMin(g.time)) : ""].filter(Boolean).join(" ");
+    }
+    if (g.deadline) return `${dw(g.deadline)}まで`;
+    return g.day === T ? "今日" : g.day && g.day <= END ? "今週" : "これから";
+  }
+  function openAdd() {
+    const body = node(html`<div class="tp-add">
+      <input class="input js-line" type="text" enterkeyhint="done" autocomplete="off" aria-label="一行">
+      <div class="tp-add-row">
+        <div class="seg js-kind" role="group"><button class="seg-btn" data-v="task">やること</button><button class="seg-btn" data-v="event">予定</button></div>
+        <div class="seg js-side" role="group"><button class="seg-btn" data-v="work">仕事</button><button class="seg-btn" data-v="life">くらし</button></div>
+      </div>
+      <p class="tp-when js-when"></p>
+      <button class="chip js-shop" hidden>→ 買うもの</button>
+      <button class="btn btn-primary btn-block js-put" disabled>入れる</button>
+    </div>`);
+    const inp = $(".js-line", body);
+    let kind = "task", side = "work", hand = false, g = guess("");
+    const paint = () => {
+      $$(".js-kind .seg-btn", body).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === kind)));
+      $$(".js-side .seg-btn", body).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === side)));
+      $(".js-when", body).textContent = whenText(g, kind);
+      $(".js-shop", body).hidden = !SHOP.test(inp.value.trim());
+      $(".js-put", body).disabled = !g.title;
+    };
+    const read = () => { g = guess(inp.value); if (!hand) kind = g.time || g.until ? "event" : "task"; paint(); };
+    const sh = sheet({ title: "", cls: "is-fab-card tp-asheet", content: body });
+    function put() {
+      if (!g.title) return;
+      let x, msg;
+      if (kind === "event") {
+        const on = g.day || T;
+        x = { id: "n" + seq++, kind: "event", side, title: g.title, on, until: g.until, repeat: g.repeat,
+          time: g.time, end: g.time ? tOf(toMin(g.time) + (g.minutes || 60)) : null };
+        msg = `予定 · ${whenText(g, kind)}`;
+      } else {
+        x = { id: "n" + seq++, kind: "task", side, title: g.title, made: T, deadline: g.deadline };
+        if (g.day && g.day <= END) { x.week = W0; if (g.day === T) x.today = T; }
+        msg = `${whenText(g, kind)}へ`;
+      }
+      items.push(x);
+      sh.close();
+      render();
+      toast(msg, () => { items.splice(items.indexOf(x), 1); render(); });
+    }
+    inp.addEventListener("input", read);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); put(); } });
+    $(".js-kind", body).addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if (b) { kind = b.dataset.v; hand = true; paint(); } });
+    $(".js-side", body).addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if (b) { side = b.dataset.v; paint(); } });
+    $(".js-shop", body).addEventListener("click", () => { sh.close(); toast("買うものへ"); });
+    $(".js-put", body).addEventListener("click", put);
+    paint();
+  }
+
+  /* ---------- 押したとき ---------- */
+  face.addEventListener("click", (e) => {
+    const t = e.target;
+    const c = t.closest(".check");
+    if (c) {
+      const x = items.find((i) => i.id === c.closest("[data-id]").dataset.id);
+      x.done = !x.done;
+      c.setAttribute("aria-checked", String(x.done));
+      setTimeout(render, 380);
+      if (x.done) toast("済ませた", () => { x.done = false; render(); });
+      return;
+    }
+    if (t.closest(".js-more")) { st.more = !st.more; render(); }
+    else if (t.closest(".js-later")) { st.later = !st.later; render(); }
+    else if (t.closest(".js-pick")) openPick();
+  });
+  $$(".tp-seg .seg-btn").forEach((b) => b.addEventListener("click", () => { st.face = b.dataset.face; st.anchor = W0; render(); }));
+  $(".js-month").addEventListener("click", () => openMonth(st.anchor));
+  $(".js-cal").addEventListener("click", () => openMonth(T));
+  $(".js-work").addEventListener("click", () => { st.work = !st.work; render(); });
+  $(".js-now").addEventListener("click", () => { st.anchor = W0; render(); $("#screen-todo > .tl-sheet").scrollTo({ top: 0 }); });
+  $(".js-open-add").addEventListener("click", openAdd);
+
+  /* ---------- 上の帯（今日の題と今週の暦。暦の印は仕事とくらしの色） ---------- */
+  const d0 = dateOf(T);
+  $("#tp-title").innerHTML = html`<span class="day-y">${d0.getFullYear()}</span><span class="day-pre">年${d0.getMonth() + 1}月</span><span class="day-d is-today">${d0.getDate()}</span><span class="day-post">日(${wd(T)})</span>`.value;
+  $$("[data-ico]").forEach((b) => { b.innerHTML = icon(b.dataset.ico).value; });
+  $(".js-open-add").innerHTML = icon("plus").value;
+  $("#tp-strip").innerHTML = [...Array(7)].map((_, i) => {
+    const k = add(W0, i);
+    const sides = [...new Set(items.filter((e) => falls(e, k) || (e.until && e.on <= k && e.until >= k)).filter((e) => e.repeat !== "daily").map((e) => e.side))];
+    return html`<button class="cal-day ${i === 5 ? "is-sat" : i === 6 ? "is-sun" : ""} ${k === T ? "is-today" : ""}" data-day="${k}" aria-label="${md(k)}">
+      <span class="cal-n">${dateOf(k).getDate()}</span>
+      <span class="cal-dots">${sides.map((s) => html`<span class="cal-mark" style="--cat:${cat({ side: s })}"></span>`)}</span></button>`.value;
+  }).join("");
+  $("#tp-strip").addEventListener("click", (e) => { const b = e.target.closest(".cal-day"); if (b) goDay(b.dataset.day); });
+
+  /* ---------- 下の帯（今の見た目だけ。tasks をもう一度押すと 今日｜週 を行き来） ---------- */
+  const TABS = [["archive", "daily", "book"], ["notes", "notes", "notes"], ["todo", "tasks", "checklist"], ["list", "shopping", "cart"], ["diet", "health", "heart"]];
+  $("#tabbar").innerHTML = TABS.map(([id, label, ico]) => `
+    <button class="tab tab-${id}" role="tab" data-tab="${id}" aria-selected="${id === "todo"}" ${id === "todo" ? "" : 'tabindex="-1"'}>
+      <span class="tab-ico"><span class="tab-ico-face is-on" data-face="${id}">${icon(ico).value}</span></span>
+      <span class="tab-label">${label}</span>
+    </button>`).join("");
+  $(".tab-todo").addEventListener("click", () => { st.face = st.face === "week" ? "today" : "week"; st.anchor = W0; render(); });
+
+  /* ---------- 季節の絵（アプリと同じ敷き方） ---------- */
+  KN.seasonArt.apply($("#screen-todo"), T, "todo");
+  KN.seasonArt.apply($("#head"), T, "todo");
+
+  render();
+})();
+</script>
+</body>
+</html>
