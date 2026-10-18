@@ -2626,7 +2626,7 @@
   function sheetDigest(day) {
     const st = store.get();
     return JSON.stringify([
-      day, todayKey(),
+      day, todayKey(), face, weekMore,
       day === todayKey() ? KN.util.nowTime() : "",
       st.settings,
       (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
@@ -2775,9 +2775,10 @@
     if (oneDay()) {
       /* 一日ぶんの中身は、横に払える一枚（.day-slide）にまとめて入れます。
          払っているあいだ、隣の日の紙が指のぶんだけ入ってきます。 */
+      sheet.append(faceTabs());
       const car = node(html`<div class="day-car"><div class="day-track"></div></div>`);
       const track = car.querySelector(".day-track");
-      track.append(daySlide(shownDay(), open));
+      track.append(weekFace() ? weekSlide(shownDay(), open) : daySlide(shownDay(), open));
       sheet.append(car);
       /* 指を受けるのは紙ぜんぶ——長期タスクの下の空白からも払えるように
          （day-swipe.js の「受け口は紙ぜんぶ」）。 */
@@ -2837,6 +2838,12 @@
      ように、todayKey() を焼き付けません）。 */
   let viewDay = null;
   const shownDay = () => viewDay || todayKey();
+  /* 紙の頭の「今日｜週」（docs/todo-items.md「仕事の予定とやること」の段3）。開いたときは週。
+     どちらを見ているかは保存しない。試験の台本は sessionStorage の kn-todo-face=today で今日から（tests/lib.js）。 */
+  let face = (() => { try { return sessionStorage.getItem("kn-todo-face") === "today" ? "today" : "week"; } catch (_) { return "week"; } })();
+  let weekMore = false;   // 今週の「ほか n」を開いているか
+  const weekFace = () => oneDay() && face === "week";
+  const dayFace = () => oneDay() && face !== "week";
   /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
   const titleDay = () => (oneDay() ? shownDay() : (hereDay || todayKey()));
 
@@ -2866,6 +2873,140 @@
     // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
     el.append(somedaySection(open));
     return el;
+  }
+
+  /* ---------------- 今日｜週（docs/todo-items.md「仕事の予定とやること」の段3） ----------------
+
+     週の面は、上の暦が見ている週の中身（暦は上の帯の一つだけ。紙に七日の升は描かない）。
+     期限（今週と過ぎたもの・赤くしない）→ 今週（今週の印。5行まで）→ 七日の行（予定とやることの時刻と名前。
+     またがる予定は帯・毎日のくり返しは出さない・過ぎた日は予定だけ薄く）。見出しに数は出さない。 */
+
+  /** 面を替えて、その日（週の面ならその日の週）を出す。 */
+  function setFace(to, day) {
+    haptic();
+    face = to;
+    if (day && day !== shownDay()) { goDay(day); return; }
+    render();
+    keepAim++;
+    if (root) KN.app.scrollerOf(root).scrollTop = 0;
+    if (to === "today" && shownDay() === todayKey()) requestAnimationFrame(toNow);
+  }
+
+  function faceTabs() {
+    const el = node(html`
+      <div class="wk-faces">
+        <div class="seg" role="group" aria-label="面">
+          <button type="button" class="seg-btn" data-face="today" aria-pressed="${String(face !== "week")}">今日</button>
+          <button type="button" class="seg-btn" data-face="week" aria-pressed="${String(face === "week")}">週</button>
+        </div>
+      </div>
+    `);
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest(".seg-btn");
+      if (!b || b.dataset.face === (face === "week" ? "week" : "today")) return;
+      setFace(b.dataset.face, b.dataset.face === "today" ? todayKey() : shownDay());
+    });
+    return el;
+  }
+
+  const SIDE = (t) => (t.side === "work" ? "var(--side-work)" : "var(--side-life)");
+  const wkDot = (t) => html`<span class="chip-dot" style="--cat:${SIDE(t)}"></span>`;
+  const wkClock = (hm) => (KN.util.isTime(hm) ? hm.replace(/^0/, "") : "");
+
+  function weekSlide(day, open) {
+    const U = KN.util;
+    const today = todayKey();
+    const w = U.weekOf(day);
+    const now = today >= w.from && today <= w.to;
+    const all = store.get().todos;
+    const el = node(html`<div class="day-slide wk" data-week="${w.from}"></div>`);
+
+    const row = (t, fact) => {
+      const r = node(html`
+        <div class="wk-row" data-id="${t.id}">
+          ${wkDot(t)}<button type="button" class="wk-name js-open">${t.title}</button>
+          ${fact ? html`<span class="wk-fact">${fact}</span>` : ""}
+          <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox" aria-checked="false"
+                  aria-label="${t.title} を終わりにする">${icon("check")}</button>
+        </div>
+      `);
+      r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
+      return r;
+    };
+    const list = (rows) => { const box = node(html`<div class="wk-list"></div>`); rows.forEach((r) => box.append(r)); return box; };
+
+    if (now) {
+      const tasks = open.filter((t) => t.kind !== "event" && !t.trace);
+      const dues = tasks.filter((t) => t.deadline && t.deadline <= w.to)
+        .sort((a, b) => (a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0));
+      if (dues.length) {
+        el.append(node(html`<h2 class="wk-h">期限</h2>`));
+        el.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`))));
+      }
+      const marked = tasks.filter((t) => store.inWeek(t, today) && !dues.includes(t));
+      if (marked.length) {
+        el.append(node(html`<h2 class="wk-h">今週</h2>`));
+        const box = list((weekMore ? marked : marked.slice(0, 5))
+          .map((t) => row(t, t.due === today ? "今日" : "")));
+        if (marked.length > 5) {
+          const more = node(html`<button type="button" class="wk-more">${weekMore ? "畳む" : `ほか ${marked.length - 5}`}</button>`);
+          more.addEventListener("click", () => { haptic(); weekMore = !weekMore; render(); });
+          box.append(more);
+        }
+        el.append(box);
+      }
+    }
+
+    el.append(weekDays(w, open, all, today));
+    el.addEventListener("click", (e) => {
+      const n = e.target.closest(".js-open");
+      if (n) { haptic(); openSheet(n.closest("[data-id]").dataset.id, null); return; }
+      const d = e.target.closest(".js-day");
+      if (d) setFace("today", d.dataset.day);
+    });
+    return el;
+  }
+
+  /** 七日の行。何日にもまたがる予定（endDay）は、日の列と予定の列のあいだを縦に通る帯。 */
+  function weekDays(w, open, all, today) {
+    const U = KN.util;
+    const ks = [...Array(7)].map((_, i) => U.shiftDay(w.from, i));
+    const live = (t) => !t.archived && (!t.done || t.kind === "event");
+    const bands = all.filter((t) => t.endDay && t.due && live(t) && t.due <= w.to && t.endDay >= w.from)
+      .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
+    // 帯の筋（重ならない帯は同じ筋に）。
+    const ends = [];
+    const placed = bands.map((t) => {
+      let l = ends.findIndex((e) => e < t.due);
+      if (l < 0) { l = ends.length; ends.push(t.endDay); } else ends[l] = t.endDay;
+      const a = ks.indexOf(t.due), z = ks.indexOf(t.endDay);   // 週の外から来る・外へ出る帯は端まで
+      return { t, l, a: a < 0 ? 0 : a, z: z < 0 ? 6 : z };
+    });
+    const n = ends.length;
+    /* 今日から先はくり返しも立てる（store.fallsOn）。過ぎた日は、その日の予定（済の印に関わらず）と、
+       まだ済んでいないやることだけ。 */
+    const onDay = (k) => (k >= today
+      ? open.filter((t) => !t.endDay && t.repeat !== "daily" && store.fallsOn(t, k))
+      : all.filter((t) => !t.endDay && t.due === k && !t.archived && (t.kind === "event" || !t.done)))
+      .sort((a, b) => ((a.time || "99") < (b.time || "99") ? -1 : (a.time || "99") > (b.time || "99") ? 1 : 0));
+    const covered = (l, i) => placed.some((p) => p.l === l && p.a <= i && i <= p.z);
+    const col = 2 + n;
+    const grid = node(html`
+      <div class="wk-week" style="grid-template-columns: 46px ${n ? `repeat(${n}, 26px) ` : ""}minmax(0, 1fr)">
+        ${ks.map((k, i) => html`
+          <button type="button" class="wk-day js-day ${k === today ? "is-today" : ""}" style="grid-row:${i + 1}" data-day="${k}"
+                  aria-label="${mdJa(k)}"><span class="wk-wd">${"日月火水木金土"[U.dayDate(k).getDay()]}</span><span class="wk-dn">${U.dayDate(k).getDate()}</span></button>
+          ${[...Array(n)].map((_, l) => (covered(l, i) ? "" : html`<i class="wk-gap" style="grid-row:${i + 1};grid-column:${2 + l}"></i>`))}
+          <div class="wk-evs ${k < today ? "is-past" : ""}" style="grid-row:${i + 1};grid-column:${col}" data-day="${k}">
+            ${onDay(k).map((t) => html`
+              <button type="button" class="wk-ev js-open ${t.kind === "event" ? "is-event" : ""}" data-id="${t.id}">${wkDot(t)}<span class="wk-t">${wkClock(t.time)}</span><span class="wk-n">${t.title}</span>${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`)}
+          </div>`)}
+        ${placed.map((p) => html`
+          <button type="button" class="wk-band js-open ${p.t.endDay < today ? "is-past" : ""}" data-id="${p.t.id}" aria-label="${p.t.title}"
+                  style="--cat:${SIDE(p.t)};grid-column:${2 + p.l};grid-row:${p.a + 1} / ${p.z + 2}">${[...p.t.title].map((c) => html`<span>${c === "ー" ? "｜" : c}</span>`)}</button>`)}
+      </div>
+    `);
+    return grid;
   }
 
   function daySection(day, open) {
@@ -3575,7 +3716,8 @@
     const host = els.late;
     const oldBar = host && host.querySelector(".tl-late");
     if (oldBar) oldBar.remove();
-    const late = host && oneDay() && shownDay() === today
+    // 頭の札（期限切れ・運んだもの・時刻を過ぎたもの・見直す）は今日の面だけ。週の面には出さない。
+    const late = host && dayFace() && shownDay() === today
       ? (open || []).filter((t) => t.due && t.due < today && t.kind !== "event") : [];
     if (late.length) {
       const bar = node(html`
@@ -3597,7 +3739,7 @@
        数は件数だけ——「できなかった」「◯日持ち越し」は言いません。 */
     const oldCarry = host && host.querySelector(".tl-carry");
     if (oldCarry) oldCarry.remove();
-    const carried = host && oneDay() && shownDay() === today ? store.carriedToday() : [];
+    const carried = host && dayFace() && shownDay() === today ? store.carriedToday() : [];
     if (carried.length) {
       const bar = node(html`
         <button type="button" class="tl-late tl-carry">
@@ -3613,7 +3755,7 @@
     /* 見直す（3.0 の B1）。見直す日が来たものの数と、一件ずつの紙への口。色は変えない。 */
     const oldReview = host && host.querySelector(".tl-review");
     if (oldReview) oldReview.remove();
-    const due = host && oneDay() && shownDay() === today ? store.reviewDue() : [];
+    const due = host && dayFace() && shownDay() === today ? store.reviewDue() : [];
     if (due.length) {
       const bar = node(html`
         <button type="button" class="tl-late tl-review">
@@ -3996,7 +4138,7 @@
     const host = els.late;
     if (!host) return;
     const old = host.querySelector(".tl-passed");
-    const list = oneDay() && shownDay() === todayKey() ? store.passedToday() : [];
+    const list = dayFace() && shownDay() === todayKey() ? store.passedToday() : [];
     if (!force && (old ? Number(old.dataset.n) : 0) === list.length) return;
     if (old) old.remove();
     if (!list.length) return;
@@ -4120,6 +4262,8 @@
   function openDay(day) {
     haptic();
     if (oneDay()) {
+      // 週の面で日を押したら、その日の面へ。
+      if (face === "week") { setFace("today", day); return; }
       goDay(day);
       return;
     }
@@ -4153,11 +4297,11 @@
       day: shownDay,
       /* 先の日へも行けます。ここは「これから何をするか」を組む画面なので、
          明日・あさっての時間割にも用があります。 */
-      step: (d, dir) => shiftDay(d, dir),
+      step: (d, dir) => shiftDay(d, weekFace() ? dir * 7 : dir),   // 週の面は週ずつ
       /* 隣の日も、いまの組み直しで拾った同じ一覧から組みます（`open` は
          日で絞る前のもの）。掴んでいるあいだ組み直しは止まっているので、
          この控えが古くなることはありません。 */
-      slide: (d) => daySlide(d, open),
+      slide: (d) => (weekFace() ? weekSlide(d, open) : daySlide(d, open)),
       /* **組み直しません。** 滑りきった `kept` が、もう「その日」の紙です
          ——同じものをもう一度組むために 134ms 固まると、次の日が「いきなり
          出てきた」ように見えます（実測・CPU 4倍）。
@@ -6091,21 +6235,11 @@
     setTimeout(() => { restoring = false; }, 60);
   }
 
-  /* tasks の席をもう一度押したら、時間割へ。また押したら一日の道へ（2026年10月6日・
-     利用者の声）。道が画面に残っていれば時間割へ、もう上へ出ていれば道へ。道を
-     出していないときは断ります（帯は今までどおり組み直す）。 */
+  /* tasks の席をもう一度押したら、今日｜週 を行き来（2026年10月18日、利用者。前の「時間割 ⇄ 一日の道」の
+     置き換え）。一覧で見ているときは断ります（帯は今までどおり組み直す）。 */
   function again() {
-    const road = root && root.querySelector(".day-road");
-    const tl = road && road.nextElementSibling;
-    if (!tl) return false;
-    keepAim++;
-    const sc = KN.app.scrollerOf(root);
-    const box = sc.getBoundingClientRect();
-    const r = road.getBoundingClientRect();
-    const onRoad = r.bottom - box.top > r.height / 2;
-    const to = onRoad ? sc.scrollTop + (tl.getBoundingClientRect().top - box.top) : 0;
-    const max = Math.max(0, sc.scrollHeight - sc.clientHeight);
-    sc.scrollTo({ top: Math.round(Math.min(max, Math.max(0, to))), behavior: "smooth" });
+    if (!oneDay()) return false;
+    setFace(face === "week" ? "today" : "week", todayKey());
     return true;
   }
 

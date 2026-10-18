@@ -1,4 +1,5 @@
-/* tasks の席をもう一度押すと、時間割へ。また押すと一日の道へ（2026年10月6日）。 */
+/* tasks の席をもう一度押すと 今日｜週 を行き来（2026年10月18日。前の「時間割 ⇄ 一日の道」を置き換えた）。
+   今日へ戻ると道（いちばん上）から。 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -16,21 +17,20 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(800);
   const where = () => page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
-    const sc = KN.app.scrollerOf(scr), box = sc.getBoundingClientRect();
-    const road = scr.querySelector(".day-road"), tl = road.nextElementSibling;
-    return { top: sc.scrollTop, tl: Math.round(tl.getBoundingClientRect().top - box.top) };
+    const sc = KN.app.scrollerOf(scr);
+    return { top: sc.scrollTop, road: !!scr.querySelector(".day-road"), week: !!scr.querySelector(".wk") };
   });
   const a = await where();
-  c.check("開いたときは道（いちばん上）", a.top === 0, JSON.stringify(a));
+  c.check("今日の面は道（いちばん上）", a.road && a.top === 0, JSON.stringify(a));
   await page.click('.tab[data-tab="todo"]');
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(700);
   const b = await where();
-  c.check("もう一度押すと時間割が紙の頭に", b.top > 0 && Math.abs(b.tl) <= 2, JSON.stringify(b));
-  await page.screenshot({ path: "/tmp/claude-0/retap.png" });
+  c.check("もう一度押すと週の面", b.week && !b.road, JSON.stringify(b));
+  await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 200; });
   await page.click('.tab[data-tab="todo"]');
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(700);
   const d = await where();
-  c.check("また押すと道へ戻る", d.top === 0, JSON.stringify(d));
+  c.check("また押すと今日の面の道へ", d.road && d.top === 0, JSON.stringify(d));
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();
   c.done();
