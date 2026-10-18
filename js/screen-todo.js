@@ -2955,6 +2955,8 @@
     const tasks = open.filter((t) => t.kind !== "event" && !t.trace);
     let dues = [], marked = [];
     if (now) {
+      const cp = copyBlock();
+      if (cp) el.append(cp);
       dues = tasks.filter((t) => t.deadline && t.deadline <= w.to)
         .sort((a, b) => (a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0));
       if (dues.length) {
@@ -2998,6 +3000,29 @@
       if (d) setFace("today", d.dataset.day);
     });
     return el;
+  }
+
+  /** PC で見る iPhone の写し（段4の④）。受け箱へ置く端末だけ。読むだけ（済ませる・直すは iPhone）。
+     読めるまでは何も出さない。「◯時の写し」で古さを隠さない。 */
+  let glanceCopyData = null, glanceAsked = false;
+  function copyBlock() {
+    if (store.get().settings.inboxPost !== true || !KN.dropbox || !KN.dropbox.glanceRead) return null;
+    if (!glanceAsked) {
+      glanceAsked = true;
+      KN.dropbox.glanceRead().then((d) => { glanceCopyData = d; glanceAsked = false; if (d) render(); }, () => { glanceAsked = false; });
+    }
+    const d = glanceCopyData;
+    if (!d || (!d.events.length && !d.marks.length)) return null;
+    const at = new Date(d.at);
+    const when = Number.isFinite(+at) ? `${at.getMonth() + 1}/${at.getDate()} ${at.getHours()}時${String(at.getMinutes()).padStart(2, "0")}分の写し` : "";
+    const box = node(html`<div class="wk-copy"><h2 class="wk-h">iPhone<span class="wk-range">${when}</span></h2><div class="wk-list"></div></div>`);
+    const lst = box.querySelector(".wk-list");
+    const line = (side, time, name) => lst.append(node(html`
+      <div class="wk-row">${side ? html`<span class="chip-dot" style="--cat:${SIDE({ side })}"></span>` : ""}
+      <span class="wk-name">${name}</span>${time ? html`<span class="wk-fact">${wkClock(time)}</span>` : ""}</div>`));
+    d.events.forEach((e) => line(e.side, e.time, String(e.name || "")));
+    d.marks.forEach((m) => line("", "", String(m || "")));
+    return box;
   }
 
   /** これから（畳む。開いたかは保存しない）。上の期限・今週・二週の行に出ていないやること。

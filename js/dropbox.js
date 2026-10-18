@@ -642,6 +642,23 @@
     return n;
   }
 
+  /* PC で見る（段4の④）。iPhone が書いた glance.json を読むだけ（書かない・消さない）。
+     受け箱へ置く端末（inboxPost 入）だけが読み、読めなければ null（黙る）。 */
+  let seen = null, seenAt = 0;
+  async function glanceRead(force) {
+    if (!force && Date.now() - seenAt < 60000) return seen;
+    await recovered;
+    if (!connected() || !cfg.appKey || store.get().settings.inboxPost !== true) return null;
+    seenAt = Date.now();
+    try {
+      const r = await call(CONTENT, "/2/files/download", { arg: { path: GLANCE }, raw: true });
+      if (!r.res.ok) return (seen = null);
+      const d = JSON.parse(await r.res.text());
+      const ok = d && d.v === 1 && Array.isArray(d.events) && Array.isArray(d.marks);
+      return (seen = ok ? d : null);
+    } catch (_) { return (seen = null); }
+  }
+
   function status() {
     return {
       appKey: cfg.appKey || "",
@@ -697,5 +714,5 @@
     await post("/2/files/upload_session/finish", { cursor: { session_id, offset: at }, commit }, file.slice(at));
   }
 
-  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, inboxPut, inboxTake, KEEP, api };
+  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, glanceRead, inboxPut, inboxTake, KEEP, api };
 })();
