@@ -93,6 +93,29 @@
     const notify = KN.notify;
     const canNotify = notify && notify.supported();
 
+    function roadSeg(s) {
+      const at = s.todoRoad === false ? "off" : s.todoRoadAt === "below" ? "below" : "above";
+      const el = node(html`
+        <div class="set-card is-pad">
+          <div class="seg js-road">
+            <button class="seg-btn" data-road="above" aria-pressed="${String(at === "above")}">上</button>
+            <button class="seg-btn" data-road="below" aria-pressed="${String(at === "below")}">下</button>
+            <button class="seg-btn" data-road="off" aria-pressed="${String(at === "off")}">出さない</button>
+          </div>
+        </div>
+      `);
+      el.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => {
+        const v = b.dataset.road;
+        store.update((x) => {
+          x.settings.todoRoad = v !== "off";
+          if (v === "below") x.settings.todoRoadAt = "below";
+          else if (v === "above") delete x.settings.todoRoadAt;
+        });
+        render();
+        KN.motion.fire("select");
+      }));
+      return el;
+    }
     return [
       card(
         switchRow({
@@ -104,18 +127,10 @@
           },
         })
       ),
-      /* 一日の道（js/day-road.js）。時間割の上の地図なので、時間割で見ている
-         ときだけ効きます。既定は出す（設定を持たない保存は `!== false` で出る）。 */
-      card(
-        switchRow({
-          title: "一日の道を出す", on: s.todoRoad !== false,
-          onTap: (v) => {
-            store.update((x) => { x.settings.todoRoad = v; });
-            render();
-            KN.motion.fire("select");
-          },
-        })
-      ),
+      /* 一日の道（js/day-road.js）。時間割で見ているときだけ効きます。上・下・出さない（2026年10月19日、利用者）。
+         既定は上（設定を持たない保存は `todoRoad !== false` で出る）。下は `todoRoadAt: "below"` を選んだときだけ書く。 */
+      head("一日の道"),
+      roadSeg(s),
       card(
         pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
       ),

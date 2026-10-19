@@ -37,15 +37,18 @@ const { open, checker } = require("./lib");
   await openSettings("todo");
   const rootText = await page.locator(top).innerText();
   t.check("やることの歯車から：その画面の設定と「一般」が一枚に並ぶ",
-    rootText.includes("一日の道を出す") && rootText.includes("外観") && rootText.includes("バックアップ"),
+    rootText.includes("一日の道") && rootText.includes("外観") && rootText.includes("バックアップ"),
     rootText.slice(0, 120));
 
-  const sw = page.locator(`${top} .set-row.is-sw`, { hasText: "一日の道を出す" }).first();
-  const was = await sw.getAttribute("aria-checked");
-  await sw.click();
+  /* 一日の道は 上・下・出さない（2026年10月19日。前は「一日の道を出す」のスイッチ）。 */
+  const was = await page.locator(`${top} .seg-btn[data-road="above"]`).getAttribute("aria-pressed");
+  await page.locator(`${top} .seg-btn[data-road="below"]`).click();
   await page.waitForTimeout(250);
-  t.check("スイッチを押すと記録に入る（一日の道を出す → 切る）",
-    was === "true" && await page.evaluate(() => KN.store.get().settings.todoRoad === false));
+  const below = await page.evaluate(() => KN.store.get().settings.todoRoadAt === "below");
+  await page.locator(`${top} .seg-btn[data-road="off"]`).click();
+  await page.waitForTimeout(250);
+  t.check("押すと記録に入る（一日の道：既定は上 → 下 → 出さない）",
+    was === "true" && below && await page.evaluate(() => KN.store.get().settings.todoRoad === false));
 
   await rowOf("外観").click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
@@ -62,10 +65,10 @@ const { open, checker } = require("./lib");
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
   await page.waitForTimeout(300);
-  t.check("読み直しても、切ったスイッチとダークが残る",
+  t.check("読み直しても、出さないとダークが残る",
     await page.evaluate(() => KN.store.get().settings.todoRoad === false && KN.store.get().settings.theme === "dark"
       && document.documentElement.dataset.theme === "dark"));
-  await page.evaluate(() => KN.store.update((s) => { delete s.settings.todoRoad; s.settings.theme = "auto"; }));
+  await page.evaluate(() => KN.store.update((s) => { delete s.settings.todoRoad; delete s.settings.todoRoadAt; s.settings.theme = "auto"; }));
 
   /* ---------------- 二段の一覧（2026年9月30日） ----------------
      根っこは一覧、長いものは「›」の先。行の置き場だけが変わり、鍵は変わらない。 */

@@ -196,3 +196,4 @@
 | `glance-sync.js` | glance.json を写す（docs/todo-items.md 段4・X29①）。Dropbox を route で偽に。既定切・書くのは今日の予定と今週の印だけ・仕事だけが既定・上書き・latest とは別。 |
 | `glance-view.js` | glance.json を PC で見る（docs/todo-items.md 段4・X29④）。Dropbox を route で偽に。受け箱へ置く端末だけが読む・読むだけ・週の面に予定と印と「◯時の写し」が出る。 |
 | `google-import.js` | Google 取り込み：偽の .ics／Tasks.json を読み、UTC→端末の時間・過去は済・読める型は一本／読めない型は一回ずつ・タスクの済／これから・二度目は飛ばす・束ごと戻す・枠に収まるぶん・紙から入れる・連絡先 .vcf の誕生日 |
+| `road-place.js` | 今日の面の札の時間割（予定は青・やることは緑の札、左上に用事の絵、題→メモ）と一日の道の置き場（設定：上＝既定・下＝todoRoadAt "below"・出さない）。 |

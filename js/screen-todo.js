@@ -3323,15 +3323,17 @@
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     /* 一日の道は、何も無い日にも出します。空いた一日が、道の長さそのままで
        見えることにも意味があるので（今日なら、そこに人が立っています）。 */
-    if (roadOn()) sec.append(dayRoad(day, rows.concat(done), open));
+    // 道は時間割の上か下（設定。2026年10月19日、利用者）。
+    const below = store.get().settings.todoRoadAt === "below";
+    const road = roadOn() ? dayRoad(day, rows.concat(done), open) : null;
+    if (road && !below) sec.append(road);
     if (!rows.length && !done.length) {
       sec.append(node(html`
         <p class="todo-today-empty">${day === todayKey()
           ? "今日のぶんはありません" : "この日のやることはありません"}</p>
       `));
-      return sec;
-    }
-    sec.append(timeline(rows, { id: "day", day }));
+    } else sec.append(timeline(rows, { id: "day", day }));
+    if (road && below) sec.append(road);
     return sec;
   }
 
@@ -3339,7 +3341,7 @@
 
      時間割の上に、その日を一本の道にした地図を置きます（利用者の手描きがもと。
      2026年9月29日）。組み立ては時間割と同じ `buildDay`——二つが別々に数えると、
-     地図と時間割が食い違うので。設定の「一日の道を出す」で外せます。 */
+     地図と時間割が食い違うので。設定の「一日の道」で 上・下・出さない を選べます。 */
   const roadOn = () => store.get().settings.todoRoad !== false;
 
   function dayRoad(day, todos, open) {
@@ -5750,7 +5752,7 @@
   function tlColorOf(t, atMin) {
     /* 一日ずつのときは、棚がありません。坂（締切までの遠さ）も、比べる
        相手が画面に無いので何も言えません。基調の塗りひとつで揃えます。 */
-    if (oneDay()) return "var(--c-primary-fill)";
+    if (oneDay()) return KIND(t);   // 一日ずつは種類の色（予定・やること。見本・2026年10月19日）
     const g = groups.find((x) => x.id === groupIdOf(t, groups));
     return (g && g.color) || NONE_COLOR;
   }
@@ -5961,9 +5963,11 @@
                 （下の CSS の但し書き：行数を絞る要素を抱える入れものを
                 flex にすると、-webkit-line-clamp が高さ0に畳みます）。 */""}
           <div class="tl-body">
+            ${/* 札の時間割（見本・2026年10月19日）：左上に用事の絵、題 → メモ → 事実の順。 */""}
+            <span class="tl-ico" aria-hidden="true">${tlMark(t)}</span>
             <button class="tl-open" type="button">
-              ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
               <span class="item-name">${t.title}</span>
+              ${t.memo ? html`<span class="tl-cap">${t.memo}</span>` : ""}
             </button>
             ${/* 決めていない長さは**書きません**。組み立てには30分として
                   使いますが、画面に「30分」と出すとそれが決めた数のように
