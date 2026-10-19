@@ -4879,7 +4879,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-work { flex: none; }
 .wk-faces .seg { width: 124px; }
 .wk-faces .seg-btn { min-height: 34px; padding: 0 var(--sp-2); }
-.wk .chip-dot { width: 8px; height: 8px; }
+/* 選んでいる面は基調色で塗る（見本）。 */
+.wk-faces .seg-btn[aria-pressed="true"] { background: var(--c-primary); color: #fff; }
+.wk .chip-dot { width: 9px; height: 9px; }
 .wk-h {
   display: flex; align-items: center; min-height: 44px;
   margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-1);
@@ -4935,11 +4937,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text);
 }
 .wk-next { display: grid; place-items: center; width: 44px; height: 44px; color: var(--c-primary); }
+.wk-span > span { color: var(--c-primary-ink); }
 .wk-next svg { width: var(--ico-sm); height: var(--ico-sm); }
 .wk-next:active { opacity: var(--press-fade); }
 .wk-sum {
   display: flex; align-items: flex-start; gap: var(--sp-3); margin: var(--sp-3) var(--sp-4) 0; padding: var(--sp-3) var(--sp-4);
-  border-radius: var(--r-md); background: color-mix(in srgb, var(--kind-event) 9%, var(--c-surface));
+  border-radius: var(--r-md); background: color-mix(in srgb, var(--c-primary-soft) 70%, var(--c-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-primary-fill) 35%, transparent);
 }
 .wk-sum-i { display: grid; flex: none; color: var(--c-primary); }
 .wk-sum-i svg { width: var(--ico); height: var(--ico); }
@@ -4955,11 +4959,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-day {
   position: relative; grid-column: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   padding: 10px 0; line-height: 1; border-radius: var(--r-md) 0 0 var(--r-md); -webkit-tap-highlight-color: transparent;
+  background: color-mix(in srgb, var(--c-primary-soft) 45%, var(--c-surface));
 }
-.wk-day::after { content: ""; position: absolute; top: 12px; bottom: 12px; right: 0; width: 1px; background: var(--c-border); }
+.wk-day.is-today { background: color-mix(in srgb, var(--c-primary-soft) 90%, var(--c-surface)); }
 .wk-day:active { background: var(--press-sink); }
 .wk-wd { font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-2); }
-.wk-dn { font-family: var(--font-num); font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text); }
+.wk-dn { font-family: var(--font-num); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-primary); }
 .wk-day[data-wd="6"] .wk-wd { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 70%, var(--c-text-3)); }
 .wk-day[data-wd="0"] .wk-wd, .wk-day.is-holiday .wk-wd { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-3)); }
 .wk-day.is-today .wk-wd, .wk-day.is-today .wk-dn { color: var(--c-primary); }
@@ -4975,7 +4980,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-n { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-bold); }
 /* 締切は字も橙（そのままの橙は白地で読めないので、字の色へ寄せる）。 */
 .wk-ev.is-due .wk-n, .wk-ev.is-due .wk-t { color: color-mix(in srgb, var(--kind-due), var(--c-text) 30%); }
-.wk-go { display: grid; place-items: center; color: var(--c-text-3); }
+.wk-go { display: grid; place-items: center; color: color-mix(in srgb, var(--c-primary) 70%, var(--c-text-3)); }
 .wk-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 .wk-rep { display: grid; flex: none; color: var(--c-text-3); }
 .wk-rep svg { width: var(--ico-sm); height: var(--ico-sm); }
