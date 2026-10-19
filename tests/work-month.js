@@ -1,7 +1,7 @@
 /* 仕事の予定とやること・段3の続き：月の紙（docs/todo-items.md「仕事の予定とやること」の画面）。
 
-   月の紙は作らず、上の帯の暦の月の段で見る。印は点・帯（またがる予定）・期限の縁だけ。升目に名前は入れない
-   （読み上げにだけ）。帯と縁でマスの高さは変わらない。週の面で月の段の日を押せばその週（暦は週へ畳む）、
+   上の帯の暦の月の段で見る。印は点・帯（またがる予定）・期限の縁、月の段は名前を一行（2026年10月19日に入れた。
+   読み上げにも）。帯と縁でマスの高さは変わらない。週の面で月の段の日を押せばその週（暦は週へ畳む）、
    週の段で押せばその日の面（前のまま）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-month.js */
@@ -53,7 +53,7 @@ const { open, checker } = require("./lib");
   c.check("重なる帯は次の筋", a.s23.includes("1s") && a.s27.join() === "1e" && a.s21.length === 0, JSON.stringify([a.s23, a.s27, a.s21]));
   c.check("期限は縁だけ", a.d23 && !a.d22 && !/none/.test(a.dueRing), a.dueRing);
   c.check("帯の色が解ける（暦は帯の中）", !!a.color && !/rgba\(0, 0, 0, 0\)|^$/.test(a.color), a.color);
-  c.check("升目に名前は入れない（読み上げにだけ）", !a.names && /出張/.test(a.label) && /経費の精算の期限/.test(a.label), a.label);
+  c.check("月の段は升目に名前を一行（読み上げにも）", a.names && /出張/.test(a.label) && /経費の精算の期限/.test(a.label), a.label);
   c.check("帯と縁でマスの高さは変わらない", Math.abs(a.h - h0) < 0.5, `${h0} → ${a.h}`);
 
   // 週の面で、月の段の日を押すとその週（暦は週へ畳む）

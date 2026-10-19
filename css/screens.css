@@ -4912,7 +4912,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 #screen-todo, #head { --side-work: #5b9bd5; --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-1); }
 .wk-work { flex: none; }
-.wk-faces .seg { width: 124px; }
+.wk-faces .seg { width: 186px; }
 .wk-faces .seg-btn { min-height: 34px; padding: 0 var(--sp-2); }
 /* 選んでいる面は基調色で塗る（見本）。 */
 .wk-faces .seg-btn[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); }   /* 暗い面は基調が淡いので地の色の字（.cal-day.is-here.is-today と同じ） */
@@ -5016,6 +5016,34 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 締切は字も橙（そのままの橙は白地で読めないので、字の色へ寄せる）。 */
 .wk-ev.is-due .wk-n, .wk-ev.is-due .wk-t { color: color-mix(in srgb, var(--kind-due), var(--c-text) 30%); }
 .wk-go { display: grid; place-items: center; color: color-mix(in srgb, var(--c-primary) 70%, var(--c-text-3)); }
+/* 月の面（2026年10月19日、利用者）。予定のある日だけ、日付の列と行（時刻 → 名前）。 */
+.mo-list { margin: var(--sp-1) var(--sp-4) 0; }
+.mo-day { display: grid; grid-template-columns: 48px minmax(0, 1fr); border-top: 1px solid var(--c-border); }
+.mo-day:last-child { border-bottom: 1px solid var(--c-border); }
+.mo-date {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  padding: 10px 0; line-height: 1; -webkit-tap-highlight-color: transparent;
+}
+.mo-date:active { background: var(--press-sink); }
+.mo-dn { font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
+.mo-wd { font-size: var(--fs-xs); color: var(--c-text-2); }
+.mo-date[data-wd="6"] :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
+.mo-date:is([data-wd="0"], .is-holiday) :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
+.mo-day.is-today :is(.mo-dn, .mo-wd) { color: var(--c-primary); }
+.mo-evs { min-height: 56px; }
+.mo .wk-ev { font-size: var(--fs-md); }
+.mo .wk-t { min-width: 3em; }
+.mo .wk-n { font-weight: var(--fw-regular); }
+/* 暦の月の段に名前を一行（やることの暦だけ）。マスの高さは変えない——点の段（15px）の中身を入れ替える。週の段は点のまま。 */
+.cal-name { display: none; }
+.cal-day { min-width: 0; }   /* 名前の長さで列（1fr）が広がらないように */
+.cal:not(.is-week) .cal-dots:has(> .cal-name) > .cal-mark { display: none; }
+.cal:not(.is-week) .cal-name {
+  display: flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%; padding: 0 2px;
+  font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 1; color: var(--c-text-2);
+}
+.cal-name::before { content: ""; flex: none; width: 5px; height: 5px; margin-right: 1px; border-radius: var(--r-full); background: var(--cat); }
+.cal-name b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-regular); }
 .wk-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 .wk-rep { display: grid; flex: none; color: var(--c-text-3); }
 .wk-rep svg { width: var(--ico-sm); height: var(--ico-sm); }
