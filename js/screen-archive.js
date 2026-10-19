@@ -50,6 +50,17 @@
   const SHUT = html`<span class="arc-diary-shut">${icon("lock")}開ける</span>`;
 
   /** 本文に触る操作の前に。できないときは理由を言って true を返します。 */
+  /* 頭の「日付」「育休完了まであと◯日」の行は、鍵が閉じていても出す（定型の字で、秘密が無い）。 */
+  const STAMP_LINE = /^(\d{4}\.\d{1,2}\.\d{1,2}（[日月火水木金土]）|育休完了まであと\d+日)$/;
+  function stampHead(memo) {
+    const out = [];
+    for (const l of String(memo || "").split("\n")) {
+      const t = l.trim();
+      if (!t) continue;
+      if (STAMP_LINE.test(t)) out.push(t); else break;
+    }
+    return out;
+  }
   function bodyBlocked() {
     const b = diaryBody();
     if (b === "ok") return false;
@@ -713,7 +724,9 @@
     const unread = diaryBody() === "off";
     const shutNow = diaryShut();
     days.forEach((d) => {
-      const shut = shutNow && !d.isBlank && !unread && !!(String(d.memo || "").trim() || store.memoOut(d));
+      const head = shutNow ? stampHead(d.memo) : [];
+      const stampJust = head.length && String(d.memo || "").split("\n").every((l) => !l.trim() || STAMP_LINE.test(l.trim())) && !store.memoOut(d);
+      const shut = shutNow && !d.isBlank && !unread && !stampJust && !!(String(d.memo || "").trim() || store.memoOut(d));
       /* 時刻ごと（既定）：書いた日は一件ずつ。空の日・読めない日・本文を外した日は下の一行のまま
          （押せば書く紙。言うことも色も一枚のときと同じ）。 */
       if (chatView() && !d.isBlank && !unread && !outText(d) && !shut) {
@@ -749,7 +762,7 @@
                   並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
             <span class="arc-log-memo ${S().logFull === false ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
                   style="--tail-n: ${S().logLines === 3 ? 3 : 5}"
-                  ><span>${shut ? SHUT : unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
+                  ><span>${shut ? (head.length ? html`${head.join("\n")}\n${SHUT}` : SHUT) : unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
