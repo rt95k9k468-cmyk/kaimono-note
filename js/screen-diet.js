@@ -1403,6 +1403,21 @@
     const other = o.other != null ? node(html`<input class="input js-other" maxlength="24"
       value="${o.other}" placeholder="その他" autocomplete="off" enterkeyhint="done">`) : null;
     if (other) host.append(other);
+    const sugg = other ? node(html`<div class="diet-chips urge-sub js-sugg"></div>`) : null;
+    if (sugg) host.append(sugg);
+    /* 「その他」に打った言葉の履歴。保存は今までどおり「その他」＋一言（札は増やさない）。
+       2回以上打った言葉は札として並べ（上限3）、それ以外は打っている途中の候補に出す。 */
+    const past = (() => {
+      if (!other) return { tags: [], all: [] };
+      const key = field + "Other", n = new Map();
+      (store.get().diet.urges || []).forEach((u) => {
+        const w = String(u[key] || "").trim();
+        if (w) n.set(w, (n.get(w) || 0) + 1);
+      });
+      const all = [...n.keys()].reverse();   // 新しい順（同数ならあとに打ったものが先）
+      const tags = all.filter((w) => n.get(w) >= 2).sort((a, b) => n.get(b) - n.get(a)).slice(0, 3);
+      return { tags, all };
+    })();
     const has = (label) => raw.some((w) => urgeCat(field, w) === label) || (o.extraOn && o.extraOn(label));
     const drop = (label) => {
       for (let i = raw.length - 1; i >= 0; i--) if (urgeCat(field, raw[i]) === label) raw.splice(i, 1);
@@ -1418,6 +1433,17 @@
         chip.addEventListener("click", () => {
           if (on) drop(label);
           else if (label !== UC.OLD) { if (o.single) raw.splice(0, raw.length); raw.push(label); }
+          paint(); KN.motion.fire("select");
+        });
+        chips.append(chip);
+      });
+      past.tags.forEach((word) => {
+        const on = raw.includes("その他") && other.value.trim() === word;
+        const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
+          aria-pressed="${String(on)}">${word}</button>`);
+        chip.addEventListener("click", () => {
+          if (on) drop("その他");
+          else { if (!raw.includes("その他")) raw.push("その他"); other.value = word; }
           paint(); KN.motion.fire("select");
         });
         chips.append(chip);
@@ -1439,7 +1465,21 @@
         });
       }
       if (other) other.hidden = !raw.includes("その他");
+      paintSugg();
     }
+    function paintSugg() {
+      if (!sugg) return;
+      sugg.innerHTML = "";
+      const typed = other.value.trim();
+      const list = past.all.filter((w) => !past.tags.includes(w) && w !== typed && w.includes(typed)).slice(0, 4);
+      sugg.hidden = other.hidden || !list.length;
+      list.forEach((word) => {
+        const chip = node(html`<button type="button" class="chip">${word}</button>`);
+        chip.addEventListener("click", () => { other.value = word; paint(); KN.motion.fire("select"); });
+        sugg.append(chip);
+      });
+    }
+    if (other) other.addEventListener("input", paintSugg);
     paint();
     return { sec, otherText: () => (other && raw.includes("その他") ? other.value.trim() : "") };
   }

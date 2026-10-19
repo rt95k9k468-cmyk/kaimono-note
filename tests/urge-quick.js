@@ -38,7 +38,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     const secs = [...sh.querySelectorAll(".urge-sec")];
     const chipsOf = (title) => {
       const s = secs.find((x) => x.querySelector(".urge-sec-title").textContent === title);
-      return s ? [...s.querySelectorAll(".chip")].map((c) => c.textContent.trim()) : null;
+      return s ? [...s.querySelectorAll(".chip:not(.js-sugg .chip)")].map((c) => c.textContent.trim()) : null;
     };
     return {
       visible: secs.filter(vis).map((s) => s.querySelector(".urge-sec-title").textContent),
@@ -99,8 +99,22 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   const c2 = await sheetInfo();
   t.check("次の紙でも札は増えない（6・7・8）", c2.want.length === 6 && c2.scene.length === 7 && c2.tried.length === 8
     && !c2.want.includes("退屈") && !c2.scene.includes("散歩の帰り"), [c2.want, c2.scene].join(" / "));
+  /* 一度打った言葉は、「その他」を開くと候補に出る（打った頭で絞る）。札にはまだならない。 */
+  await page.click('.sheet.is-open .urge-lv[aria-label="2"]');
+  await chip("いま何を求めている？", "その他");
+  const sg = async (v) => { await page.fill(".sheet.is-open .js-want .js-other", v);
+    return page.$$eval(".sheet.is-open .js-want .js-sugg .chip", (e) => e.map((x) => x.textContent.trim())); };
+  t.check("打った言葉が候補に出る・頭で絞れる", (await sg("")).includes("退屈") && (await sg("あ")).length === 0);
+  await sg("退");
+  await page.click(".sheet.is-open .js-want .js-sugg .chip");
+  await page.click(".sheet.is-open .js-save");
+  await waitClosed();
+  await openSheet();
+  const c3 = await sheetInfo();
+  t.check("二回打った言葉は札になる（増えすぎないよう上限3）", c3.want.includes("退屈") && c3.want.length === 7, String(c3.want));
   await page.keyboard.press("Escape");
   await waitClosed().catch(() => {});
+  await page.evaluate(() => { const l = KN.store.get().diet.urges; KN.store.removeUrge(l[l.length - 1].id); });
 
   /* ---- C2：別の飲み物の下の候補／時刻を選び直す／しばらく後の時刻 ---- */
   await openSheet();
