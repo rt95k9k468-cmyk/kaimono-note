@@ -3073,16 +3073,18 @@
       ${kind === "later" ? html`<button type="button" class="chip" data-op="week">今週へ</button>` : ""}
       ${it.rep ? "" : html`<button type="button" class="chip" data-day="${today}">今日</button>
         <button type="button" class="chip" data-day="${KN.util.shiftDay(today, 1)}">明日</button>
-        <input type="date" class="chip copy-day" aria-label="日を選ぶ" min="${today}">`}
+        <button type="button" class="chip" data-op="pick">日を選ぶ</button>`}
     </div>`);
     const pop = KN.ui.popOver(anchor, { side: "left", label: name, cls: "is-choose" });
     const go = (op, day) => { pop.close(); copySend(op, kind, it, name, day); };
     box.addEventListener("click", (e) => {
       const b = e.target.closest("button");
-      if (b) go(b.dataset.op || "day", b.dataset.day);
+      if (!b) return;
+      if (b.dataset.op !== "pick") { go(b.dataset.op || "day", b.dataset.day); return; }
+      pop.close();
+      KN.ui.popCalendar(anchor, { value: null, min: today, label: "日を選ぶ",
+        onPick: (day) => { if (COPY_DAY.test(day || "")) copySend("day", kind, it, name, day); } });
     });
-    const pick = box.querySelector(".copy-day");
-    if (pick) pick.addEventListener("change", () => { if (COPY_DAY.test(pick.value)) go("day", pick.value); });
     pop.el.append(box);
     pop.place();
   }

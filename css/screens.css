@@ -4894,7 +4894,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* PC の写し（段4の②）。命令を置いた行は、写しが変わるまで薄く。 */
 .wk-copy .wk-name:disabled { cursor: default; }
 .wk-copy .wk-row.is-sent { opacity: var(--press-off); }
-.pk-acts .copy-day { width: auto; padding: 0 var(--sp-2); font: inherit; font-size: var(--fs-sm); }
 .wk-more {
   display: block; width: 100%; min-height: 40px; border-top: 1px solid var(--c-border); text-align: left;
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
