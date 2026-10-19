@@ -4760,8 +4760,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   /* 行の高さ（丸薬＋10px）に収まる詰め方——超えると行が背伸びして、丸薬が行のまん中へずれる（timeline-late）。 */
   align-self: stretch; margin: 3px 0; padding: 5px var(--sp-3) 5px 12px; border-radius: 14px;
   background: color-mix(in srgb, var(--cat) 14%, var(--c-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cat) 24%, transparent);
 }
+/* 題は札の色（2026年10月20日、利用者）。そのままの色では地の上で読めないので、字の色へ寄せる。 */
+.tl-row:not(.is-done):not(.is-someday) .tl-item .item-name { color: color-mix(in srgb, var(--cat) 55%, var(--c-text)); }
 .tl-row .item.tl-item { margin-right: var(--sp-4); }
 .tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 22%, var(--c-surface)); border-radius: 14px; }
 .tl-row.is-done .item.tl-item { background: var(--c-surface); }
@@ -7179,16 +7180,26 @@ button.note-when:active { opacity: var(--press-fade); }
 /* 入れもの（.tl-someday）ではなく行の印で見ます。紙が行から広がるとき、行の写しは入れものの
    外に出るので（ui.js の growCard）、入れもので見ると写しにだけ背骨が引かれていた。 */
 .tl-row.is-someday .tl-time { visibility: hidden; }
-/* 札の時間割（2026年10月19日）では、これからは白い一枚の中の行（見本の「空き時間にできること」の箱）。
-   行は色の札にせず、線も丸薬も出さない（時刻が無いので）。 */
+/* 札の時間割（2026年10月19日）では、これからは見本の「空き時間にできること」の箱（10月20日、利用者）：淡い地に
+   電球と見出し、白い一枚の中の行。行は色の札にせず、線も丸薬も用事の絵も出さない（時刻が無いので）。印は左の角丸の四角。 */
 .tl-someday-sec {
-  margin: var(--sp-5) var(--sp-4) 0; padding: var(--sp-1) 0 var(--sp-3); border-top: 0; border-radius: var(--r-lg);
-  background: var(--c-surface); box-shadow: var(--shadow-1), inset 0 0 0 1px color-mix(in srgb, var(--c-border) 70%, transparent);
+  margin: var(--sp-5) var(--sp-4) 0; padding: var(--sp-1) var(--sp-3) var(--sp-3); border-top: 0; border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--c-primary-soft) 45%, var(--c-surface));
 }
-.tl-row.is-someday { grid-template-columns: 0 var(--sp-2) 1fr; }
+.tl-someday-sec > .todo-head { padding: var(--sp-2) var(--sp-1); font-size: var(--fs-sm); }
+.tl-someday-ico { display: grid; flex: none; color: var(--c-primary); }
+.tl-someday-ico svg { width: var(--ico); height: var(--ico); }
+.tl-someday-head .cat-head-count { display: none; }
+.tl-someday { padding: 0 var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); }
+.tl-row.is-someday { grid-template-columns: 0 0 1fr; }
 .tl-row.is-someday .tl-node { visibility: hidden; }
-.tl-row.is-someday .item.tl-item { margin: 0 var(--sp-1) 0 0; background: none; box-shadow: none; border-radius: 0; }
+.tl-row.is-someday .tl-ico { display: none; }
+.tl-row.is-someday .tl-body { padding-left: 0; }
+.tl-row.is-someday .item.tl-item { margin: 0; padding: 10px 0; background: none; box-shadow: none; border-radius: 0; }
 .tl-row.is-someday + .tl-row.is-someday .item.tl-item { box-shadow: inset 0 1px 0 var(--c-border); }
+.tl-row.is-someday .tl-item .item-name { font-weight: var(--fw-regular); }
+.tl-row.is-someday .check { order: -1; width: 22px; height: 22px; border-radius: 6px; border-color: var(--c-border-2); }
+.tl-row.is-someday .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
 
 /* 背骨（縦の線）は引きません。時刻が無いので、つなぐ時間がありません。
    丸だけが残ります。 */

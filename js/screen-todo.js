@@ -3556,6 +3556,7 @@
       <section class="todo-group tl-someday-sec" data-group="someday">
         <h2 class="todo-head tl-someday-head">
           <button type="button" class="tl-someday-add" aria-label="これからに足す">
+            <span class="tl-someday-ico" aria-hidden="true">${KN.util.raw(productArt("bulb"))}</span>
             <span>これから</span>
             ${rows.length ? html`<span class="cat-head-count">${rows.length}</span>` : ""}
             <span class="tl-someday-plus">${icon("plus")}</span>
