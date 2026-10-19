@@ -7,6 +7,7 @@
    席をもう一度押しても行き来。日を押せばその日の面。払えば次の週。頭の札（期限切れ）はどちらの面にも出さない。
    日の過ぎたまだのやることは、書き換えずに今週へ（七日の行の過ぎた日には出さない・決めごと1）。
    右下の＋は一行（キーボードは勝手に出さない・R4 の札。時刻があれば予定、日が今週なら今週の印、無ければこれから）。
+   七日は一日一枚の札（見本の週・10月19日）：色の見方・週の幅（› で次の週）・締切もその日の札に・下に予定の数と作業時間のまとめ。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-week-face.js */
 const { open, checker } = require("./lib");
@@ -56,6 +57,8 @@ const { open, checker } = require("./lib");
       evs: [...scr.querySelectorAll(".wk-evs")].map((e) => ({ day: e.dataset.day, past: e.classList.contains("is-past"),
         names: [...e.querySelectorAll(".wk-n")].map((n) => n.textContent) })),
       bands: [...scr.querySelectorAll(".wk-band")].map((b) => ({ t: b.getAttribute("aria-label"), row: b.style.gridRow })),
+      span: txt(".wk-span"), sum: txt(".wk-sum-n"), key: txt(".wk-key > span"),
+      dues: [...scr.querySelectorAll(".wk-ev.is-due")].map((e) => e.closest(".wk-evs").dataset.day + ":" + e.querySelector(".wk-n").textContent),
       road: !!scr.querySelector(".todo-day"),
       dayOf: (scr.querySelector(".todo-day") || {}).dataset ? scr.querySelector(".todo-day")?.dataset.day : null,
       late: scr.querySelectorAll(".tl-late").length,
@@ -73,6 +76,10 @@ const { open, checker } = require("./lib");
   c.check("七日の行と来週の七日", a.days === 14);
   const ev = (k) => (a.evs.find((e) => e.day === k) || { names: [] });
   c.check("予定とやることが日の行に（時刻の順）", JSON.stringify(ev("2026-10-22").names) === JSON.stringify(["定例", "電球を替える"]), JSON.stringify(ev("2026-10-22")));
+  c.check("日の札：色の見方・週の幅・まとめ（予定の数・締切の数。長さが無ければ作業時間は出さない）",
+    a.key.join() === "予定,作業時間,締切" && a.span[0] === "10月19日（月）〜 25日（日）" && a.sum[0] === "予定 3件締切 1件",
+    JSON.stringify([a.key, a.span, a.sum]));
+  c.check("締切はその日の札にも（橙・期限の欄にも残る）", a.dues.join() === "2026-10-23:経費の精算", JSON.stringify(a.dues));
   c.check("毎日のくり返しは出さない", !a.evs.some((e) => e.names.includes("朝の体操")));
   c.check("過ぎた日にまだのやることは出さない（今週へ戻る）", !a.evs.some((e) => e.names.includes("昨日の用事")), JSON.stringify(ev("2026-10-20")));
   c.check("過ぎた日の予定は残る（薄く）", W.inWeek ? ev("2026-10-19").past && ev("2026-10-19").names.includes("打ち合わせ") : true, JSON.stringify(ev("2026-10-19")));
