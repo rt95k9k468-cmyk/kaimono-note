@@ -3976,7 +3976,7 @@
       e.spans.forEach((p) => nodes.push(node(html`
         <i class="cal-span ${p.t.due === key ? "is-s" : ""} ${p.t.endDay === key ? "is-e" : ""}"
            style="--cat:${KIND(p.t)};--lane:${p.l}"></i>`)));
-      if (e.dues.length) nodes.push(node(html`<i class="cal-due" style="--cat:var(--kind-due)"></i>`));
+      if (e.dues.length) nodes.push(node(html`<i class="cal-due"></i>`));
       return {
         cat: dayColor(key),
         label: (n ? ` やること${n}件` : "") + e.spans.map((p) => ` ${p.t.title}`).join("")
