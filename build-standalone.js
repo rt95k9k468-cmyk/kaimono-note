@@ -111,6 +111,7 @@ const JS = [
   "js/note-notion.js",
   "js/note-organize.js",
   "js/note-import.js",
+  "js/google-import.js",
   "js/settings-notes.js",
   "js/settings-diet.js",
   "js/settings-relay.js",

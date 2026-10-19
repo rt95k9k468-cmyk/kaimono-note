@@ -921,6 +921,7 @@
          ここに無い欄は保存のたびに消えるので。どれも持っていない記録は既定に落ちます。 */
       ...actField(t.act),
       ...planField({ ...t, repeat: cleanRepeat(t.repeat) }),
+      ...googleField(t),
       shelf: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? null : cleanShelf(t.shelf),   // 日のあるものは待つ・いつかに居ない
       waitFor: cleanWaitFor(t.waitFor),
       review: /^\d{4}-\d{2}-\d{2}$/.test(t.review) ? t.review : null,
@@ -1050,6 +1051,13 @@
     const w = Number(t.repeatWeeks);
     if (t.repeat === "weekly" && Number.isInteger(w) && w >= 2 && w <= 52) out.repeatWeeks = w;
     if (DAY.test(t.weekMark)) out.weekMark = t.weekMark;
+    return out;
+  }
+  /* Google から取り込んだ印。持つものだけ返す（planField と同じ）。function 宣言。 */
+  function googleField(t) {
+    const out = {};
+    if (typeof t.gid === "string" && t.gid) out.gid = t.gid.slice(0, 300);
+    if (typeof t.gbatch === "string" && t.gbatch) out.gbatch = t.gbatch;
     return out;
   }
   function cleanShelf(v) { return v === "wait" || v === "someday" ? v : null; }
@@ -1816,11 +1824,13 @@
      a day it is wanted by. Everything else here exists because of that day —
      what is overdue, what repeats, what the icon should count. */
 
-  function addTodo({ title, due = null, deadline = null, part = null, time = null,
+  /* 一件ぶんの記録を組む（まだ入れない）。addTodo と importGoogle が使う。function 宣言。 */
+  function buildTodo({ title, due = null, deadline = null, part = null, time = null,
                      repeat = null, repeatDays = [],
                      repeatNth = null, repeatEvery = null, memo = "", flagged = false, minutes = null,
                      lead = null, shop = false, subs = [], icon = null, act = null,
-                     kind = null, side = null, endDay = null, repeatWeeks = null, weekMark = null } = {}) {
+                     kind = null, side = null, endDay = null, repeatWeeks = null, weekMark = null,
+                     done = false, doneAt = null, gid = null, gbatch = null } = {}) {
     const name = String(title || "").trim();
     if (!name) return null;
     const at = KN.util.isTime(time) ? time : null;
@@ -1829,6 +1839,7 @@
       ...actField(act),
       // 予定かやることか・仕事かくらしほか。持つものだけ（reconcile と同じ形）。
       ...planField({ kind, side, endDay, repeatWeeks, weekMark, due, repeat: cleanRepeat(repeat) }),
+      ...googleField({ gid, gbatch }),
       id: uid("t"),
       title: name,
       due: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null,
@@ -1850,8 +1861,8 @@
       notifiedFor: null,
       memo: String(memo || ""),
       flagged: !!flagged,
-      done: false,
-      doneAt: null,
+      done: done === true,
+      doneAt: done === true && typeof doneAt === "string" ? doneAt : null,
       archived: false,
       archivedAt: null,
       trace: false,
@@ -1872,12 +1883,53 @@
     };
     fixBookend(rec);
     /* 日の無いものは「これから」へ入った（3.0 の B1）。見直す日を書く。 */
-    if (!rec.due && !rec.repeat) rec.review = reviewFrom(null);
+    if (!rec.due && !rec.repeat && !rec.done) rec.review = reviewFrom(null);
+    return rec;
+  }
+
+  function addTodo(args) {
+    const rec = buildTodo(args);
+    if (!rec) return null;
     update((s) => {
       s.todos.forEach((t) => { t.order = (t.order || 0) + 1; });
       s.todos.unshift(rec);
     });
     return rec;
+  }
+
+  /* ---- Google からの取り込み（js/google-import.js。docs/todo-items.md「Google 取り込み」） ----
+     入れた記録は gid（元の ID）と gbatch（取り込みを始めた時刻）を持つ。gid が同じものは二度目に飛ばし、
+     gbatch で束ごと元に戻す。一回の update で全部入れる（addTodo を件数ぶん呼ぶと順番の振り直しが重い）。 */
+  function googleIds() {
+    return new Set(get().todos.filter((t) => t.gid).map((t) => t.gid));
+  }
+  function importGoogle(list, batch) {
+    const recs = (list || []).map((x) => buildTodo({ ...x, gbatch: batch })).filter(Boolean);
+    if (!recs.length) return 0;
+    update((s) => {
+      s.todos.forEach((t) => { t.order = (t.order || 0) + recs.length; });
+      recs.forEach((r, i) => { r.order = i; });
+      s.todos.unshift(...recs);
+    });
+    return recs.length;
+  }
+  /** 束ごと元に戻す。取り込んだあとに直したものは残す。 */
+  function unimportGoogle(batch) {
+    let gone = 0, kept = 0;
+    update((s) => {
+      s.todos = s.todos.filter((t) => {
+        if (t.gbatch !== batch) return true;
+        if (t.editedAt && t.editedAt > batch) { kept++; return true; }
+        gone++;
+        return false;
+      });
+    });
+    return { gone, kept };
+  }
+  function googleBatches() {
+    const m = new Map();
+    get().todos.forEach((t) => { if (t.gbatch) m.set(t.gbatch, (m.get(t.gbatch) || 0) + 1); });
+    return [...m].map(([batch, n]) => ({ batch, n })).sort((a, b) => (a.batch < b.batch ? 1 : -1));
   }
 
   /* ---------------- 暦の見かたは、タブごとに ----------------
@@ -4983,7 +5035,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, importGoogle, unimportGoogle, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

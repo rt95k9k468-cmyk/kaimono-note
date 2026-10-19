@@ -313,5 +313,5 @@
     };
   }
 
-  KN.noteNotion = { listOf, read, build, tidy, csvRows };
+  KN.noteNotion = { listOf, openOf, read, build, tidy, csvRows };
 })();

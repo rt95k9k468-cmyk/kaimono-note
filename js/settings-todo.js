@@ -125,6 +125,13 @@
                  value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
                  onTap: () => go("slips") })
       ),
+      /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。 */
+      card(
+        pickRow({ title: "Google から取り込む", onTap: () => KN.googleImport.open() }),
+        store.googleBatches().length
+          ? pickRow({ title: "取り込みを取り消す", value: `${store.googleBatches()[0].n}件`, onTap: () => KN.googleImport.undo().then(render) })
+          : null
+      ),
       card(
         pickRow({ title: "見直す日", onTap: openReviewDays, value: (() => {
           const d = store.reviewDays();
