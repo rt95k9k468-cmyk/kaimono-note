@@ -1576,7 +1576,7 @@
     body.querySelector(".js-memo").append(memoSec);
     memoSec.querySelector(".urge-sec-body").append(node(html`
       <input class="input js-memo-in" value="${editing ? editing.memo || "" : ""}"
-             placeholder="あとで読み返したときの手がかり">`));
+            >`));
 
     /* 結果の段は、書いたあとの紙にだけ。記録するときには聞きません。 */
     if (editing) {
