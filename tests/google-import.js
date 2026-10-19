@@ -149,6 +149,30 @@ const { open, checker } = require("./lib");
   const made2 = await page.evaluate(() => KN.store.get().todos.find((x) => x.gid === "e:ui1"));
   t.check("選んだ側（仕事）で入る", ui && made2.side === "work" && made2.done === true, JSON.stringify(made2));
 
+  /* 連絡先の誕生日（.vcf）：年あり・年なし（--MMDD・Apple の 1604）・2月29日・誕生日なし・N だけ・折り返し。 */
+  const vc = await page.evaluate(async () => {
+    const today = KN.util.todayKey();
+    const vcf = [
+      "BEGIN:VCARD", "VERSION:3.0", "FN:テスト太郎", "UID:c1", "BDAY:1990-04-12", "END:VCARD",
+      "BEGIN:VCARD", "VERSION:3.0", "N:花子;テスト;;;", "item1.BDAY:--0705", "END:VCARD",
+      "BEGIN:VCARD", "VERSION:3.0", "FN:年なし", "BDAY:1604-12-25", "END:VCARD",
+      "BEGIN:VCARD", "VERSION:3.0", "FN:うるう", "BDAY:20000229", "END:VCARD",
+      "BEGIN:VCARD", "VERSION:3.0", "FN:誕生日なし", "TEL:000", "END:VCARD",
+      "BEGIN:VCARD", "VERSION:3.0", "FN:折り返", " しの人", "BDAY:19801231", "END:VCARD",
+    ].join("\r\n");
+    const rd = await KN.googleImport.read([new File([vcf], "c.vcf")]);
+    const p = KN.googleImport.plan(rd.sources, new Set(), today);
+    return { today, kind: rd.sources.map((s) => s.kind).join(), all: p.all };
+  });
+  const vt = (n) => vc.all.find((x) => x.title === n + "の誕生日");
+  t.check(".vcf は誕生日のある人だけ（誕生日なしは入れない）", vc.kind === "contacts" && vc.all.length === 5 && !vt("誕生日なし"), JSON.stringify(vc.all.map((x) => x.title)));
+  t.check("毎年の終日予定・次の回は今日以降・済でない", vc.all.every((x) => x.repeat === "yearly" && x.kind === "event" && !x.time && x.due >= vc.today && !x.done), JSON.stringify(vc.all));
+  t.check("日の位置が合う（4/12）", vt("テスト太郎").due.slice(5) === "04-12");
+  t.check("N だけでも名前（姓名の順）・--MMDD も読む", vc.all.some((x) => x.title === "テスト 花子の誕生日" && x.due.slice(5) === "07-05"), JSON.stringify(vc.all.map((x) => x.title)));
+  t.check("年なし（1604）も読み・折り返しをつなぐ", vt("年なし").due.slice(5) === "12-25" && vt("折り返しの人").due.slice(5) === "12-31");
+  t.check("2月29日はうるう年の 29 日まで飛ぶ", vt("うるう").due.slice(5) === "02-29" && new Date(vt("うるう").due).getUTCDate() === 29);
+  t.check("gid は UID（無ければ名前＋日）", vt("テスト太郎").gid === "b:c1" && vt("年なし").gid === "b:年なし:1225");
+
   t.check("エラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
   t.done();

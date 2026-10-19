@@ -9,6 +9,7 @@
    - くり返し：読める型（毎日・毎週・隔週・毎月の日／第◯曜日・毎年）は元の一本を残し、過ぎた回は単発に。
      読めない型・UNTIL／COUNT つきは一回ずつ（無限のものはこれから 90 日まで）。
    - 元の ID は gid、取り込みの時刻は gbatch。gid が同じものは二度目に飛ばす。
+   - 連絡先は .vcf の BDAY だけを読む（名前＋誕生日の毎年の終日予定。年は使わない）。ほかの項目は読み捨てる。
    - 外へは出さない（fetch しない）。ファイルは端末の中で読むだけ。
    ========================================================= */
 (function () {
@@ -284,6 +285,56 @@
     return { items, live };
   }
 
+  /* ---------------- 連絡先の誕生日（.vcf） ---------------- */
+
+  /** vCard の本文 → 誕生日のある人の列 [{uid, name, mm, dd}]。年は使わない（毎年の予定にするだけ）。
+      BDAY は 19900412・1990-04-12・--0412・--04-12（年なし）。Apple は年なしを 1604 年で書く。 */
+  function parseVcf(text) {
+    const lines = String(text || "").replace(/\r?\n[ \t]/g, "").split(/\r?\n/);
+    const out = [];
+    let cur = null;
+    for (const raw of lines) {
+      if (/^BEGIN:VCARD/i.test(raw)) { cur = { uid: "", fn: "", n: "", org: "", bday: "" }; continue; }
+      if (/^END:VCARD/i.test(raw)) {
+        if (cur && cur.bday) {
+          const m = /^(?:(\d{4})-?|--)(\d{2})-?(\d{2})/.exec(cur.bday.trim());
+          const mm = m ? +m[2] : 0, dd = m ? +m[3] : 0;
+          const name = cur.fn || cur.n || cur.org;
+          if (m && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31 && name) out.push({ uid: cur.uid, name, mm, dd });
+        }
+        cur = null;
+        continue;
+      }
+      if (!cur) continue;
+      const i = raw.indexOf(":");
+      if (i < 0) continue;
+      const key = raw.slice(0, i).replace(/^[A-Za-z0-9-]+\./, "").split(";")[0].toUpperCase();
+      const val = raw.slice(i + 1);
+      if (key === "FN") cur.fn = unesc(val).trim();
+      else if (key === "N") cur.n = unesc(val).split(";").slice(0, 2).reverse().join(" ").trim();
+      else if (key === "ORG") cur.org = unesc(val).split(";")[0].trim();
+      else if (key === "UID") cur.uid = val.trim();
+      else if (key === "BDAY") cur.bday = val;
+    }
+    return out;
+  }
+
+  /** 人ごとに「◯◯の誕生日」の毎年の終日予定を一本。日は今日以降の次の回（2月29日はうるう年まで飛ぶ）。 */
+  function fromContacts(people, side, today) {
+    const y0 = +today.slice(0, 4);
+    const items = people.map((p) => {
+      let due = "";
+      for (let y = y0; y <= y0 + 8 && !due; y++) {
+        const day = `${y}-${pad(p.mm)}-${pad(p.dd)}`;
+        const d = new Date(Date.UTC(y, p.mm - 1, p.dd));
+        if (d.getUTCMonth() === p.mm - 1 && d.getUTCDate() === p.dd && day >= today) due = day;
+      }
+      if (!due) return null;
+      return { title: `${p.name}の誕生日`, kind: "event", side, due, repeat: "yearly", gid: "b:" + (p.uid || `${p.name}:${pad(p.mm)}${pad(p.dd)}`) };
+    }).filter(Boolean);
+    return { items, live: items.length };
+  }
+
   /* ---------------- ファイルを読む ---------------- */
 
   /** 選んだファイル（.zip・.ics・.json）→ 元（calendar／tasks）の列。読めない名前は bad へ。 */
@@ -296,6 +347,10 @@
           if (!c.events.length) { bad.push(name); return; }
           const label = c.name || name.replace(/^.*\//, "").replace(/\.ics$/i, "");
           sources.push({ kind: "calendar", label, cal: c, side: "home" });
+        } else if (/\.vcf$/i.test(name)) {
+          const people = parseVcf(await (await get()).text());
+          if (!people.length) { bad.push(name); return; }
+          sources.push({ kind: "contacts", label: "連絡先の誕生日", people, side: "home" });
         } else if (/\.json$/i.test(name)) {
           const j = JSON.parse(await (await get()).text());
           const lists = Array.isArray(j.items) ? j.items.filter((l) => Array.isArray(l.items) || l.kind === "tasks#taskList") : [];
@@ -309,7 +364,7 @@
         let list;
         try { list = await KN.noteNotion.listOf(f); } catch (_) { bad.push(f.name); continue; }
         for (const e of list) {
-          if (/\/$/.test(e.name) || !/\.(ics|json)$/i.test(e.name)) continue;
+          if (/\/$/.test(e.name) || !/\.(ics|json|vcf)$/i.test(e.name)) continue;
           if (/\.json$/i.test(e.name) && !/Tasks\.json$/i.test(e.name)) continue;
           await take(e.name, () => KN.noteNotion.openOf(f, e));
         }
@@ -322,7 +377,7 @@
   function plan(sources, have, today, room) {
     const per = sources.map((s) => {
       const side = s.side === "work" ? "work" : null;
-      const r = s.kind === "calendar" ? fromCalendar(s.cal, side, today) : fromTaskList(s.list, side, today);
+      const r = s.kind === "calendar" ? fromCalendar(s.cal, side, today) : s.kind === "contacts" ? fromContacts(s.people, side, today) : fromTaskList(s.list, side, today);
       const fresh = r.items.filter((x) => !have.has(x.gid));
       return { ...r, fresh, had: r.items.length - fresh.length };
     });
@@ -366,7 +421,7 @@
     <div class="set-row"><span class="set-title">${title}</span><span class="set-val">${String(val)}</span></div>`);
 
   function pick() {
-    const inp = node(html`<input type="file" accept=".zip,.ics,.json" multiple hidden>`);
+    const inp = node(html`<input type="file" accept=".zip,.ics,.json,.vcf" multiple hidden>`);
     document.body.append(inp);
     inp.addEventListener("change", () => {
       const files = [...(inp.files || [])];
@@ -415,6 +470,7 @@
           s.kind === "calendar" && c.evPast ? row("　うち過ぎたもの", c.evPast) : null,
           s.kind === "calendar" && r.live ? row("くり返し", r.live) : null,
           s.kind === "calendar" && r.expanded ? row("一回ずつにしたくり返し", r.expanded) : null,
+          s.kind === "contacts" ? row("誕生日", c.ev) : null,
           s.kind === "tasks" ? row("タスク", c.task) : null,
           s.kind === "tasks" && c.taskDone ? row("　うち済み", c.taskDone) : null,
           s.kind === "tasks" && r.live ? row("くり返し", r.live) : null,
@@ -461,5 +517,5 @@
     KN.ui.toast(r.kept ? `${r.gone}件を戻しました（直した${r.kept}件は残しました）` : `${r.gone}件を戻しました`, { long: !!r.kept });
   }
 
-  KN.googleImport = { open: pick, roomLeft, show, undo, read, plan, parseIcs, fromCalendar, fromTaskList, occurrences, rruleOf };
+  KN.googleImport = { open: pick, roomLeft, show, undo, read, plan, parseIcs, parseVcf, fromContacts, fromCalendar, fromTaskList, occurrences, rruleOf };
 })();
