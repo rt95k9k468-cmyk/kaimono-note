@@ -128,6 +128,7 @@
       /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。 */
       card(
         pickRow({ title: "Google から取り込む", onTap: () => KN.googleImport.open() }),
+        navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
         store.googleBatches().length
           ? pickRow({ title: "取り込みを取り消す", value: `${store.googleBatches()[0].n}件`, onTap: () => KN.googleImport.undo().then(render) })
           : null
@@ -306,6 +307,31 @@
     ];
   }
 
+  /** 誕生日の一覧を書くショートカットの組み方（連絡先の置き場所に関わらず、iPhone の連絡先から）。
+      アプリは一行に一人の「名前,日付」を読む（google-import.js の parseBirthdayText）。書き方は端末に出る字のとおり。 */
+  function birthHowRows() {
+    const steps = node(html`
+      <div class="set-card is-pad">
+        <ol class="diet-steps">
+          <li>「ショートカット」App を開き、下の<b>「ショートカット」</b>タブで、右上の<b>＋</b>を押し、名前を<b>誕生日</b>などにする</li>
+          <li>下の検索欄（<b>「アクションを検索」</b>）に <b>連絡先</b> と打ち、<b>「連絡先を検索」</b>を押す（条件は付けない＝全員）</li>
+          <li><b>繰り返す</b> と打ち、<b>「それぞれを繰り返す」</b>を押す</li>
+          <li>繰り返しの中に<b>「テキスト」</b>を置く。欄を押し、キーボードの上の<b>「変数を選択」</b>から<b>「繰り返しの項目」</b>を選ぶ。出てきた字を押して<b>「名前」</b>を選ぶ</li>
+          <li>続けて半角の <b>,</b>（カンマ）を打ち、もう一度「繰り返しの項目」を入れて、今度は<b>「誕生日」</b>を選ぶ</li>
+          <li>繰り返しの<b>外</b>（終わりの行の下）に<b>「テキストを結合」</b>を置き、区切りは<b>「新しい行」</b></li>
+          <li><b>ファイル</b> と打ち、<b>「ファイルを保存」</b>を置く。<b>「保存先を確認」</b>はオンのままにして、右上の<b>「完了」</b></li>
+          <li>一覧のこのショートカットを押す。保存の画面が出たら、「このiPhone内」などに <b>.txt</b> で保存する</li>
+          <li>アプリの<b>「Google から取り込む」</b>で、その .txt を選ぶ。紙に「誕生日」の件数が出ればよい</li>
+        </ol>
+      </div>
+    `);
+    return [
+      head("組み方"),
+      steps,
+      foot("誕生日の無い人の行は読みません。年が無い誕生日もそのまま読めます。動かなければ、保存した .txt の最初の数行（名前は伏せて）を見せてください。"),
+    ];
+  }
+
   /** 小窓（ショートカットのウィジェット）の組み方。Dropbox の glance.json を読んで出す
       （docs/todo-items.md 段4）。書き方は calHowRows と同じく端末に出る字のとおり。 */
   function glanceHowRows() {
@@ -358,5 +384,5 @@
     ];
   }
 
-  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows, glanceHowRows, slipRows });
+  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows });
 })();

@@ -519,6 +519,7 @@
     icons:  { title: "アイコンについて",       build: () => [S.iconGapsGroup(), S.iconReportsGroup()] },
     calHow:   { title: "ショートカットの組み方", build: () => S.calHowRows() },
     glanceHow: { title: "小窓の組み方", build: () => S.glanceHowRows() },
+    birthHow: { title: "誕生日のショートカット", build: () => S.birthHowRows() },
     relay:    { title: "中継所",   build: () => S.relayRows() },
     relayHow: { title: "建てかた", build: () => S.relayHowRows() },
     notesBooks: { title: "ノートブック", build: () => S.notesLabelList("nb") },

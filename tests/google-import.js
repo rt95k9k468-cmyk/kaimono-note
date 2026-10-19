@@ -173,6 +173,19 @@ const { open, checker } = require("./lib");
   t.check("2月29日はうるう年の 29 日まで飛ぶ", vt("うるう").due.slice(5) === "02-29" && new Date(vt("うるう").due).getUTCDate() === 29);
   t.check("gid は UID（無ければ名前＋日）", vt("テスト太郎").gid === "b:c1" && vt("年なし").gid === "b:年なし:1225");
 
+  /* 名前と誕生日の一覧（.txt。ショートカットが書く）：日付の書き方いろいろ・日付なしの行は読まない。 */
+  const tx = await page.evaluate(async () => {
+    const txt = ["テスト太郎,1990/04/12", "テスト 花子,2001年7月5日 0:00", "年なし,--12-25", "月日だけ,3月9日", "\"引用\",\"1985-11-30\"", "日付なし,", ",1990/01/01"].join("\n");
+    const rd = await KN.googleImport.read([new File([txt], "b.txt")]);
+    const p = KN.googleImport.plan(rd.sources, new Set(), KN.util.todayKey());
+    return { kind: rd.sources.map((s) => s.kind).join(), got: p.all.map((x) => [x.title, x.due.slice(5)]) };
+  });
+  const gm = Object.fromEntries(tx.got);
+  t.check(".txt の一覧：五人だけ・日付なしと名前なしは読まない", tx.kind === "contacts" && tx.got.length === 5 && gm["テスト太郎の誕生日"] === "04-12" && gm["テスト 花子の誕生日"] === "07-05" && gm["年なしの誕生日"] === "12-25" && gm["月日だけの誕生日"] === "03-09" && gm["引用の誕生日"] === "11-30", JSON.stringify(tx));
+  const how = await page.evaluate(() => KN.settingsParts.todoRows().flatMap((c) => [...(c ? c.querySelectorAll(".set-title") : [])].map((e) => e.textContent)));
+  t.check("設定に誕生日のショートカットの行", how.includes("誕生日のショートカット"), how.join());
+  t.check("組み方の紙が開く", (await page.evaluate(() => KN.settingsParts.birthHowRows().length)) >= 2);
+
   t.check("エラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
   t.done();

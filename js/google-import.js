@@ -9,7 +9,7 @@
    - くり返し：読める型（毎日・毎週・隔週・毎月の日／第◯曜日・毎年）は元の一本を残し、過ぎた回は単発に。
      読めない型・UNTIL／COUNT つきは一回ずつ（無限のものはこれから 90 日まで）。
    - 元の ID は gid、取り込みの時刻は gbatch。gid が同じものは二度目に飛ばす。
-   - 連絡先は .vcf の BDAY だけを読む（名前＋誕生日の毎年の終日予定。年は使わない）。ほかの項目は読み捨てる。
+   - 連絡先は .vcf の BDAY（またはショートカットで書いた「名前,日付」の .txt／.csv）だけを読む（名前＋誕生日の毎年の終日予定。年は使わない）。ほかの項目は読み捨てる。
    - 外へは出さない（fetch しない）。ファイルは端末の中で読むだけ。
    ========================================================= */
 (function () {
@@ -319,6 +319,30 @@
     return out;
   }
 
+  /** 名前と誕生日の一覧（.txt／.csv。ショートカットで書き出す）→ parseVcf と同じ形。一行に一人、
+      行の中の日付（2026/4/12・2026-04-12・2026年4月12日・--04-12・4月12日・4/12）の前を名前に。日付の無い行は読まない。 */
+  function parseBirthdayText(text) {
+    const out = [];
+    String(text || "").split(/\r?\n/).forEach((line) => {
+      const L = line.replace(/^\uFEFF/, "");
+      const pats = [
+        [/(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/, 2, 3],
+        [/--(\d{2})-?(\d{2})/, 1, 2],
+        [/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/, 1, 2],
+        [/(\d{1,2})\s*\/\s*(\d{1,2})/, 1, 2],
+      ];
+      for (const [re, mi, di] of pats) {
+        const m = re.exec(L);
+        if (!m) continue;
+        const mm = +m[mi], dd = +m[di];
+        const name = L.slice(0, m.index).replace(/[\s,\t、:："']+$/, "").replace(/^["'\s]+/, "");
+        if (name && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) out.push({ uid: "", name, mm, dd });
+        break;
+      }
+    });
+    return out;
+  }
+
   /** 人ごとに「◯◯の誕生日」の毎年の終日予定を一本。日は今日以降の次の回（2月29日はうるう年まで飛ぶ）。 */
   function fromContacts(people, side, today) {
     const y0 = +today.slice(0, 4);
@@ -347,8 +371,9 @@
           if (!c.events.length) { bad.push(name); return; }
           const label = c.name || name.replace(/^.*\//, "").replace(/\.ics$/i, "");
           sources.push({ kind: "calendar", label, cal: c, side: "home" });
-        } else if (/\.vcf$/i.test(name)) {
-          const people = parseVcf(await (await get()).text());
+        } else if (/\.(vcf|txt|csv)$/i.test(name)) {
+          const body = await (await get()).text();
+          const people = /\.vcf$/i.test(name) ? parseVcf(body) : parseBirthdayText(body);
           if (!people.length) { bad.push(name); return; }
           sources.push({ kind: "contacts", label: "連絡先の誕生日", people, side: "home" });
         } else if (/\.json$/i.test(name)) {
@@ -421,7 +446,7 @@
     <div class="set-row"><span class="set-title">${title}</span><span class="set-val">${String(val)}</span></div>`);
 
   function pick() {
-    const inp = node(html`<input type="file" accept=".zip,.ics,.json,.vcf" multiple hidden>`);
+    const inp = node(html`<input type="file" accept=".zip,.ics,.json,.vcf,.txt,.csv" multiple hidden>`);
     document.body.append(inp);
     inp.addEventListener("change", () => {
       const files = [...(inp.files || [])];
@@ -517,5 +542,5 @@
     KN.ui.toast(r.kept ? `${r.gone}件を戻しました（直した${r.kept}件は残しました）` : `${r.gone}件を戻しました`, { long: !!r.kept });
   }
 
-  KN.googleImport = { open: pick, roomLeft, show, undo, read, plan, parseIcs, parseVcf, fromContacts, fromCalendar, fromTaskList, occurrences, rruleOf };
+  KN.googleImport = { open: pick, roomLeft, show, undo, read, plan, parseIcs, parseVcf, parseBirthdayText, fromContacts, fromCalendar, fromTaskList, occurrences, rruleOf };
 })();
