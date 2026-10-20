@@ -4913,7 +4913,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
 /* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
 #screen-todo, #head { --side-work: #5b9bd5; --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
-.wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 0 var(--sp-4) var(--sp-1); }
+.wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); }
+/* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。少し透かして下の字を見せる。 */
+.wk-faces { position: sticky; top: 0; z-index: var(--z-stick);
+  background: color-mix(in srgb, var(--c-sheet, var(--c-bg)) 82%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .wk-work { flex: none; }
 .wk-faces .seg { width: 186px; }
 .wk-faces .seg-btn { min-height: 34px; padding: 0 var(--sp-2); }
