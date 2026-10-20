@@ -29,6 +29,12 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   await page.click('#screen-todo .wk-faces [data-face="month"]');
   await page.waitForTimeout(700);
+  const mtop = await page.evaluate(() => {
+    const scr = document.querySelector("#screen-todo"), sc = KN.app.scrollerOf(scr);
+    const d = [...scr.querySelectorAll(".mo .mo-day")];
+    return { top: sc.scrollTop, n: d.length, first: d[0] && d[0].dataset.day, hit: d.find((e) => e.dataset.day >= "2026-10-21").getBoundingClientRect().top - d[0].getBoundingClientRect().top };
+  });
+  c.check("月の面は今日以後が頭・過ぎた日は上へ隠れる", mtop.first < "2026-10-21" && mtop.top > 0, JSON.stringify(mtop));
   const look = () => page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
     const cal = document.querySelector("#head .cal");

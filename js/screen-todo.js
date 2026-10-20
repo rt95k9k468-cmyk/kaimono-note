@@ -2955,13 +2955,16 @@
     if (to === "week") requestAnimationFrame(hidePastDays);
   }
 
-  /** 週の面で、過ぎた日の札を上へ隠す（今日の札が頭に来る。上へ戻せば出る）。今週のときだけ。 */
+  /** 週・月の面で、過ぎた日を上へ隠す（今日以後の最初の日が頭に来る。上へ戻せば出る）。今週・今月のときだけ。 */
   function hidePastDays() {
-    if (!root || !weekFace()) return;
-    const first = root.querySelector(".wk-day"), now = root.querySelector(".wk-day.is-today");
-    if (!first || !now || first === now) return;
+    if (!root || !(weekFace() || monthFace())) return;
+    const wk = weekFace(), today = todayKey();
+    const days = [...root.querySelectorAll(wk ? ".wk .wk-day" : ".mo .mo-day")];
+    const key = (e) => e.dataset.day;
+    const first = days[0], at = days.find((e) => key(e) >= today);
+    if (!first || !at || first === at) return;
     const sc = KN.app.scrollerOf(root);
-    sc.scrollTop += now.getBoundingClientRect().top - first.getBoundingClientRect().top;
+    sc.scrollTop += at.getBoundingClientRect().top - first.getBoundingClientRect().top;
   }
 
   /** 月の面へ。暦を月の段に開く（書けば subscribe が組み直す）。 */
@@ -2973,6 +2976,7 @@
     if (!calOpen() || !calShown()) store.setCalPref("todo", { shown: true, open: true });
     else render();
     if (root) KN.app.scrollerOf(root).scrollTop = 0;
+    requestAnimationFrame(hidePastDays);
   }
 
   function faceTabs() {
