@@ -3124,8 +3124,8 @@
       if (n) { haptic(); openSheet(n.closest("[data-id]").dataset.id, null); return; }
       const nx = e.target.closest(".wk-next");
       if (nx) { haptic(); goDay(nx.dataset.day, 1); return; }
-      // 日の札は、行のあいだを押してもその日の面へ。
-      const d = e.target.closest(".js-day, .wk-evs, .wk-go, .wk-card");
+      // 日の行は、どこを押してもその日の面へ。
+      const d = e.target.closest(".js-day, .wk-evs, .wk-card");
       if (d) setFace("today", d.dataset.day);
     });
     return el;
@@ -3422,9 +3422,9 @@
     const covered = (l, i) => placed.some((p) => p.l === l && p.a <= i && i <= p.z);
     const col = 2 + n;
     const wd = (k) => "日月火水木金土"[U.dayDate(k).getDay()];
-    /* 一日を一枚の札に（見本の週。2026年10月19日）。札は行の全部の列にまたがる地（.wk-card）で、帯は札のあいだを通る。 */
+    /* 一日を一行に（月の面と同じ罫線の行。2026年10月20日、利用者）。行の線は全部の列にまたがる .wk-card が引き、帯は行をまたいで通る。 */
     const grid = node(html`
-      <div class="wk-week" style="grid-template-columns: 52px ${n ? `repeat(${n}, 26px) ` : ""}minmax(0, 1fr) 28px">
+      <div class="wk-week" style="grid-template-columns: 52px ${n ? `repeat(${n}, 26px) ` : ""}minmax(0, 1fr)">
         ${ks.map((k, i) => html`<i class="wk-card" style="grid-row:${i + 1}" data-day="${k}"></i>`)}
         ${ks.map((k, i) => html`
           <button type="button" class="wk-day js-day ${k === today ? "is-today" : ""} ${KN.holiday && KN.holiday.of(k) ? "is-holiday" : ""}" style="grid-row:${i + 1}" data-day="${k}" data-wd="${U.dayDate(k).getDay()}"
@@ -3435,8 +3435,7 @@
               <button type="button" class="wk-ev js-open ${t.kind === "event" ? "is-event" : ""}" data-id="${t.id}">${wkDot(t)}<span class="wk-n">${t.title}</span><span class="wk-t">${wkSpanOf(t)}</span>${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`)}
             ${duesOn(k).map((t) => html`
               <button type="button" class="wk-ev js-open is-due" data-id="${t.id}">${wkDot(t, "var(--kind-due)")}<span class="wk-n">${t.title}</span><span class="wk-t">締切</span></button>`)}
-          </div>
-          <span class="wk-go" style="grid-row:${i + 1};grid-column:${col + 1}" data-day="${k}" aria-hidden="true">${icon("chevron")}</span>`)}
+          </div>`)}
         ${placed.map((p) => html`
           <button type="button" class="wk-band js-open ${p.t.endDay < today ? "is-past" : ""}" data-id="${p.t.id}" aria-label="${p.t.title}"
                   style="--cat:${KIND(p.t)};grid-column:${2 + p.l};grid-row:${p.a + 1} / ${p.z + 2}">${[...p.t.title].map((c) => html`<span>${c === "ー" ? "｜" : c}</span>`)}</button>`)}
