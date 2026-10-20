@@ -139,6 +139,7 @@
 | `pop-grow.js` | 小窓はみな、押したものから出て同じ点へ帰る（roadmap-unify の U7、docs/motion.md の「小窓は押したものから出る」）。`popOver` に grow の口が無く渡すところも無い・小窓を作るのは ui.js だけ・`place()` が出る点（transform-origin）を毎回置く・CSS の `.note-pop` に transform-origin と `.is-grow` と `.92` が無く、動きは `--m-pop-grow`。門に入る。画面は開かない |
 | `when-dict.js` | 日付と時刻の入れ方は一つ（roadmap-unify の U8、docs/todo-items.md の「日付と時刻の欄」）。JS に `type="date"`・`type="time"`・`datetime-local` が無い・`data-when` の欄はみな `type="hidden"`・それを書いたファイルは `KN.ui.whenFields` を呼ぶ・ui.js が `popTime`・`whenFields` を出す。門に入る。画面は開かない |
 | `num-fields.js` | 数の欄は `type="text"`（roadmap-unify の U9）。JS・index.html に `type="number"` が無い・`inputmode="decimal|numeric"` の欄が四つより多い・daily の記録の紙は `U.parseNum` で読む。門に入る。画面は開かない |
+| `when-live.js` | やること紙で、打った字の「いつ」を空きを打った時点で欄へ移す（「10:00 病」→ 題は病院・時刻10:00） |
 | `when-fields.js` | 日付と時刻の欄を画面で、欄ごとに（U8）。体重・食事は「日だけ変えて閉じる → 保存」「時刻だけ変えて閉じる → 保存」「何も変えずに閉じる → 聞かれない」・お酒の時刻・目標日は年月日のドラムで保存／× で外す・daily の記録の日・用事の「日付」は暦で選ぶと日付の紙が閉じて保存でその日・見える字（今日 10/7(水)・7:05・空は --:--）・「なし」で空へ戻す |
 | `words.js` | 言葉の札（roadmap-unify の U10、docs/look.md の「言葉の札」）。JS に「削除」（最近削除・控えの名前は別）・「〜の編集」・「〜を消す」で終わる確かめの題・「足す」の題と主ボタン・「見つかりません」で止まる文・二つ以外のコピーの知らせ・「AIと／AI用」が無い。画面は開かない |
 | `del-rule.js` | 消すときの決まり（roadmap-unify の U11、docs/look.md の「消すとき」）。一件の記録（daily の記録・体重・食事・お酒・飲みたくなった・価格の一件）の remove* は ⋯ の `KN.ui.delMenu` からだけ・紙に「消す」のボタンが無い・一件に確かめの紙が無い・delMenu は確かめずに「消しました／元に戻す」・商品ごと・設定の奥は確かめのまま。画面は開かない |

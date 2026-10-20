@@ -1888,6 +1888,17 @@
         haptic(10);
       });
     }
+    /* 読めた語のあとの空きを打ったら（「病院 10:00 」）、または空きのあとの最初の
+       一字を打ったら（「10:00 病」）、その場で欄へ移す。空きを打たないうちは予告だけ——
+       「10:00くらいに」と続ける人の字を、打っている最中に動かさないため。
+       「10:00 」だけでは題が空になり取れないので、次の一字を待つ。変換中は触らない。 */
+    titleEl.addEventListener("input", (ev) => {
+      if (ev.isComposing || ev.inputType !== "insertText") return;
+      const v = titleEl.value, n = v.length;
+      if (titleEl.selectionStart !== n) return;
+      const sp = (c) => c === " " || c === "\u3000";
+      if (sp(v[n - 1]) || (n > 1 && sp(v[n - 2]))) whenApply();
+    });
     titleEl.addEventListener("change", () => whenApply());
     titleEl.addEventListener("keydown", (ev) => {
       if (!KN.util.isEnter(ev)) return;
