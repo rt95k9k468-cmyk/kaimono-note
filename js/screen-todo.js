@@ -4841,18 +4841,21 @@
     /* 縦軸は時間（docs/timeline-scale-design.md）。位置・高さ・列は tl-layout が決め、
        ここは札に CSS 変数（--top・--h・--lane・--lanes。px）を置くだけ。重なりは列が言う。
        済んだ札を畳んでも軸はそのまま（物差しなので）。 */
-    const L = KN.tlLayout.layout(plan.items.map((it, k) => ({
+    list.__in = plan.items.map((it, k) => ({
       id: k, atMin: it.atMin, untilMin: it.untilMin, known: !!Number(it.todo.minutes),
-    })), { start: plan.startMin, end: plan.endMin });
-    list.__tl = L;
-    list.style.setProperty("--tl-total", L.height.toFixed(1));
+    }));
+    list.__opt = { start: plan.startMin, end: plan.endMin };
+    list.__keys = plan.items.map((it) => subsKeyOf(it.todo, day));
+    const L = tlRelayout(list);
     tlScale(L).forEach((el) => list.append(el));
     const heads = [];
     L.cards.forEach((c) => {
       // 同じ高さに時刻の字が二つ並ぶなら、あとの札は字を出さない（列の隣どうし）。
       const quiet = heads.some((y) => Math.abs(y - c.top) < CLOCK_GAP);
       if (!quiet) heads.push(c.top);
-      list.append(itemRow(plan.items[c.id], day, c, quiet, c.more.map((k) => plan.items[k])));
+      const li = itemRow(plan.items[c.id], day, c, quiet, c.more.map((k) => plan.items[k]));
+      li.__k = c.id;
+      list.append(li);
     });
 
     /* 「いま」は、行の流れの中には置きません。**一枚の層**に乗せて、行の
@@ -4866,6 +4869,69 @@
 
     wireDrag(list, day);
     return sec;
+  }
+
+  /* ---------------- 手順をひらいた札は、下の札を押し下げる（§6-3 の (a)） ----------------
+
+     ひらいた札の下端に、時間を持たない継ぎ目（手順の段の高さぶん）を入れて組み直す
+     （tl-layout の open）。足す高さは測った値を鍵（subsKeyOf）で覚えておき、組み直しの
+     たびに最初から使う——次の描きで跳ねない。中身が変わったら paint の fitOpen が測り直す。 */
+  const subsPush = new Map();
+  function subsKeyOf(t, day) { return day ? `${t.id}@${day}` : t.id; }
+
+  /** 物差しを組み直して、札・目盛り・背骨・畳みの CSS 変数を書き直す（要素は作り直さない
+      ——押し下げの滑りは CSS の top／height の移り変わり）。返すのは新しい物差し。 */
+  function tlRelayout(list) {
+    const open = {};
+    (list.__keys || []).forEach((key, k) => {
+      if (openSubs.has(key) && subsPush.get(key) > 0) open[k] = subsPush.get(key);
+    });
+    const L = KN.tlLayout.layout(list.__in || [], Object.assign({ open }, list.__opt));
+    const was = list.__tl;
+    list.__tl = L;
+    KN.util.setVar(list, "--tl-total", L.height.toFixed(1));
+    if (!was) return L;
+    const byK = new Map(L.cards.map((c) => [c.id, c]));
+    const scale = tlScale(L);
+    const old = [...list.children].filter((el) => !el.classList.contains("tl-row"));
+    const same = old.length === scale.length && old.every((el, i) => el.className === scale[i].className);
+    for (const li of list.children) {
+      if (li.classList.contains("tl-row")) {
+        const c = byK.get(li.__k);
+        if (!c) continue;
+        KN.util.setVar(li, "--top", c.top.toFixed(1));
+        KN.util.setVar(li, "--h", c.height.toFixed(1));
+        li.dataset.top = c.top.toFixed(1);
+        li.dataset.h = c.height.toFixed(1);
+      } else if (same) {
+        const n = scale[old.indexOf(li)];
+        KN.util.setVar(li, "--top", n.style.getPropertyValue("--top"));
+        if (n.style.getPropertyValue("--h")) KN.util.setVar(li, "--h", n.style.getPropertyValue("--h"));
+      }
+    }
+    if (!same) { old.forEach((el) => el.remove()); list.prepend(...scale); }
+    return L;
+  }
+
+  /** ひらいた札の中身（題の段＋手順の段）を測り、覚えた高さと違えば組み直す。滑っている
+      あいだは測らない（動いている途中の高さを掴むので。終わりに一度呼ばれる）。 */
+  function fitOpen(list) {
+    if (list.classList.contains("is-push-open") || list.classList.contains("is-push-shut")) return;
+    let changed = false;
+    for (const li of list.children) {
+      const wrap = li.__subWrap;
+      if (!wrap || !li.classList.contains("tl-row")) continue;
+      const key = list.__keys && list.__keys[li.__k];
+      if (!key) continue;
+      const item = li.querySelector(":scope > .item.tl-item");
+      const base = (list.__tl.cards.find((c) => c.id === li.__k) || {}).height - (subsPush.get(key) || 0);
+      const extra = wrap.classList.contains("is-open") && item
+        ? Math.max(0, Math.ceil(item.getBoundingClientRect().height + 2 + wrap.getBoundingClientRect().height - base)) : 0;
+      if (Math.abs(extra - (subsPush.get(key) || 0)) < 1) continue;
+      subsPush.set(key, extra);
+      changed = true;
+    }
+    if (changed) tlRelayout(list);
   }
 
   /* ---------------- いま、どこにいるか ----------------
@@ -4912,6 +4978,9 @@
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
     const nowMin = isToday ? KN.plan.toMin(KN.util.nowTime()) : null;
+
+    // ⓪ ひらいた札の高さを合わせる（測って、違えば組み直す）
+    fitOpen(list);
 
     // ① 測る（まだ何も書かない）
     let at = null, y = null;
@@ -5131,7 +5200,7 @@
 
   /* これだけ押さえたら持ち上がる・その前にこれ以上動いたら、ただのスクロール（KN.gesture）。 */
   const { HOLD: DRAG_HOLD, HOLD_SLOP: DRAG_SLOP } = KN.gesture;
-  const SLOT_MIN = 15;     // 帯の中は15分きざみで止まります
+  const SLOT_MIN = 5;      // 指の高さ → 時刻は5分きざみ
   /* 運んでいる最中に、画面の端で自動的に送る帯の厚みと、ひと呼吸あたりの
      送り幅。**端に近いほど速く**——深く入るほど急いでいる、と読みます。
      これが無いと、画面の外にあるもの（長期タスクの欄や、朝の時間帯）へは
@@ -5144,31 +5213,16 @@
      札を下側へ返します。 */
   const AIM_LABEL_GAP = 56;
 
-  /* ---------------- 左の列は、一本の時間軸 ----------------
+  /* ---------------- 縦の座標が、そのまま時刻 ----------------
 
-     **「空いている場所だけ置ける」は捨てました。** 縦の座標がそのまま時刻です
-     （札の上でも、あいだでも、畳んだ空きでも）。
-
-     掴んだときの軸は**一度だけ**決めます（途中で測り直すと、指の下で
-     速さが変わる）。持つのは列の上端からの px と、そこの分。 */
+     **「空いている場所だけ置ける」は捨てました。** 縦軸は時間なので、指の高さ → 時刻は
+     tl-layout の minAt（y の逆。畳みは区間へ比例、手順をひらいた継ぎ目はその分）で
+     そのまま引けます。掴んだときの物差しを**一度だけ**控えます（途中で組み直されても、
+     指の下で速さが変わらない）。 */
   function axisOf(dayList) {
-    /* 縦軸が時間なので、節は一日の端と畳んだ区間の端だけ（そのあいだは 1分＝pxMin の直線）。 */
     const L = dayList.__tl;
-    const box = dayList.getBoundingClientRect();
-    if (!L || box.height <= 0 || L.to <= L.from) return null;
-    const pad = dayList.clientTop + listPad(dayList);
-    const mins = [L.from];
-    L.folds.forEach((f) => mins.push(f.fromMin, f.untilMin));
-    mins.push(L.to);
-    const raw = [{ y: 0, min: L.from }].concat(mins.map((m) => ({ y: pad + L.y(m), min: m })),
-      [{ y: box.height, min: L.to }]);
-    const pts = [];
-    raw.forEach((p) => {
-      const last = pts[pts.length - 1];
-      if (last && p.y - last.y < 0.5) { last.min = Math.max(last.min, p.min); return; }
-      pts.push(p);
-    });
-    return pts.length < 2 ? null : { pts };
+    if (!L || L.to <= L.from) return null;
+    return { L, pad: dayList.clientTop + listPad(dayList) };
   }
 
   /* 一覧のドラッグ（下の reorder まわり）にも同じ名前の札があるので、
@@ -5413,40 +5467,31 @@
     d.raf = requestAnimationFrame(edgeScroll);
   }
 
-  /** 左の列の、その高さが何時か（15分きざみ）。
+  /** その高さが何時か（5分きざみ）。
 
       **縦の座標 → 時刻。それだけです。** そこに何が置いてあっても、置ける
-      かどうかは問いません——丸薬の上でも、丸薬と丸薬のあいだでも、空きでも、
-      同じ一本の軸の上の一点として読みます。目盛りは丸薬に合わせてあるので、
-      丸薬の真横に指を置けば、その丸薬が言っている時刻が出ます。
+      かどうかは問いません——札の上でも、札と札のあいだでも、畳んだ空きでも、
+      同じ一本の軸の上の一点として読みます。**横は見ません**（列の入れ替えも考えない）。
 
-      **横は見ません。** 前は列の切れ目（100px）より右を「順番で置きなおす」
-      に振っていましたが、その分岐ごとやめました——行のどこを持ち上げても、
-      同じ一本の時間軸です。
-
-      狙いの線は一枚の層に置きます。指の高さがそのまま線の高さなので、
-      **行の境目へ吸い寄せられることも、空きへ逃げることもありません。** */
+      狙いの線は一枚の層に置き、選んだ時刻の高さ（y(時刻)）へ吸わせます——線が指す
+      ところと札の字が言う時刻が、いつも同じ一点になるので。 */
   function railTime(d, x, y) {
     const a = d.axis;
     if (!a) return null;
     const box = d.dayList.getBoundingClientRect();
     if (box.height <= 0) return null;
-    /* 節と節のあいだを、まっすぐ割ります。 */
-    const yy = Math.min(box.height, Math.max(0, y - box.top));
-    const pts = a.pts;
-    let i = 1;
-    while (i < pts.length - 1 && pts[i].y < yy) i++;
-    const p0 = pts[i - 1], p1 = pts[i];
-    const r = p1.y > p0.y ? (yy - p0.y) / (p1.y - p0.y) : 0;
-    const t = Math.round((p0.min + Math.min(1, Math.max(0, r)) * (p1.min - p0.min)) / SLOT_MIN) * SLOT_MIN;
+    const L = a.L;
+    const yy = Math.min(L.height, Math.max(0, y - box.top - a.pad));
+    const m = Math.min(L.to, Math.max(L.from, L.minAt(yy)));
+    const t = Math.round(m / SLOT_MIN) * SLOT_MIN;
 
     const layer = d.aimLayer;
     const line = layer && layer.querySelector(".tl-aim-line");
     if (line) {
       const lb = layer.getBoundingClientRect();
-      /* 線は**層の中の位置**で置きます（行の中の割合ではなく）。層は
-         その日の時間割ぜんぶを覆っているので、指の高さをそのまま渡せます。 */
-      const lineY = Math.min(box.bottom, Math.max(box.top, y)) - lb.top;
+      /* 線は**層の中の位置**で置きます。層はその日の時間割ぜんぶを覆っているので、
+         選んだ時刻の高さ（一覧の頭＋余白＋y）をそのまま渡せます。 */
+      const lineY = box.top + a.pad + Math.min(L.height, Math.max(0, L.y(t))) - lb.top;
       line.style.top = lineY.toFixed(1) + "px";
       /* 線は列いっぱい。左右で言うことが違わなくなったので、時刻の側だけを
          指す理由がありません（下の aim() の但し書き）。 */
@@ -5554,7 +5599,7 @@
        落ちていました（実測：x=170 では全高で時刻が取れない）。
 
        分岐ごとやめます。時間割の中はどこでも同じ一本の時間軸で、縦の座標が
-       そのまま15分きざみの時刻です。並び順は、時刻が決めます。
+       そのまま5分きざみの時刻です。並び順は、時刻が決めます。
 
        **時間割での「並び順だけ変える」は無くなりました。** 長期タスクの欄
        （時刻を持たない行）の中の並べ替えは、上のとおり残っています。 */
@@ -5757,12 +5802,7 @@
     if (!L.cards.length) return out;
     const top = Math.min(...L.cards.map((c) => c.top));
     const bot = Math.max(...L.cards.map((c) => c.top + c.height));
-    const px = KN.tlLayout.DEFAULTS.pxMin;
-    const minAt = (y) => {   // y → 分（畳みの外だけで使う）
-      let y0 = 0, m0 = L.from;
-      L.folds.forEach((f) => { if (f.top + f.height <= y) { y0 = f.top + f.height; m0 = f.untilMin; } });
-      return m0 + (y - y0) / px;
-    };
+    const minAt = L.minAt;
     const cuts = [{ y: top, min: minAt(top) }];
     L.folds.forEach((f) => {
       if (f.top >= top && f.top + f.height <= bot) cuts.push({ y: f.top, min: f.fromMin, fold: f }, { y: f.top + f.height, min: f.untilMin });
@@ -5837,7 +5877,7 @@
        （fallsOn の但し書き——記録は増やしません）。だから開閉も day を
        混ぜた鍵で見張ります。混ぜないと、今日ひらいた手順が翌日の同じ
        行にもひらいたまま出ました。 */
-    const subsKey = day ? `${t.id}@${day}` : t.id;
+    const subsKey = subsKeyOf(t, day);
     const subsOpen = openSubs.has(subsKey);
     /* 手順は、事実の行に**丸薬**で出します。前は行の下に「手順をひらく」
        という文のボタンを置いていましたが、参考にした画面はここに
@@ -6115,8 +6155,10 @@
         KN.motion.fire("select", chip);
         chip.setAttribute("aria-expanded", String(open));
         chip.setAttribute("aria-label", `${t.title} の手順を${open ? "たたむ" : "ひらく"}`);
-        slideSubs(wrap, open);
+        const rest = slideSubs(wrap, open);
+        pushBelow(li, wrap, subsKey, open, rest);
       });
+      li.__subWrap = wrap;
       li.append(wrap);
     }
     return li;
@@ -6129,7 +6171,7 @@
       古い高さで切れます）。動きを減らす設定の人には、瞬時に。 */
   function slideSubs(wrap, open) {
     const list = wrap.querySelector(".tl-sub-list");
-    if (!list) return;
+    if (!list) return 0;
     wrap.classList.toggle("is-open", open);
     const clear = () => {
       list.style.height = "";
@@ -6139,7 +6181,7 @@
     if (KN.motion.still()) {
       clear();
       list.hidden = !open;
-      return;
+      return 0;
     }
     const dur = KN.motion.ms(open ? "--m-sheet-open" : "--m-sheet-close");
     if (open) list.hidden = false;
@@ -6156,6 +6198,32 @@
       clear();
       if (!open) list.hidden = true;
     }, dur + 40);
+    return open ? h : 0;
+  }
+
+  /** 手順の段をひらく・たたむのに合わせて、下の札を押し下げる・引き上げる。
+      rest は、段のうちまだ高さに出ていないぶん（slideSubs が 0 から動かす高さ）。
+      札の top／height は同じ速さ・曲線で滑る（.is-push-open／.is-push-shut）。 */
+  function pushBelow(li, wrap, key, open, rest) {
+    const list = li.parentElement;
+    if (!list || !list.__tl) return;
+    const c = list.__tl.cards.find((x) => x.id === li.__k);
+    if (!c) return;
+    const base = c.height - (subsPush.get(key) || 0);
+    const item = li.querySelector(":scope > .item.tl-item");
+    const extra = open && item ? Math.max(0, Math.ceil(item.getBoundingClientRect().height + 2 + wrap.getBoundingClientRect().height + rest - base)) : 0;
+    subsPush.set(key, extra);
+    const cls = open ? "is-push-open" : "is-push-shut";
+    const still = KN.motion.still();
+    list.classList.remove("is-push-open", "is-push-shut");
+    if (!still) list.classList.add(cls);
+    tlRelayout(list);
+    const ax = list.closest(".tl") && list.closest(".tl").querySelector(".tl-axis");
+    clearTimeout(list.__pushT);
+    list.__pushT = setTimeout(() => {
+      list.classList.remove(cls);
+      if (ax && ax.__paint) ax.__paint();
+    }, still ? 0 : KN.motion.ms(open ? "--m-sheet-open" : "--m-sheet-close") + 40);
   }
 
   /* ---------------- picking one up ----------------

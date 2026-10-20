@@ -5,13 +5,14 @@
    位置へ直します。**DOM も store も触らない純粋な部品**——当たり外れは
    node の表で測れます（tests/tl-layout.js）。
 
-   入力：[{ id, atMin, untilMin, known }]（known＝長さを決めた用事か）
-   出力：{ cards, folds, height, y(min) }
+   入力：[{ id, atMin, untilMin, known }]（known＝長さを決めた用事か）、opts.open＝{ id: 足す px }
+   出力：{ cards, folds, height, y(min), minAt(px) }
      cards … 各札の { id, top, height, lane, lanes, more }（px）。
              重なった札は同じ連なりの中で列に分ける（lanes＝その連なりの列数）。
              列の上限を超えた札は札にせず、その時間にいる最後の列の札の `more`（id の配列）へ。
      folds … 畳んだ長い空き { fromMin, untilMin, top, height }
      y(min) … 時刻（分）→ 縦の位置（px）。畳んだ区間の中は区間の高さへ比例で割る。
+     minAt(px) … その逆（つまんで動かす指の高さ → 時刻）。
    ========================================================= */
 (function () {
   "use strict";
@@ -56,24 +57,57 @@
     if (to > cur) gaps.push({ from: cur, to });
     const foldGaps = gaps.filter((g) => g.to - g.from >= o.foldMin);
 
-    // 区間の並び（物差しと畳み）。上からの px を積む。
+    /* 手順をひらいた札（opts.open＝{ id: 足す px }）は、札の下端（描いた終わり）に継ぎ目を入れて
+       下を押し下げる——継ぎ目は時間を持たない高さ（§6-3 の (a)。ひらいた間だけ比例を外す）。 */
+    const open = o.open || {};
+    const seams = [];
+    drawn.forEach((d) => {
+      const px = Number(open[d.it.id]) || 0;
+      if (px <= 0) return;
+      const same = seams.find((s) => s.min === d.end);
+      if (same) same.px = Math.max(same.px, px); else seams.push({ min: d.end, px });
+    });
+
+    // 区間の並び（物差し・畳み・継ぎ目）。上からの px を積む。同じ分なら継ぎ目が先（札の下端の直後）。
     const segs = [];
     let at = from, px = 0;
-    const span = (a, b) => { if (b > a) { segs.push({ fold: false, from: a, to: b, px }); px += (b - a) * o.pxMin; } };
-    foldGaps.forEach((g) => {
-      span(at, g.from);
-      segs.push({ fold: true, from: g.from, to: g.to, px });
+    const line = (a, b) => { if (b > a) { segs.push({ kind: "line", from: a, to: b, px, h: (b - a) * o.pxMin }); px += (b - a) * o.pxMin; } };
+    const marks = seams.map((s) => ({ min: s.min, seam: s })).concat(foldGaps.map((g) => ({ min: g.from, fold: g })))
+      .sort((a, b) => a.min - b.min || (a.seam ? -1 : 1));
+    marks.forEach((m) => {
+      if (m.seam) {
+        line(at, m.min);
+        at = Math.max(at, m.min);
+        segs.push({ kind: "seam", from: at, to: at, px, h: m.seam.px });
+        px += m.seam.px;
+        return;
+      }
+      line(at, m.fold.from);
+      segs.push({ kind: "fold", from: m.fold.from, to: m.fold.to, px, h: o.foldH });
       px += o.foldH;
-      at = g.to;
+      at = m.fold.to;
     });
-    span(at, to);
+    line(at, to);
     const height = px;
 
+    /* 時刻（分）→ 縦の位置。継ぎ目はその分ちょうどから下に効く（ひらいた札の下端も伸びる）。 */
     const y = (min) => {
-      const s = segs.find((g) => min < g.to) || segs[segs.length - 1];
-      if (!s) return 0;
-      if (s.fold) return s.px + (Math.min(Math.max(min, s.from), s.to) - s.from) / (s.to - s.from) * o.foldH;
-      return s.px + (min - s.from) * o.pxMin;
+      for (const s of segs) {
+        if (s.kind === "seam" || min >= s.to) continue;
+        if (s.kind === "fold") return s.px + (Math.max(min, s.from) - s.from) / (s.to - s.from) * s.h;
+        return s.px + (min - s.from) * o.pxMin;
+      }
+      return height + Math.max(0, min - to) * o.pxMin;
+    };
+    /* 縦の位置 → 時刻（分）。y の逆。継ぎ目の中はその分、畳みの中は区間へ比例で割る。 */
+    const minAt = (p) => {
+      for (const s of segs) {
+        if (p >= s.px + s.h) continue;
+        if (s.kind === "seam") return s.from;
+        if (s.kind === "fold") return s.from + Math.max(0, p - s.px) / s.h * (s.to - s.from);
+        return s.from + (p - s.px) / o.pxMin;
+      }
+      return to + Math.max(0, p - height) / o.pxMin;
     };
 
     // 列の割り当て：重なる連なりごとに、空いている最初の列へ。
@@ -93,7 +127,10 @@
       const lanes = Math.min(laneEnd.length, o.maxLanes);
       made.forEach(({ d, lane }) => {
         if (lane < o.maxLanes) {
-          cards.push({ id: d.it.id, top: y(d.at), height: y(d.end) - y(d.at), lane, lanes, more: [] });
+          // 継ぎ目ちょうどで終わる隣の札は伸ばさない（伸びるのはひらいた札だけ）。
+          const seam = (Number(open[d.it.id]) || 0) > 0 ? null : seams.find((s) => s.min === d.end);
+          const bottom = y(d.end) - (seam ? seam.px : 0);
+          cards.push({ id: d.it.id, top: y(d.at), height: bottom - y(d.at), lane, lanes, more: [] });
           return;
         }
         // 列の上限を超えた札：その時間にいる最後の列の札へまとめる。
@@ -105,8 +142,8 @@
       i = j;
     }
 
-    const folds = segs.filter((s) => s.fold).map((s) => ({ fromMin: s.from, untilMin: s.to, top: s.px, height: o.foldH }));
-    return { cards, folds, height, y, from, to };
+    const folds = segs.filter((s) => s.kind === "fold").map((s) => ({ fromMin: s.from, untilMin: s.to, top: s.px, height: s.h }));
+    return { cards, folds, height, y, minAt, from, to };
   }
 
   KN.tlLayout = { layout, DEFAULTS };

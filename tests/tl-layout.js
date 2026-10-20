@@ -58,4 +58,19 @@ t.check("寝る時刻をすぎる札は範囲を広げて描く", r.to >= H(24, 
 r = L([it("a", H(9), H(10)), it("b", H(10), H(11)), it("c", H(10, 30), H(11, 30))], O);
 t.check("連なりごとに列数が違ってよい（aは1列・b/cは2列）", r.cards[0].lanes === 1 && r.cards[1].lanes === 2 && r.cards[2].lanes === 2, JSON.stringify(r.cards));
 
+// 手順をひらいた札（§6-3 の (a)）：下端に継ぎ目を入れ、下を押し下げる。
+r = L([it("a", H(9), H(10)), it("b", H(10), H(11)), it("c", H(9, 30), H(10))], Object.assign({ open: { a: 60 } }, O));
+const ca = r.cards.find((c) => c.id === "a"), cb = r.cards.find((c) => c.id === "b");
+t.check("ひらいた札は足したぶん高い（72＋60）", near(ca.height, 132), JSON.stringify(r.cards));
+t.check("下の札は押し下がる（10時の札の頭＝72＋60・全体も60伸びる）", near(cb.top, 132) && near(r.height, 72 * 2 + 60 + 44), JSON.stringify(r.cards));
+t.check("継ぎ目ちょうどで終わる隣の列の札は伸ばさない（30分＝36px）", near(r.cards.find((c) => c.id === "c").height, 36), JSON.stringify(r.cards));
+t.check("押し下げは時間を持たない：y(10:00)＝132・y(9:59)＜72", near(r.y(H(10)), 132) && r.y(H(9, 59)) < 72);
+t.check("minAt：継ぎ目の中は10:00、その下は物差しどおり", near(r.minAt(100), H(10)) && near(r.minAt(132 + 36), H(10, 30)));
+
+// minAt は y の逆（畳みも込み）。
+r = L([it("a", H(9), H(10)), it("b", H(17), H(18))], O);
+t.check("minAt：y の逆（9:30・13:30・17:15）", [H(9, 30), H(13, 30), H(17, 15)].every((m) => near(r.minAt(r.y(m)), m)),
+  [H(9, 30), H(13, 30), H(17, 15)].map((m) => r.minAt(r.y(m))).join());
+t.check("minAt：端の外は一日の端へ（上は始まり）", near(r.minAt(0), H(9)) && r.minAt(r.height + 12) >= H(18));
+
 t.done();

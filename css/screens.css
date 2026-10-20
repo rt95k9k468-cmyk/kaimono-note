@@ -4617,15 +4617,17 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-list > li.tl-row.is-narrow > .item.tl-item { padding-left: 8px; padding-right: 4px; gap: 4px; }
 /* 伸ばした棒は、あとの札の棒の上に。 */
 .tl-list > li.tl-row.is-grown .tl-node { z-index: 1; }
-/* 手順をひらいた札は、ひらいた間だけ中身の高さまで伸びて、下の札の上に重なる（段3で押し下げに）。 */
-.tl-list > li.tl-row > .tl-sub-wrap:not(.is-open) { display: none; }
+/* 手順をひらいた札は、下の札を押し下げる（§6-3 の (a)）。高さは JS が継ぎ目を足した --h
+   （tl-layout の open）——ここは中身を高さなりに積むだけ。たたむ途中（段がまだ出ている間）も描く。 */
+.tl-list > li.tl-row > .tl-sub-wrap:not(.is-open):has(> .tl-sub-list[hidden]) { display: none; }
 .tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) {
-  z-index: 1;
-  height: auto; min-height: calc(var(--h) * 1px);
   border-radius: 14px;
   background: color-mix(in srgb, var(--cat) 14%, var(--c-surface));
 }
 .tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) > .item.tl-item { height: auto; }
+/* 押し下げ・引き上げの滑り。手順の段と同じ速さ・曲線（js の pushBelow が開閉の間だけ付ける）。 */
+.tl-list.is-push-open > li { transition: top var(--m-sheet-open) var(--ease-out), height var(--m-sheet-open) var(--ease-out); }
+.tl-list.is-push-shut > li { transition: top var(--m-sheet-close) var(--ease-in), height var(--m-sheet-close) var(--ease-in); }
 .tl-list > li.tl-row > .tl-sub-wrap { padding-left: var(--sp-3); }
 .tl-list > li.tl-row > .tl-sub-wrap::before { display: none; }
 
