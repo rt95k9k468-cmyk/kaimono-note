@@ -20,6 +20,7 @@ const ASSETS = [
   "js/icons-phosphor.js",
   "js/motion.js",
   "js/plan.js",
+  "js/tl-layout.js",
   "js/day-road.js",
   "js/activity.js",
   "js/unfold.js",
