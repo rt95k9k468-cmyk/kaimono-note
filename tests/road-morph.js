@@ -69,8 +69,8 @@ const DAY = "2026-09-30";
   await wait(40);
   s = await look();
   c.check("時刻を外すと停留所が頭へ縮み、連れの丸は着くまで隠れる", s.leave === 1 && s.coming === 1 && !s.fly, JSON.stringify(s));
-  await wait(330);
-  s = await look();
+  /* 縮み（--m-grow）の終わりは rAF と負荷で前後するので、固定の待ちでなく終わるまで見る。丸は縮みの後に 0.28 秒飛ぶ。 */
+  for (let n = 0; n < 40; n++) { await wait(15); s = await look(); if (!s.leave) break; }
   c.check("縮んだあと、丸が停留所の頭から飛ぶ", !!s.fly && !s.leave && near({ x: s.left[0], y: h1.y }, h1, 1),
     JSON.stringify([s, h1]));
   await wait(900);
