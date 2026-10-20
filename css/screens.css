@@ -4499,15 +4499,18 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row { grid-template-columns: 44px 20px 1fr; }
 .tl-node { width: 8px; border-radius: 4px; }
 .tl-node > * { display: none; }
+/* 札は白（2026年10月20日、利用者が見比べで選んだ。種類の色は棒・絵・題だけ。札を塗ると色が面になる）。枠線は引かない。
+   進んでいる一件だけ、うすく種類の色。 */
 .tl-row .item.tl-item {
   align-self: stretch; margin: 3px 0; padding: 5px var(--sp-3) 5px 12px; border-radius: 14px;
-  background: color-mix(in srgb, var(--cat) 14%, var(--c-surface));
+  background: var(--c-surface);
 }
 /* 題は札の色（2026年10月20日、利用者）。そのままの色では地の上で読めないので、字の色へ寄せる。 */
 .tl-row:not(.is-done):not(.is-someday) .tl-item .item-name { color: color-mix(in srgb, var(--cat) 55%, var(--c-text)); }
 .tl-row .item.tl-item { margin-right: var(--sp-4); }
-.tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 22%, var(--c-surface)); border-radius: 14px; }
-.tl-row.is-done .item.tl-item { background: var(--c-surface); }
+.tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 9%, var(--c-surface)); border-radius: 14px; }
+/* 済ませた札は透かさない（一覧の .item.is-checked の 0.55 が効いて、目盛りの線が札を透けていた）。取り消し線と塗った印で見分ける。 */
+.tl-row .item.tl-item.is-checked { opacity: 1; }
 .tl-body { position: relative; padding-left: 30px; }
 .tl-ico { position: absolute; left: 0; top: 1px; display: grid; width: 22px; height: 22px; }
 .tl-ico .todo-mark, .tl-ico .todo-mark svg { width: 22px; height: 22px; }  /* 入れもの：札の絵 */
@@ -4614,13 +4617,16 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-list > li.tl-row.is-narrow .tl-ico, .tl-list > li.tl-row.is-narrow .tl-cap,
 .tl-list > li.tl-row.is-narrow .tl-facts { display: none; }
 .tl-list > li.tl-row.is-narrow .tl-body { padding-left: 0; }
+/* 列を分けた札は絵を外し、題に幅を譲る（二列で絵があると、題が四字ほどで折れた）。 */
+.tl-list > li.tl-row.is-lane .tl-ico { display: none; }
+.tl-list > li.tl-row.is-lane .tl-body { padding-left: 0; }
 .tl-list > li.tl-row.is-narrow > .item.tl-item { padding-left: 8px; padding-right: 4px; gap: 4px; }
 /* 手順をひらいた札は、下の札を押し下げる（§6-3 の (a)）。高さは JS が継ぎ目を足した --h
    （tl-layout の open）——ここは中身を高さなりに積むだけ。たたむ途中（段がまだ出ている間）も描く。 */
 .tl-list > li.tl-row > .tl-sub-wrap:not(.is-open):has(> .tl-sub-list[hidden]) { display: none; }
 .tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) {
   border-radius: 14px;
-  background: color-mix(in srgb, var(--cat) 14%, var(--c-surface));
+  background: var(--c-surface);
 }
 .tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) > .item.tl-item { height: auto; }
 /* 押し下げ・引き上げの滑り。手順の段と同じ速さ・曲線（js の pushBelow が開閉の間だけ付ける）。 */
