@@ -1239,11 +1239,13 @@ a { color: var(--c-primary); }
 .head[data-sky="night"][data-sky-img$="-night"]::before {
   background:
     var(--sky-veil),
-    var(--sky-photo) 50% calc(55% - .55 * var(--sky-more)) / 100% auto no-repeat,
+    var(--sky-photo) 50% calc(55% - .55 * var(--sky-more)) / var(--sky-size, 100% auto) no-repeat,
     linear-gradient(to bottom, var(--sky-a) 0, var(--sky-c) calc(var(--safe-t) + 52px), var(--sky-g) calc(var(--safe-t) + 300px)),
     var(--c-bg);
   background-blend-mode: var(--sky-blend), normal, normal;
 }
+/* やることの月の面（暦が画面の65%・`.cal.is-tall`）は正方形の写真では下が足りない。帯いっぱいに広げて余白を出さない。 */
+.head:has(.cal.is-tall) { --sky-size: cover; }
 /* 引くと、空が近づく（docs/motion.md の「反応を足す」）。いちばん上で紙を下へ引くと
    （pull-refresh の give）、引いたぶんだけ空が上の端を軸に少しふくらむ——紙を引く指に、
    後ろの景色もついてくる。`--sky-pull`（0〜1）は pull-refresh.js が帯（#head）へ書く。

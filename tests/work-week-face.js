@@ -166,30 +166,21 @@ const { open, checker } = require("./lib");
   const done = await page.evaluate(() => KN.store.get().todos.find((t) => t.title === "経費の精算").done);
   c.check("期限の行から済ませられる", done === true);
 
-  // 右下の＋は一行（キーボードは勝手に出さない・R4 の札）。時刻があれば予定、日が今週なら今週の印、日が無ければこれから
+  // 右下の＋は、どの面でも紙（一行の小窓は 2026年10月20日にやめた——利用者「無駄なステップ」）
   await page.click(".add-fab.js-open-add");
   await page.waitForTimeout(500);
-  const pop = await page.evaluate(() => ({ quick: !!document.querySelector(".note-pop.is-quick .js-qa-title"),
-    sheet: !!document.querySelector(".sheet.is-open"), focus: document.activeElement.classList.contains("js-qa-title") }));
-  c.check("＋：週の面では一行（紙でなく・キーボードは出さない）", pop.quick && !pop.sheet && !pop.focus, JSON.stringify(pop));
-  await page.fill(".js-qa-title", "牛乳");
-  const chip = await page.evaluate(() => { const b = document.querySelector(".js-qa-dest"); return b && !b.hidden ? b.textContent : null; });
-  c.check("＋：買うものらしければ R4 の札", chip === "→ 買うもの", String(chip));
-  const addLine = async (text) => {
-    if (!(await page.$(".note-pop.is-quick"))) { await page.$eval(".add-fab.js-open-add", (b) => b.click()); await page.waitForTimeout(400); }   // 出たトーストが＋に重なるので
-    await page.fill(".js-qa-title", text);
-    await page.press(".js-qa-title", "Enter");
-    await page.waitForTimeout(400);
-  };
-  await addLine("資料を作る 金曜");
-  await addLine("歯医者 明日 15時");
-  await addLine("棚を拭く");
-  await addLine("今日 書類を出す");
+  const pop = await page.evaluate(() => ({ quick: !!document.querySelector(".note-pop.is-quick"), sheet: !!document.querySelector(".sheet.is-open") }));
+  c.check("＋：週の面でも紙（一行の小窓は出ない）", !pop.quick && pop.sheet, JSON.stringify(pop));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+  // 一行の読み（weekAdd）は受け箱の取り込みが使う。時刻があれば予定、日が今週なら今週の印、日が無ければこれから
+  await page.evaluate(() => ["資料を作る 金曜", "歯医者 明日 15時", "棚を拭く", "今日 書類を出す"].forEach((x) => KN.screens.todo.weekAdd(x, { quiet: true })));
+  await page.waitForTimeout(300);
   const got = await page.evaluate(() => ["資料を作る", "歯医者", "棚を拭く", "書類を出す"].map((n) => {
     const t = KN.store.get().todos.find((x) => x.title === n);
     return t ? [t.due || "", t.weekMark || "", t.kind || "", t.time || ""].join("/") : null;
   }));
-  c.check("＋：日が今週なら今週の印・時刻があれば予定・日が無ければこれから・今日なら今日も",
+  c.check("一行の読み：日が今週なら今週の印・時刻があれば予定・日が無ければこれから・今日なら今日も",
     JSON.stringify(got) === JSON.stringify(["2026-10-23/2026-10-23//", "2026-10-22//event/15:00", "///", "2026-10-21/2026-10-21//"]),
     JSON.stringify(got));
 

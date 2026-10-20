@@ -90,6 +90,14 @@ const { open, checker } = require("./lib");
   a = await look();
   c.check("送ると暦の輪がついてくる", a.here === "2026-10-22", String(a.here));
 
+  // 同じ日を続けて二度押すと、その日に足す紙（一度目は送るだけ）
+  await page.click('#head .cal-day[data-day="2026-10-28"]'); await page.waitForTimeout(120);
+  const once = await page.$(".sheet.is-open");
+  await page.click('#head .cal-day[data-day="2026-10-28"]'); await page.waitForTimeout(600);
+  const dbl = await page.evaluate(() => (document.querySelector(".sheet.is-open") || {}).textContent || "");
+  c.check("月の面で日を二度押すと、その日に足す紙", !once && /10月28日/.test(dbl), dbl.replace(/\s+/g, " ").slice(0, 80));
+  await page.keyboard.press("Escape"); await page.waitForTimeout(500);
+
   // 週へ移ると暦は週へ畳む
   await page.click('#screen-todo .wk-faces [data-face="week"]');
   await page.waitForTimeout(700);
