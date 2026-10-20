@@ -1,4 +1,4 @@
-/* 暦の「済んだ印」：過去の済んだやること（単発）は出す／繰り返しは出さない。
+/* 暦の「済んだ印」（名前・灰色）：過去の済んだやること（単発）は出す／繰り返しは出さない。
 
    時計は木曜（2026年10月1日）に止める。前は本当の今日の2日前を見ていたので、
    日曜・月曜に回すと、その日が週の暦の外（前の週）になって落ちていた（R19）。 */
@@ -24,7 +24,7 @@ const { open, checker } = require("./lib");
   const r = await page.evaluate(() => {
     const k = KN.util.shiftDay(KN.util.todayKey(), -2);
     const cells = [...document.querySelectorAll(`.cal-day[data-day="${k}"]`)];
-    return cells.map((c) => `${(c.closest(".screen") || {}).id}:${c.querySelectorAll(".cal-mark").length}`);
+    return cells.map((c) => `${(c.closest(".screen") || {}).id}:${c.querySelectorAll(".cal-name.is-past").length}`);
   });
   t.check("済んだ単発だけ出る／繰り返しの控えは出ない", r.length === 1 && r[0].endsWith(":1"), JSON.stringify(r));
   t.check("ページのエラーなし", !errors.length, errors.join(" / "));

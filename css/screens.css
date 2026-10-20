@@ -4930,17 +4930,30 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .mo .wk-ev { font-size: var(--fs-md); }
 .mo .wk-t { min-width: 3em; }
 .mo .wk-n { font-weight: var(--fw-regular); }
-/* 暦の月の段に名前を一行（やることの暦だけ）。マスの高さは変えない——点の段（15px）の中身を入れ替える。週の段は点のまま。 */
-.cal-name { display: none; }
+/* やることの暦の印は名前（2026年10月20日、利用者。絵の丸はやめた）。日付の数字の真下。マスの高さは点の段（15px）のまま、
+   ふつうは先頭の一つだけ。 */
 .cal-day { min-width: 0; }   /* 名前の長さで列（1fr）が広がらないように */
-/* 名前は週の段にも（2026年10月20日、利用者）。絵（.cal-mark）の代わりに字を、日付の数字の真下に中央で。 */
-.cal-dots:has(> .cal-name) > .cal-mark { display: none; }
 .cal-name {
   display: block; min-width: 0; max-width: 100%; padding: 0 2px; text-align: center;
   font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 15px;
   color: color-mix(in srgb, var(--cat) 55%, var(--c-text-2));
 }
+.cal-name ~ .cal-name, .cal-name.is-over { display: none; }
 .cal-name b { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-regular); }
+.cal-name.is-past { color: var(--c-text-3); }
+/* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。字は「…」で切らない（一字ぶん惜しい）。 */
+.cal.is-tall .cal-grid { grid-auto-rows: var(--cal-row); }
+.cal.is-tall.is-settling .cal-grid { transition: grid-auto-rows var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
+.cal.is-tall .cal-dots { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; height: auto; flex: 1; min-height: 0; padding: 0 2px; }
+.cal.is-tall .cal-name { display: block; flex: none; text-align: left; padding: 0 2px 0 3px; border-radius: 3px; color: var(--c-text);
+  background: color-mix(in srgb, var(--cat) 22%, var(--c-bg)); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cat) 75%, var(--c-bg)); }
+.cal.is-tall .cal-name b { text-overflow: clip; }
+.cal.is-tall .cal-name.is-past { color: var(--c-text-2); background: color-mix(in srgb, var(--c-text-3) 14%, var(--c-bg)); box-shadow: inset 2px 0 0 var(--c-border); }
+.cal.is-tall .cal-name.is-over { display: none; }
+/* 引いているあいだはマスの背が動くので、px で置いた輪は伏せる（収まれば組み直しが置き直す）。 */
+.cal.is-tall:is(.is-peek, .is-settling) .cal-ring { opacity: 0; }
+.cal-rest { display: none; }
+.cal.is-tall .cal-rest { display: block; flex: none; padding-left: 4px; text-align: left; font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 13px; color: var(--c-text-2); }
 /* 日と日のあいだの、薄い薄い罫線（右と下。右端の列は右を引かない）。 */
 .cal-day { box-shadow: inset 0 -1px 0 var(--cal-line), inset -1px 0 0 var(--cal-line); border-radius: 0; }
 .cal-day[data-wd="6"] { box-shadow: inset 0 -1px 0 var(--cal-line); }

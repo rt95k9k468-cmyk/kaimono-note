@@ -223,7 +223,7 @@
       }
     };
     fitCalH();
-    window.addEventListener("resize", () => fitCalH());
+    window.addEventListener("resize", () => { fitTall(els.cal); fitCalH(); });
 
     /* 手でめくった月の留めを外す合図。指が触ったこと、そのものです。 */
     root.addEventListener("pointerdown", unpinOnTouch, { passive: true, capture: true });
@@ -2729,6 +2729,7 @@
        帯は全タブで一つなので「探しているタブだけ帯が縮む」ことになります。 */
     els.cal = monthCalendar(store.openTodos());
     KN.head.putCal("todo", els.cal);
+    fitTall(els.cal);
 
     /* **日の紙も、変わっていなければ組み直しません。** 暦と同じ話で、
        同じ理由で**外しません**（外して付け直すだけで、その木ぶんの
@@ -4097,35 +4098,32 @@
     fill: (tmp, only) => fillCalendar(tmp, store.openTodos(), only),
   });
 
-  /* 日の印。隣の月のマス（週が月をまたぐときだけ表に出る）にも絵を出します。
-     ここを空にしていたのは「件数はその月ぶんしか数えていない」からでしたが、
-     marks は `t.due` で引いているだけなので、隣の月の日もそのまま引けます。
+  /* 日の印。隣の月のマス（週が月をまたぐときだけ表に出る）にも名前を出します。
+     名前は日で引いているだけなので、隣の月の日もそのまま引けます。
      空のままにすると「翌月1日は何もない」と嘘をつくことになります。
      件数（読み上げ）はその月のぶんだけ。押せばその日へ行けるので、月末の週から
      翌月の頭へそのまま進めます。 */
-  function calMarkOf(load, marks, edge, names) {
+  function calMarkOf(load, done, edge, names) {
     return (key, out) => {
       const n = out ? 0 : (load.get(key) || 0);
       const e = edge.get(key) || { spans: [], dues: [] };
-      const nodes = (marks.get(key) || []).map((t) => node(html`
-        <i class="cal-mark" style="--cat:${tlColorOf(t)}">${todoMark(t)}</i>
-      `));
+      const nodes = [];
       // またがる予定の帯（日のマスの下の細い筋）と期限の縁。名前は入れない（読み上げにだけ）。
       e.spans.forEach((p) => nodes.push(node(html`
         <i class="cal-span ${p.t.due === key ? "is-s" : ""} ${p.t.endDay === key ? "is-e" : ""}"
            style="--cat:${KIND(p.t)};--lane:${p.l}"></i>`)));
       if (e.dues.length) nodes.push(node(html`<i class="cal-due"></i>`));
-      /* 月の段は名前を一行（2026年10月19日、利用者）。代表は 予定（またがる予定の始まりも）→ やること → 締切。
-         「+n」は置かない——マスが約50pxで、付けると名前が一字しか残らない（数は下の月の面と読み上げに）。
-         マスの高さは変えない（点の段に入れ替える。週の段は点のまま）。「仕事だけ」は暦に効かせない。 */
-      if (!out && names) {
-        const today = todayKey();
-        const rows = itemsOn(key, names.open, names.all, today), dues = duesAt(key, names.open, today);
-        const starts = e.spans.filter((p) => p.t.due === key).map((p) => p.t);
-        const n = rows.length + dues.length + starts.length;
-        const top = starts[0] || rows.find((t) => t.kind === "event") || rows[0];
-        if (n) nodes.push(node(html`<i class="cal-name" style="--cat:${top ? KIND(top) : "var(--kind-due)"}"><b>${(top || dues[0]).title}</b></i>`));
-      }
+      /* 印は名前だけ（2026年10月20日、利用者。絵の丸は何か分からないのでやめた）。
+         並びは 予定（またがる予定の始まりも）→ やること → 締切。週の段と月の段（ふつう）は先頭の一つ、
+         月の面の背の高い暦は入るだけ（入りきらない分は fitTall が「+n」に）。過ぎた日は済んだものも灰色で。
+         毎日のくり返しは出さない（全部のマスに並ぶだけ）。「仕事だけ」は暦に効かせない。 */
+      const today = todayKey();
+      const rows = itemsOn(key, names.open, names.all, today), dues = duesAt(key, names.open, today);
+      const starts = e.spans.filter((p) => p.t.due === key).map((p) => p.t);
+      const ev = rows.filter((t) => t.kind === "event");
+      const list = starts.concat(ev, rows.filter((t) => t.kind !== "event"), dues, key < today ? (done.get(key) || []) : []);
+      const past = key < today ? "is-past" : "";
+      list.forEach((t, i) => nodes.push(node(html`<i class="cal-name ${past}" style="--cat:${i < starts.length + rows.length ? KIND(t) : "var(--kind-due)"}"><b>${t.title}</b></i>`)));
       return {
         cat: dayColor(key),
         label: (n ? ` やること${n}件` : "") + e.spans.map((p) => ` ${p.t.title}`).join("")
@@ -4133,6 +4131,41 @@
         nodes,
       };
     };
+  }
+
+  /** 月の面は暦を画面の65%まで背高に（2026年10月20日、利用者）。マス＝残りを行の数で割る。入りきらない名前は
+      最後の段を「+n」に。引いているあいだは触らない（指の下のマスの高さは cal-peek が `data-row-lo` から出す）。 */
+  const TALL = 0.65;
+  function fitTall(sec) {
+    if (!sec || !sec.isConnected || sec.classList.contains("is-peek") || sec.classList.contains("is-settling")) return;
+    const grid = sec.querySelector(".cal-grid");
+    sec.querySelectorAll(".cal-rest").forEach((e) => e.remove());
+    sec.querySelectorAll(".cal-name.is-over").forEach((e) => e.classList.remove("is-over"));
+    sec.classList.remove("is-tall");
+    const cells = grid ? grid.querySelectorAll(":scope > .cal-day") : [];
+    if (!monthFace() || !calOpen() || !calShown() || cells.length < 8) return;
+    const cell = cells[0];
+    const lo = cell.offsetHeight, dots = cell.querySelector(".cal-dots").offsetTop;
+    const top = grid.getBoundingClientRect().top, padB = parseFloat(getComputedStyle(sec).paddingBottom) || 0;
+    const rows = Math.ceil(cells.length / 7);
+    const row = Math.floor((window.innerHeight * TALL - top - padB - (rows - 1)) / rows);
+    if (row <= lo) return;
+    sec.style.setProperty("--cal-row", row + "px");
+    sec.dataset.rowLo = lo;
+    sec.classList.add("is-tall");
+    // 輪は px で置いてあるので、マスの背が変わったら置き直す。
+    const here = grid.querySelector(":scope > .cal-day.is-here");
+    if (here && grid.querySelector(".cal-ring.is-on")) moveRing(grid, here, true);
+    const name = grid.querySelector(".cal-name");
+    if (!name) return;
+    const line = name.offsetHeight + 2;   // 名前と名前のあいだ 2px
+    const cap = Math.max(1, Math.floor((row - dots - 1) / line));
+    grid.querySelectorAll(".cal-dots").forEach((d) => {
+      const ns = d.querySelectorAll(".cal-name");
+      if (ns.length <= cap) return;
+      for (let i = cap - 1; i < ns.length; i++) ns[i].classList.add("is-over");
+      d.append(node(html`<i class="cal-rest">+${ns.length - cap + 1}</i>`));
+    });
   }
 
   /** 月の段の帯と期限の縁（docs/todo-items.md「仕事の予定とやること」の画面）。筋は二本まで。 */
@@ -4182,36 +4215,14 @@
       load.set(t.due, (load.get(t.due) || 0) + 1);
     });
 
-    /* 日ごとの**絵**。点のかわりに、その日にあるものの絵をそのまま並べます
-       （参考にした画面と同じ）。点は「詰まっている／いない」しか言いません
-       が、絵は「病院がある」「買い物の日だ」まで言います。暦を読む目的の
-       ほとんどは後者です。
-
-       繰り返すものも入れます。上の点は繰り返しを外していました——毎週火曜の
-       ゴミ出しが九日に点を打つと、点が「ふつうでない日」を指せなくなるから
-       です。絵は違います：絵は数ではなく**中身**なので、毎週あるものが毎週
-       出ているのは、そのとおりで正しい。
-
-       三つまで（参考画面は四つ）。一つ減らしたのは、こちらの絵が読める
-       大きさ（20px）だと四つ目がマスからはみ出すからです。
-
-       過ぎた日のぶんは、片づけていても出します——`open` は「まだ
-       やっていない」ものだけなので、済ませたとたんにそのマスから絵が
-       消えていました。過去のマスは記録なので、片づけたことでその日に
-       何があったか読めなくなるのは本末転倒です。今日から先はこれまで
-       どおり `open` だけ（まだ起きていないことを「済んだ」と出すと
-       嘘になるので）。
-
-       ただし**繰り返しのぶんは、済んだ記録としては出しません**（2026年9月28日。済ませると残る控え＝`trace` も同じ）。
-       毎週のものは、済ませるたびに過去の日へ絵が並び、暦が「済んだ印」だらけ
-       になるので。まだこれからの繰り返しは、上のとおり出ます。 */
-    const doneForMarks = store.get().todos
-      .filter((t) => (t.done || t.archived) && !t.repeat && !t.trace && t.due && t.due < today);
-    const marks = new Map();
-    (open || []).concat(doneForMarks).forEach((t) => {
-      if (!t.due) return;
-      const list = marks.get(t.due) || [];
-      if (list.length < 3) { list.push(t); marks.set(t.due, list); }
+    /* 過ぎた日の済んだやること（単発だけ）。過去のマスは記録なので、片づけても名前は残す
+       （`open` は「まだ」だけ）。くり返しと控え（`trace`）は出さない——済ませるたびに過去の日へ並ぶので。
+       予定は itemsOn が済の印に関わらず引くので、ここはやることだけ。 */
+    const done = new Map();
+    store.get().todos.forEach((t) => {
+      if (!(t.done || t.archived) || t.repeat || t.trace || !t.due || t.due >= today || t.kind === "event") return;
+      if (!done.has(t.due)) done.set(t.due, []);
+      done.get(t.due).push(t);
     });
 
     /* Tapping a date goes to that date's shelf. Otherwise the month is a
@@ -4225,7 +4236,7 @@
     const edge = calEdges(KN.util.dayKey(new Date(year, month, -6)), KN.util.dayKey(new Date(year, month + 1, 7)));
     KN.calGrid.fill(sec, {
       year, month, outFocus: true,
-      mark: calMarkOf(load, marks, edge, oneDay() ? { open: open || [], all: store.get().todos } : null),
+      mark: calMarkOf(load, done, edge, { open: open || [], all: store.get().todos }),
       pick: (key) => openDay(key),
     });
     if (only) return;                     // 離れたところへ組んだぶん（上を参照）
@@ -4233,6 +4244,7 @@
        （`setCalMonth` はここを通ります）。次の組み直しで組み直させます。 */
     if (sec === calNode) calSig = null;
     fillCalTail(sec, open);
+    fitTall(sec);
   }
 
   /** 盤の中身ではなく、**いま見ている日**で変わるぶん。使い回した盤にも

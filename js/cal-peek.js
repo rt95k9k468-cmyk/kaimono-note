@@ -126,8 +126,11 @@
        「日 月 火…」と余白だけが残ります。 */
     const wds = cal.querySelector(".cal-wds");
     const cs = window.getComputedStyle(cal);
+    /* 背の高い月（やることの月の面・`.is-tall`）は、週のマスの高さが月より低い。週へ向かうぶん
+       マスも縮める（`lo`＝週のときの高さ。画面が `data-row-lo` に置く）。 */
+    const lo = cal.classList.contains("is-tall") ? Math.min(cellH, parseFloat(cal.dataset.rowLo) || cellH) : cellH;
     return {
-      cal, clip, slide, grid, cellH, rowH, full,
+      cal, clip, slide, grid, cellH, rowH, full, lo,
       week: idx < 0 ? 0 : Math.floor(idx / 7),
       wds,
       wdsH: wds ? wds.offsetHeight : 0,
@@ -140,7 +143,7 @@
   function visibleH(m, p) {
     if (p <= -1) return 0;
     const chrome = m.wdsH + m.padT + m.padB;
-    const grid = p <= 0 ? m.cellH : m.cellH + (m.full - m.cellH) * Math.min(1, p);
+    const grid = p <= 0 ? m.lo : m.lo + (m.full - m.lo) * Math.min(1, p);
     /* 暦なし（-1）と週（0）のあいだは、暦ぜんぶが畳まれていきます。 */
     const keep = p < 0 ? 1 + p : 1;
     return (grid + chrome) * keep;
@@ -160,9 +163,12 @@
   function paint(o, m, p) {
     const open = p > 0 ? p : 0;          // 0〜1：週から月へ
     const keep = p < 0 ? 1 + p : 1;      // 1〜0：週から暦なしへ
-    const grid = p <= 0 ? m.cellH : m.cellH + (m.full - m.cellH) * Math.min(1, p);
+    const grid = p <= 0 ? m.lo : m.lo + (m.full - m.lo) * Math.min(1, p);
     m.clip.style.height = (grid * keep).toFixed(1) + "px";
-    m.slide.style.transform = `translateY(${(-m.week * m.rowH * (1 - open)).toFixed(1)}px)`;
+    // マスの高さは背の高い月のときだけ動かす（custom property ではなく直に——受け継ぐと中の全部が再計算）。
+    const cell = m.lo + (m.cellH - m.lo) * open;
+    if (m.lo < m.cellH) m.grid.style.gridAutoRows = cell.toFixed(1) + "px";
+    m.slide.style.transform = `translateY(${(-m.week * (cell + m.rowH - m.cellH) * (1 - open)).toFixed(1)}px)`;
     /* 三段目へ向かうぶんは、日のマスだけでは足りません——曜日の行と暦の
        上下の余白も一緒に畳まないと、消したはずの場所に「日 月 火…」と
        余白だけが残ります。 */
@@ -205,6 +211,7 @@
     if (!m) return;
     m.clip.style.height = "";
     m.slide.style.transform = "";
+    m.grid.style.gridAutoRows = "";
     if (m.wds) { m.wds.style.height = ""; m.wds.style.opacity = ""; }
     m.cal.style.paddingTop = "";
     m.cal.style.paddingBottom = "";

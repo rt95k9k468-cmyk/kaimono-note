@@ -3,7 +3,7 @@
    面は 今日｜週｜月。「月」を押すと暦が月の段に開き、下はその月の予定・やること・締切を日ごとに（予定の無い日は出さない・
    時刻 → 名前・またがる予定は始まりの日に「〜終わりの日」・下に今月のまとめ）。暦の日を押すとその日の行へ送り、題もその日。
    紙を送ると暦の輪と題がついてくる。暦を畳めば週の面、「今日」「週」へ移れば暦は週へ畳む。
-   暦の月の段はマスに名前を一行（代表は予定 → やること → 締切・マスの高さは変えない・週の段は点のまま）。
+   暦の印は名前（代表は予定 → やること → 締切）。月の面は暦を画面の65%まで背高に、名前は入るだけ・あふれは「+n」。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-month-face.js */
 const { open, checker } = require("./lib");
@@ -49,6 +49,9 @@ const { open, checker } = require("./lib");
       sum: (scr.querySelector(".mo .wk-sum") || {}).textContent || "",
       n22: name("2026-10-22"), n23: name("2026-10-23"), n27: name("2026-10-27"), n24: name("2026-10-24"),
       h: cell("2026-10-23").getBoundingClientRect().height,
+      bottom: cal.getBoundingClientRect().bottom, vh: innerHeight, tall: cal.classList.contains("is-tall"),
+      d30: [...cell("2026-10-30").querySelectorAll(".cal-name")].filter((n) => getComputedStyle(n).display !== "none").length,
+      more30: (cell("2026-10-30").querySelector(".cal-rest") || {}).textContent || "",
       title: document.querySelector("#head .js-day-title")?.textContent || "",
       here: cal.querySelector(".cal-day.is-here")?.dataset.day || null,
     };
@@ -61,7 +64,8 @@ const { open, checker } = require("./lib");
   c.check("締切とまたがる予定", /締切経費の精算/.test(a.d23.join()) && /〜10\/28出張/.test(a.d27.join()), JSON.stringify([a.d23, a.d27]));
   c.check("今月のまとめ（予定の数・作業時間・締切）", /今月の予定・締切/.test(a.sum) && /予定 4件/.test(a.sum) && /作業時間 1時間30分/.test(a.sum) && /締切 1件/.test(a.sum), a.sum);
   c.check("暦の月の段に名前（代表は予定）", a.n22 === "定例" && a.n23 === "経費の精算" && a.n27 === "出張" && a.n24 === "", JSON.stringify([a.n22, a.n23, a.n27, a.n24]));
-  c.check("名前でマスの高さは変わらない", Math.abs(a.h - h0) < 0.5, `${h0} → ${a.h}`);
+  c.check("月の面は暦が画面の65%まで背高", a.tall && a.h > h0 + 20 && Math.abs(a.bottom - a.vh * 0.65) < 8, JSON.stringify([h0, a.h, a.bottom, a.vh]));
+  c.check("入りきらない名前は最後の段を「+n」に", a.d30 >= 1 && a.more30 === `+${40 - a.d30}`, JSON.stringify([a.d30, a.more30]));
 
   // 暦の日を押すと、その日の行へ送り、題と輪もその日
   await page.click('#head .cal-day[data-day="2026-10-30"]');

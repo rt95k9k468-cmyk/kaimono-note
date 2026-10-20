@@ -220,7 +220,7 @@ const { open, checker } = require("./lib");
   const before = await page.evaluate(() => {
     const d = document.querySelector(`#head .cal .cal-day[data-day="${KN.util.todayKey()}"] .cal-dots`);
     const r = d.getBoundingClientRect();
-    return { n: d.querySelectorAll(".cal-mark").length, x: r.left, y: r.top };
+    return { n: d.querySelectorAll(".cal-mark, .cal-name").length, x: r.left, y: r.top };
   });
   await tapSel('.tab[data-tab="diet"]');
   const mid = await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => {
@@ -228,7 +228,7 @@ const { open, checker } = require("./lib");
     const m = g && g.querySelector(".cal-dots");
     const r = m && m.getBoundingClientRect();
     const cal = document.querySelector("#head .cal");
-    res({ ghost: !!g, marks: g ? g.querySelectorAll(".cal-mark").length : 0,
+    res({ ghost: !!g, marks: g ? g.querySelectorAll(".cal-mark, .cal-name").length : 0,
       x: r ? r.left : null, y: r ? r.top : null, op: g ? Number(getComputedStyle(g).opacity) : null,
       fadingIn: cal.classList.contains("is-marks-in"), cals: document.querySelectorAll("#head .cal").length,
       inert: g ? g.getAttribute("aria-hidden") === "true" && getComputedStyle(g).pointerEvents === "none" : false });
@@ -264,7 +264,7 @@ const { open, checker } = require("./lib");
     && !document.querySelector("#head .cal").classList.contains("is-marks-in")));
 
   /* ---- 買うものの暦：その日に買ったものの丸（段4） ----
-     やることの暦と同じ `.cal-mark`。同じ品物は一つ、三つまで。買っていない
+     色の丸（`.cal-mark`。やることの暦は名前になった）。同じ品物は一つ、三つまで。買っていない
      （チェックの無い）ものは出さない。 */
   await page.evaluate(() => {
     const s = KN.store.get();
