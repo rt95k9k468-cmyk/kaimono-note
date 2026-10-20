@@ -4224,7 +4224,7 @@ button.tl-over:active { opacity: var(--press-fade); }
      押しても何も起きないので、そちらは元のまま。 */
   cursor: pointer;
 }
-.tl-row, .tl-seg, .tl-fold {
+.tl-row, .tl-seg, .tl-fold, .tl-late-line {
   --p: calc(var(--pass, 1) * 100%);
   /* まだ来ていないぶんの色。**まっさらな一色の灰**です。棚の色は混ぜません
      ——混ぜると行ごとに灰色が微妙に変わり、線は一日を通す一本なので、
@@ -4556,7 +4556,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   padding: var(--tl-pad) 0;
   height: calc(var(--tl-total, 0) * 1px);
 }
-.tl-list > li.tl-row, .tl-list > .tl-tick, .tl-list > .tl-seg, .tl-list > .tl-fold {
+.tl-list > li.tl-row, .tl-list > .tl-tick, .tl-list > .tl-seg, .tl-list > .tl-fold, .tl-list > .tl-late-line {
   position: absolute;
   top: calc(var(--tl-pad) + var(--top, 0) * 1px);
 }
@@ -4585,7 +4585,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 棒は札の高さそのまま。重なった札の棒は、背骨の左右へ少しずつずらして細く。 */
 .tl-list > li.tl-row .tl-node {
   --node-p: calc(var(--pass, 1) * 100%);
-  top: 0; height: calc(100% + var(--grow, 0) * 1px);   /* 過ぎてもまだは「いま」まで（JS の growLate） */
+  top: 0; height: 100%;
   left: calc(50% + (var(--lane, 0) - (var(--lanes, 1) - 1) / 2) * 7px);
   width: calc(8px - (var(--lanes, 1) - 1) * 2px);
   translate: -50% 0;
@@ -4615,8 +4615,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-list > li.tl-row.is-narrow .tl-facts { display: none; }
 .tl-list > li.tl-row.is-narrow .tl-body { padding-left: 0; }
 .tl-list > li.tl-row.is-narrow > .item.tl-item { padding-left: 8px; padding-right: 4px; gap: 4px; }
-/* 伸ばした棒は、あとの札の棒の上に。 */
-.tl-list > li.tl-row.is-grown .tl-node { z-index: 1; }
 /* 手順をひらいた札は、下の札を押し下げる（§6-3 の (a)）。高さは JS が継ぎ目を足した --h
    （tl-layout の open）——ここは中身を高さなりに積むだけ。たたむ途中（段がまだ出ている間）も描く。 */
 .tl-list > li.tl-row > .tl-sub-wrap:not(.is-open):has(> .tl-sub-list[hidden]) { display: none; }
@@ -4631,13 +4629,32 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-list > li.tl-row > .tl-sub-wrap { padding-left: var(--sp-3); }
 .tl-list > li.tl-row > .tl-sub-wrap::before { display: none; }
 
-/* 1時間ごとの薄い目盛り（畳んだ区間には描かない）。札の裏。 */
+/* 1時間ごとの薄い目盛りと時刻（畳んだ区間には描かない）。札の裏。線を薄くするのは色で（字まで薄くしない）。 */
 .tl-list > .tl-tick {
   left: var(--tl-gut); right: var(--tl-right);
   height: 0;
-  border-top: 1px solid var(--c-border);
-  opacity: .5;
+  border-top: 1px solid color-mix(in srgb, var(--c-border) 50%, transparent);
   pointer-events: none;
+}
+.tl-hour {
+  position: absolute;
+  left: calc(-1 * var(--tl-gut)); top: 3px;
+  width: 44px; box-sizing: border-box;
+  padding-right: 3px;
+  font-size: var(--fs-sm);
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.tl-tick.is-quiet .tl-hour, .tl-tick.is-near-now .tl-hour { visibility: hidden; }
+/* 過ぎてもまだ（JS の growLate）。いちばん早く終わるはずだった棒の下端から「いま」まで、背骨に一本。 */
+.tl-list > .tl-late-line {
+  left: 54px;
+  width: 8px; height: calc(var(--h) * 1px);
+  translate: -50% 0;
+  border-radius: 0 0 4px 4px;
+  background: var(--tl-fill);
+  z-index: 1;
 }
 /* 背骨。最初の札の頭から最後の札の下端まで、畳んだところで切れる。札と同じ --pass で塗る。 */
 .tl-list > .tl-seg {

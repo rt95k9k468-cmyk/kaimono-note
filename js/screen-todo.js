@@ -4846,6 +4846,7 @@
     }));
     list.__opt = { start: plan.startMin, end: plan.endMin };
     list.__keys = plan.items.map((it) => subsKeyOf(it.todo, day));
+    list.__items = plan.items;
     const L = tlRelayout(list);
     tlScale(L).forEach((el) => list.append(el));
     const heads = [];
@@ -4893,7 +4894,7 @@
     if (!was) return L;
     const byK = new Map(L.cards.map((c) => [c.id, c]));
     const scale = tlScale(L);
-    const old = [...list.children].filter((el) => !el.classList.contains("tl-row"));
+    const old = [...list.children].filter((el) => !el.classList.contains("tl-row") && !el.classList.contains("tl-late-line"));
     const same = old.length === scale.length && old.every((el, i) => el.className === scale[i].className);
     for (const li of list.children) {
       if (li.classList.contains("tl-row")) {
@@ -4903,7 +4904,7 @@
         KN.util.setVar(li, "--h", c.height.toFixed(1));
         li.dataset.top = c.top.toFixed(1);
         li.dataset.h = c.height.toFixed(1);
-      } else if (same) {
+      } else if (same && old.includes(li)) {
         const n = scale[old.indexOf(li)];
         KN.util.setVar(li, "--top", n.style.getPropertyValue("--top"));
         if (n.style.getPropertyValue("--h")) KN.util.setVar(li, "--h", n.style.getPropertyValue("--h"));
@@ -4996,23 +4997,46 @@
     if (at != null) axis.append(nowMark(nowMin, at));
   }
 
-  /** 過ぎてもまだの用事（長さを決めた・まだ・決めた終わりを過ぎた、今日だけ）は、札の棒の
-      下端を「いま」まで伸ばす（道の `is-late` と同じ条件）。同じ y の式。伸ばすのは棒だけ——
-      札ごと伸ばすと、あとの札（列の隣も）の上に色の面が重なって読めない。色は変えない（橙は道だけ）。 */
+  /** 過ぎてもまだの用事（長さを決めた・まだ・決めた終わりを過ぎた、今日だけ。道の `is-late` と同じ条件）。
+      棒は札の高さのまま。いちばん早く終わるはずだった一件の下端から「いま」まで、背骨に一本だけ重ねる
+      （`.tl-late-line`）——一件ずつ伸ばすと、背骨のそばに何本も並んだ。色は変えない（橙は道だけ）。
+      押すとその用事、二件以上なら一覧の紙。「いま」に近い時刻の目盛りの字は引っこめる。 */
   function growLate(list, nowMin) {
     const L = list.__tl;
     if (!L) return;
     const ny = nowMin == null ? null : L.y(Math.min(L.to, nowMin));
+    const late = [];
     for (const li of list.children) {
+      if (li.classList.contains("tl-tick")) {
+        li.classList.toggle("is-near-now", ny != null && Math.abs(Number(li.dataset.y) + 11 - ny) < CLOCK_GAP);
+        continue;
+      }
       if (!li.classList.contains("tl-row")) continue;
-      const late = ny != null && li.dataset.len === "1"
+      const on = ny != null && li.dataset.len === "1"
         && !li.classList.contains("is-done") && nowMin > Number(li.dataset.until);
-      const top = Number(li.dataset.top), h0 = Number(li.dataset.h);
-      const g = late ? Math.max(0, ny - top - h0) : 0;
-      li.classList.toggle("is-late", late);
-      li.classList.toggle("is-grown", g > 0);
-      KN.util.setVar(li, "--grow", g.toFixed(1));
+      li.classList.toggle("is-late", on);
+      if (on) late.push(li);
     }
+    let line = list.querySelector(":scope > .tl-late-line");
+    const bot = (li) => Number(li.dataset.top) + Number(li.dataset.h);
+    const first = late.reduce((a, li) => (!a || bot(li) < bot(a) ? li : a), null);
+    const top = first ? bot(first) : 0;
+    if (!first || ny - top < 0.5) { if (line) line.remove(); return; }
+    if (!line) {
+      line = node(html`<li class="tl-late-line"></li>`);
+      line.addEventListener("click", () => {
+        const ids = line.__ids || [];
+        const items = (list.__items || []).filter((it) => ids.includes(it.todo.id));
+        if (items.length > 1) moreSheet(items);
+        else if (ids[0]) openSheet(ids[0], null);
+      });
+      list.append(line);
+    }
+    line.__ids = late.sort((a, b) => bot(a) - bot(b)).map((li) => li.dataset.todoId);
+    const it = (list.__items || [])[first.__k];
+    if (it) KN.util.setVar(line, "--cat", tlColorOf(it.todo, it.atMin));
+    KN.util.setVar(line, "--top", top.toFixed(1));
+    KN.util.setVar(line, "--h", (ny - top).toFixed(1));
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
@@ -5794,9 +5818,13 @@
   function tlScale(L) {
     const out = [];
     const inFold = (m) => L.folds.some((f) => m > f.fromMin && m < f.untilMin);
+    // 時刻は1時間ごとに振る。用事の時刻と同じ高さなら、用事のほうを残す。
     for (let h = Math.ceil(L.from / 60) * 60; h <= L.to; h += 60) {
       if (inFold(h)) continue;
-      out.push(node(html`<li class="tl-tick" aria-hidden="true" style="--top:${L.y(h).toFixed(1)}"></li>`));
+      const y = L.y(h);
+      const quiet = L.cards.some((c) => Math.abs(c.top - y) < CLOCK_GAP);
+      out.push(node(html`<li class="tl-tick${quiet ? " is-quiet" : ""}" aria-hidden="true" data-y="${y.toFixed(1)}"
+        style="--top:${y.toFixed(1)}"><span class="tl-hour">${tlClock(KN.plan.toTime(h))}</span></li>`));
     }
     // 背骨は最初の札の頭から最後の札の下端まで（その先に線があると「まだ続く」と読める）。
     if (!L.cards.length) return out;
