@@ -2882,11 +2882,11 @@
      ように、todayKey() を焼き付けません）。 */
   let viewDay = null;
   const shownDay = () => viewDay || todayKey();
-  /* 紙の頭の「今日｜週」（docs/todo-items.md「仕事の予定とやること」の段3）。開いたときは週。
+  /* 紙の頭の「今日｜週」（docs/todo-items.md「仕事の予定とやること」の段3）。開いたときは今日。
      どちらを見ているかは保存しない。試験の台本は sessionStorage の kn-todo-face=today で今日から、席の二度押しでも
      何もしない（台本の多くは開いたままの tasks の席を押して入るので。tests/lib.js）。 */
   const faceFixed = (() => { try { return sessionStorage.getItem("kn-todo-face") === "today"; } catch (_) { return false; } })();
-  let face = faceFixed ? "today" : "week";
+  let face = (() => { try { return sessionStorage.getItem("kn-todo-face") === "week" ? "week" : "today"; } catch (_) { return "today"; } })();
   let weekMore = false;   // 今週の「ほか n」を開いているか
   let laterOpen = false;  // 週の面の「これから」を開いているか（保存しない）
   // PC の写し（copyBlock）。読んだ写し・その「これから」を開いているか・命令を置いた行（"kind:id" → { at, due }）。
@@ -2952,6 +2952,16 @@
     keepAim++;
     if (root) KN.app.scrollerOf(root).scrollTop = 0;
     if (to === "today" && shownDay() === todayKey()) requestAnimationFrame(toNow);
+    if (to === "week") requestAnimationFrame(hidePastDays);
+  }
+
+  /** 週の面で、過ぎた日の札を上へ隠す（今日の札が頭に来る。上へ戻せば出る）。今週のときだけ。 */
+  function hidePastDays() {
+    if (!root || !weekFace()) return;
+    const first = root.querySelector(".wk-day"), now = root.querySelector(".wk-day.is-today");
+    if (!first || !now || first === now) return;
+    const sc = KN.app.scrollerOf(root);
+    sc.scrollTop += now.getBoundingClientRect().top - first.getBoundingClientRect().top;
   }
 
   /** 月の面へ。暦を月の段に開く（書けば subscribe が組み直す）。 */

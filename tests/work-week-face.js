@@ -193,6 +193,17 @@ const { open, checker } = require("./lib");
     JSON.stringify(got) === JSON.stringify(["2026-10-23/2026-10-23//", "2026-10-22//event/15:00", "///", "2026-10-21/2026-10-21//"]),
     JSON.stringify(got));
 
+  /* 今日の面から週へ移ると、過ぎた日（月・火）は上に隠れ、今日の札が頭に来る。 */
+  await page.click('#screen-todo .wk-faces [data-face="today"]'); await page.waitForTimeout(500);
+  await page.click('#screen-todo .wk-faces [data-face="week"]'); await page.waitForTimeout(600);
+  const hid = await page.evaluate(() => {
+    const scr = document.querySelector("#screen-todo");
+    const sc = KN.app.scrollerOf(scr), days = [...scr.querySelectorAll(".wk .wk-week .wk-day")];
+    const now = scr.querySelector(".wk-day.is-today");
+    return { top: sc.scrollTop, dy: Math.round(now.getBoundingClientRect().top - days[0].getBoundingClientRect().top), mon: days[0].getBoundingClientRect().bottom <= sc.getBoundingClientRect().top + 200 };
+  });
+  c.check("週の面は今日の札が頭・過ぎた日は上へ隠れる", hid.top > 0, JSON.stringify(hid));
+
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();
   c.done();

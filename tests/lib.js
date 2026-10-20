@@ -99,8 +99,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   /* ＋の新しいノートは先にノートブックの小窓（2026年10月15日）。確かめる台本だけ `bookFirst: true`。 */
   if (!bookFirst) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-book-first", "off"); } catch (_) {} });
-  /* やることは開いたときは週の面（2026年10月18日）。ほかの台本は今までどおり今日の面から（席の二度押しは何もしない）。確かめる台本だけ `weekFirst: true`。 */
-  if (!weekFirst) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-todo-face", "today"); } catch (_) {} });
+  /* やることは開いたときは今日の面（2026年10月20日。以前は週）。ほかの台本は席の二度押しが何もしない。週の面から始める台本だけ `weekFirst: true`。 */
+  await ctx.addInitScript((f) => { try { sessionStorage.setItem("kn-todo-face", f); } catch (_) {} }, weekFirst ? "week" : "today");
   /* KN_NO_FIT=1：伸びる欄を、field-sizing の効かない端末の道（JS が測る）で回す（roadmap-3.1 の S2）。 */
   if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);
   /* KN_NO_ANCHOR=1：スクロールの錨の無い端末（iOS 26 まで）の道で回す（roadmap-3.1 の S1）。 */
