@@ -3640,6 +3640,8 @@ a.btn { text-decoration: none; }
   -webkit-touch-callout: default;
   cursor: text;
 }
+/* 空の日の頭の日付と育休の行（書いた日の頭と同じ字の大きさ）。 */
+.arc-log-stamp { font-size: var(--fs-lg); line-height: 1.85; color: var(--c-text); white-space: pre-line; }
 /* まだ何も書いていない日の一行。押せば書ける、という誘いなので、薄い字で。 */
 .arc-log-memo.is-blank { color: var(--c-text-3); }
 /* 「3行」「5行」を選んだとき。**終わりの数行**を出します（2026年10月6日、利用者）。

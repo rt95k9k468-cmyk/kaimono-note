@@ -758,6 +758,9 @@
                   書いていない日ごとに同じ字が並んで「書かなかった日」の一覧に
                   見えるので、そちらは「—」のまま。色は薄い字（`.is-blank`）の
                   まま、責める色は当てません（daily は評価しない）。 */""}
+            ${/* 一日ぶんで、まだ何も書いていない日も、頭の日付と育休の行は出す（書いた日と同じ顔。
+                  `.arc-log-memo` の字は変えない）。月ぜんぶを並べるときは出さない。 */""}
+            ${only && d.isBlank && !unread ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}
             ${/* 「数行」は**終わりの数行**（2026年10月6日、利用者）。日記は頭に決まった行が
                   並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
             <span class="arc-log-memo ${S().logFull === false ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
