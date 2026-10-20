@@ -90,7 +90,7 @@ const { open, checker } = require("./lib");
   await page.click('#screen-todo .wk-faces [data-face="week"]');
   await page.waitForTimeout(700);
   a = await look();
-  c.check("週へ移ると暦は週の段・名前は出さない", a.face === "週" && !a.open && a.n22 === "", JSON.stringify([a.face, a.open, a.n22]));
+  c.check("週へ移ると暦は週の段・名前は週の段にも出す", a.face === "週" && !a.open && a.n22 === "定例", JSON.stringify([a.face, a.open, a.n22]));
 
   // 月 → 暦を畳むと週の面
   await page.click('#screen-todo .wk-faces [data-face="month"]');

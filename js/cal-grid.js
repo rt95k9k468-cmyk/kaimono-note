@@ -35,7 +35,7 @@
     const cell = node(html`
       <button class="cal-day ${out ? "is-out" : ""} ${isToday ? "is-today" : ""} ${isHere ? "is-here" : ""}
                      ${hol ? "is-hol" : (wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : ""))}"
-              data-day="${key}" ${isToday ? raw('aria-current="date"') : ""}
+              data-day="${key}" data-wd="${wd}" ${isToday ? raw('aria-current="date"') : ""}
               ${out && !o.outFocus ? raw('tabindex="-1"') : ""}
               aria-label="${d ? `${d.getMonth() + 1}月${d.getDate()}日` : key}${hol ? ` ${hol}` : ""}${isToday ? "（今日）" : ""}${m.label || ""}">
         <span class="cal-n">${d ? String(d.getDate()) : ""}</span>

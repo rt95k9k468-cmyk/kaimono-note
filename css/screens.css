@@ -339,7 +339,7 @@
   position: sticky;
   top: var(--topbar-h, 0px);
   z-index: var(--z-stick);
-  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);   /* 横は少し広げた（2026年10月20日、利用者）：七日の幅を稼ぐ */
   /* 上のバーと同じ理由で、透かしません（base.css の .topbar）。下を白い
      紙が流れるので、透かすと日付や曜日の裏に行の字が重なります。 */
   background: var(--c-bg);
@@ -5040,13 +5040,18 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 暦の月の段に名前を一行（やることの暦だけ）。マスの高さは変えない——点の段（15px）の中身を入れ替える。週の段は点のまま。 */
 .cal-name { display: none; }
 .cal-day { min-width: 0; }   /* 名前の長さで列（1fr）が広がらないように */
-.cal:not(.is-week) .cal-dots:has(> .cal-name) > .cal-mark { display: none; }
-.cal:not(.is-week) .cal-name {
-  display: flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%; padding: 0 2px;
-  font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 1; color: var(--c-text-2);
+/* 名前は週の段にも（2026年10月20日、利用者）。絵（.cal-mark）の代わりに字を、日付の数字の真下に中央で。 */
+.cal-dots:has(> .cal-name) > .cal-mark { display: none; }
+.cal-name {
+  display: block; min-width: 0; max-width: 100%; padding: 0 2px; text-align: center;
+  font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 15px;
+  color: color-mix(in srgb, var(--cat) 55%, var(--c-text-2));
 }
-.cal-name::before { content: ""; flex: none; width: 5px; height: 5px; margin-right: 1px; border-radius: var(--r-full); background: var(--cat); }
-.cal-name b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-regular); }
+.cal-name b { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-regular); }
+/* 日と日のあいだの、薄い薄い罫線（右と下。右端の列は右を引かない）。 */
+.cal-day { box-shadow: inset 0 -1px 0 var(--cal-line), inset -1px 0 0 var(--cal-line); border-radius: 0; }
+.cal-day[data-wd="6"] { box-shadow: inset 0 -1px 0 var(--cal-line); }
+.cal-grid, .cal-wk-page { --cal-line: color-mix(in srgb, var(--c-border) 45%, transparent); }
 .wk-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 .wk-rep { display: grid; flex: none; color: var(--c-text-3); }
 .wk-rep svg { width: var(--ico-sm); height: var(--ico-sm); }
