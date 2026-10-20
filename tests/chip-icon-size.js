@@ -23,7 +23,7 @@ const prop = (r, p) => ((r.body.match(new RegExp(`(?:^|[;\\s])${p}\\s*:\\s*([^;]
 /* 一・二 */
 const CHIPS = [[".chip", "height", "40px"], [".btn-sm", "height", "40px"], [".seg-btn", "min-height", "40px"],
   [".dest-chip", "min-height", "40px"], [".time-row .chip", "height", "32px"], [".note-labels .chip", "height", "32px"],
-  [".sa-link", "min-height", "32px"], [".tl-done-toggle", "min-height", "32px"]];
+  [".sa-link", "min-height", "32px"]];
 for (const [s, p, v] of CHIPS) {
   const r = rules.find((x) => x.sel === s && prop(x, p));
   t.check(`${s} の ${p} は ${v}`, r && prop(r, p) === v, r ? prop(r, p) : "規則が無い");

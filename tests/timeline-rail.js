@@ -91,8 +91,7 @@ const PX_MIN = 1.2;
     r.line.filter((s) => s.until <= find("洗濯").at).every((s) => s.pass === 1)
       && r.line.some((s) => s.until <= NOW && s.pass === 1), JSON.stringify(r.line));
 
-  /* 済んだ札をひらいて、並びを見る。 */
-  await page.click("#screen-todo .tl-done-toggle");
+  /* 済んだ札はいつも出ている（「済み n件」の畳みは2026年10月20日にやめた）。並びを見る。 */
   await page.waitForFunction(() => {
     const li = [...document.querySelectorAll("#screen-todo .tl-row.is-done")];
     return li.length && li.every((x) => x.getBoundingClientRect().height > 0);

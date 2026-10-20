@@ -41,8 +41,6 @@ const { open, checker } = require("./lib");
   c.check("直したトーストに新しい時刻", msg2.includes("11:30"), msg2);
 
   await page.waitForTimeout(300);
-  await page.locator(".tl-done-toggle:visible").first().click();
-  await page.waitForTimeout(300);
   const chip = page.locator(`.tl-row[data-todo-id="${id}"] button.tl-doneat:visible`).first();
   c.check("行に押せる済ませた時刻", (await chip.textContent()).includes("11:30"));
   await chip.click();

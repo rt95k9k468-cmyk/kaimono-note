@@ -4145,14 +4145,6 @@ button.tl-over:active { opacity: var(--press-fade); }
 .refit-m { flex: none; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .refit-ok { margin: var(--sp-3) 0 0; color: var(--c-text-2); }
 .refit-row .chip-row { flex-wrap: wrap; }
-.tl-done-toggle {
-  margin-left: auto; display: inline-flex; align-items: center; gap: var(--sp-1);
-  min-height: 32px; padding: 0 var(--sp-2);
-  color: var(--c-text-2); font-weight: var(--fw-bold); font-size: var(--fs-sm);
-}
-.tl-done-toggle[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
-.tl-done-toggle:active { opacity: var(--press-fade); }
-.tl.is-done-shut .tl-row.is-done { display: none; }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
 
@@ -4511,6 +4503,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 9%, var(--c-surface)); border-radius: 14px; }
 /* 済ませた札は透かさない（一覧の .item.is-checked の 0.55 が効いて、目盛りの線が札を透けていた）。取り消し線と塗った印で見分ける。 */
 .tl-row .item.tl-item.is-checked { opacity: 1; }
+/* 済ませた札（2026年10月20日、利用者）：札は白のまま、題・時刻・印・絵・棒を灰へ寄せて抑える。済みはいつも出す（畳まない）。 */
+.tl-list > li.tl-row.is-done .tl-node { background: color-mix(in srgb, var(--c-text-3) 45%, var(--c-surface-2)); z-index: 2; }
+.tl-list > li.tl-row.is-done .tl-ico { filter: grayscale(1); opacity: .5; }
+.tl-list > li.tl-row.is-done .tl-item .item-name { color: var(--c-text-3); text-decoration-color: var(--c-text-3); }
+.tl-list > li.tl-row.is-done .check:not(.is-sub)[aria-checked="true"],
+.tl-list > li.tl-row.is-done .check.is-trace { background: var(--c-text-3); border-color: var(--c-text-3); }
 .tl-body { position: relative; padding-left: 30px; }
 .tl-ico { position: absolute; left: 0; top: 1px; display: grid; width: 22px; height: 22px; }
 .tl-ico .todo-mark, .tl-ico .todo-mark svg { width: 22px; height: 22px; }  /* 入れもの：札の絵 */
@@ -4548,11 +4546,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
    縦軸＝時間。札・目盛り・背骨・畳んだ空きは .tl-list の中に絶対配置で、位置は JS が
    置く CSS 変数（--top・--h は px の数、--lane・--lanes は列）だけから出す（tl-layout）。
-   左の --tl-gut（時刻 44px・背骨 20px）が目盛りの列、右が札の領域。重なった札は列に等分。
+   左の --tl-gut（時刻 44px＋4px。棒は札の左端で、棒の列は持たない）が目盛りの列、右が札の領域。重なった札は列に等分。
    `li.tl-row` まで書くのは、`.tl-row.is-aim`・`.is-flash` の position: relative に負けないため。
    上の余白（--tl-pad）は JS の nowY・axisOf も読む。 */
 .tl-list {
-  --tl-pad: 10px; --tl-gut: 64px; --tl-gap: 4px; --tl-right: var(--sp-4);
+  --tl-pad: 10px; --tl-gut: 48px; --tl-gap: 4px; --tl-right: var(--sp-4);
   --tl-area: calc(100% - var(--tl-gut) - var(--tl-right) + var(--tl-gap));
   position: relative;
   box-sizing: content-box;
@@ -4579,19 +4577,19 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   left: var(--to-gut); top: 3px;
   width: 44px; box-sizing: border-box;
 }
+/* 棒は各札の左端（2026年10月20日、利用者）。列を分けても棒は自分の札に付いたまま、軸からずれない。
+   いちばん左の列の棒が背骨（--tl-gut ＋ 4px）に乗る。札の中身は棒のぶん右へ（下の margin）。 */
 .tl-list > li.tl-row > .tl-rail {
   position: absolute;
-  left: calc(var(--to-gut) + 44px); top: 0; bottom: 0;
-  width: 20px; min-height: 0;
+  left: 0; top: 0; bottom: 0;
+  width: 8px; min-height: 0;
 }
-.tl-list > li.tl-row.is-lane > .tl-rail { pointer-events: none; }
-/* 棒は札の高さそのまま。重なった札の棒は、背骨の左右へ少しずつずらして細く。 */
 .tl-list > li.tl-row .tl-node {
   --node-p: calc(var(--pass, 1) * 100%);
   top: 0; height: 100%;
-  left: calc(50% + (var(--lane, 0) - (var(--lanes, 1) - 1) / 2) * 7px);
-  width: calc(8px - (var(--lanes, 1) - 1) * 2px);
-  translate: -50% 0;
+  left: 0; width: 8px;
+  translate: none;
+  z-index: 1;   /* 背骨（.tl-seg）より前。過ぎてもまだの線（同じ 1・後ろに置く）は棒より前で押せる */
   background: linear-gradient(to bottom, var(--tl-fill) 0 var(--node-p), var(--tl-wait) var(--node-p) 100%);
 }
 /* いま進んでいる一件だけ、境目を少しぼかす（かっちり切ると、何かが置いてあるように見える）。 */
@@ -4601,7 +4599,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-list > li.tl-row > .item.tl-item {
   box-sizing: border-box;
   height: calc(100% - 2px);
-  margin: 1px 0;
+  margin: 1px 0 1px 12px;
   align-items: flex-start;
   overflow: clip;
 }
@@ -4655,7 +4653,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-tick.is-quiet .tl-hour, .tl-tick.is-near-now .tl-hour { visibility: hidden; }
 /* 過ぎてもまだ（JS の growLate）。いちばん早く終わるはずだった棒の下端から「いま」まで、背骨に一本。 */
 .tl-list > .tl-late-line {
-  left: 54px;
+  left: calc(var(--tl-gut) + 4px);
   width: 8px; height: calc(var(--h) * 1px);
   translate: -50% 0;
   border-radius: 0 0 4px 4px;
@@ -4664,7 +4662,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 /* 背骨。最初の札の頭から最後の札の下端まで、畳んだところで切れる。札と同じ --pass で塗る。 */
 .tl-list > .tl-seg {
-  left: 54px;
+  left: calc(var(--tl-gut) + 4px);
   width: 3.5px; height: calc(var(--h) * 1px);
   translate: -50% 0;
   background: linear-gradient(to bottom, var(--tl-fill) 0 var(--p), var(--tl-wait) var(--p) 100%);
@@ -4678,7 +4676,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .tl-fold-rail {
   position: absolute;
-  left: 54px; top: 0; bottom: 0;
+  left: calc(var(--tl-gut) + 4px); top: 0; bottom: 0;
   width: 3.5px;
   translate: -50% 0;
   background: linear-gradient(to bottom, var(--tl-fill) 0 var(--p), var(--tl-wait) var(--p) 100%);
@@ -7065,14 +7063,6 @@ button.note-when:active { opacity: var(--press-fade); }
   background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
 .tl-someday-add:active { opacity: var(--press-fade); }
-/* 「これから」に足す小窓（quickAdd） */
-.note-pop.is-quick { width: min(360px, calc(100vw - 16px)); padding: var(--sp-4); }
-.note-pop.is-quick.is-handoff { visibility: hidden; }   /* 「詳しく」で紙へ渡すとき */
-.qa-card { display: flex; flex-direction: column; gap: var(--sp-3); }
-.qa-title { font-size: var(--fs-lg); }
-.qa-foot { display: flex; gap: var(--sp-2); }
-.qa-card .dest-chip { align-self: flex-start; margin-top: 0; }   /* 週の面の＋の一行の行き先の札（R4） */
-.qa-foot .btn { flex: 1; }
 .tl-someday-plus { margin-left: auto; display: inline-flex; color: var(--c-primary); }
 .tl-someday-plus svg { width: var(--ico); height: var(--ico); }
 

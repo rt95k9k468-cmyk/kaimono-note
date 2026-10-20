@@ -98,6 +98,20 @@ const { open, checker } = require("./lib");
   t.check("見た日が違えば当てない・予定は済ませない・くり返しの日は動かさない", !got.stale && !got.ev && got.rep === ids.d, JSON.stringify(got));
   t.check("当てなかった命令も受け箱から消す", ops.every((p) => deleted.includes(p)), JSON.stringify(ops));
 
+  /* 紙の「追加」（2026年10月20日。「これから」の小窓をやめて紙へ移した）：入のあいだは用事にせず受け箱へ。 */
+  await page.evaluate(() => KN.store.update((x) => { x.settings.inboxPost = true; }));
+  await page.click('.tab[data-tab="todo"]');
+  await page.waitForTimeout(500);
+  await page.click("#screen-todo .tl-someday-add");
+  await page.waitForTimeout(500);
+  await page.fill(".sheet.is-open .js-title", "備品を頼む");
+  await page.click(".sheet.is-open .js-save");
+  await page.waitForTimeout(500);
+  const sheetPut = [...files.values()].filter((f) => f.mode === "add" && /備品を頼む/.test(f.body));
+  t.check("紙の「追加」は受け箱へ置き、用事にしない", sheetPut.length === 1
+    && !(await page.evaluate(() => KN.store.get().todos.some((x) => x.title === "備品を頼む"))), String(sheetPut.length));
+  await page.evaluate(() => KN.store.update((x) => { x.settings.inboxPost = false; }));
+
   t.check("JS のエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
   t.done();

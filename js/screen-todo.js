@@ -926,7 +926,7 @@
       menu: heroMenu,
       content: body,
       footer: foot,
-      /* 「これから」の小窓の「詳しく」から：紙もカードで、何も書かずに閉じたらその＋へ帰る。 */
+      /* 「これから」の欄から：何も書かずに閉じたらその＋へ帰る。 */
       home: (opts && opts.home) || null,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
@@ -1923,6 +1923,16 @@
       whenApply({ quiet: true });
       const memo = body.pick(".js-memo").value;
       const lines = splitLines();
+      /* 受け箱へ置く端末（settings.inboxPost）は、足すものを用事にせず受け箱へ一件ずつ（取り込む側が weekAdd で読む）。 */
+      if (!editing && store.get().settings.inboxPost === true && KN.dropbox) {
+        const texts = lines || [flatTitle(titleEl.value)].filter(Boolean);
+        if (!texts.length) return;
+        handle.close();
+        Promise.all(texts.map((x) => KN.dropbox.inboxPut(x))).then(
+          () => KN.ui.toast(texts.length > 1 ? `${texts.length}件を受け箱へ` : `「${texts[0]}」を受け箱へ`),
+          () => KN.ui.toast("受け箱へ置けませんでした"));
+        return;
+      }
       if (lines) { addMany(lines, memo); return; }
       const title = flatTitle(titleEl.value);
       if (!title) return;
@@ -3599,7 +3609,7 @@
         </h2>
       </section>
     `);
-    /* 欄のどこを押しても、日の無い用事を足す小窓を開く（行・畳みの頭・ほかの釦は除く）。
+    /* 欄のどこを押しても、日の無い用事を足す紙を開く（行・畳みの頭・ほかの釦は除く）。
        スクロールや運ぶ指では開かない：10px より動いた指は押したことにしない
        （運んだ後の click は wireDrag の eatClick が先に食べる）。 */
     let downAt = null;
@@ -3608,7 +3618,7 @@
       const d = downAt; downAt = null;
       if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) return;
       if (e.target.closest("li, .tl-shelf-head, a, input, textarea, select, button:not(.tl-someday-add)")) return;
-      quickAdd(sec.querySelector(".tl-someday-add"));
+      openSheet(null, null, { noDue: true, home: () => document.querySelector("#screen-todo .tl-someday-plus") });
     });
     if (!all.length) {
       sec.append(node(html`
@@ -3653,63 +3663,6 @@
       sec.append(fold);
     });
     return sec;
-  }
-
-  /* 「これから」に足す小窓（下から出る紙ではなく、見出しからふくらむ角丸のカード）。
-     キーボードは勝手に出さない——出すと画面が大きく動くので、欄を押したときだけ。
-     日は持たせない。打った字から日付も読まない（日を決めないための入口なので）。
-     右下の＋の一行は 2026年10月20日にやめた（利用者「無駄なステップ」。＋はどの面でも紙）。 */
-  function quickAdd(anchor) {
-    const box = node(html`
-      <form class="qa-card">
-        <input class="input qa-title js-qa-title" type="text" enterkeyhint="done" placeholder="やること"
-               autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="やること">
-        <div class="qa-foot">
-          <button type="button" class="btn btn-soft js-qa-more">詳しく</button>
-          <button type="submit" class="btn btn-primary js-qa-add" disabled>追加</button>
-        </div>
-      </form>
-    `);
-    const vv = window.visualViewport;
-    const replace = () => p.place();
-    const p = KN.ui.popOver(anchor, { side: "left", label: "これからに足す", cls: "is-quick", lift: true,
-      onClose: () => {
-        if (vv) vv.removeEventListener("resize", replace);
-        if (p.el.contains(document.activeElement)) document.activeElement.blur();
-      } });
-    p.el.append(box);
-    p.place();
-    /* キーボードが出たら、その上に収まるよう置き直す。 */
-    if (vv) vv.addEventListener("resize", replace);
-    const input = box.querySelector(".js-qa-title");
-    const add = box.querySelector(".js-qa-add");
-    input.addEventListener("input", () => { add.disabled = !input.value.trim(); });
-    box.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const title = input.value.trim();
-      if (!title) return;
-      if (store.get().settings.inboxPost === true && KN.dropbox) {
-        p.close();
-        KN.dropbox.inboxPut(title).then(
-          () => KN.ui.toast(`「${title}」を受け箱へ`),
-          () => KN.ui.toast("受け箱へ置けませんでした"));
-        return;
-      }
-      const rec = store.addTodo({ title, minutes: KN.plan.DEFAULT_MINUTES });
-      haptic(12);
-      KN.ui.toast(`「${title}」をこれからへ`,
-        rec ? { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } } : undefined);
-      p.close();
-    });
-    /* 詳しく：小窓は縮ませずに消し（紙が押した点から育つので、二つ動くとぶれる）、
-       紙は同じカードの形で。何も書かずに閉じれば「これから」の＋へ帰る。 */
-    box.querySelector(".js-qa-more").addEventListener("click", () => {
-      const title = input.value.trim();
-      p.el.classList.add("is-handoff");
-      p.close();
-      openSheet(null, null, { noDue: true, title,
-        home: () => document.querySelector("#screen-todo .tl-someday-plus") });
-    });
   }
 
   /** 一行を入れる（受け箱の取り込み・dropbox.js）。時刻があれば予定。日が今週なら今週の印、日が無ければこれから。 */
@@ -4780,7 +4733,6 @@
 
      組み立てそのものは js/plan.js が持ちます。ここは描くだけです。 */
 
-  let tlDoneOpen = false;
   const timelineOn = () => store.get().settings.todoTimeline !== false;
 
   function timeline(rows, shelf) {
@@ -4800,12 +4752,10 @@
     const plan = P.buildDay(day, rows.concat(done), {
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
-    /* 済んだものは畳める（2026年10月2日）。道が上に来て、済んだ行が残ると
-       スクロールが長いので。畳み方は次に開いたときも覚えています。 */
-    const doneN = plan.items.filter((it) => it.todo.done || it.todo.archived).length;
+    /* 済んだものはいつも出す（畳む「済み n件」は2026年10月20日にやめた、利用者。札は灰へ寄せて抑える）。 */
     /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。 */
     const sec = node(html`
-      <div class="tl ${tlDoneOpen ? "" : "is-done-shut"}">
+      <div class="tl">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
               並びと帯の隙間で同じことを言っています。文で重ねて言うのは
               説明のしすぎです。
@@ -4813,15 +4763,13 @@
               超過（はみ出し）だけは残します——これは「読めば分かる」では
               なく、**詰め込みすぎている**という注意なので、他の事実とは
               性格が違います。 */""}
-        ${plan.over || doneN
+        ${plan.over
           ? html`<div class="tl-sum">
               ${/* 押せば組み直しの紙（3.0 の B3）。今日だけ。 */""}
               ${plan.over ? (isToday
                 ? html`<button type="button" class="tl-over js-refit">寝る時刻を ${P.humanSpan(plan.over)} すぎます${icon("chevron")}</button>`
                 : html`<span class="tl-over">寝る時刻を ${P.humanSpan(plan.over)} すぎます</span>`)
                 : ""}
-              ${doneN ? html`<button type="button" class="tl-done-toggle" aria-expanded="${String(tlDoneOpen)}">
-                済み ${doneN}件<span class="tl-subs-arrow">${icon("chevron")}</span></button>` : ""}
             </div>` : ""}
         <ol class="tl-list js-tl"></ol>
       </div>
@@ -4829,18 +4777,10 @@
     const list = sec.querySelector(".js-tl");
     const rf = sec.querySelector(".js-refit");
     if (rf) rf.addEventListener("click", () => { haptic(); refitSheet(); });
-    const dt = sec.querySelector(".tl-done-toggle");
-    if (dt) dt.addEventListener("click", () => {
-      tlDoneOpen = !tlDoneOpen;
-      dt.setAttribute("aria-expanded", String(tlDoneOpen));
-      sec.classList.toggle("is-done-shut", !tlDoneOpen);
-      const ax = sec.querySelector(".tl-axis");
-      if (ax && ax.__paint) ax.__paint();
-    });
 
     /* 縦軸は時間（docs/timeline-scale-design.md）。位置・高さ・列は tl-layout が決め、
        ここは札に CSS 変数（--top・--h・--lane・--lanes。px）を置くだけ。重なりは列が言う。
-       済んだ札を畳んでも軸はそのまま（物差しなので）。 */
+       済んだ札もいつも出す。 */
     list.__in = plan.items.map((it, k) => ({
       id: k, atMin: it.atMin, untilMin: it.untilMin, known: !!Number(it.todo.minutes),
     }));
