@@ -1888,16 +1888,26 @@
         haptic(10);
       });
     }
-    /* 読めた語のあとの空きを打ったら（「病院 10:00 」）、または空きのあとの最初の
-       一字を打ったら（「10:00 病」）、その場で欄へ移す。空きを打たないうちは予告だけ——
-       「10:00くらいに」と続ける人の字を、打っている最中に動かさないため。
-       「10:00 」だけでは題が空になり取れないので、次の一字を待つ。変換中は触らない。 */
+    /* 打っている途中でも移す。読めた語のあとに空きを打ったら（「病院 10:00 」「10:00 病」）
+       すぐ、そうでなくても**打つ手が 0.7 秒止まったら**。一字ごとには移さない——
+       「10時」まで打って「半」を足す人の字が、先に動いてしまうため。変換中は触らない
+       （値を差し替えると変換が切れる）ので、確定してから数える。 */
+    let liveTimer = 0;
+    const liveApply = () => {
+      clearTimeout(liveTimer);
+      if (composing || titleEl.selectionStart !== titleEl.value.length) return;
+      whenApply();
+    };
+    let composing = false;
+    titleEl.addEventListener("compositionstart", () => { composing = true; clearTimeout(liveTimer); });
+    titleEl.addEventListener("compositionend", () => { composing = false; liveTimer = setTimeout(liveApply, 700); });
     titleEl.addEventListener("input", (ev) => {
-      if (ev.isComposing || ev.inputType !== "insertText") return;
+      clearTimeout(liveTimer);
+      if (composing || ev.isComposing) return;
       const v = titleEl.value, n = v.length;
-      if (titleEl.selectionStart !== n) return;
       const sp = (c) => c === " " || c === "\u3000";
-      if (sp(v[n - 1]) || (n > 1 && sp(v[n - 2]))) whenApply();
+      if (ev.inputType === "insertText" && n && (sp(v[n - 1]) || (n > 1 && sp(v[n - 2])))) { liveApply(); return; }
+      liveTimer = setTimeout(liveApply, 700);
     });
     titleEl.addEventListener("change", () => whenApply());
     titleEl.addEventListener("keydown", (ev) => {
