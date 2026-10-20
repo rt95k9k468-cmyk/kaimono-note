@@ -3765,7 +3765,7 @@
       fixed: false, clash: false,
       minutes: t.minutes || KN.plan.DEFAULT_MINUTES,
     };
-    const li = itemRow(it, false);
+    const li = itemRow(it, null, null, false, []);
     li.classList.add("is-someday");
     /* 期限は、題のすぐ近くに。事実の行（長さと同じところ）に置きます
        ——ここでいちばん効いてくる数なので、先頭に差し込みます。 */
@@ -4838,38 +4838,21 @@
       if (ax && ax.__paint) ax.__paint();
     });
 
-    /* 用事と空きを、時刻の順に一本へ混ぜます。 */
-    const parts = []
-      .concat(plan.items.map((it) => ({ kind: "item", at: it.atMin, it })))
-      .concat(plan.free.map((f) => ({ kind: "free", at: f.atMin, f })))
-      .sort((a, b) => a.at - b.at);
-
-    parts.forEach((part, i) => {
-      if (part.kind === "free") {
-        list.append(freeRow(part.f, isToday ? nowMin : null));
-        return;
-      }
-      const next = parts[i + 1];
-      const prev = parts[i - 1];
-      const touch = !!prev && prev.kind === "item" && landsInside(prev.it, part.it);
-      list.append(itemRow(part.it, !!next && next.kind === "item", day, touch));
-    });
-
-    /* 重なっている二つは、**丸薬どうしがぶつかって**見えます（下の CSS）。
-       ぶつかるには相手が要るので、重なった行の一つ上にも印を付けます。
-       組み立ては時刻の順に並べているので、重なった相手はすぐ上の行です。 */
-    /* 済んだ行を畳んだとき、その前後の空き（点線）だけが長く残っていた（2026年10月2日）。
-       済んだ行に接している空きも一緒に畳む。 */
-    [...list.children].forEach((li) => {
-      if (!li.classList.contains("tl-free-row")) return;
-      const p = li.previousElementSibling, n = li.nextElementSibling;
-      const doneRow = (x) => !!x && x.classList.contains("tl-row") && x.classList.contains("is-done");
-      if (doneRow(p) || (!p && doneRow(n))) li.classList.add("is-by-done");
-    });
-    [...list.children].forEach((li) => {
-      if (!li.classList.contains("is-clash")) return;
-      const prev = li.previousElementSibling;
-      if (prev && prev.classList.contains("tl-row")) prev.classList.add("is-clash-above");
+    /* 縦軸は時間（docs/timeline-scale-design.md）。位置・高さ・列は tl-layout が決め、
+       ここは札に CSS 変数（--top・--h・--lane・--lanes。px）を置くだけ。重なりは列が言う。
+       済んだ札を畳んでも軸はそのまま（物差しなので）。 */
+    const L = KN.tlLayout.layout(plan.items.map((it, k) => ({
+      id: k, atMin: it.atMin, untilMin: it.untilMin, known: !!Number(it.todo.minutes),
+    })), { start: plan.startMin, end: plan.endMin });
+    list.__tl = L;
+    list.style.setProperty("--tl-total", L.height.toFixed(1));
+    tlScale(L).forEach((el) => list.append(el));
+    const heads = [];
+    L.cards.forEach((c) => {
+      // 同じ高さに時刻の字が二つ並ぶなら、あとの札は字を出さない（列の隣どうし）。
+      const quiet = heads.some((y) => Math.abs(y - c.top) < CLOCK_GAP);
+      if (!quiet) heads.push(c.top);
+      list.append(itemRow(plan.items[c.id], day, c, quiet, c.more.map((k) => plan.items[k])));
     });
 
     /* 「いま」は、行の流れの中には置きません。**一枚の層**に乗せて、行の
@@ -4887,22 +4870,8 @@
 
   /* ---------------- いま、どこにいるか ----------------
 
-     ここには1時間ごとの目盛りを描く層がありました。**やめました。**
-
-     参考にした画面（Structured）の時間割は、時間に比例していません。
-     610分の空きと325分の空きが同じ高さで、しかも5分の用事より低い
-     ——つまりあれは「並び順のリスト」で、長さは絵ではなく字（詳細の
-     「16時30分〜16時35分」）で言っています。目盛りの軸も、伸びる帯も、
-     その作りとは噛み合いません。両方とも外しました。
-
-     残したのは「いま」の一本だけです。あちらには無いものですが、
-     一日の途中で開いたときに**どこまで来たか**を言えるのはこれだけ
-     なので、ここは意図して足しています。
-
-     位置は組み終わってから実測します。行の高さは中身（メモ・手順・題の
-     行数）で変わるので、分から計算した位置は当たりません。時間の背骨は
-     レール（.tl-rail）なので、そこだけを測ります——手順をひらいた行では、
-     レールは題の段にとどまり、下へ伸びた手順の帯には時間がありません。 */
+     縦軸が時間なので、「いま」の高さは式で出ます：y(いま)（tl-layout。畳んだ区間の
+     補正も込み）＋ 一覧の上の余白。行の中は測りません。 */
 
   function watchNow(sec, isToday) {
     const list = sec.querySelector(".js-tl");
@@ -4925,75 +4894,20 @@
     }
   }
 
-  /** 線の上で、その行が受け持つ時間 { a, u }（分）と、その用事の本当の終わり end。
-
-      ふつうは用事の始まり〜終わりそのものです。**下の行とぶつかっている行
-      （`is-clash-above`）だけ、受け持ちは下の行が始まるまで**です。
-
-      20:00〜22:00 のルーティンの途中、20:55 に「テスト」があるとき、二つは
-      一本の線の上に上下に並びます。上の丸薬をルーティン自身の進み具合で塗ると、
-      20:57 には上の丸薬のまん中に「いま」が来て、その下の、もう始まっている
-      テストが灰色——上から下へ読むと時間が戻ります（2026年9月29日の画面）。
-      線の上の順に読めば、上の丸薬の見えているところは「テストが始まるまで」
-      なので、そこまでで塗り切ります。運ぶときの目盛り（`axisOf`）も、もとから
-      そう読んでいます。
-
-      end はうすい地（`is-live`）のため——ルーティン自体はまだ続いているので。 */
-  function shownSpan(li) {
-    const a = Number(li.dataset.at), end = Number(li.dataset.until);
-    let u = end;
-    if (li.classList.contains("is-clash-above")) {
-      const nx = li.nextElementSibling;
-      const na = nx ? Number(nx.dataset.at) : NaN;
-      if (isFinite(na) && na < u) u = Math.max(a, na);
-    }
-    return { a, u, end };
-  }
-
-  /** いまの時刻が、リストのどの高さに当たるか。無ければ null。
-
-      **行の中にも入ります。** ここには「行と行のあいだにしか置けない」と
-      書いてありました。丸薬（アイコン周り）がかかる時間だけ縦に伸びる
-      ようになって、事情が変わりました——丸薬の上端が始まり、下端が
-      終わりなので、行の中に目盛りが生まれています。9時00分〜9時45分の
-      用事を 9時07分に見れば、丸薬の頭から 16% のところが「いま」です。
-      塗りの境目（下の CSS の --pass）と同じ高さになります。
-
-      空きの帯の中でも同じように割ります。空きの高さは長さに比例しません
-      が、「この空きのどのあたりか」は帯の中でなら言えます。 */
+  /** いまの時刻が、時間割の層（.tl）のどの高さに当たるか。無ければ null。
+      一日の範囲の外なら端に寄せる。 */
   function nowY(sec, list, nowMin) {
-    const top0 = sec.getBoundingClientRect().top;
-    let last = null;
-    for (const li of list.children) {
-      const rail = li.querySelector(".tl-rail");
-      if (!rail) continue;
-      const { a, u } = shownSpan(li);
-      if (!isFinite(a) || !isFinite(u) || u <= a) continue;
-      const r = rail.getBoundingClientRect();
-      if (r.height <= 0) continue;
-      const t0 = top0 + slideOf(sec, li);
-      if (nowMin <= a) return r.top - t0;
-      if (nowMin < u) {
-        /* 用事なら丸薬の中で、空きなら帯の中で。丸薬は行のまん中にあって
-           行より低いので、行の高さで割ると塗りの境目とずれます。 */
-        const box = nodeBox(li) || r;
-        if (box.height > 0) return box.top - t0 + box.height * ((nowMin - a) / (u - a));
-      }
-      last = r.bottom - t0;
-    }
-    /* 一日の残りが全部始まっているなら、線はいちばん下です。 */
-    return last;
+    const L = list.__tl;
+    if (!L || !L.cards.length) return null;
+    const m = Math.min(L.to, Math.max(L.from, nowMin));
+    return list.offsetTop + list.clientTop + listPad(list) + L.y(m);
+  }
+  function listPad(list) {
+    if (list.__pad == null) list.__pad = parseFloat(getComputedStyle(list).paddingTop) || 0;
+    return list.__pad;
   }
 
-  /* **先に測って、あとから書く。**
-
-     前は `markPass`（書く）→ `nowY`（読む）→ `clearOfClocks`（読む）の
-     順でした。書いたすぐあとに測ると、ブラウザはそこでレイアウトを
-     やり直さないと答えられません——組み直しのたびに、余分な一回。
-
-     入れ替えても答えは同じです。`markPass` が書くのは色（`--pass`・
-     線の色・`is-live` のうすい地）だけで、**高さも位置も動かさない**ので、
-     測る前に書いても後に書いても、測れる数は変わりません。 */
+  /* **先に測って、あとから書く。** 測るのは時刻の字の箱（clearOfClocks）だけ。 */
   function paintNow(sec, list, axis, isToday) {
     /* いまの時刻は、描くたびに時計から読み直します。組み立てたときの値を
        持ち回ると、線が置かれた時刻のまま固まるので。 */
@@ -5005,64 +4919,31 @@
       y = nowY(sec, list, nowMin);
       if (y != null) at = clearOfClocks(sec, list, y);
     }
-    const grow = growOf(sec, list, nowMin, y);
 
     // ② 書く
     axis.textContent = "";
     markPass(list, passAt(list, nowMin), nowMin);
-    grow.forEach(([li, late, g]) => {
-      li.classList.toggle("is-late", late);
-      li.classList.toggle("is-grown", g > 0);
-      if (li.__grow !== g) { li.__grow = g; li.style.setProperty("--tl-grow", `${g}px`); }
-    });
+    growLate(list, nowMin);
     if (at != null) axis.append(nowMark(nowMin, at));
   }
 
-  /** 行が組み直しの滑り（`flipRows` の translateY）の途中なら、そのずれ（px）。
-      滑っている最中に測ると、着いた先とずれた「いま」・伸びが残るので、着いた先で読む。 */
-  function slideOf(sec, li) {
-    let y = 0, e = li;
-    while (e && e !== sec) { y += e.offsetTop; e = e.offsetParent; }
-    if (e !== sec) return 0;
-    return li.getBoundingClientRect().top - sec.getBoundingClientRect().top - y;
-  }
-
-  /** 丸薬の、伸ばす前の箱（上端・下端・高さ）。時刻の目盛りはこれで読みます——
-      伸ばしたぶん（`--tl-grow`）は時間ではないので。 */
-  function nodeBox(li) {
-    const nd = li.querySelector(".tl-node");
-    if (!nd) return null;
-    const r = nd.getBoundingClientRect();
-    const g = li.__grow || 0;
-    if (r.height - g <= 0) return null;
-    return { top: r.top, bottom: r.bottom - g, height: r.height - g };
-  }
-
-  /** 丸薬を下へ伸ばす量（2026年10月6日）。二つの場合だけ：
-      - **過ぎてもまだの区間は「いま」まで**（道の `is-late` と同じ条件。長さを決めた・
-        まだ・決めた終わりを過ぎた、今日だけ）。次の行の上に重ねて、次の行はずらさない。
-        色は変えない（橙は道だけ）。
-      - **手順をひらいたら、手順の段の下まで**（前は線だけ伸ばしていた）。
-        伸ばしたぶんは時間ではないので、塗りは丸薬の下端の色（`--rail-bot-c`）一色。 */
-  function growOf(sec, list, nowMin, y) {
-    const top0 = sec.getBoundingClientRect().top;
-    const out = [];
+  /** 過ぎてもまだの用事（長さを決めた・まだ・決めた終わりを過ぎた、今日だけ）は、札の棒の
+      下端を「いま」まで伸ばす（道の `is-late` と同じ条件）。同じ y の式。伸ばすのは棒だけ——
+      札ごと伸ばすと、あとの札（列の隣も）の上に色の面が重なって読めない。色は変えない（橙は道だけ）。 */
+  function growLate(list, nowMin) {
+    const L = list.__tl;
+    if (!L) return;
+    const ny = nowMin == null ? null : L.y(Math.min(L.to, nowMin));
     for (const li of list.children) {
       if (!li.classList.contains("tl-row")) continue;
-      const b = nodeBox(li);
-      if (!b) continue;
-      const late = nowMin != null && y != null && li.dataset.len === "1"
+      const late = ny != null && li.dataset.len === "1"
         && !li.classList.contains("is-done") && nowMin > Number(li.dataset.until);
-      let to = b.bottom;
-      if (late) to = Math.max(to, top0 + slideOf(sec, li) + y);
-      const subs = li.querySelector(".tl-sub-wrap.is-open .tl-sub-list");
-      if (subs && !subs.hidden) {
-        const r = subs.getBoundingClientRect();
-        if (r.height > 0) to = Math.max(to, r.bottom);
-      }
-      out.push([li, late, Math.max(0, Math.round(to - b.bottom))]);
+      const top = Number(li.dataset.top), h0 = Number(li.dataset.h);
+      const g = late ? Math.max(0, ny - top - h0) : 0;
+      li.classList.toggle("is-late", late);
+      li.classList.toggle("is-grown", g > 0);
+      KN.util.setVar(li, "--grow", g.toFixed(1));
     }
-    return out;
   }
 
   /** いまの時刻を、用事の時刻とぶつからない高さへ逃がします。
@@ -5109,8 +4990,8 @@
     if (x >= 1) { sweep = null; return nowMin; }
     let from = null;
     for (const li of list.children) {
-      if (!li.classList || !li.classList.contains("tl-row") && !li.classList.contains("tl-free-row")) continue;
-      const { a } = shownSpan(li);
+      if (!li.classList || !li.classList.contains("tl-row")) continue;
+      const a = Number(li.dataset.at);
       if (isFinite(a)) { from = a; break; }
     }
     if (from == null || from >= nowMin) return nowMin;
@@ -5154,56 +5035,20 @@
      30秒ごとに置き直します（軸と同じ拍）。組み直しはしません。 */
   /** liveMin は「いま進んでいる一件」を決める本当の時刻（流れているあいだも動かさない）。 */
   function markPass(list, nowMin, liveMin = nowMin) {
-    /* 線の上で「いま」が居る行に、もう着いたか。着くまでの行の線は全部
-       過ぎたぶん（色）、着いたあとの行の線は全部これから（灰色）。 */
-    let reached = false;
+    /* 背骨の区間（.tl-seg）と畳んだ空き（.tl-fold）も同じ数で塗る——札と線で境目が割れない。 */
     for (const li of list.children) {
       if (!li.classList) continue;
       const row = li.classList.contains("tl-row");
-      if (!row && !li.classList.contains("tl-free-row")) continue;
-      const { a, u, end } = shownSpan(li);
+      if (!row && !li.classList.contains("tl-seg") && !li.classList.contains("tl-fold")) continue;
+      const a = Number(li.dataset.at), end = Number(li.dataset.until);
       const known = isFinite(a) && isFinite(end) && end > a;
       let pass;
       if (nowMin == null || !known || li.classList.contains("is-done")) pass = 1;
-      else if (nowMin >= u) pass = 1;
+      else if (nowMin >= end) pass = 1;
       else if (nowMin <= a) pass = 0;
-      else pass = (nowMin - a) / (u - a);
-      li.style.setProperty("--pass", pass.toFixed(3));
-      /* 丸薬の**外**の線の色。丸薬の中の境目は CSS が丸薬の寸法から出す
-         ので（--rail-p）、ここが渡すのは外の二本だけです。
-
-         外の線は時間を持ちません——丸薬と丸薬をつなぐ、ただの繋ぎです。
-         だから途中で色が変わってはならず、二値で決まります。
-
-         **決めるのは、一本の線の上の「いま」の位置です。行ごとの
-         pass ではありません。** 前は行ごとに「上は始まったか・下は
-         終わったか」で塗っていて、二つの場面で**色の付いた短い線**が
-         丸薬の上下から灰色の線の中へ突き出ました（「丸薬に線が刺さって
-         いる」。2026年9月27日の画面）：
-           - 済ませたもの（pass は時計に関わらず 1）… 夕方の用事を朝に
-             済ませると、夕方の丸薬の上下 5〜10px だけが色になる。
-           - 重なり … 4時間のルーティンの途中で済ませた用事は、始まって
-             いて終わってもいるので上下とも色、上のルーティンはまだ
-             終わっていないので下は灰色——灰色 → 色 → 丸薬 → 色 → 灰色。
-         「いま」の行は `nowY` と同じ引き方（時刻の順に見て、まだ終わって
-         いない最初の行）で決めるので、線の色の境目は、いまの時刻の札と
-         同じところに一つだけ落ちます。丸薬の塗り（pass）は、そのまま
-         その用事の進み具合・済んだかを言います——線は時間、丸薬は用事。
-
-         下（--rail-bot-c）は、手順の段（.tl-sub-wrap）の背骨も継ぎます。
-         あそこの高さは手順の件数で決まっていて時間ではないので、割合を
-         渡してはいけません（渡していた時期があり、それが「線が丸薬を
-         追い越す」の正体でした）。 */
-      let top = true, bot = true;
-      if (nowMin != null && reached) top = bot = false;
-      else if (nowMin != null && known && nowMin < u) {
-        reached = true;
-        top = nowMin > a;
-        bot = false;
-      }
+      else pass = (nowMin - a) / (end - a);
+      KN.util.setVar(li, "--pass", pass.toFixed(3));
       if (!row) continue;
-      li.style.setProperty("--rail-top-c", top ? "var(--tl-fill)" : "var(--tl-wait)");
-      li.style.setProperty("--rail-bot-c", bot ? "var(--tl-fill)" : "var(--tl-wait)");
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
@@ -5301,69 +5146,29 @@
 
   /* ---------------- 左の列は、一本の時間軸 ----------------
 
-     **「空いている場所だけ置ける」という考え方は、捨てました。**
+     **「空いている場所だけ置ける」は捨てました。** 縦の座標がそのまま時刻です
+     （札の上でも、あいだでも、畳んだ空きでも）。
 
-     前は、掴んだ瞬間に空きの行が破線の帯になって上下へ広がり（`bandHeight`
-     が 64〜220px を返していました）、その帯の中だけが細かく狙えました。
-     つまり**置ける場所を決めていたのは、そこに何が置いてあるかでした**。
-
-     いまは行を見ません。**丸薬に合わせた一本の軸**を通します：丸薬の上端が
-     その用事の始まり、下端が終わり。丸薬と丸薬のあいだは、前の終わりから
-     次の始まりへまっすぐ。丸薬の上でも、あいだでも、空きでも、狙った高さの
-     時刻がそのまま出ます。
-
-     **まっすぐ一直線（列の上端＝日の始まり、下端＝終わり）も試して、外し
-     ました。** px あたりの分はどこでも同じになりますが、行の高さは題とメモが
-     決めていて時間に比例しないので、**丸薬の時刻と軸が最大 327分ずれました**
-     ——「12:30 旅行準備」の真横で札が「18:12」と出る。座標が示す時刻は、
-     そこに描いてある丸薬が言っている時刻でなければいけません。
-
-     ずれは 0分になりましたが、そのかわり px あたりの分は場所で変わります
-     （丸薬の中は細かく、長い空きは粗い）。**それでも置けない高さはありません**
-     ——どの座標にも時刻が対応します。 */
-
-  /** 掴んだときの軸。**一度だけ**決めます（途中で測り直すと、指の下で
-      速さが変わる）。持つのは列の上端からの px と、そこの分。位置は毎回
-      その場で測ります——画面を送れば列も動くので。 */
+     掴んだときの軸は**一度だけ**決めます（途中で測り直すと、指の下で
+     速さが変わる）。持つのは列の上端からの px と、そこの分。 */
   function axisOf(dayList) {
-    const rows = [...dayList.children].filter((li) => li.classList
-      && (li.classList.contains("tl-row") || li.classList.contains("tl-free-row")));
-    if (!rows.length) return null;
+    /* 縦軸が時間なので、節は一日の端と畳んだ区間の端だけ（そのあいだは 1分＝pxMin の直線）。 */
+    const L = dayList.__tl;
     const box = dayList.getBoundingClientRect();
-    const from = Number(rows[0].dataset.at);
-    const to = Number(rows[rows.length - 1].dataset.until);
-    if (!isFinite(from) || !isFinite(to) || to <= from || box.height <= 0) return null;
-
-    /* 節は丸薬（`.tl-node`）の上端と下端。`.todo-mark` は中の32pxの絵で、
-       丸薬そのものではありません——あちらを測ると、4時間の用事も15分の
-       用事も同じ32pxになります。 */
-    const raw = [{ y: 0, min: from }];
-    rows.forEach((li) => {
-      const at = Number(li.dataset.at), un = Number(li.dataset.until);
-      const b = nodeBox(li);
-      if (!b || !isFinite(at) || !isFinite(un) || un < at) return;
-      raw.push({ y: b.top - box.top, min: at });
-      raw.push({ y: b.bottom - box.top, min: un });
-    });
-    raw.push({ y: box.height, min: to });
-
-    /* **上から下へ、y も分も進む一本にします。** 重なった二つは丸薬どうしが
-       ぶつかる（`is-clash` が上下へ14pxずつ育てる）ので、そのままだと節が
-       前後します。y で並べ直して、分は前の節より戻らないように押さえます。 */
-    raw.sort((a, b) => a.y - b.y);
+    if (!L || box.height <= 0 || L.to <= L.from) return null;
+    const pad = dayList.clientTop + listPad(dayList);
+    const mins = [L.from];
+    L.folds.forEach((f) => mins.push(f.fromMin, f.untilMin));
+    mins.push(L.to);
+    const raw = [{ y: 0, min: L.from }].concat(mins.map((m) => ({ y: pad + L.y(m), min: m })),
+      [{ y: box.height, min: L.to }]);
     const pts = [];
     raw.forEach((p) => {
       const last = pts[pts.length - 1];
-      const min = last ? Math.max(last.min, p.min) : p.min;
-      if (last && p.y - last.y < 0.5) { last.min = Math.max(last.min, min); return; }
-      pts.push({ y: p.y, min });
+      if (last && p.y - last.y < 0.5) { last.min = Math.max(last.min, p.min); return; }
+      pts.push(p);
     });
-    if (pts.length < 2) return null;
-
-    /* **左右の境目は、もうありません。** 前はここで列の切れ目（100px）を
-       出して、それより右を「順番で置きなおす」に振っていました。行のどこを
-       持ち上げても同じ時間軸、に変えたので要りません（aim() の但し書き）。 */
-    return { pts };
+    return pts.length < 2 ? null : { pts };
   }
 
   /* 一覧のドラッグ（下の reorder まわり）にも同じ名前の札があるので、
@@ -5392,7 +5197,7 @@
          したが、行の本文（題や事実の乗っているところ）自体が button なので、
          行を掴む道がどこにも無くなっていました。掴んで欲しくないのは、
          押したら別のことが起きる小さな丸——それだけ。 */
-      if (e.target.closest(".check, .fav, .tl-subs-chip, .tl-doneat")) return;
+      if (e.target.closest(".check, .fav, .tl-subs-chip, .tl-doneat, .tl-more")) return;
       const row = e.target.closest(".tl-row");
       /* 済ませたあとでも持てます——開始時刻がわかってから、事後的に
          リスケすることがあるので。止めていたのはここ一行だけでした。 */
@@ -5936,88 +5741,66 @@
     `);
   }
 
-  /* ---------------- 丸薬（アイコン周り）の高さ ----------------
+  /* ---------------- 物差し（目盛り・背骨・畳んだ空き） ----------------
 
-     丸は**伸びます**。ここには「伸びません」と書いてありました——参考に
-     した画面の**行**が時間に比例していない、という実測からです。それは
-     いまも本当で、行はいまも比例しません（4時間の用事も25分の用事も、
-     題と絵の段は同じ高さ）。
-
-     比例するのは**丸のほう**でした。同じ画面をもう一度measureすると、
-     15分の用事は真円、45分・1時間のものは縦に伸びた丸薬で、重なった二つは
-     丸薬どうしがぶつかっています。つまりあの画面は「行は並び順、丸は時間」
-     という二本立てです。行を伸ばさずに丸だけ伸ばすと、一日が一画面に
-     入ったまま、長さが絵でも読めます。
-
-     数の決めかた：
-       ・30分までは真円（50px）。決めなかった長さの既定と同じ幅なので、
-         ここを境にすると「長さを決めた人」のものだけが伸びます。
-       ・そこから 1分 = 0.8px。1時間で74px、2時間で122px。
-       ・170pxで頭打ち。半日の用事に半日ぶんの丸薬を描くと、それだけで
-         一画面が埋まります。上限から先は、長さは題の下の字が言います。
-
-     **長さを決めていない用事は、伸ばしません。** 組み立ては30分として
-     置きますが、それは置き場所を決めるための仮の数で、画面に出すと
-     決めた数のように読めます（題の下に「30分」と書かないのと同じ理由）。 */
-  const TL_NODE_MIN  = 50;
-  const TL_NODE_MAX  = 170;
-  const TL_NODE_FREE = 30;
-  const TL_NODE_RATE = 0.8;
-
-  function nodeH(it) {
-    const m = it && it.todo && Number(it.todo.minutes);
-    if (!m || !isFinite(m)) return TL_NODE_MIN;
-    return Math.round(Math.min(TL_NODE_MAX,
-      TL_NODE_MIN + Math.max(0, m - TL_NODE_FREE) * TL_NODE_RATE));
+     1時間ごとの薄い目盛り、札の裏を通る背骨（区間ごと。畳んだところで切れる）、
+     長い空きを畳んだ一行。どれも tl-layout の y から置くだけで、測りません。
+     背骨と畳みは札と同じ --pass で塗ります（markPass）。 */
+  function tlScale(L) {
+    const out = [];
+    const inFold = (m) => L.folds.some((f) => m > f.fromMin && m < f.untilMin);
+    for (let h = Math.ceil(L.from / 60) * 60; h <= L.to; h += 60) {
+      if (inFold(h)) continue;
+      out.push(node(html`<li class="tl-tick" aria-hidden="true" style="--top:${L.y(h).toFixed(1)}"></li>`));
+    }
+    // 背骨は最初の札の頭から最後の札の下端まで（その先に線があると「まだ続く」と読める）。
+    if (!L.cards.length) return out;
+    const top = Math.min(...L.cards.map((c) => c.top));
+    const bot = Math.max(...L.cards.map((c) => c.top + c.height));
+    const px = KN.tlLayout.DEFAULTS.pxMin;
+    const minAt = (y) => {   // y → 分（畳みの外だけで使う）
+      let y0 = 0, m0 = L.from;
+      L.folds.forEach((f) => { if (f.top + f.height <= y) { y0 = f.top + f.height; m0 = f.untilMin; } });
+      return m0 + (y - y0) / px;
+    };
+    const cuts = [{ y: top, min: minAt(top) }];
+    L.folds.forEach((f) => {
+      if (f.top >= top && f.top + f.height <= bot) cuts.push({ y: f.top, min: f.fromMin, fold: f }, { y: f.top + f.height, min: f.untilMin });
+    });
+    cuts.push({ y: bot, min: minAt(bot) });
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const p = cuts[k], q = cuts[k + 1];
+      if (p.fold || q.y - p.y < 0.5) continue;
+      out.push(node(html`<li class="tl-seg" aria-hidden="true" data-at="${String(Math.round(p.min))}"
+        data-until="${String(Math.round(q.min))}" style="--top:${p.y.toFixed(1)};--h:${(q.y - p.y).toFixed(1)}"></li>`));
+    }
+    L.folds.forEach((f) => out.push(foldRow(f)));
+    return out;
   }
 
-  /** 空いているところ。埋めずに、点線の帯だけで示します。
-
-      「10時間44分」のような長さの文は出しません——空きの前後にある用事の
-      時刻を見れば、どれだけ空いているかは読めます。文で重ねて言うのは
-      説明のしすぎです（帯の広さ自体は、つまんで動かすときに見えます）。 */
-  /* 空きの高さ。空いている量が、そのまま縦の長さになります——ただし
-     用事ほど素直には伸ばしません。夜の10時間を10時間ぶんの点線で描くと、
-     一日の大半が「何も無いところ」で埋まって、肝心の用事が画面の外へ
-     出ていきます。空きは詰めて、用事は正直に。 */
-  /* 空きの高さは、**長さによりません**。10分の隙間も一晩も同じ高さです。
-
-     参考にした画面がそうだからです（610分と325分の空きが同じ高さで、
-     しかも5分の用事より低い）。比例をやめると失うものはあります——一日の
-     形が高さで読めなくなる。かわりに得るのは、**一日が一画面に入る**
-     ことです。夜の10時間を10時間ぶん描くと、肝心の用事が画面の外へ
-     出ていきます。あちらはその取り引きを、比例を捨てる側で決めています。
-
-     56px → 36px。**破線がすでに「ここは離れている」と言っています。**
-     同じことを高さでも言っていたぶんを、一つに戻しました。 */
-  const TL_FREE_H = 36;
-
-  /* 空きの線を、実線にするか点線にするか。
-
-     **30分以内の空きは、繋がっています。** 用事と用事のあいだの十分や
-     そこらは「途切れ」ではなく、ひと続きの時間のなかの余白です。そこを
-     点線で切ると、続けてやる二件が別々の塊に見えます。30分より空いたら、
-     そこはもう別の時間なので点線。 */
-  const TL_JOIN_GAP = 30;
-
-  function freeRow(f, nowMin) {
-    const past = nowMin != null && f.untilMin <= nowMin;
-    const dash = f.minutes > TL_JOIN_GAP;
+  /** 畳んだ長い空き（90分以上の予定なし）。一定の高さで、物差しは切れる——目盛りは描かず波線で言う。 */
+  function foldRow(f) {
     return node(html`
-      <li class="tl-free-row ${past ? "is-past" : ""}"
-          data-at="${String(f.atMin)}" data-until="${String(f.untilMin)}"
-          style="--cat:var(--c-primary-fill)">
-        <span class="tl-time"></span>
-        <span class="tl-rail ${dash ? "is-dash" : ""}"></span>
+      <li class="tl-fold" data-at="${String(f.fromMin)}" data-until="${String(f.untilMin)}"
+          style="--top:${f.top.toFixed(1)};--h:${f.height.toFixed(1)}">
+        <span class="tl-fold-rail" aria-hidden="true"></span>
+        <span class="tl-fold-text">〜 ${tlClock(KN.plan.toTime(f.untilMin))} まで予定なし 〜</span>
       </li>
     `);
   }
 
-  /* 丸の高さは nodeH（上）が決めます。長さを決めた用事だけが伸びて、
-     行そのものは伸びません——伸びるのは丸のほうだけ、というのが参考画面の
-     作りでした。 */
+  /** ＋n（列の上限を超えた札）。押すと一覧の紙。 */
+  function moreSheet(items) {
+    const box = node(html`<div class="tl-more-list"></div>`);
+    const h = KN.ui.sheet({ title: "同じ時間の用事", content: box, as: "dialog" });
+    items.forEach((it) => {
+      const b = node(html`<button type="button" class="tl-more-row" style="--cat:${tlColorOf(it.todo, it.atMin)}">
+        <span class="tl-time">${tlClock(it.at)}</span><span class="item-name">${it.todo.title}</span></button>`);
+      b.addEventListener("click", () => { h.close(); openSheet(it.todo.id, null); });
+      box.append(b);
+    });
+  }
 
-  /** 一つの用事。丸薬のアイコンが線の上に乗り、右に印を付ける丸。 */
   /** 済ませた時刻。`doneAt` は UTC の ISO なので、**読むのは地元の時刻**
       です（`getHours` が直します——文字を切り出すと9時間ずれます）。
       昔の記録は日付だけのことがあるので、時刻を持たないものは出しません。 */
@@ -6028,30 +5811,9 @@
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
-  /** 下の行が、すぐ上の行の**時間の中で**起きたか（丸薬どうしをぶつけるか）。
-
-      組み立ての `clash` は「時刻を決めたものどうし」しか見ません。済ませた
-      ものは押した時刻に置かれる（plan.js の doneSpan）ので、4時間の朝の
-      ルーティンの途中で済ませた用事は、ルーティンの**下の行**に、線で
-      つながれて並びます。すると絵は「ルーティンが終わってから、次の用事」
-      と読めて、ルーティンの丸薬がまだ途中まで（`--pass` 0.27）なのに、
-      その下の丸薬だけ色が付いている——時間が逆に流れて見えました
-      （2026年9月27日の画面）。重なりは重なりとして、ぶつけて見せます。
-
-      **決めた長さどうしのときだけ。** 長さを書いていない用事の 30分は、
-      置き場所を決めるための仮の数です（nodeH の但し書き）。仮の数で
-      重なりを言うと、続けて二つ済ませただけで丸薬がぶつかります。
-      だから上の行は長さを持っていること、下の行は**本当の時刻**
-      （決めた時刻・長さから出した始まり・済ませた時刻）がその中にあること。 */
-  function landsInside(above, it) {
-    if (!above || !above.todo || !Number(above.todo.minutes)) return false;
-    const real = it.fixed || Number(it.todo && it.todo.minutes)
-      ? it.atMin
-      : (it.doneAtMin != null ? it.doneAtMin : null);
-    return real != null && real >= above.atMin && real < above.untilMin;
-  }
-
-  function itemRow(it, joined, day, touch) {
+  /** 一つの用事の札。c は tl-layout の札（top・height・lane・lanes。px）、quiet は時刻の字を
+      出さない（隣の列が同じ高さに出している）、more は列に入りきらなかった用事。 */
+  function itemRow(it, day, c, quiet, more) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
@@ -6096,23 +5858,27 @@
       if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
     }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
-    if (it.clash) facts.push(html`<span class="tl-clash">前と重なっています</span>`);
     const closed = t.done || t.archived;
+    /* 札の大きさで中身を削る：低い札は題だけ、三列では絵も外す（幅が約90px）。 */
+    const size = c && c.height < 50 ? "is-short" : "";
     const li = node(html`
-      <li class="tl-row ${joined ? "is-joined" : ""} ${it.clash || touch ? "is-clash" : ""}
-                 ${closed ? "is-done" : ""}"
+      <li class="tl-row ${closed ? "is-done" : ""} ${size} ${c && c.lanes > 1 ? "is-lane" : ""} ${c && c.lanes > 2 ? "is-narrow" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
+          ${c ? KN.util.raw(`data-top="${c.top.toFixed(1)}" data-h="${c.height.toFixed(1)}"`) : ""}
           ${t.minutes ? KN.util.raw('data-len="1"') : ""}
-          style="--cat:${tlColorOf(t, it.atMin)};--tl-h:${nodeH(it)}px">
+          style="--cat:${tlColorOf(t, it.atMin)}${c
+            ? `;--top:${c.top.toFixed(1)};--h:${c.height.toFixed(1)};--lane:${c.lane};--lanes:${c.lanes}` : ""}">
         ${/* 時刻を決めていない用事の時刻は、その場で詰めた**目安**なので「ごろ」を
               添えます（B6）。前は字の太さだけが違い、「17:03」を決めた時刻と
               読み違えました（詳細を開くと「時刻なし」）。「ごろ」は時刻の**下**に
               浮かせます——列は 44px で横に並べる幅が無く、行の中に積むと時刻の
               字が丸の中心からずれるので。済ませたもの（押した時刻）には付けない。 */""}
-        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${tlClock(it.at)}${
-          !it.fixed && !closed && it.at ? html`<span class="tl-about">ごろ</span>` : ""}</span>
+        <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${quiet ? "" : html`${tlClock(it.at)}${
+          !it.fixed && !closed && it.at ? html`<span class="tl-about">ごろ</span>` : ""}`}</span>
         <span class="tl-rail" data-grow><span class="tl-node">${tlMark(t)}</span></span>
+        ${more.length ? html`<button type="button" class="tl-more"
+            aria-label="同じ時間の用事をあと${more.length}件見る">＋${more.length}</button>` : ""}
         ${/* 上から、前置き・題・事実。参考にした画面と同じ順です。
 
               前置き（メモ）が上にあるのは、それが**題を読むための文脈**
@@ -6169,6 +5935,8 @@
     const rail = li.querySelector(".tl-rail");
     if (rail) rail.addEventListener("click",
       () => openSheet(t.id, li.querySelector(".tl-node")));
+    const mo = li.querySelector(".tl-more");
+    if (mo) mo.addEventListener("click", (e) => { e.stopPropagation(); moreSheet(more); });
     const at = li.querySelector(".tl-doneat");
     if (at) at.addEventListener("click", (e) => {
       e.stopPropagation();

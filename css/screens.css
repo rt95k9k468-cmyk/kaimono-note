@@ -4152,14 +4152,14 @@ button.tl-over:active { opacity: var(--press-fade); }
 }
 .tl-done-toggle[aria-expanded="true"] .tl-subs-arrow { transform: rotate(90deg); }
 .tl-done-toggle:active { opacity: var(--press-fade); }
-.tl.is-done-shut .tl-row.is-done, .tl.is-done-shut .tl-free-row.is-by-done { display: none; }
+.tl.is-done-shut .tl-row.is-done { display: none; }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
 
 /* 一行の骨格。三列——時刻・線・中身。実測した位置に合わせてあります。
    時刻の幅を固定するのは、数字が右端で揃っていないと上下の時刻を
    見比べられないからです。 */
-.tl-row, .tl-free-row {
+.tl-row {
   display: grid;
   grid-template-columns: 44px 56px 1fr;
   align-items: start;
@@ -4167,20 +4167,15 @@ button.tl-over:active { opacity: var(--press-fade); }
 /* 行どうしは、重ならないように前後関係を決めておきます。伸びた帯は行の
    高さより外へは出ませんが、丸（50px）は基本の高さ（52px）の中に収まる
    ぶんだけ余裕を持たせてあります。 */
-.tl-row, .tl-free-row { position: relative; }
+.tl-row { position: relative; }
 /* 時刻と丸は、行の**まん中**に置きます。
 
    前は上から決まった距離に置いていました。すると、行の高さが中身で
    変わる（メモがある／長さを書いた／二行の題）たびに、丸と題が上下に
    ずれます。参考画面もここは中心合わせで、時刻の字の中心と丸の中心が
    揃っています。 */
-/* 丸薬が伸びたら、時刻は**その頭**につきます。時刻が言っているのは
-   始まりなので、伸びた丸のまん中に置くと、その字が指しているところに
-   何も無くなります。ずらす量は伸びたぶんの半分——ちょうど、真円だった
-   ときと同じ「頭から25px」の位置に戻ります。 */
 .tl-time {
   align-self: center;
-  transform: translateY(calc((50px - var(--tl-h, 50px)) / 2));
   padding-right: 3px;
   font-size: var(--fs-sm);
   color: var(--c-text-2);
@@ -4222,137 +4217,14 @@ button.tl-over:active { opacity: var(--press-fade); }
      点線が「ここは離れている」を言うようになったので、離れていることを
      余白でも言う必要が薄くなりました。同じことを二つで言っているぶんは、
      詰めてよい——詰めたぶんは、一日が一画面に入ることに回ります。
-
-     丸薬が伸びたら、そのぶんは行も背伸びします（上下5pxずつは残す）。
-     行の高さを時間で決めているのではなく、**丸が入るだけ**取っている
-     のであって、順序が逆です。 */
-  min-height: max(60px, calc(var(--tl-h, 50px) + 10px));
+     （時間割の札の高さは .tl-list の物差しが決める。これは「これから」の行。） */
+  min-height: 60px;
   /* 絵を押すと詳細が開きます（題を押したときと同じ場所へ）。指で押せる
      ものだと分かるように、手の形にしておきます。空きの行のレールは
      押しても何も起きないので、そちらは元のまま。 */
   cursor: pointer;
 }
-.tl-free-row .tl-rail { cursor: default; }
-/* 背骨は**塗りの色そのまま**です。前は26%に薄めていましたが、参考に
-   した画面は丸と同じ濃さで引いていて（実測 #f3938e ＝ 丸の #f2938e と
-   ほぼ同値）、そのぶん一日が一本の線として先に目に入ります。太さも
-   2.5px → 3.5px（実測）。 */
-/* 線の色は、**丸薬の地とまったく同じ**二色です（--tl-fill / --tl-wait）。
-
-   前はここだけ濃い塗り（--cat そのまま）で、破線はさらにその62%でした。
-   三つの濃さが縦一列に並ぶと、丸と丸のあいだで色が二度変わって、線が
-   「別のもの」に見えます。丸から丸へ続く一本なら、丸と同じ色であるのが
-   いちばん素直でした。
-
-   時計が通ったところまでが色、そこから先は灰色（--pass）。丸薬の塗りと
-   同じ数から出しているので、線と丸のあいだで境目がずれることはありません。
-
-   **これは空きの行（.tl-free-row）だけの話です。** 空きの行は、行の高さ
-   そのものが時間なので、`--p` をそのまま高さに貼ってよい。
-
-   **用事の行（.tl-row）は違います。** 行の高さは題とメモの長さで決まって
-   いて、時間とは無関係です。ここへ `--p` を貼ると、丸薬の下端より下
-   （まだ来ていない時間）の線にまで色が漏れます。
-
-   なので、境目は**丸薬そのものの寸法から出します**（下の --rail-p）。 */
-.tl-rail::before {
-  content: "";
-  position: absolute;
-  left: 50%; top: 0; bottom: 0;
-  width: 3.5px;
-  transform: translateX(-50%);
-}
-.tl-free-row .tl-rail::before {
-  background: linear-gradient(to bottom,
-    var(--tl-fill) 0 var(--p),
-    var(--tl-wait) var(--p) 100%);
-}
-/* 用事の行の線は、**丸薬の上端と下端で三つに割ります**。割る場所は、
-   丸薬そのものの寸法（--tl-node-h と --node-dy）から出します。
-
-   ここには「行の 50% で二値に割る」と書いてありました。丸薬が行のまん中に
-   居るあいだは 50% も丸薬の中なので当たってはいましたが、**当たっていた
-   だけ**です——丸薬を動かす日（重なり・伸び・行の作り替え）に、線のほうは
-   何も知らないまま置き去りになります。
-
-   三つの帯が言っていること：
-
-   - 丸薬の**上**（0 〜 --node-top）… その用事が**始まったか**。始まって
-     いれば色、まだなら灰色（--rail-top-c）。ここは時間を持たない、ただの
-     繋ぎなので、途中で色が変わってはいけません。
-   - 丸薬の**中**（--node-top 〜 --node-bot）… 丸薬の地とまったく同じ式で
-     塗ります（--rail-p ＝ 上端から --pass ぶん下りたところ）。丸薬が
-     隠すので見えませんが、**見えないところに違うことを書かない**
-     ——それが「まん中だけ常にコーラル」だった頃の失敗です。
-   - 丸薬の**下**（--node-bot 〜 100%）… その用事が**終わったか**
-     （--rail-bot-c）。手順の段の背骨も、同じ変数を継ぎます。
-
-   `0 ≤ pass ≤ 1` である限り、色の変わり目は必ず丸薬の上端と下端のあいだに
-   落ちます——**線が丸薬を追い越すことが、式として書けません。**
-   `--rail-p` は、丸薬の地（.tl-node）と中の絵のマスク
-   （.todo-mark.is-split）とまったく同じ式です。 */
-.tl-row .tl-rail::before {
-  --node-h: var(--tl-node-h, var(--tl-h, 50px));
-  --node-top: calc(50% + var(--node-dy, 0px) - var(--node-h) / 2);
-  --node-bot: calc(50% + var(--node-dy, 0px) + var(--node-h) / 2);
-  --rail-p: calc(var(--node-top) + var(--pass, 1) * var(--node-h));
-  background: linear-gradient(to bottom,
-    var(--rail-top-c, var(--tl-wait)) 0 var(--node-top),
-    var(--tl-fill) var(--node-top) var(--rail-p),
-    var(--tl-wait) var(--rail-p) var(--node-bot),
-    var(--rail-bot-c, var(--tl-wait)) var(--node-bot) 100%);
-}
-/* **丸薬と時間線は、完全に別ものです。**
-
-   ここには「用事の行だけは、丸薬の上と下で一色ずつ」という三段の
-   グラデーションがありました——丸薬の高さ（`--tl-node-h`）から上下の帯を
-   計算して、上は `--pt`、下は `--pb`、**まん中は `--tl-fill` べた**。
-
-   まん中が問題でした。あそこは `--pass` を見ていないので、**時計がまだ
-   来ていない用事でも常にコーラル**です。丸薬が覆っているあいだは見えま
-   せんが、丸薬の高さと行の高さの取り方がずれると（重なった行、伸びた
-   丸薬）そのまま顔を出します——「時間線に意味なく色が付いている」の
-   正体はこれでした。
-
-   線は線として、丸薬は丸薬として、それぞれ独立に描きます。線は上の
-   `.tl-rail::before` 一本（`--pass` の位置で切るだけ）。丸薬はその上に
-   **地を持って**乗るので、裏を通る線は隠れます。繋ぎの短い線はもう
-   ありません——「丸薬の上下に線を接続する」という考え方ごと捨てました。 */
-/* 空きが**30分より長い**ところだけ、点線。**繋がっていない**ことが
-   空きの意味なので、逆に言えば30分以内の空きは繋がっています——用事と
-   用事のあいだの十分やそこらは、途切れではなく「ひと続きの時間」です。
-   （どちらにするかは screen-todo.js の freeRow が決めます。）
-
-   点は 6px、間は 4px。前は 7px と 8px で、間のほうが点より長く、線と
-   いうより点々の列に見えていました。
-
-   色は上の一本と同じ作りにして、点々のほうは**マスク**で抜きます。
-   地の色と点々を一つの背景で兼ねると、過ぎたぶんとこれからで色を
-   変えられません（repeating- の中に二色の境目は書けない）。 */
-.tl-rail.is-dash::before {
-  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
-  mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
-}
-
-/* 線の上の丸薬。中身は手描きアイコン、地は棚の色。
-
-   参考にした画面の丸は**べた塗り**で、中の絵は白抜きの一色です。
-   こちらの絵は800枚の手描きで、色そのものが「何の品物か」を言って
-   います（卵の黄身、洗剤の青）。白抜きにすると、その情報が全部
-   消えます——**絵のほうを残します。**
-
-   かわりに地を濃くしました（18% → 42%）。べた塗りには届きませんが、
-   丸が「薄い染み」ではなく「色の面」として立ち、行の重心が絵のほうへ
-   寄ります。参考画面で丸が担っていた仕事は、そこです。
-
-   **高さは、かかる時間**（--tl-h、screen-todo.js の nodeH）。幅は50pxの
-   まま、角は幅の半分（25px）なので、いちばん短いときは真円、伸びれば
-   丸薬になります。行は伸びません——行のまん中に、上下へ育ちます。
-
-   **塗りは、時計が通ったところまで**（--pass）。上から色が下りてきて、
-   下はまだ灰色。参考にした画面と同じで、一日が進むと時間割が上から
-   染まっていきます。 */
-.tl-row, .tl-free-row {
+.tl-row, .tl-seg, .tl-fold {
   --p: calc(var(--pass, 1) * 100%);
   /* まだ来ていないぶんの色。**まっさらな一色の灰**です。棚の色は混ぜません
      ——混ぜると行ごとに灰色が微妙に変わり、線は一日を通す一本なので、
@@ -4368,94 +4240,16 @@ button.tl-over:active { opacity: var(--press-fade); }
      抜くと、白が消えます。 */
   --tl-fill: var(--cat, var(--c-primary-fill));
 }
-/* 丸薬の**実際の高さと、実際の置き場所**は、この二つの変数だけから出します
-   （重なりで育つぶん・ずれるぶんも含めて）。中の絵の色の境目も、線の色の
-   境目も、ここから出ます——二か所に書くと必ずずれます。
-
-   `--node-dy` は、行のまん中からのずれ。重なった二件は丸薬を育てて
-   ぶつけるので、そのぶん位置も動きます（下の is-clash の但し書き）。 */
-.tl-row { --tl-node-h: var(--tl-h, 50px); --node-dy: 0px; }
-.tl-row.is-clash, .tl-row.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 14px); }
-.tl-row.is-clash.is-clash-above { --tl-node-h: calc(var(--tl-h, 50px) + 28px); }
-/* 伸ばしたぶん（`--tl-grow`、js の growOf：遅れの橙・ひらいた手順）は下へだけ。
-   上端は動かさず（top を半分下げる）、絵も上の丸に残す。塗りの境目は伸ばす前の
-   高さで測り（`--node-p`）、伸ばしたぶんは丸薬の下端の色（`--rail-bot-c`）一色。 */
+/* 札の左の細い棒（.tl-node）。高さはかかる時間（.tl-list の物差しが札ごと決める）。
+   塗りは時計が通ったところまで（--pass）。上から色が下りてきて、下はまだ灰色。 */
 .tl-node {
-  --node-p: calc(var(--pass, 1) * var(--tl-node-h, var(--tl-h, 50px)));
   position: absolute;
-  left: 50%; top: calc(50% + var(--tl-grow, 0px) / 2);
-  translate: -50% calc(-50% + var(--node-dy, 0px));
+  left: 50%; top: 50%;
+  translate: -50% -50%;
   display: grid; place-items: center;
-  grid-template-rows: var(--tl-node-h, var(--tl-h, 50px));
-  align-content: start;
-  width: 50px;
-  height: calc(var(--tl-node-h, var(--tl-h, 50px)) + var(--tl-grow, 0px));
-  border-radius: 25px;
-  background: linear-gradient(to bottom,
-    var(--tl-fill) 0 var(--node-p),
-    var(--tl-wait) var(--node-p) var(--tl-node-h, var(--tl-h, 50px)),
-    var(--rail-bot-c, var(--tl-wait)) var(--tl-node-h, var(--tl-h, 50px)) 100%);
-  /* **白い輪を持ちません。** 丸のまわりを地の色で囲うと、線が丸の手前で
-     切れて、続いているところまで破線に見えます（実際そうなりました）。
-     線は丸の裏へそのまま入っていくほうが、繋がって見えます。 */
-}
-/* ---- いま進んでいるもの ----
-
-   境目だけ、少しぼかします。かっちり切ると、そこに何かが**置いてある**
-   ように見えて、進んでいる感じが出ません（参考画面もここは滲ませて
-   います）。ぼかすのは進行中の一件だけ——過ぎたものとこれからのものは
-   境目そのものが無いので、ぼかすと端が濁ります。 */
-.tl-row.is-live .tl-node {
-  background: linear-gradient(to bottom,
-    var(--tl-fill) 0 calc(var(--node-p) - 4px),
-    var(--tl-wait) calc(var(--node-p) + 8px) var(--tl-node-h, var(--tl-h, 50px)),
-    var(--rail-bot-c, var(--tl-wait)) var(--tl-node-h, var(--tl-h, 50px)) 100%);
-}
-/* 伸びた丸薬は、下の行の線・丸薬の上に。過ぎてもまだのもの（is-late）はいちばん上
-   （押せばその用事が開く）。いまの時刻（.tl-axis、z-index 2）よりは下。
-   **色は変えない**（橙は道だけ。時間割まで橙にしたら、利用者の声「ダサかった」で 10月6日に外した）。 */
-.tl-row.is-grown .tl-node { z-index: 1; }
-.tl-row.is-late .tl-node { z-index: 2; }
-/* ---- 重なった二つ ----
-
-   時刻が重なっている二件は、丸薬どうしが**ぶつかります**。線でつなぐ
-   のではなく、めり込んで、合わさったところが白く抜けます（参考画面の
-   実測：丸薬の幅56pxに対して、めり込み20px・白い抜きは34×13px）。
-   重なりは「順番に並んでいない」ことなので、線でつないでしまうと
-   そこだけ嘘になります。
-
-   ぶつけかたは**丸薬を伸ばすほう**です。行を詰めると、題と題が重なり
-   ます（行の高さは題とメモが決めるので、詰めた瞬間に字が噛む）。
-   上の行の丸薬は下へ、下の行の丸薬は上へ、それぞれ14pxずつ育てます
-   ——行と行のあいだは5px＋5pxなので、めり込みは 14×2−10 = 18px。
-   （行の余白を詰めたときに、この二つの数も直すこと。**めり込みの18pxが
-   決めごと**で、育てる量はそこから逆算した数です。） */
-/* ずらしは `--node-dy` に書きます（transform に直に書きません）。**線の
-   色の境目が、この数から出る**ので——丸薬の位置を transform だけで動かすと、
-   線のほうは動かないことを知らないまま、境目が丸薬の外へ出ます。 */
-.tl-row.is-clash { --node-dy: -7px; }
-.tl-row.is-clash-above { --node-dy: 7px; }
-/* 三つ以上が重なると、まん中の一件は**上とも下とも**ぶつかります。
-
-   ここは一度こわしました：上の二つは詳細度が同じなので、両方を持つ行には
-   あとに書いたほう（is-clash-above）だけが効き、まん中の丸薬は下へしか
-   育ちません。上の継ぎ目はめり込むどころか 2px 離れて、白い抜きだけが
-   宙に浮いていました。両方向へ14pxずつ、位置は動かさずに育てます。 */
-.tl-row.is-clash.is-clash-above { --node-dy: 0px; }
-/* 合わさったところの白い抜き。行の頭（＝二つの行の境目）が、めり込みの
-   まん中です。
-
-   本当は二つの丸の**重なった形**（両端のとがった木の葉）ですが、
-   30×12px でその差は1px前後なので、楕円で描いています。 */
-.tl-row.is-clash .tl-rail::after {
-  content: "";
-  position: absolute;
-  left: 50%; top: 0;
-  width: 30px; height: 12px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: var(--c-surface);
-  pointer-events: none;
+  width: 8px; height: 50px;
+  border-radius: 4px;
+  background: var(--tl-fill);
 }
 /* いま目を向けるのはここ、という地。字は足しません——線と輪と字で三度
    同じことを言うことになるので。 */
@@ -4468,37 +4262,6 @@ button.tl-over:active { opacity: var(--press-fade); }
 
 .tl-node .todo-mark { width: 32px; height: 32px; }
 .tl-node .todo-mark svg { width: 32px; height: 32px; }  /* 入れもの：道の丸 */
-/* ---- 丸薬の中の絵は、丸薬と同じところで色が変わる ----
-
-   過ぎたぶん（テーマ色に染まったところ）では**白抜き**、まだのぶん（灰色）
-   では**テーマ色**。進んでいる最中の一件は、絵の途中で切り替わります。
-
-   絵は `<svg>` ではなく**マスク**で置いてあります（screen-todo.js の
-   `tlMark`）。塗りはこのグラデーション一枚で、**丸薬の背景とまったく同じ式**
-   ——`--pass` と丸薬の高さ（`--tl-node-h`）——から出ます。境目を二か所で
-   計算すると、伸びた丸薬や重なった行で必ずずれるので。
-
-   絵は丸薬のまん中に置かれているので、丸薬の上端から測った境目から
-   「絵の上端までの距離」を引いたものが、絵の中での境目です。 */
-.tl-node .todo-mark.is-split {
-  --icon-h: 32px;
-  --icon-p: clamp(0px,
-    calc(var(--pass, 1) * var(--tl-node-h, 50px)
-         - (var(--tl-node-h, 50px) - var(--icon-h)) / 2),
-    var(--icon-h));
-  background: linear-gradient(to bottom,
-    var(--c-surface) 0 var(--icon-p),
-    var(--cat, var(--c-primary-fill)) var(--icon-p) 100%);
-  -webkit-mask: var(--icon) center / contain no-repeat;
-  mask: var(--icon) center / contain no-repeat;
-}
-/* 進行中の一件だけ、境目を滲ませます（丸薬の塗りと同じ理由・同じ拍）。
-   絵は丸薬より小さいので、ぼかす幅もそのぶん狭く。 */
-.tl-row.is-live .tl-node .todo-mark.is-split {
-  background: linear-gradient(to bottom,
-    var(--c-surface) 0 calc(var(--icon-p) - 2px),
-    var(--cat, var(--c-primary-fill)) calc(var(--icon-p) + 4px) 100%);
-}
 /* 絵を持たない用事の丸。白い一点でした——塗りが灰色にもなるようになった
    ので、白だと**まだ来ていない用事だけ点が消えます**。棚の色にすると、
    薄い塗りの上でも灰色の上でも同じように立ちます。 */
@@ -4664,9 +4427,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--cat, var(--c-primary-fill));
   border-color: var(--cat, var(--c-primary-fill));
 }
-/* 重なりは、色ではなく言葉で言います。赤い行は「間違い」に見えますが、
-   実際には「二つ入れた」だけなので。 */
-.tl-clash { color: var(--c-text-2); font-weight: var(--fw-bold); }
 .tl-row .check { flex: none; }
 
 /* 済んだもの。**色は残します。**
@@ -4686,30 +4446,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row .tl-item.is-checked .tl-facts { color: var(--c-text-3); }
 .tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: var(--fw-regular); }
 
-/* 空きの行。**長さによらず一定**です（screen-todo.js の TL_FREE_H に
-   同じ数）。用事の行より低くして、間が空いていることは高さではなく
-   破線が言います。
-
-   56px → **36px**。破線がすでに「ここは離れている」と言っているので、
-   同じことを高さでも言う必要はありませんでした。二つで言っていたぶんを
-   一つに戻したぶん、一日が一画面に入りやすくなります（30分以内の空きは
-   実線になったので、そちらは「詰まって続いている」ようにも見えます
-   ——それは本当のことなので、そのままでよい）。 */
-.tl-free-row { min-height: 36px; }
-.tl-free-row .tl-rail { min-height: 36px; }
 
 /* ---------------- いま、どこにいるか ----------------
 
-   「いま」は、行の中ではなく**一枚の層**に描きます（JS 側の paintNow）。
-   行だったころは、いまの時刻がある用事の**あと**にしか置けませんでした
-   ——14時から18時の用事を15時に見ると、線が18時のあたりに出ます。層なら、
-   その行の中の正しい高さに置けて、しかも常に前に出ます。
-
-   ここには1時間ごとの目盛りも乗っていました。時間に比例するのをやめた
-   ので、時刻→縦位置の折れ線が引けなくなり、外しました。
-
-   ここは**触れません**（pointer-events: none）。行を掴む・押すは、下の
-   行がそのまま受け取ります。 */
+   「いま」は一枚の層（JS の paintNow）。高さは物差しの式（y(いま)）。
+   ここは**触れません**（pointer-events: none）。 */
 .tl-axis {
   position: absolute;
   inset: 0;
@@ -4755,11 +4496,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 札の時間割（見本に寄せた今日の面・2026年10月19日、利用者）。丸薬は細い線に（長さで伸びる・過ぎたぶんの色はそのまま）、
    中身は種類の色の札（予定は青・やることは緑＝tlColorOf の --cat）。札の左上に用事の絵、題 → メモ → 事実。
    「いま」は時刻の札と横の線に戻す——線が細くなり、塗りの境目だけでは見えないので。 */
-.tl-row, .tl-free-row { grid-template-columns: 44px 20px 1fr; }
+.tl-row { grid-template-columns: 44px 20px 1fr; }
 .tl-node { width: 8px; border-radius: 4px; }
 .tl-node > * { display: none; }
 .tl-row .item.tl-item {
-  /* 行の高さ（丸薬＋10px）に収まる詰め方——超えると行が背伸びして、丸薬が行のまん中へずれる（timeline-late）。 */
   align-self: stretch; margin: 3px 0; padding: 5px var(--sp-3) 5px 12px; border-radius: 14px;
   background: color-mix(in srgb, var(--cat) 14%, var(--c-surface));
 }
@@ -4787,22 +4527,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--c-primary); color: var(--c-bg); text-align: center; font-size: var(--fs-xs);
 }
 
-/* いちばん下の丸から先には、線を引きません。一日はそこで終わりなので、
-   線だけが下へ伸びていると「まだ続く」と読めてしまいます。
-   丸薬の下端（行の中央 ＋ ずらし ＋ 高さの半分）まで。
-
-   **切るのは clip-path で、height ではありません。** height を縮めると、
-   塗りのパーセントが**その縮めた箱**を基準にし直すので、上の --rail-p が
-   指す場所が丸薬からずれます（実測で、いちばん下の行だけ境目が 2.5px 上へ
-   逃げて、まだ始まっていない用事の丸薬の**上に**色が出ました）。clip-path
-   なら箱はそのままで、見えるところだけが縮みます。
-
-   マスクは使えません——点線（.tl-rail.is-dash::before）がもう使っていて、
-   いちばん下が空きの行のときに打ち消し合うので。 */
-.tl-list > li:last-child .tl-rail::before {
-  clip-path: inset(0 0 calc(50% - var(--node-dy, 0px)
-                            - var(--tl-node-h, var(--tl-h, 50px)) / 2) 0);
-}
 
 /* 日付の帯は、越えられない境目です。
 
@@ -4817,7 +4541,156 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 上下の余白は、軸の端の目盛り（一日の始まりと終わり）が字の高さぶん
    はみ出さないために要ります。下の余白は、最後の丸が次の日の見出しへ
    食い込まないためのもの——両方が要ります。 */
-.tl-list { padding: 10px 0; }
+/* ---------------- 物差し（docs/timeline-scale-design.md） ----------------
+
+   縦軸＝時間。札・目盛り・背骨・畳んだ空きは .tl-list の中に絶対配置で、位置は JS が
+   置く CSS 変数（--top・--h は px の数、--lane・--lanes は列）だけから出す（tl-layout）。
+   左の --tl-gut（時刻 44px・背骨 20px）が目盛りの列、右が札の領域。重なった札は列に等分。
+   `li.tl-row` まで書くのは、`.tl-row.is-aim`・`.is-flash` の position: relative に負けないため。
+   上の余白（--tl-pad）は JS の nowY・axisOf も読む。 */
+.tl-list {
+  --tl-pad: 10px; --tl-gut: 64px; --tl-gap: 4px; --tl-right: var(--sp-4);
+  --tl-area: calc(100% - var(--tl-gut) - var(--tl-right) + var(--tl-gap));
+  position: relative;
+  box-sizing: content-box;
+  padding: var(--tl-pad) 0;
+  height: calc(var(--tl-total, 0) * 1px);
+}
+.tl-list > li.tl-row, .tl-list > .tl-tick, .tl-list > .tl-seg, .tl-list > .tl-fold {
+  position: absolute;
+  top: calc(var(--tl-pad) + var(--top, 0) * 1px);
+}
+.tl-list > li.tl-row {
+  display: block;
+  left: calc(var(--tl-gut) + var(--lane, 0) * var(--tl-area) / var(--lanes, 1));
+  width: calc(var(--tl-area) / var(--lanes, 1) - var(--tl-gap));
+  height: calc(var(--h) * 1px);
+}
+/* 時刻と棒は札の外、目盛りの列へ戻す。100% は札の幅なので、列の左端までは
+   「目盛りの列 ＋ 前の列ぶん（札の幅＋あいだ）× 列の番号」。 */
+.tl-list > li.tl-row {
+  --to-gut: calc(-1 * (var(--tl-gut) + var(--lane, 0) * (100% + var(--tl-gap))));
+}
+.tl-list > li.tl-row > .tl-time {
+  position: absolute;
+  left: var(--to-gut); top: 3px;
+  width: 44px; box-sizing: border-box;
+}
+.tl-list > li.tl-row > .tl-rail {
+  position: absolute;
+  left: calc(var(--to-gut) + 44px); top: 0; bottom: 0;
+  width: 20px; min-height: 0;
+}
+.tl-list > li.tl-row.is-lane > .tl-rail { pointer-events: none; }
+/* 棒は札の高さそのまま。重なった札の棒は、背骨の左右へ少しずつずらして細く。 */
+.tl-list > li.tl-row .tl-node {
+  --node-p: calc(var(--pass, 1) * 100%);
+  top: 0; height: calc(100% + var(--grow, 0) * 1px);   /* 過ぎてもまだは「いま」まで（JS の growLate） */
+  left: calc(50% + (var(--lane, 0) - (var(--lanes, 1) - 1) / 2) * 7px);
+  width: calc(8px - (var(--lanes, 1) - 1) * 2px);
+  translate: -50% 0;
+  background: linear-gradient(to bottom, var(--tl-fill) 0 var(--node-p), var(--tl-wait) var(--node-p) 100%);
+}
+/* いま進んでいる一件だけ、境目を少しぼかす（かっちり切ると、何かが置いてあるように見える）。 */
+.tl-list > li.tl-row.is-live .tl-node {
+  background: linear-gradient(to bottom, var(--tl-fill) 0 calc(var(--node-p) - 4px), var(--tl-wait) calc(var(--node-p) + 8px) 100%);
+}
+.tl-list > li.tl-row > .item.tl-item {
+  box-sizing: border-box;
+  height: calc(100% - 2px);
+  margin: 1px 0;
+  align-items: flex-start;
+  overflow: clip;
+}
+/* 低い札は一行に：題と事実（済ませた時刻・手順）を横に並べ、メモは外す。三列では題だけ（幅が約90px）。
+   flex にするのは .tl-body まで——行数を絞る .item-name は .tl-open（block）の中なので畳まれない。 */
+.tl-list > li.tl-row.is-short > .item.tl-item { padding-top: 3px; padding-bottom: 3px; align-items: center; }
+.tl-list > li.tl-row.is-short .tl-cap { display: none; }
+.tl-list > li.tl-row.is-short .tl-body { display: flex; align-items: center; gap: var(--sp-2); }
+.tl-list > li.tl-row.is-short .tl-open { flex: 1; min-width: 0; }
+.tl-list > li.tl-row.is-short .tl-facts { flex: none; margin-top: 0; flex-wrap: nowrap; }
+.tl-list > li.tl-row.is-short .tl-item .item-name { -webkit-line-clamp: 1; }
+.tl-list > li.tl-row.is-short.is-lane .tl-len { display: none; }   /* 列を分けた低い札は題を残す（長さは札の高さが言う） */
+.tl-list > li.tl-row.is-narrow .tl-ico, .tl-list > li.tl-row.is-narrow .tl-cap,
+.tl-list > li.tl-row.is-narrow .tl-facts { display: none; }
+.tl-list > li.tl-row.is-narrow .tl-body { padding-left: 0; }
+.tl-list > li.tl-row.is-narrow > .item.tl-item { padding-left: 8px; padding-right: 4px; gap: 4px; }
+/* 伸ばした棒は、あとの札の棒の上に。 */
+.tl-list > li.tl-row.is-grown .tl-node { z-index: 1; }
+/* 手順をひらいた札は、ひらいた間だけ中身の高さまで伸びて、下の札の上に重なる（段3で押し下げに）。 */
+.tl-list > li.tl-row > .tl-sub-wrap:not(.is-open) { display: none; }
+.tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) {
+  z-index: 1;
+  height: auto; min-height: calc(var(--h) * 1px);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--cat) 14%, var(--c-surface));
+}
+.tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) > .item.tl-item { height: auto; }
+.tl-list > li.tl-row > .tl-sub-wrap { padding-left: var(--sp-3); }
+.tl-list > li.tl-row > .tl-sub-wrap::before { display: none; }
+
+/* 1時間ごとの薄い目盛り（畳んだ区間には描かない）。札の裏。 */
+.tl-list > .tl-tick {
+  left: var(--tl-gut); right: var(--tl-right);
+  height: 0;
+  border-top: 1px solid var(--c-border);
+  opacity: .5;
+  pointer-events: none;
+}
+/* 背骨。最初の札の頭から最後の札の下端まで、畳んだところで切れる。札と同じ --pass で塗る。 */
+.tl-list > .tl-seg {
+  left: 54px;
+  width: 3.5px; height: calc(var(--h) * 1px);
+  translate: -50% 0;
+  background: linear-gradient(to bottom, var(--tl-fill) 0 var(--p), var(--tl-wait) var(--p) 100%);
+  pointer-events: none;
+}
+/* 畳んだ長い空き。一定の高さで、物差しは切れる——目盛りは描かず、点線と字で言う。 */
+.tl-list > .tl-fold {
+  left: 0; right: var(--tl-right);
+  height: calc(var(--h) * 1px);
+  display: flex; align-items: center;
+}
+.tl-fold-rail {
+  position: absolute;
+  left: 54px; top: 0; bottom: 0;
+  width: 3.5px;
+  translate: -50% 0;
+  background: linear-gradient(to bottom, var(--tl-fill) 0 var(--p), var(--tl-wait) var(--p) 100%);
+  -webkit-mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
+  mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
+}
+.tl-fold-text {
+  margin-left: var(--tl-gut);
+  font-size: var(--fs-sm);
+  color: var(--c-text-3);
+  white-space: nowrap;
+}
+
+/* 列の上限を超えた札（＋n）。押すと一覧の紙。 */
+.tl-more {
+  position: absolute;
+  right: 4px; bottom: 4px;
+  z-index: 1;
+  min-width: 28px; padding: 2px 6px;
+  border-radius: var(--r-full);
+  background: var(--c-surface);
+  color: var(--c-text-2);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  transition: scale var(--m-press) var(--ease);
+}
+.tl-more:active { scale: var(--press-wide); }
+.tl-more-list { display: flex; flex-direction: column; }
+.tl-more-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-height: var(--row-h); padding: 0 var(--sp-2);
+  text-align: left; background: none; border: 0;
+  transition: background var(--m-state) var(--ease);
+}
+.tl-more-row:active { background: var(--press-sink); }
+.tl-more-row .tl-time { flex: none; width: 44px; }
+.tl-more-row .item-name { color: color-mix(in srgb, var(--cat) 55%, var(--c-text)); font-weight: var(--fw-bold); }
 /* 一日ぶんを、それぞれ独立した層にします。**こうしないと足りません。**
    見出しを前へ出しても（z-index:1）、その上の日の粒や、いまの線（軸の層）
    のほうが大きい数を持っていれば、下の日の見出しを覆ってしまいます。
@@ -5128,16 +5001,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     var(--c-bg);
 }
 
-/* 過ぎた空きの字は、一段薄く。**線は薄くしません。**
-
-   ここは行ごと `opacity: .6` にしていました。「過ぎたぶんは薄く」という
-   決めごとが、`--pass`（過ぎたぶんは色・これからは灰色）を入れる前から
-   残っていたものです。二つが同じことを別々に言うと、こうなります
-   ——実測で、丸薬をつなぐ線が (225,113,107)、そのすぐ下の点線が
-   **(236,169,165)**。同じ色を指定しているのに、点線だけ4割ほど白く
-   混ざって見えていました。**「丸薬の間の線の色が周囲と合わない」の
-   正体はこれです。** 色は `--pass` に任せ、ここは字だけにします。 */
-.tl-free-row.is-past .tl-time { opacity: .6; }
 
 /* ---------------- 済ませたときの動き（時間割） ----------------
 
