@@ -3,7 +3,7 @@
    一、base.css の :root に --row-h-compact 44・--row-h 52・--row-h-two 64 がある。
    二、当て表の行は、どれも決めた段の札で min-height を持つ（数の直書きでなく）。
    三、名前が行（-row・.row・-item）の規則に、36〜72px の min-height の直書きが戻ってこない。
-      時間割の行は道の目盛り（screen-todo.js の TL_FREE_H と組）なので外す。
+      時間割の棒（.tl-rail）は物差しの高さなので外す。
    画面は開かない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/row-heights.js */
@@ -47,7 +47,7 @@ t.check("当て表は二十", TABLE.reduce((n, x) => n + x[2].length, 0) === 20)
 t.check(".set-row.is-sw に背丈を持たせない", !rules.some((r) => /\.set-row\.is-sw$/.test(r.sel) && minh(r)));
 
 const ROW = /(-row|\.row|-item)(\b|$)/;
-const EXEMPT = /\.tl-free-row|\.tl-rail/;
+const EXEMPT = /\.tl-rail/;
 const loose = rules.filter((r) => r.sel.split(",").some((s) => ROW.test(s.trim().split(/[\s>+~]/).pop().replace(/:[a-z-]+(\(.*\))?/g, "")))
   && !EXEMPT.test(r.sel) && /^(3[6-9]|[4-6]\d|7[0-2])px$/.test((minh(r) || "").trim()));
 t.check("行の規則に 36〜72px の min-height の直書きが無い", !loose.length,

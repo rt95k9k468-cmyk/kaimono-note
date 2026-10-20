@@ -17,6 +17,14 @@ const record = async (page, read, click, ms = 2400) => {
   await page.evaluate((src) => {
     const fn = new Function(src);
     const rec = window.__rec = [];
+    /* page.clock の performance.now は、混むと遅れたタイマーの時刻へ巻き戻る（本物は戻らない）。
+       流れはその時計で進むので、巻き戻った拍に色が減って見えた（2026年10月20日、6本並べて4本）。 */
+    if (!window.__pnMono) {
+      window.__pnMono = true;
+      const f = performance.now.bind(performance);
+      let mx = 0;
+      performance.now = () => (mx = Math.max(mx, f()));
+    }
     const tick = () => { if (window.__rec !== rec) return; rec.push(fn()); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }, read);
@@ -71,7 +79,9 @@ const away = async (page, tab) => {
     const first = tlf[0] || {};
     t.check("開いた拍は頭の色（朝の用事がまだ満ちていない）", first.a != null && first.a < 0.5, JSON.stringify(first));
     const mono = (k) => tlf.every((f, i) => i === 0 || f[k] >= tlf[i - 1][k] - 1e-6);
-    t.check("朝・昼・いまの用事の色は減らない", mono("a") && mono("b") && mono("c"));
+    const drop = tlf.findIndex((f, i) => i > 0 && ["a", "b", "c"].some((k) => !(f[k] >= tlf[i - 1][k] - 1e-6)));
+    t.check("朝・昼・いまの用事の色は減らない", mono("a") && mono("b") && mono("c"),
+      JSON.stringify(tlf.slice(Math.max(0, drop - 1), drop + 1)));
     t.check("上から順に着く（朝が満ちるのは昼より先）",
       tlf.findIndex((f) => f.a >= 1) <= tlf.findIndex((f) => f.b >= 1) && tlf.findIndex((f) => f.b >= 1) > 0);
     const end = tlf[tlf.length - 1] || {};
