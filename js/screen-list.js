@@ -241,7 +241,7 @@
       const best = store.bestPrice(product);
       const st = best ? store.getStore(best.storeId) : null;
       known.hidden = !(best && st);
-      known.textContent = best && st ? `最安 ${st.name} ${yen(best.price)}` : "";
+      known.textContent = best && st ? `${store.currentPrices(product).length > 1 ? "最安 " : ""}${st.name} ${yen(best.price)}` : "";
       acHost.innerHTML = "";
       paintDest();
       paintMark();
@@ -836,6 +836,8 @@
   function itemRow(item, product) {
     const best = store.bestPrice(product);
     const bestStore = best ? store.getStore(best.storeId) : null;
+    /* 王冠は比べる相手があるときだけ（二つ以上の店の値段。design-review の Y8）。一つなら店の名前だけ。 */
+    const vs = store.currentPrices(product).length > 1;
     const tiles = KN.ui.isTiles();
 
     /* 行を横に払う手つき（右で★・左でアーカイブ）は、2026年9月28日に
@@ -905,7 +907,7 @@
     if (priceBox && best && bestStore) {
       priceBox.append(frag(html`
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
-        <span class="item-price-store"><span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>${bestStore.name}</span>
+        <span class="item-price-store">${vs ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}${bestStore.name}</span>
       `));
     }
     /* 値段が無い行は、空のまま（「値段は未登録」は出さない——利用者が選んだ、

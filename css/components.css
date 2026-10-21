@@ -143,7 +143,8 @@ button, [role="tab"] {
    塗りと字の色は、両立しない組み合わせが実際にあります。ここは色の見た目
    より**字が読めること**を取って、基調の濃いほう（4.74:1）で塗ります。
    同じコーラルの系統なので、並べたときに別の色には見えません。 */
-.btn-primary { background: var(--c-primary); color: #fff; box-shadow: var(--shadow-1); }
+/* 字は --c-text-on（暗い面の塗りは明るいので、白では 2.25:1。look.md の「暗い面の塗った札」）。 */
+.btn-primary { background: var(--c-primary); color: var(--c-text-on); box-shadow: var(--shadow-1); }
 /* =========================================================
    Hover, only where a pointer can actually hover
 
@@ -167,7 +168,8 @@ button, [role="tab"] {
   .btn-ghost:hover { background: var(--c-surface-2); }
 }
 
-.btn-danger { background: var(--c-danger-soft); color: var(--c-danger); }
+/* 字は墨へ二割寄せる（淡い地の上で 3.78:1 だった。暗い面では明るい側へ寄る）。 */
+.btn-danger { background: var(--c-danger-soft); color: color-mix(in srgb, var(--c-danger) 80%, var(--c-text)); }
 @media (hover: hover) {
   .btn-danger:hover { background: color-mix(in srgb, var(--c-danger) 16%, transparent); }
 }
@@ -591,6 +593,7 @@ button, [role="tab"] {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  text-wrap: balance;
 }
 
 /* An inline icon in a section heading has no box of its own to be sized by —
@@ -1586,7 +1589,7 @@ button.hero-node:active { scale: var(--press-dot); }
   /* 消えていく途中は押しを受けない——下を押した指が、消えかけの一枚に取られて効かなくなるので。 */
   pointer-events: none;
 }
-.toast-msg { flex: 1; min-width: 0; }
+.toast-msg { flex: 1; min-width: 0; text-wrap: balance; }
 .toast-action {
   /* 押せる字も、生の薄緑でした。**選んだ基調色から出す**こと——暗い地の
      上なので、白をひとさじ混ぜます（`.is-on-dark` の席と同じ手。

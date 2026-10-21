@@ -2470,7 +2470,8 @@
    設定から開くダイエットの紙（`.diet-note` など）には及びません。
    SVGグラフの軸ラベル（`.diet-axis` / `.diet-goal-tag`）は var を
    使わず固定pxで描いているので、この上書きの影響を受けません——
-   グラフの寸法計算が崩れないように、意図して触っていません。 */
+   グラフの寸法計算が崩れないように、意図して触っていません。大きさは
+   screen-diet.js の AX と同じ（375 の幅で描いて 11px）。 */
 
 .diet {
   --fs-xs: calc(12.5px * var(--fs-k)); --fs-sm: calc(14px * var(--fs-k)); --fs-md: calc(15.5px * var(--fs-k)); --fs-lg: calc(17.5px * var(--fs-k));
@@ -2657,13 +2658,13 @@
    そこだけ地に足を付けます。 */
 .diet-gridline { stroke: var(--c-border); stroke-width: .8; opacity: .75; }
 .diet-gridline.is-base { stroke: var(--c-border-2); opacity: .9; }
-.diet-axis { fill: var(--c-text-3); font-size: 8px; font-family: var(--font); }
+.diet-axis { fill: var(--c-text-3); font-size: 11.5px; font-family: var(--font); }
 
 /* 目標。破線を端から端まで引くと「越えてはいけない線」に見えます——
    細い実線にして、右の端に数を添えるだけにしました。数がそこにあれば、
    凡例で「これは目標です」と言い直す必要もありません。 */
 .diet-goal-line { stroke: var(--c-accent); stroke-width: 1; opacity: .55; }
-.diet-goal-tag { fill: var(--c-accent); font-size: 8px; font-family: var(--font); opacity: .9; }
+.diet-goal-tag { fill: var(--c-accent); font-size: 11.5px; font-family: var(--font); opacity: .9; }
 /* 目標が枠の外にあるとき。線は引けないので、数と向きだけを端に置きます。 */
 .diet-goal-tag.is-off { opacity: .7; }
 
@@ -4821,7 +4822,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: color-mix(in srgb, var(--c-sheet, var(--c-bg)) 82%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .wk-work { flex: none; }
 .wk-faces .seg { width: 186px; }
-.wk-faces .seg-btn { min-height: 34px; padding: 0 var(--sp-2); }
+.wk-faces .seg-btn { min-height: 40px; padding: 0 var(--sp-2); }   /* 札の背丈（look.md。34 だった。design-review の Y2） */
 /* 選んでいる面は基調色で塗る（見本）。 */
 .wk-faces .seg-btn[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); }   /* 暗い面は基調が淡いので地の色の字（.cal-day.is-here.is-today と同じ） */
 .wk .chip-dot { width: 9px; height: 9px; }
@@ -6161,7 +6162,7 @@ textarea.note-title-in {
   color: var(--c-primary); font-weight: var(--fw-bold); box-shadow: inset 0 0 0 2px var(--c-primary);
   border-radius: var(--r-md);
 }
-.pop-cal-day.is-today small { font-size: 9px; font-weight: var(--fw-bold); }
+.pop-cal-day.is-today small { font-size: 11px; font-weight: var(--fw-bold); }
 .pop-cal-day:disabled { color: var(--c-text-3); cursor: default; }
 .pop-cal-day:disabled:not(.is-today) { opacity: var(--press-off); }
 .pop-cal-day.is-today:disabled { color: var(--c-primary); }
@@ -7625,7 +7626,7 @@ button.note-when:active { opacity: var(--press-fade); }
 /* 次の一行。「次は 13:00 病院 · あと5時間17分」 */
 .road-next {
   margin: 2px 0 0; padding: 0 var(--sp-1);
-  font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); text-align: center;
+  font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); text-align: center; text-wrap: balance;
 }
 .road-next b { font-weight: var(--fw-bold); color: var(--c-text); }
 .road-sep { margin: 0 .45em; color: var(--c-text-3); }
