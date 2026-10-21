@@ -4,7 +4,8 @@
      いちばん早く終わるはずだった水やりの下端から y(いま) まで一本（色は変えない。橙は道だけ）。押すと一覧の紙
    - 済ませると、その一件ぶん線が縮む／全部済ませると消える
    - 時刻は1時間ごとに振る。用事の時刻・「いま」と同じ高さの字は出さない
-   - 手順は小窓に出す（札は伸びない・2026年10月21日） */
+   - 手順は小窓に出す（札は伸びない・2026年10月21日）
+   - 始まりより前に済ませた用事（9:00 のしたく）は、済ませた時刻（7:33）の札になる（2026年10月21日） */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-30";
@@ -116,6 +117,17 @@ const PX_MIN = 1.2;
   r = await done(ids.routine);
   c.check("全部済ませると線が消える（札は 72px のまま）",
     !r.routine.late && !r.line && Math.abs(r.routine.dataH - 60 * PX_MIN) < 1, JSON.stringify([r.line, r.routine]));
+
+  /* 9:00 のしたくを 7:33 に済ませる → 札は済ませた時刻へ、長さは付けない。記録は書き換えない。 */
+  await done(ids.prep);
+  const early = await page.evaluate((id) => {
+    const li = document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"]`);
+    const t = KN.store.get().todos.find((x) => x.id === id);
+    return { at: Number(li.dataset.at), until: Number(li.dataset.until), time: li.querySelector(".tl-time").textContent.trim(),
+      rec: t.time + "/" + t.minutes };
+  }, ids.prep);
+  c.check("始まりより前に済ませたら、札は済ませた時刻に（長さは付けない・記録はそのまま）",
+    early.at === 7 * 60 + 33 && early.until === early.at + 1 && early.rec === "09:00/45", JSON.stringify(early));
 
   c.check("評価の言葉を出さない", !/遅れ|予定通り|達成|未達|超過/.test(r.text), r.text);
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));

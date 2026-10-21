@@ -1128,7 +1128,35 @@
     }
     return out;
   }
-  let askTurn = { day: "", n: 0, seen: new Set() };
+  /* 日ごとの今の引き（daily は隣の日も組むので、日ごとに持つ）。読み込み直せば空。 */
+  const askTurns = new Map();
+  /* 最近出た問い（設定 askSeen＝問いの字の鍵の並び、新しい順。reconcile に足さず読むところで既定）。 */
+  const ASK_SEEN = 60;
+  const askSeenOf = () => { const a = (store.get().settings || {}).askSeen; return Array.isArray(a) ? a : []; };
+  function askSaw(text) {
+    const k = askKey(text);
+    if (!k) return;
+    const list = [k].concat(askSeenOf().filter((x) => x !== k)).slice(0, ASK_SEEN);
+    setTimeout(() => store.update((s) => { s.settings.askSeen = list; }), 0);   // 組み立ての最中に書かない
+  }
+  /** でたらめに引く。最近出た問いと今の問いを避け、出尽くしたら今の問いだけ避ける。 */
+  function askPick(day, past, now) {
+    const seen = new Set(askSeenOf());
+    let other = 0;
+    for (let i = 0; i < 80; i++) {
+      const n = Math.floor(Math.random() * 1e6) + 1, t = askOf(day, past, n).text;
+      if (!t || t === now) continue;
+      if (!seen.has(askKey(t))) return n;
+      other = other || n;
+    }
+    return other;
+  }
+  let askRepaint = null, askAway = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { askAway = Date.now(); return; }
+    if (askAway && Date.now() - askAway > 2 * 60 * 1000 && askRepaint) askRepaint();
+    askAway = 0;
+  });
   function askOf(day, past, turn) {
     const all = store.get().asks || [];
     const known = new Set(all.map((a) => askKey(a.q)));
@@ -1146,7 +1174,7 @@
     const mine = past.filter((a) => { const k = askKey(a.text); if (known.has(k) || seen.has(k) || rest[k]) return false; seen.add(k); return true; });
     let h = 0;
     for (const c of String(day)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const k = h + (turn != null ? turn : askTurn.day === day ? askTurn.n : 0);
+    const k = h + (turn != null ? turn : askTurns.get(day) || 0);
     if (mine.length && k % 3 === 2) return { ...mine[Math.floor(k / 3) % mine.length], mine: true };
     const a = base[k % base.length] || {};
     return { text: a.q || "", hint: a.hint || "", from: a.from || "" };
@@ -1194,9 +1222,9 @@
     });
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
-    /* 前回の続き：その日に「別の問い」で進めた位置（設定 askLast。reconcile に足さず読むところで既定）から出す。 */
-    const last = (store.get().settings || {}).askLast;
-    if (askTurn.day !== day && last && last.day === day && last.n > 0) askTurn = { day, n: last.n, seen: new Set() };
+    /* 開くたびに（読み込み・しばらく離れて戻る・日が替わる）でたらめに引き直す。同じ画面の組み直しでは替えない。 */
+    const fresh = !askTurns.has(day);
+    if (fresh) askTurns.set(day, askPick(day, past, ""));
     let cur;
     /* 問いの下に出典と文脈（そのときのこと）。思い出すきっかけなので畳まない。自分の問いには無い。 */
     const ctx = el.querySelector(".js-think-ctx"), from = el.querySelector(".js-think-from"), hint = el.querySelector(".js-think-hint");
@@ -1207,21 +1235,15 @@
       ctx.hidden = !cur.from && !cur.hint;
     };
     paint();
+    if (fresh && day === U.todayKey()) askSaw(cur.text);
+    if (day === U.todayKey()) askRepaint = () => { if (!el.isConnected) return; askTurns.set(day, askPick(day, past, cur.text)); paint(); askSaw(cur.text); };
     /* 問いの元が無い端末（取り込む前・ほかの人）で、自分の問いも無いときは、札ごと出さない。 */
     if (!cur.text) el.querySelector(".think-today").remove();
     else el.querySelector(".js-think-other").addEventListener("click", () => {
       KN.motion.fire("select");
-      if (askTurn.day !== day) askTurn = { day, n: 0, seen: new Set() };
-      askTurn.seen.add(cur.text);
-      /* でたらめに引き、出た問いは避ける。出尽くしたら今の問いだけ避けて一周し直す。 */
-      let pick = null, other = null;
-      for (let i = 0; i < 40 && !pick; i++) {
-        const n = Math.floor(Math.random() * 1e6) + 1, t = askOf(day, past, n).text;
-        if (t && t !== cur.text) { other = other || n; if (!askTurn.seen.has(t)) pick = n; }
-      }
-      if (!pick && other) { askTurn.seen = new Set([cur.text]); pick = other; }
-      if (pick) { askTurn.n = pick; store.update((s) => { s.settings.askLast = { day, n: pick }; }); }
+      askTurns.set(day, askPick(day, past, cur.text));
       paint();
+      askSaw(cur.text);
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
        日記の紙。打つまでは書かない。自分の問いは写さず、書いたところ（そのノートの行・その日）へ。 */

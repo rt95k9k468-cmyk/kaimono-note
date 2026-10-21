@@ -4752,6 +4752,16 @@
     const plan = P.buildDay(day, rows.concat(done), {
       start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
     });
+    /* 今日、時刻を決めた用事を始まりより前に済ませたら、札は**済ませた時刻**に置く（道と同じ。
+       2026年10月21日・利用者の声）。いつ始めたかは記録に無いので長さは付けない。記録は書き換えない。 */
+    if (isToday) {
+      plan.items = plan.items.map((it) => {
+        const t = it.todo, d = it.fixed && (t.done || t.archived) && t.doneAt ? new Date(t.doneAt) : null;
+        if (!d || isNaN(d.getTime()) || KN.util.dayKey(d) !== day) return it;
+        const m = d.getHours() * 60 + d.getMinutes();
+        return m < it.atMin ? { ...it, atMin: m, untilMin: m + 1, at: P.toTime(m), until: P.toTime(m + 1) } : it;
+      }).sort((a, b) => a.atMin - b.atMin);
+    }
     /* 済んだものはいつも出す（畳む「済み n件」は2026年10月20日にやめた、利用者。札は灰へ寄せて抑える）。 */
     /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。 */
     const sec = node(html`

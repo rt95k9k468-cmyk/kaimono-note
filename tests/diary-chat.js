@@ -5,6 +5,7 @@
      （日付と育休の行だけの頭には出さない）
    - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
    - daily の冒頭に書く口と問いの札。＋も書く口も、種類を選ばずに書く紙（新しい一件）
+   - 今日の問いは開くたびにでたらめに引き、最近出た問い（askSeen）を避ける（読み込み直すと替わる）
    - 打った先から残る（時刻は打ち始めた時）。直しても時刻の行は変わらない。空にすると外れ、元に戻せる
    - 開いて閉じただけでは本文の形を変えない（空行の多い一件でも）
    - ノートへ移す：新しいノート（作った日＝その一件の時刻）・前からのノートの終わり（日付と時刻の行）。
@@ -452,6 +453,22 @@ const AT = new Date(2026, 9, 6, 12, 34);
   /* ---- 積み上げはやめた：記録の紙を開く口は無い ---- */
   const gone = await page.evaluate(() => ({ open: typeof KN.screens.archive.openEntry, seed: typeof KN.screens.archive.seedFromNote }));
   t.check("記録の紙を開く口は無い", gone.open === "undefined" && gone.seed === "undefined", JSON.stringify(gone));
+
+  /* ---- 今日の問い：読み込み直すと、出た問いを避けて替わる ---- */
+  {
+    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.waitForSelector("#screen-archive .js-think-q", { timeout: 5000 });
+    const before = await page.textContent("#screen-archive .js-think-q");
+    await page.waitForTimeout(300);
+    const seen = await page.evaluate(() => (KN.store.get().settings.askSeen || []).slice());
+    await page.reload();
+    await page.waitForFunction(() => window.KN && KN.app, null, { timeout: 5000 });
+    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.waitForSelector("#screen-archive .js-think-q", { timeout: 5000 });
+    const after = await page.textContent("#screen-archive .js-think-q");
+    t.check("読み込み直すと今日の問いが替わる（出た問いは避ける）", before && after && before !== after
+      && seen.length >= 2 && !seen.includes(after.normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "")), JSON.stringify([before, after, seen.length]));
+  }
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
