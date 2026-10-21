@@ -27,7 +27,8 @@ const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js", "heavy-pac
 const GATE = ["registry", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break", "backup-budget",
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
   "sky",           // 帯の空：時間帯の区切りと、空の上の字の濃さの比（画素で）を門で見張る
-  "motion-dict", "look-tokens",    // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
+  "motion-dict", "look-tokens",
+  "shape-tokens",                  // 総点検 Y1〜Y3：見出しは墨・選ぶ札の形・紙の頭は一つの顔（画面を開かない）    // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
   "one-part",                      // roadmap-unify の U2：暦の盤・アイコンを選ぶ紙・写すが一本のまま（画面を開かない）
   "gesture-dict",                  // roadmap-unify の U4：指の重さの直書きが KN.gesture の外に無い（画面を開かない）
   "keyframes-one",                 // roadmap-unify の U5：同じ中身の @keyframes が二つ無い・共通の動きは scale:/translate:（画面を開かない）

@@ -73,6 +73,7 @@
 | `feel-touch.js` | iPhone の震えるつまみと本物の指（2026年9月27日、docs/motion.md の FEEL）。UA を iPhone にして navigator.vibrate を消す。手順の丸：指を受けたつまみが DOM に居るまま click を出す（＝震える）・一度で済む・すぐ押し直すと戻る・長押しは「できなかった」だけ。手順の丸／済ませる丸の上から送る（当たり判定：送る器が動いた）→ iPhone の「送ったあとの click」を手で出しても押したことにしない。指の動き（40px）だけでも止まり、4px の震えなら押したことになる |
 | `motion-dict.js` | 動きの辞書（V4、docs/motion.md）。base.css の `--m-*` がどれも辞書の表に一行ずつあり、表の名前がどれも base.css にある。CSS の transition / animation に秒・JS の動きに `${X_MS}ms`・`duration:` に数の直書きが無い（U1）。門に入る。画面は開かない |
 | `look-tokens.js` | 見た目の札（V12、docs/look.md の「見た目の札の表」）。base.css の `:root` の色・影・角・余白・字・太さ・行の高さの札がどれも表にあり、太さ・角・行の高さ・19/24px の字が札と同じ値で直書きされていない。暗い面の `@media` と `[data-theme="dark"]` の組が一行も違わない（U3）。門に入る。画面は開かない |
+| `shape-tokens.js` | 形の札（docs/look.md「形の札」、総点検 Y1〜Y3・2026年10月21日）。門・画面を開かない。見出しは墨で頭の絵だけ主色・`.seg` の選んだ札を主色で塗らない・体重の期間は `.seg`・紙の頭（`.sheet-hero`）は淡い地に墨で一つの顔（白い字・黒を混ぜた地・品物の紙だけの地に戻さない） |
 | `one-part.js` | 同じ部品が一本のまま（roadmap-unify の U2）。暦の日のマス・隣の月のマス・隣の月の盤は `js/cal-grid.js` だけ、アイコンを選ぶ紙の格子は `js/ui.js` だけ、`writeText(`・`execCommand("copy")` は `js/util.js` だけ。四つの暦が `KN.calGrid` で組み、`cal-grid.js` が三か所に載る。門に入る。画面は開かない |
 
 | `diary-import.js` | 日記を取り込む（D7）の上掛け（2026年9月30日、docs/storage.md）。控えは `KN.diaryCrypto` でその場で作り、設定 → バックアップの口から入れる。行の無い日に入る・空白／全角半角だけ違う日はそのまま・書き足しの日は控えの文に（作成・更新は動かない）・中身の変わった日は日付だけで訊き、答えのとおり（両方の答えで一周ずつ）・印 `memoOut` の行と控えに無い日には触れない・取り込み前の控えと写しにも入る |

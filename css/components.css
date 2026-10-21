@@ -603,15 +603,17 @@ button, [role="tab"] {
 
 /* タブの中の一番上の見出し（「今日のからだ」「今日の食事」など）だけ、
    他の（体重の推移・ワークアウト・AI推計結果…といった）小見出しより
-   一段大きく、テーマ色で立てます。`.section-title` は共有クラスなので、
-   ここを直接変えると小見出しまで巻き込みます。 */
+   一段大きく立てます。`.section-title` は共有クラスなので、
+   ここを直接変えると小見出しまで巻き込みます。
+   字は墨、頭の絵だけ主色（2026年10月21日、総点検 Y1 の C。主色は押せる・選んでいる・いまの三つに取っておく。
+   見出しは大きさで立てる）。 */
 .section-title.is-block-head {
   font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
-  color: var(--c-primary);
+  color: var(--c-text);
   letter-spacing: -.01em;
 }
-.section-title.is-block-head svg { width: var(--ico); height: var(--ico); }
+.section-title.is-block-head svg { width: var(--ico); height: var(--ico); color: var(--c-primary); }
 
 /* ---------------- badges ---------------- */
 
@@ -953,17 +955,17 @@ button, [role="tab"] {
    同じ丸・同じ色・同じ題なので、押したものと開いたものが同じだと目で
    分かり、「どれを開いたんだったか」を思い出さずに済みます。
 
-   地は行の色を暗いほうへ寄せたもの（実測 #c77c75 ＝ 塗りの #f2938e の
-   82%）。粒はそのままの明るさで置くので、地の中で粒だけが浮きます。 */
+   地は行と同じ淡い色（--cat-fill）に墨の字。品物の紙の頭と同じ一つの顔（2026年10月21日、総点検 Y3 の B。
+   黒を混ぜた濃い地に白い字では、題 3.02:1・添え字 約2.4:1 で読めなかった）。粒は今の色のまま。 */
 .sheet-hero {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-6) var(--sp-5) var(--sp-5) var(--sp-4);
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 82%, #000);
+  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) var(--cat-fill), var(--c-surface));
   border-radius: var(--r-xl) var(--r-xl) 0 0;
-  color: #fff;
+  color: var(--c-text);
   flex: none;
 }
 /* 粒。**縦にのびた丸薬**です（参考画面と同じ形）。時間割の丸は円ですが、
@@ -975,6 +977,7 @@ button, [role="tab"] {
   width: 62px; height: 84px;
   border-radius: 31px;
   background: var(--cat, var(--c-primary-fill));
+  color: #fff;                     /* 粒の中の絵は白のまま（地の字は墨） */
   box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
 }
 .hero-node .todo-mark,
@@ -1001,7 +1004,8 @@ button.hero-node:active { scale: var(--press-dot); }
   display: block;
   margin-bottom: 2px;
   font-size: var(--fs-sm);
-  color: color-mix(in srgb, #fff 78%, transparent);
+  /* --c-text-2 だと暗い面の地（--cat-fill 32%）で 3.5:1。墨を少しだけ引く。 */
+  color: color-mix(in srgb, var(--c-text) 85%, transparent);
   font-variant-numeric: tabular-nums;
 }
 /* 打っている字から日付や時刻が読めているあいだの**予告**。
@@ -1010,7 +1014,7 @@ button.hero-node:active { scale: var(--press-dot); }
    新しい札は置かない：ここはもともと「いつのことか」を言う場所で、
    同じことを二か所で言わないため。 */
 .hero-cap.is-peek {
-  color: #fff;
+  color: var(--c-text);
   text-decoration: underline dotted;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
@@ -1024,9 +1028,9 @@ button.hero-node:active { scale: var(--press-dot); }
   padding: 2px 0 5px;
   background: none;
   border: 0;
-  border-bottom: 1.5px solid color-mix(in srgb, #fff 45%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--c-text) 22%, transparent);
   border-radius: 0;
-  color: #fff;
+  color: var(--c-text);
   font-family: inherit;
   font-size: calc(20px * var(--fs-k));
   font-weight: var(--fw-bold);
@@ -1041,20 +1045,20 @@ button.hero-node:active { scale: var(--press-dot); }
   min-height: 0;
   vertical-align: top;
 }
-.hero-title::placeholder { color: color-mix(in srgb, #fff 55%, transparent); }
-.hero-title:focus { outline: none; border-bottom-color: #fff; }
+.hero-title::placeholder { color: var(--c-text-3); }
+.hero-title:focus { outline: none; border-bottom-color: var(--c-text-2); }
 
 /* 題の下の印。★・くりかえし・手順の数。 */
 .hero-facts {
   display: flex; align-items: center; gap: 10px;
   margin-top: 6px;
   min-height: 16px;
-  color: color-mix(in srgb, #fff 80%, transparent);
+  color: color-mix(in srgb, var(--c-text) 85%, transparent);
 }
 .hero-facts:empty { display: none; }
 .hero-fact { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-sm); }
 .hero-fact svg { width: var(--ico-sm); height: var(--ico-sm); }
-.hero-fact.is-fav { color: #fff; }
+.hero-fact.is-fav { color: var(--c-warn); }
 .hero-fact.is-subs i { font-style: normal; font-variant-numeric: tabular-nums; }
 /* 頭を敷いたときは、題の行は要りません。閉じる丸が**左**、⋯ が右——参考に
    した画面と同じ並びです。色の面の上では、閉じるほうが先に目に入る側に
@@ -1067,14 +1071,15 @@ button.hero-node:active { scale: var(--press-dot); }
   gap: 0;
 }
 .sheet.has-hero .sheet-title { display: none; }
+/* 閉じる丸と ⋯ は白い丸に墨の印（淡い地の上で消えないように）。 */
 .sheet.has-hero .sheet-head .icon-btn {
-  background: color-mix(in srgb, #fff 30%, transparent);
-  color: #fff;
+  background: color-mix(in srgb, var(--c-surface) 70%, transparent);
+  color: var(--c-text-2);
   border-radius: var(--r-full);
   width: 38px; height: 38px;
 }
 .sheet.has-hero .sheet-head .js-menu { margin-left: auto; }
-/* 掴み手も、色の面の上では白く。**浮かせて**置きます——ふつうに並べると
+/* 掴み手は**浮かせて**置きます——ふつうに並べると
    その上下の余白ぶん、紙の地が色の面の上にはみ出して、頭のいちばん上に
    白い帯が一本残ります。 */
 .sheet.has-hero .sheet-handle {
@@ -1083,7 +1088,7 @@ button.hero-node:active { scale: var(--press-dot); }
   transform: translateX(-50%);
   margin: 0;
   z-index: 2;
-  background: color-mix(in srgb, #fff 55%, transparent);
+  background: color-mix(in srgb, var(--c-text) 22%, transparent);
 }
 .sheet.has-hero .sheet-body { padding-top: var(--sp-4); }
 /* 頭は、閉じる丸と ⋯ のぶんだけ上に余白が要ります。 */
@@ -1227,29 +1232,11 @@ button.hero-node:active { scale: var(--press-dot); }
   background: var(--c-surface);
 }
 .pd-memo[hidden] { display: none; }
-/* 頭の地は、黒を混ぜた濃い色ではなく行と同じ淡い色（--cat-fill）。字・★・閉じる丸は地の字の
-   色に（V26、利用者「開いたときの色が暗い・濃い」10月5日）。 */
-.sheet-hero.pd-hero {
-  background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-surface));
-  color: var(--c-text);
-}
+/* 頭の地・字・閉じる丸は `.sheet-hero` の土台のまま（V26、利用者「開いたときの色が暗い・濃い」10月5日。
+   やることの紙も10月21日に同じ顔へ）。品物の紙だけ、粒が白地にカテゴリの色の絵。 */
 .pd-hero .hero-node { background: var(--c-surface); color: var(--cat); box-shadow: none; }
-.pd-hero .hero-cap { color: var(--c-text-2); }
-.pd-hero .hero-title { color: var(--c-text); border-bottom-color: color-mix(in srgb, var(--c-text) 22%, transparent); }
-.pd-hero .hero-title::placeholder { color: var(--c-text-3); }
-.pd-hero .hero-title:focus { border-bottom-color: var(--c-text-2); }
 .pd-hero .pd-fav { color: var(--c-text-3); }
 .pd-hero .pd-fav.is-on { background: var(--c-surface); color: var(--c-warn); }
-.sheet-hero.pd-hero .dest-chip {
-  border-color: color-mix(in srgb, var(--c-primary) 40%, transparent);
-  background: var(--c-surface);
-  color: var(--c-primary);
-}
-.sheet.has-hero:has(.pd-hero) .sheet-head .icon-btn {
-  background: color-mix(in srgb, var(--c-surface) 70%, transparent);
-  color: var(--c-text-2);
-}
-.sheet.has-hero:has(.pd-hero) .sheet-handle { background: color-mix(in srgb, var(--c-text) 22%, transparent); }
 /* 値段を足す欄（product-sheet.js の addPriceForm）。枠の箱は無し、お店の札は一列で横に送る。 */
 .price-add { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); }
 .price-add .chip-wrap {
@@ -1968,9 +1955,9 @@ button.hero-node:active { scale: var(--press-dot); }
 .dest-chip[hidden] { display: none; }
 .dest-chip:active { scale: var(--press-wide); }
 .sheet-hero .dest-chip {
-  border-color: color-mix(in srgb, #fff 45%, transparent);
-  background: color-mix(in srgb, #fff 16%, transparent);
-  color: #fff;
+  border-color: color-mix(in srgb, var(--c-primary) 40%, transparent);
+  background: var(--c-surface);
+  color: var(--c-primary);
 }
 
 /* ---------------- 年の本（R10、js/yearbook.js） ----------------

@@ -930,7 +930,11 @@
     const sec = node(html`
       <div class="diet-graph">
         <div class="section-title">${icon("chart")}体重の推移</div>
-        <div class="js-range"></div>
+        ${/* 期間は見方の切り替えなので `.seg`（丸札は絞る・選んで入れるもの。2026年10月21日、総点検 Y2）。 */""}
+        <div class="seg diet-range js-range" role="group" aria-label="期間">
+          ${KN.util.raw(RANGES.map((r) => `<button type="button" class="seg-btn" data-id="${r.id}"
+            aria-pressed="${String(r.id === range)}">${r.label}</button>`).join(""))}
+        </div>
         <div class="diet-plot-chart js-chart"></div>
         <div class="diet-legend">
           <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
@@ -946,10 +950,9 @@
       </div>
     `);
 
-    KN.ui.chipRow(sec.querySelector(".js-range"), RANGES.map((r) => ({ id: r.id, label: r.label })), {
-      activeId: range,
-      onPick: (id) => { range = Number(id); store.setDietRange(range); render(); },
-    });
+    sec.querySelectorAll(".js-range .seg-btn").forEach((b) => b.addEventListener("click", () => {
+      range = Number(b.dataset.id); store.setDietRange(range); render();
+    }));
 
     const drawn = chartEl || chart();
     sec.querySelector(".js-chart").append(drawn);

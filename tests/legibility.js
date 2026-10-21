@@ -14,7 +14,6 @@ const SCREENS = ["todo", "list", "archive", "diet", "notes", "prices", "settings
 
 /* 段を待っているもの（docs/log/design-review.md）。数えて「待ち」と出すが、落とさない。直したらここから消す。 */
 const WAIT = [
-  [/^\.hero-cap\b/, "用事の紙の頭の添え字（Y3。段D で淡い地＋墨へ）"],
   [/^svg\.road-hours text\b/, "道の時の数字（道の太さの中に収まる字。段E の道と一緒に）"],
 ];
 const waitOf = (b) => { const w = WAIT.find(([re]) => re.test(b.name)); return w && w[1]; };

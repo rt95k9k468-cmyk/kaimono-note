@@ -2597,7 +2597,7 @@
   padding: 0; background: none; border: 0;
 }
 .diet-hero-main:active { opacity: var(--press-fade); }
-.diet-hero-label { font-size: var(--fs-xl); color: var(--c-primary); font-weight: var(--fw-bold); letter-spacing: -.01em; }
+.diet-hero-label { font-size: var(--fs-xl); color: var(--c-text); font-weight: var(--fw-bold); letter-spacing: -.01em; }
 .diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
 .diet-hero-value b {
   font-size: calc(40px * var(--fs-k)); line-height: 1.05; font-weight: var(--fw-bold); color: var(--c-text);
@@ -2714,9 +2714,8 @@
 /* グラフは「推移」のカード。 */
 .diet-graph { display: flex; flex-direction: column; gap: var(--sp-2); }
 .diet-plot-chart { min-width: 0; }
-/* 期間の札も、グラフと同じ枠に入ったぶん詰めます（見出し・数字・
-   グラフ・凡例が一枚に載るので、ここだけ大きいと段が目立ちます）。 */
-.diet-graph .chip-row > .chip { padding: 5px 12px; font-size: var(--fs-sm); }
+/* 期間は `.seg`（総点検 Y2。前は丸札）。五つ並ぶので字の左右は詰める。 */
+.diet-range .seg-btn { padding: var(--sp-2) 0; }
 
 .diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
@@ -3584,7 +3583,7 @@ a.btn { text-decoration: none; }
    最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
 .arc-log { margin: 0 var(--sp-4); padding: var(--sp-4) var(--sp-6) var(--sp-4) var(--sp-4); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
-.arc-log-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-log-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-text); flex: 1; min-width: 0; letter-spacing: -.01em; }
 .btn-sm { padding: 5px 10px; font-size: var(--fs-xs); gap: var(--sp-1); }
 /* 季節のひとこと（R2）。小ささと空きで引っこめる（薄さではなく。docs/look.md）。
    長い読み（「かみなりすなわちこえをおさむ」）は折り返してよい——切ると言葉が欠ける。 */
@@ -3797,7 +3796,7 @@ a.btn { text-decoration: none; }
 /* ---- ④積み上げ項目 ---- */
 .arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 .arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-primary); flex: 1; min-width: 0; letter-spacing: -.01em; }
+.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-text); flex: 1; min-width: 0; letter-spacing: -.01em; }
 
 /* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
    札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
@@ -4826,8 +4825,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-work { flex: none; }
 .wk-faces .seg { width: 186px; }
 .wk-faces .seg-btn { min-height: 40px; padding: 0 var(--sp-2); }   /* 札の背丈（look.md。34 だった。design-review の Y2） */
-/* 選んでいる面は基調色で塗る（見本）。 */
-.wk-faces .seg-btn[aria-pressed="true"] { background: var(--c-primary); color: var(--c-bg); }   /* 暗い面は基調が淡いので地の色の字（.cal-day.is-here.is-today と同じ） */
+/* 選んでいる面は `.seg` の白い持ち上げのまま（見方の切り替えは一つの形。2026年10月21日、総点検 Y2 の B。
+   前は基調色の塗り）。 */
 .wk .chip-dot { width: 9px; height: 9px; }
 .wk-h {
   display: flex; align-items: center; min-height: 44px;
@@ -5704,7 +5703,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-tree > [role="tree"] { display: flex; flex-direction: column; }
 /* 左の木の行はホームの木と同じ（.nt-row）。ここは地の上なので、押したとき・寄せたときは白。 */
 .notes-tree .nt-row { font-size: var(--fs-md); }
-.notes-tree .nt-row.is-head { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary); }
+.notes-tree .nt-row.is-head { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
 .notes-tree .nt-grp:has(> .nt-row.is-book) { margin-top: var(--sp-2); }
 @media (hover: hover) { .notes-tree .nt-row:not([aria-current="true"]):hover { background-color: var(--c-surface); } }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
@@ -7020,7 +7019,7 @@ button.note-when:active { opacity: var(--press-fade); }
   margin: 0 0 var(--sp-3);
   font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
-  color: var(--c-primary);
+  color: var(--c-text);             /* 見出しは墨（総点検 Y1） */
   letter-spacing: -.01em;
 }
 .arc-counts-list {
