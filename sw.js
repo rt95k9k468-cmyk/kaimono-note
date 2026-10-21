@@ -46,6 +46,7 @@ const ASSETS = [
   "js/live-idb.js",
   "js/diary-idb.js",
   "js/note-format.js",
+  "js/note-live.js",
   "js/diary-posts.js",
   "js/notes-idb.js",
   "js/entries-note.js",

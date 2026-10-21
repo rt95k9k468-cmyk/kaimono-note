@@ -5922,7 +5922,7 @@ textarea.note-title-in {
   /* 横はブラウザに渡さない（払いを pointercancel で切られないように）。
      touch-action は送る器で途切れるので、器と書く欄にも。 */
   .sheet.is-note,
-  .sheet.is-note :is(.sheet-body, textarea) { touch-action: pan-y; }
+  .sheet.is-note :is(.sheet-body, textarea, .note-live) { touch-action: pan-y; }
   .sheet.is-note:not(.is-open):not(.is-from-origin) {
     transform: translate(-50%, calc(100% + var(--note-gap) + var(--note-gap-b0)));
   }
@@ -6004,6 +6004,35 @@ textarea.note-title-in {
 .nv-li.is-done .nv-box { background: var(--c-primary); border-color: var(--c-primary); }
 .nv-li.is-done .nv-t { color: var(--c-text-2); text-decoration: line-through; }
 .nv-q { padding-left: .8em; border-left: 3px solid var(--c-border-2); color: var(--c-text-2); }
+/* 見たままの書く欄（js/note-live.js）。読む姿の class をそのまま着て、行頭の印だけ ::before で
+   描く（打てる字の中に要素を置かない）。形と大きさは .nv-dot・.nv-n・.nv-box と同じ——書き終えて
+   読む姿に戻っても字が動かない。 */
+.note-live { outline: none; caret-color: var(--c-text); -webkit-user-select: text; user-select: text; }
+.note-live .nv-li { position: relative; }
+.note-live .nv-li::before { content: "\2022"; flex: none; min-width: 1.1em; text-align: center; color: var(--c-text-2); }
+.note-live .nv-li.is-num::before { content: attr(data-mk); min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums; }
+.note-live .nv-li.is-task::before {
+  content: "";
+  width: 1.15em; height: 1.15em; min-width: 0;
+  margin-top: calc((var(--lh-body) * 1em - 1.15em) / 2);
+  border: 2px solid var(--c-text-2);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.note-live .nv-li.is-task.is-done::before { background: var(--c-primary); border-color: var(--c-primary); }
+.note-live .nv-li.is-task.is-done::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--lv, 0) * 1.4em);
+  top: calc((var(--lh-body) * 1em - 1.15em) / 2);
+  width: 1.15em; height: 1.15em;
+  background: #fff;
+  -webkit-mask: var(--lv-check) center / .8em .8em no-repeat;
+  mask: var(--lv-check) center / .8em .8em no-repeat;
+  pointer-events: none;
+}
+.note-live .nv-link { cursor: text; }
+.note-live :is(.nv-hr, .nv-img, .nv-file) { -webkit-user-select: none; user-select: none; }
 /* 書いているあいだの色付け（screen-notes.js の ink・note-format.js の ink）。欄の字は
    透かし、同じ字を同じ位置に並べた写しを重ねる。写しは欄のあとに置く（字が
    カーソルと選んだ色の上に乗る）。字の幅を変えないこと——太字は font-weight で

@@ -74,7 +74,7 @@ function clockAt(hms) {
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false } = {}) {
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
@@ -99,6 +99,9 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
   /* ＋の新しいノートは先にノートブックの小窓（2026年10月15日）。確かめる台本だけ `bookFirst: true`。 */
   if (!bookFirst) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-book-first", "off"); } catch (_) {} });
+  /* ノートの本文は、ほかの台本では印の書く欄（.js-text）で打つ（見たままは 2026年10月21日から既定。js/note-live.js）。
+     見たままを確かめる台本だけ `live: true`（tests/note-live.js）。 */
+  if (!live) await ctx.addInitScript(() => { try { localStorage.setItem("kn-note-marks", "1"); } catch (_) {} });
   /* やることは開いたときは今日の面（2026年10月20日。以前は週）。ほかの台本は席の二度押しが何もしない。週の面から始める台本だけ `weekFirst: true`。 */
   await ctx.addInitScript((f) => { try { sessionStorage.setItem("kn-todo-face", f); } catch (_) {} }, weekFirst ? "week" : "today");
   /* KN_NO_FIT=1：伸びる欄を、field-sizing の効かない端末の道（JS が測る）で回す（roadmap-3.1 の S2）。 */

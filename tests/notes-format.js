@@ -272,7 +272,7 @@ const { open, checker } = require("./lib");
       sheets: document.querySelectorAll(".sheet.is-open").length,
       items: [...document.querySelectorAll(".note-pop-item")].map((x) => x.textContent.trim()).join(",") };
   });
-  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,読んだところ,中にノートを足す,移す,束ねる,消す", JSON.stringify(pop));   // 読んだところは思考のホーム（docs/thinking.md。前は種をまく＝段6の橋）。道に置く（3.0 の A2）は既定で畳む（3.1 の S4）
+  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,読んだところ,中にノートを足す,移す,束ねる,消す,見たままで書く", JSON.stringify(pop));   // 見たままで書くは印で書く端末だけの戻り口（tests/lib.js は印で回す。js/note-live.js）。読んだところは思考のホーム（docs/thinking.md。前は種をまく＝段6の橋）。道に置く（3.0 の A2）は既定で畳む（3.1 の S4）
   await page.click(".note-pop-item:first-child");
   await page.waitForFunction(() => !document.querySelector(".note-pop"), null, { timeout: 3000 }).catch(() => {});   // 縮んで帰ってから消える
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
@@ -348,11 +348,11 @@ const { open, checker } = require("./lib");
     return page.$$eval(".note-pop-item", (xs) => xs.map((x) => x.textContent.trim()));
   };
   const two = await headItems(`# 一\n${filler}\n## 二\n${filler}`);
-  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,読んだところ,中にノートを足す,移す,束ねる,消す", two.join(","));
+  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,読んだところ,中にノートを足す,移す,束ねる,消す,見たままで書く", two.join(","));
   await page.keyboard.press("Escape");
   await closeSheet();
   const three = await headItems(`# 一\n${filler}\n## 二\n${filler}\n### 三\n${filler}`);
-  t.check("見出しが三つなら、小窓に見出しが並ぶ", three.slice(7).join(",") === "一,二,三", three.join(","));
+  t.check("見出しが三つなら、小窓に見出しが並ぶ", three.slice(8).join(",") === "一,二,三", three.join(","));
   await page.click(".note-pop-item:last-child");
   await page.waitForTimeout(300);
   const jumped = await page.evaluate(() => {

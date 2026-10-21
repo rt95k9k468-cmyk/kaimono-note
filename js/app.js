@@ -1682,6 +1682,8 @@
     if (!el) return false;
     const tag = el.tagName;
     if (tag === "TEXTAREA") return true;
+    /* ノートの見たままの書く欄（js/note-live.js）。 */
+    if (el.isContentEditable) return true;
     if (tag !== "INPUT") return false;
     return !["checkbox", "radio", "button", "submit", "reset", "file", "range", "color"]
       .includes(el.type);

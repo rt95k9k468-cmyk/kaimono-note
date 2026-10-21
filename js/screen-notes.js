@@ -39,6 +39,9 @@
   const N = () => KN.notes;
   /* 紙を画面いっぱいにするか（端末ごと。記録には入れない）。 */
   const FULL = "kn-note-wide";
+  /* 見たまま（js/note-live.js）でなく印で書く端末（「⋯」から。記録・控えに入れない）。 */
+  const MARKS = "kn-note-marks";
+  const marksPref = () => { try { return !!localStorage.getItem(MARKS); } catch (_) { return false; } };
 
   /* 種と問いは、独り立ちの入力にしないでタグ（思考のホーム。docs/thinking.md）。タグの小窓には、まだ
      どのノートにも無くてもこの二つを並べる（押せば付く）。問いの一覧は「問い」のノートも引く。 */
@@ -915,6 +918,7 @@
           <div class="note-labels js-labels"></div>
         </div>
         <div class="note-view js-view" hidden></div>
+        <div class="note-view note-live js-live" aria-label="本文" data-own-scroll hidden></div>
         <div class="note-ink js-ink">
           <textarea class="note-body-in grow-field js-text" aria-label="本文" rows="6" data-own-scroll></textarea>
           <div class="note-hl js-hl" aria-hidden="true"></div>
@@ -936,6 +940,7 @@
     const viewEl = body.querySelector(".js-view");
     const ink = body.querySelector(".js-ink");
     const hl = body.querySelector(".js-hl");
+    const liveEl = body.querySelector(".js-live");
     /* 値は欄へ直に入れます（テンプレートに書くと、textarea は頭の改行を
        一つ落とします——本文は打ったままの形で持つので。docs/notes.md）。 */
     titleIn.value = note.title;
@@ -1111,6 +1116,16 @@
        同期に focus します**（iOS はそうしないとキーボードを出さない）。
        欄から出たら（キーボードを閉じた・題へ移った）、また整えた姿へ。 */
     let writing = false;
+    /* 見たまま（js/note-live.js。docs/notes-unify.md「書き方：見たまま」）。本文の正は書く欄（textIn）のまま、
+       書くあいだの画面だけ行の並び。開いて戻して一字でも違うノートと、印で書く端末は今の書く欄。 */
+    let lv = false;
+    const ed = () => (lv ? liveEl : textIn);
+    const inEd = () => document.activeElement === ed();
+    /** いまの本文（見たままで書いているあいだは並びから写した字が新しい）。 */
+    const val = () => (lv && writing ? live.md() : textIn.value);
+    /** 選んでいる範囲（本文の位置）。 */
+    const selNow = () => (lv ? (live.sel() || lastSel) : [textIn.selectionStart, textIn.selectionEnd]);
+    const setSel = (s, e) => { if (lv) live.place(s, e); else textIn.setSelectionRange(s, e); };
     const paintView = () => { F.render(textIn.value, viewEl); paintPics(); };
     /* 画像の行（段5。docs/image-design.md）：幅いっぱいの画像。見つからない・入れ物が開かない日は、
        灰色の枠に絵だけ（行は残る）。読むのは開いたノートが参照するものだけ。 */
@@ -1140,19 +1155,20 @@
         });
       });
     };
+    const paintPic = (el) => {
+      const I = KN.noteImg;
+      const id = el.dataset.img;
+      const v = I && I.known(id);
+      if (v) { showPic(el, v); return; }
+      (I ? I.look(id) : Promise.resolve(null)).then((got) => {
+        if (!el.isConnected) return;
+        if (got) showPic(el, got);
+        else { el.classList.add("is-gone"); el.innerHTML = icon("image"); }
+      });
+    };
     const paintPics = () => {
       paintFiles();
-      const I = KN.noteImg;
-      viewEl.querySelectorAll(".nv-img").forEach((el) => {
-        const id = el.dataset.img;
-        const v = I && I.known(id);
-        if (v) { showPic(el, v); return; }
-        (I ? I.look(id) : Promise.resolve(null)).then((got) => {
-          if (!el.isConnected) return;
-          if (got) showPic(el, got);
-          else { el.classList.add("is-gone"); el.innerHTML = icon("image"); }
-        });
-      });
+      viewEl.querySelectorAll(".nv-img").forEach(paintPic);
     };
     /* 整えた姿と書く欄は、見出しの大きさや印のぶん行の高さが違う。入れ替わる
        ときは、カーソルの行が画面の同じ高さに留まるよう送り直す（でないと、
@@ -1160,23 +1176,45 @@
     const lineOfView = (at) => [...viewEl.children].find((el) => at <= Number(el.dataset.end)) || null;
     const toView = () => {
       const sc = scroller();
-      const at = textIn.selectionEnd;
-      const was = writing && sc && !textIn.hidden ? textIn.getBoundingClientRect().top + caretBox(at).top : null;
+      let at = selNow()[1];
+      let was = null;
+      if (writing && sc && lv) {
+        /* 見たままは読む姿と同じ形なので、カーソルの行の頭を同じ高さに。 */
+        const el = live.lineEl(at);
+        if (el) { was = el.getBoundingClientRect().top; at = live.startOf(el); }
+      } else if (writing && sc && !textIn.hidden) was = textIn.getBoundingClientRect().top + caretBox(at).top;
       writing = false;
       paintView();
       viewEl.hidden = false;
       textIn.hidden = true;
+      liveEl.hidden = true;
       if (h) h.el.classList.remove("is-writing");
       const ln = was != null ? lineOfView(at) : null;
       if (ln) sc.scrollTop += ln.getBoundingClientRect().top - was;
     };
+    /** 見たままで書くか（端末の決まりと、開いて戻して一字も違わないこと）。並べるのもここ。 */
+    const goLive = () => {
+      if (!live || marksPref()) return false;
+      if (live.load(textIn.value)) return true;
+      liveEl.textContent = "";
+      return false;
+    };
     const toWrite = (caret) => {
       writing = true;
       viewEl.hidden = true;
-      textIn.hidden = false;
-      grow();
-      try { textIn.focus({ preventScroll: true }); } catch (_) { textIn.focus(); }
-      if (caret != null) textIn.setSelectionRange(caret, caret);
+      lv = goLive();
+      liveEl.hidden = !lv;
+      ink.hidden = lv;
+      textIn.hidden = lv;
+      if (lv) {
+        try { liveEl.focus({ preventScroll: true }); } catch (_) { liveEl.focus(); }
+        const c = caret != null ? caret : Math.min(lastSel[1], textIn.value.length);
+        live.place(c, c);
+      } else {
+        grow();
+        try { textIn.focus({ preventScroll: true }); } catch (_) { textIn.focus(); }
+        if (caret != null) textIn.setSelectionRange(caret, caret);
+      }
       if (h) h.el.classList.add("is-writing");
       paintTools();
     };
@@ -1257,7 +1295,12 @@
       const was = hit ? hit.mid : r ? r.top : null;
       toWrite(at);
       const sc = scroller();
-      if (was != null && sc) {
+      if (was != null && sc && lv) {
+        const c = hit ? live.caretRect() : null;
+        const el = hit ? null : live.lineEl(start);
+        const now = c ? (c.top + c.bottom) / 2 : el ? el.getBoundingClientRect().top : null;
+        if (now != null) sc.scrollTop += now - was;
+      } else if (was != null && sc) {
         const c = caretBox(hit ? at : start);
         sc.scrollTop += textIn.getBoundingClientRect().top + (hit ? (c.top + c.bottom) / 2 : c.top) - was;
       }
@@ -1277,53 +1320,61 @@
        送ることはない（段4.2のあと）。 */
     const showCaret = () => {
       const sc = scroller();
-      if (!sc || !writing || document.activeElement !== textIn) return;
-      const c = caretBox(textIn.selectionEnd);
+      if (!sc || !writing || !inEd()) return;
+      let c;
+      if (lv) c = live.caretRect();
+      else {
+        const b = caretBox(textIn.selectionEnd);
+        const t = textIn.getBoundingClientRect();
+        c = { top: t.top + b.top, bottom: t.top + b.bottom, lh: b.lh };
+      }
+      if (!c) return;
       const s = sc.getBoundingClientRect();
-      const t = textIn.getBoundingClientRect();
       const bar = tools.getBoundingClientRect();
       const floor = (bar.height ? Math.min(s.bottom, bar.top) : s.bottom) - c.lh - 8;
       const ceil = s.top + 12;
-      if (t.top + c.bottom > floor) sc.scrollTop += t.top + c.bottom - floor;
-      else if (t.top + c.top < ceil) sc.scrollTop -= ceil - (t.top + c.top);
+      if (c.bottom > floor) sc.scrollTop += c.bottom - floor;
+      else if (c.top < ceil) sc.scrollTop -= ceil - c.top;
     };
     /* キーボードが出きるまで紙は縮み続けるので、何度か見直す（ui.js と同じ拍）。 */
     const afterKeyboard = (fn) => {
       [140, 340, 620].forEach((ms) => setTimeout(() => {
-        if (!closed && document.activeElement === textIn) fn();
+        if (!closed && inEd()) fn();
       }, ms));
     };
-    textIn.addEventListener("focus", () => {
+    [textIn, liveEl].forEach((x) => x.addEventListener("focus", () => {
       if (!writing) toWrite(null);
-    });
+    }));
     /* キーボードの高さが変わったら（出きる・絵文字や予測の棚が出入りする）、
        カーソルの行をもう一度帯の上へ。--vvh を書く app.js のあとで測る。 */
     const vv = window.visualViewport;
     const onViewport = () => requestAnimationFrame(() => {
       if (closed || !writing) return;
-      grow();
+      if (!lv) grow();
       showCaret();
     });
     if (vv) vv.addEventListener("resize", onViewport);
-    textIn.addEventListener("blur", () => {
+    [textIn, liveEl].forEach((x) => x.addEventListener("blur", () => {
       /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */
       setTimeout(() => {
-        if (document.activeElement !== textIn && !closed) toView();
+        if (writing && !inEd() && !closed) toView();
       }, 0);
-    });
+    }));
 
     /* ---- やり直し（道具の帯の ↶ ↷）。前の版とは別で、紙を開いているあいだだけ ---- */
     const hist = F.history(
-      () => ({ v: textIn.value, s: textIn.selectionStart, e: textIn.selectionEnd }),
+      () => { const [s, e] = selNow(); return { v: val(), s, e }; },
       (st2) => {
         textIn.value = st2.v;
-        if (writing) textIn.setSelectionRange(st2.s, st2.e);
+        if (writing && lv) live.set(st2.v, [st2.s, st2.e]);
+        else if (writing) textIn.setSelectionRange(st2.s, st2.e);
         changed();
       },
     );
     /* 中身が変わったあとに、いつも通る道。 */
     const changed = () => {
-      if (writing) { grow(); showCaret(); } else paintView();
+      if (writing && lv) { if (live.md() !== textIn.value) live.set(textIn.value); showCaret(); }
+      else if (writing) { grow(); showCaret(); } else paintView();
       sync();
       paintTools();
     };
@@ -1331,10 +1382,58 @@
     const apply = (r, kind) => {
       if (!r) return;
       hist.note(kind, true);
-      textIn.setRangeText(r.text, r.from, r.to, "end");
-      textIn.setSelectionRange(r.s, r.e);
+      if (lv && writing) {
+        const v = live.md();
+        textIn.value = v.slice(0, r.from) + r.text + v.slice(r.to);
+        live.set(textIn.value, [r.s, r.e]);
+      } else {
+        textIn.setRangeText(r.text, r.from, r.to, "end");
+        textIn.setSelectionRange(r.s, r.e);
+      }
       changed();
     };
+
+    /* 見たままの欄の手（js/note-live.js の create）。行をまたぐ差し替えは apply、打った字は input で書く欄へ写す。 */
+    const live = KN.noteLive ? KN.noteLive.create(liveEl, {
+      apply: (r, kind) => apply(r, kind),
+      note: (kind) => hist.note(kind),
+      input: () => {
+        textIn.value = live.md();
+        showCaret();
+        sync();
+        paintTools();
+      },
+      undo: () => hist.undo(),
+      redo: () => hist.redo(),
+      bold: () => TOOLS.find((x) => x.k === "bold").run(),
+      tick: (at) => {
+        U.haptic();
+        hist.note("tick", true);
+        const s = selNow();
+        textIn.value = F.toggleTask(live.md(), at);
+        live.set(textIn.value, s);
+        changed();
+      },
+      /* 終わりより下を押した：終わりが画像・線なら空の行を足してそこへ。 */
+      tail: () => {
+        const v = live.md();
+        const last = v.slice(v.lastIndexOf("\n") + 1);
+        if (["rule", "img", "file"].includes(F.parse(last).kind)) apply({ from: v.length, to: v.length, text: "\n", s: v.length + 1, e: v.length + 1 }, "br");
+        else live.place(v.length);
+      },
+      paint: paintPic,
+      pic: (el) => { KN.motion.fire("select"); openPicture(el.dataset.img, el.dataset.orig, el.dataset.origName); },
+      file: (el) => { if (!openFile(el.dataset.file, el.textContent)) KN.ui.toast("まだ届いていません"); },
+      /* パソコンで ⌘／Ctrl を押しながら：中のノートは紙を重ねる、外は新しい窓。 */
+      link: (a) => {
+        const href = a.dataset.href || "";
+        if (!href.startsWith("note:")) { window.open(href, "_blank", "noopener,noreferrer"); return; }
+        const to = N().get(href.slice(5));
+        if (!to || to.deletedAt) { KN.ui.toast("ノートが見つかりませんでした"); return; }
+        sync();
+        toNote(to.id);
+      },
+    }) : null;
 
     textIn.addEventListener("beforeinput", (e) => {
       const t = e.inputType || "";
@@ -1376,18 +1475,23 @@
       { k: "undo", ico: "undo", label: "取り消す", run: () => hist.undo() },
       { k: "redo", ico: "redo", label: "やり直す", run: () => hist.redo() },
       { k: "bold", ico: "bold", label: "太字",
-        run: () => apply(F.bold(textIn.value, textIn.selectionStart, textIn.selectionEnd), "tool") },
+        run: () => {
+          /* 見たままで太字の終わりに居れば、太字の外へ出る（続けて打つ字は細い）。 */
+          if (lv && writing && live.leave()) { paintTools(); return; }
+          const [s, e] = selNow();
+          apply(F.bold(val(), s, e), "tool");
+        } },
       { k: "head", ico: "heading", label: "見出し" },
       { k: "bullet", ico: "list", label: "箇条書き" },
       { k: "num", ico: "numbers", label: "番号" },
       { k: "task", ico: "checkbox", label: "チェック" },
       { k: "quote", ico: "quote", label: "引用" },
       { k: "rule", ico: "minus", label: "区切り",
-        run: () => apply(F.rule(textIn.value, textIn.selectionStart), "tool") },
+        run: () => apply(F.rule(val(), selNow()[0]), "tool") },
       { k: "outdent", ico: "outdent", label: "上げる",
-        run: () => apply(F.shift(textIn.value, textIn.selectionStart, textIn.selectionEnd, -1), "tool") },
+        run: () => apply(F.shift(val(), ...selNow(), -1), "tool") },
       { k: "indent", ico: "indent", label: "下げる",
-        run: () => apply(F.shift(textIn.value, textIn.selectionStart, textIn.selectionEnd, 1), "tool") },
+        run: () => apply(F.shift(val(), ...selNow(), 1), "tool") },
       { k: "image", ico: "image", label: "画像", run: () => pickImage() },
     ];
     const tools = node(html`
@@ -1406,14 +1510,14 @@
       U.haptic();
       /* 押した拍にカーソルが外れていたら（端末によっては帯を押すと欄から
          出る）、最後に居た場所へ戻してから当てます。 */
-      if (document.activeElement !== textIn) {
+      if (!inEd()) {
         const [s0, s1] = lastSel;
         toWrite(null);
-        textIn.setSelectionRange(s0, s1);
+        setSel(s0, s1);
       }
       const t = TOOLS.find((x) => x.k === k);
       if (t.run) t.run();
-      else apply(F.setKind(textIn.value, textIn.selectionStart, textIn.selectionEnd, k), "tool");
+      else apply(F.setKind(val(), ...selNow(), k), "tool");
     });
     /* ---- 画像（段5）。押した流れで選ぶ口を開く（iOS はカメラ・写真を選ばせる）。縮めて書けたと
        分かってから、カーソルの行の下に参照の一行。書いているあいだは帯の絵を薄くするだけ。 ---- */
@@ -1423,7 +1527,7 @@
     let pickAt = 0;
     const pickImage = () => {
       if (picking || !KN.noteImg || KN.noteImg.state() !== "on") return;
-      pickAt = textIn.selectionEnd;
+      pickAt = selNow()[1];
       fileIn.value = "";
       fileIn.click();
     };
@@ -1444,7 +1548,10 @@
         } catch (_) { line = null; }
         if (closed) break;
         if (!line) { KN.ui.toast(D ? "ファイルを保存できませんでした" : "画像を保存できませんでした"); break; }
-        const r = F.putLine(textIn.value, Math.min(at, textIn.value.length), line);
+        const v = val();
+        let r = F.putLine(v, Math.min(at, v.length), line);
+        /* 見たままでは、終わりの画像の下に空の行（触れない塊の後ろにもカーソルを置けるように）。 */
+        if (lv && writing && r.to === v.length) r = { ...r, text: `${r.text}\n`, s: r.s + 1, e: r.s + 1 };
         apply(r, "tool");
         at = r.s;
       }
@@ -1453,9 +1560,11 @@
     });
     let lastSel = [textIn.value.length, textIn.value.length];
     const paintTools = () => {
-      if (document.activeElement === textIn) lastSel = [textIn.selectionStart, textIn.selectionEnd];
+      if (inEd()) lastSel = selNow();
       const can = hist.can();
-      const kind = F.kindAt(textIn.value, textIn.selectionStart);
+      const v = val();
+      const at = (inEd() ? selNow() : lastSel)[0];
+      const kind = F.kindAt(v, Math.min(at, v.length));
       tools.querySelectorAll(".js-tool").forEach((b) => {
         const k = b.dataset.k;
         if (k === "undo" || k === "redo") b.setAttribute("aria-disabled", String(!can[k]));
@@ -1463,12 +1572,12 @@
           b.hidden = !KN.noteImg || KN.noteImg.state() !== "on";
           b.setAttribute("aria-disabled", String(picking));
         }
-        else if (k === "bold") b.setAttribute("aria-pressed", String(F.boldAt(textIn.value, textIn.selectionStart)));
+        else if (k === "bold") b.setAttribute("aria-pressed", String(F.boldAt(v, Math.min(at, v.length))));
         else if (["head", "bullet", "num", "task", "quote"].includes(k)) b.setAttribute("aria-pressed", String(kind === k));
       });
     };
     /* カーソルが動いたら、押されている印を合わせます。 */
-    const onSel = () => { if (writing && document.activeElement === textIn) paintTools(); };
+    const onSel = () => { if (writing && inEd()) paintTools(); };
     document.addEventListener("selectionchange", onSel);
 
     /* ---- ノートブック（左上）とタグ（右上）。段3の口を、頭の行へ ---- */
@@ -1590,6 +1699,7 @@
       closed = true;
       if (fold) fold.disconnect();
       if (mirror) mirror.remove();
+      if (live) live.destroy();
       if (vv) vv.removeEventListener("resize", onViewport);
       document.removeEventListener("selectionchange", onSel);
       sync();
@@ -1717,6 +1827,20 @@
     /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
        姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
     /* 広い画面だけ：紙を画面いっぱいに（2026年10月21日、利用者「パソコンで最大化できない？」）。端末ごとに覚える。 */
+    /* 見たまま ⇄ 印（端末ごと）。見たままに戻すのは、開いて戻して一字も違わないノートでだけ出す。 */
+    const markItem = () => {
+      if (!live) return [];
+      const marks = marksPref();
+      if (!KN.noteLive.fits(textIn.value)) return [];
+      return [{ label: marks ? "見たままで書く" : "印で書く",
+        onPick: () => {
+          try { localStorage.setItem(MARKS, marks ? "" : "1"); } catch (_) {}
+          if (!writing) return;
+          const [s, e] = selNow();
+          toWrite(null);
+          setSel(s, e);
+        } }];
+    };
     const wideItem = () => (!matchMedia("(min-width: 640px)").matches ? [] : [{
       label: () => (h.el.classList.contains("is-wide") ? "元の大きさ" : "画面いっぱい"),
       onPick: () => {
@@ -1729,7 +1853,7 @@
       return hs.map((x) => ({
         label: "\u3000".repeat(x.level - 1) + x.text,
         onPick: () => {
-          if (writing) { textIn.blur(); if (writing) toView(); }
+          if (writing) { ed().blur(); if (writing) toView(); }
           else paintView();
           const el = viewEl.querySelector(`[data-line="${x.line}"]`);
           const sc = h.el.querySelector(".sheet-body");
@@ -1771,7 +1895,7 @@
         el: h.el,
         edge: Infinity,
         busy: () => closed || !window.matchMedia("(max-width: 639px)").matches
-          || (document.activeElement === textIn && textIn.selectionStart !== textIn.selectionEnd),
+          || (inEd() && (lv ? !window.getSelection().isCollapsed : textIn.selectionStart !== textIn.selectionEnd)),
         begin: () => ({
           top: h.el, under: null, here: true,
           commit: () => {
@@ -1794,7 +1918,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
@@ -1815,17 +1939,21 @@
     if (fresh) {
       writing = true;
       viewEl.hidden = true;
+      lv = goLive();
+      liveEl.hidden = !lv;
+      ink.hidden = lv;
+      textIn.hidden = lv;
       h.el.classList.add("is-writing");
-      grow();
+      if (!lv) grow();
       paintTools();
       /* ＋からは先にノートブックを選ぶ（2026年10月15日、利用者が改めた）。選んだ押しのまま本文へ。 */
       /* 試験の台本は sessionStorage の kn-book-first=off で今までどおり本文から（tests/lib.js）。 */
       let skip = false;
       try { skip = sessionStorage.getItem("kn-book-first") === "off"; } catch (_) {}
-      if (note.notebook || skip) KN.ui.focusNow(textIn);
+      if (note.notebook || skip) KN.ui.focusNow(ed());
       else {
         setTimeout(() => {
-          if (!closed) pickNotebook(nbBtn, note, (name) => setLabels({ notebook: name }), () => KN.ui.focusNow(textIn));
+          if (!closed) pickNotebook(nbBtn, note, (name) => setLabels({ notebook: name }), () => KN.ui.focusNow(ed()));
         }, KN.motion.ms("--m-sheet-grow"));
       }
     } else {

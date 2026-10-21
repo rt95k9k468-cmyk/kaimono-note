@@ -444,7 +444,8 @@
      選ぶ範囲を s〜e にする。差し替えは画面の側でします（やり直しの控えを
      取ってから）。 */
 
-  const lineStart = (v, i) => v.lastIndexOf("\n", i - 1) + 1;
+  /* 頭（i = 0）は 0（lastIndexOf の -1 は 0 から探すので、本文が改行で始まると 1 を返していた）。 */
+  const lineStart = (v, i) => (i > 0 ? v.lastIndexOf("\n", i - 1) + 1 : 0);
   const lineEnd = (v, i) => { const e = v.indexOf("\n", i); return e < 0 ? v.length : e; };
 
   /** 印を外した一行（字下げは残す。見出しと引用は字下げを持たない）。 */
@@ -677,5 +678,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, marksOf, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();
