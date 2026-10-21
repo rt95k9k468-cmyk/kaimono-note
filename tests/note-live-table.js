@@ -100,10 +100,10 @@ const BODY = [
   /* 打って作った表も、出たら畳む。 */
   await endOf("おわり");
   for (const l of ["", "| x | y |", "| --- | --- |", "| 1 | 2 |"]) { await page.keyboard.press("Enter"); if (l) await page.keyboard.type(l); }
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.querySelector(".sheet.is-note .js-text").value.endsWith("| 1 | 2 |"), null, { timeout: 5000 }).catch(() => {});
   const typedRaw = await folded();
   await endOf("前の段落");
-  await page.waitForTimeout(150);
+  await page.waitForFunction((s) => document.querySelectorAll(`${s} > .nv-table`).length === 3, L, { timeout: 3000 }).catch(() => {});
   t.check("打って作った表も、出たら表に", typedRaw === 2 && (await folded()) === 3 && (await md()).endsWith("おわり\n\n| x | y |\n| --- | --- |\n| 1 | 2 |"),
     JSON.stringify({ typedRaw, n: await folded(), tail: (await md()).slice(-60) }));
 

@@ -129,8 +129,9 @@
       const sub = tb ? lines.slice(i, tb.end) : null;
       /* 表だけ切り出しても同じ表になるときだけ畳む（でなければ行のまま）。 */
       const one = sub && F().tablesOf(sub).get(0);
-      /* 表のすぐ下の空の行も表のうち（表の終わりで改行して、次の行を打つところ）。 */
-      const to = tb ? tb.to + (lines[tb.end] === "" ? 1 : 0) : 0;
+      /* 表のすぐ下の空の行・打ちかけの行（「|」で始まる）も表のうち（表の終わりで改行して、次の行を打つところ）。 */
+      const nx = tb ? lines[tb.end] : null;
+      const to = tb ? tb.to + (nx === "" || /^\s*\|/.test(nx || "") ? nx.length + 1 : 0) : 0;
       if (one && one.end === sub.length && !(keep && keep[0] <= to && keep[1] >= at)) {
         out.push({ md: sub.join("\n"), table: true });
         at = tb.to + 1;
