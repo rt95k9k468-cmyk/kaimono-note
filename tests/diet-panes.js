@@ -5,6 +5,7 @@
    - グラフの「並べて」の札は無い。グラフは幅いっぱい
    - AI推計の枠は暗くない（地が明るい）。分析の文はその枠の中、コピー・貼り付けと一緒
    - 「お酒を足すと」・PFC の数・熱量比は出さない
+   - 記録の無い枠は輪を描かない（2026年10月21日）
    - 輪の枠の地は灰ではなく、それぞれの指標の色をごく薄く（四つとも別の色・明るい・くり抜きも同じ色）。
      「飲みたくなった」は淡いクリーム
 
@@ -49,7 +50,7 @@ const { open, checker } = require("./lib");
       weightInTrend: !!day.querySelector(".diet-card.is-trend .diet-hero-top"),
       cells: [...day.querySelectorAll(".diet-cell")].map((c) => {
         const ring = c.querySelector(".diet-ring");
-        return { type: c.dataset.type, bg: getComputedStyle(c).backgroundColor, lum: lum(getComputedStyle(c).backgroundColor),
+        return { type: c.dataset.type, blank: c.classList.contains("is-blank"), ring: !!ring, bg: getComputedStyle(c).backgroundColor, lum: lum(getComputedStyle(c).backgroundColor),
                  hole: ring ? getComputedStyle(ring, "::after").backgroundColor : "" };
       }),
       urgeBg: (day.querySelector(".js-urge") && getComputedStyle(day.querySelector(".js-urge")).backgroundColor) || "",
@@ -72,7 +73,10 @@ const { open, checker } = require("./lib");
   t.check("カードの地は紙の地と違う（境目が見える）", [r.today, r.meal, r.trend].every((x) => x.bg !== r.sheetBg), r.sheetBg + " " + r.today.bg);
   t.check("今日のカードに輪、推移のカードに体重の数とグラフ", r.inToday && r.weightInTrend && r.inTrend);
   t.check("輪の枠は四つとも別の色で明るい", r.cells.length === 4 && new Set(r.cells.map((c) => c.bg)).size === 4 && r.cells.every((c) => c.lum > 225), JSON.stringify(r.cells));
-  t.check("輪のくり抜きは枠と同じ色", r.cells.every((c) => c.hole === c.bg), JSON.stringify(r.cells));
+  /* 記録の無い枠は輪を描かない（2026年10月21日）。輪のある枠だけ見る。 */
+  t.check("記録の無い枠は輪を描かない（名前と「—」の低い札）",
+    r.cells.some((c) => c.blank) && r.cells.every((c) => c.ring === !c.blank), JSON.stringify(r.cells));
+  t.check("輪のくり抜きは枠と同じ色", r.cells.some((c) => c.hole) && r.cells.every((c) => !c.hole || c.hole === c.bg), JSON.stringify(r.cells));
   t.check("「飲みたくなった」は淡いクリーム（明るく、赤・緑が青より強い）", r.urge && r.urge.b > 230 && r.urge.r > r.urge.b && r.urge.g > r.urge.b, JSON.stringify(r.urge));
   const drinkBg = (r.cells.find((c) => c.type === "drink") || {}).bg;
   t.check("飲酒の枠も同じクリーム", drinkBg === r.urgeBg, `${drinkBg} / ${r.urgeBg}`);

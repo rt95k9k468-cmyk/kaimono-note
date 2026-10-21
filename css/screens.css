@@ -2910,6 +2910,9 @@
 .diet-cell[data-type="sleep"]  .diet-cell-ico { color: var(--c-m-sleep); }
 .diet-cell[data-type="drink"]  .diet-cell-ico { color: var(--c-m-drink); }
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
+/* 記録の無い枠は輪が無い低い札。隣に輪があって背が伸びても、字は真ん中に。 */
+.diet-cell.is-blank { justify-content: center; }
+.diet-cell.is-blank .diet-cell-value { color: var(--c-text-3); }
 
 /* 見出しの右に添える一言（この数字は何時時点か、など）。 */
 .section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-3); letter-spacing: 0; }

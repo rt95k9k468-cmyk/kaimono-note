@@ -149,25 +149,19 @@
           onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); render(); },
         })
       ),
+      /* 「›」の四行は一つの束に（一行ずつのカードだと一画面ぶん長かった。2026年10月21日）。
+         記録を書き出すはバックアップの一枚から移したもの（中身はダイエットの記録だけ）。
+         取り込みの三行（ヘルスケア・中継所・AIの窓口）は、建てたあとはめったに開かないので「›」の先へ。 */
       card(
         navRow({
           ico: "target", tint: TINT.goal, title: "目標", value: goal,
           onTap: () => KN.screens.diet && KN.screens.diet.openGoalSheet(),
-        })
-      ),
-      card(
+        }),
         navRow({
           ico: "chart", tint: TINT.ai, title: "AIに分析してもらう",
           onTap: openAiAnalyze,
-        })
-      ),
-      /* バックアップの一枚から移しました。中身はダイエットの記録だけなので。 */
-      card(
-        navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport })
-      ),
-      /* 取り込みの三行（ヘルスケア・中継所・AIの窓口）は、建てたあとは
-         めったに開かないので「›」の先へ。 */
-      card(
+        }),
+        navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport }),
         navRow({ ico: "download", tint: TINT.sync, title: "取り込み", onTap: () => go("intake") })
       ),
     ];

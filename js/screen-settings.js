@@ -614,8 +614,8 @@
     L.body.append(head(tab.label));
     put(tab.rows());
     /* 上の見出しは席の名前（tab.label ＝ shopping など）。その続きなので、
-       ここも同じ系列の言葉にします。 */
-    L.body.append(head("General"));
+       ここも同じ系列の言葉・同じ小文字にします。 */
+    L.body.append(head("general"));
     put(generalRows());
   }
 

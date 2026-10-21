@@ -2092,15 +2092,18 @@
             ${/* 読み上げの順と、目で読む順は別です。字は「歩数 → 5,356 →
                   目標」の順に並べておいて（読み上げも、textContent を見る
                   ところも、この順で読みます）、輪だけを CSS で上へ回します。 */""}
+            ${/* 記録の無い枠は輪を描かず、名前と「—」の低い札（2026年10月21日。空の輪が四つ並ぶと
+                  上半分で「まだ」を四回言っていた）。記録が入れば輪になる。 */""}
             <button class="diet-cell js-cell ${r.type === "drink" ? "js-drink" : ""} ${
               r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
               <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
                 r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
+              ${r.value === "—" && !r.keep ? "" : `
               <span class="diet-ring ${r.ring.cls}" style="--ring-p:${ringTurns(r.ring)}" aria-hidden="true">
                 <i class="diet-ring-mid mono-num"${countUp(r.mid)}>${r.mid}</i>
-              </span>
+              </span>`}
               <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
-              ${r.unit ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
+              ${r.unit && !(r.value === "—" && !r.keep) ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
             </button>`).join(""))}
         </div>
         ${/* 「飲みたくなった」の入口は、輪のすぐ下に置きます。飲酒の輪と

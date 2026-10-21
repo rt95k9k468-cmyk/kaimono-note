@@ -482,7 +482,7 @@ Notion・Evernote からの一元化（同期・階層・取り込み・見た�
 ### 置き場所
 
 - daily の歯車からも、ノートの面の歯車からも、**daily のすぐ下に notes の見出し**
-  （`screen-settings.js` の `TAB.archive.more` / `TAB.notes.more`）。そのあと General。
+  （`screen-settings.js` の `TAB.archive.more` / `TAB.notes.more`）。そのあと general。
 - 根っこ：［並び］のカード、［ノートブック ›・タグ ›・書き出し ›］のカード。
   ノートブック・タグは**一つも無ければ行ごと出さない**（中身の無い一枚になる。
   絞り込みのチップと同じ考え）。どの行の右にも数は出さない（daily の席）。

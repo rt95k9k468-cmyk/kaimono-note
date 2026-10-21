@@ -102,7 +102,7 @@ print(json.dumps(out, ensure_ascii=False))
   await page.evaluate(() => KN.app.showScreen("archive"));
   await settled("archive");
   await openSettings();
-  t.check("daily の歯車：daily → General（notes は出ない）", (await heads()).join() === "daily,General", (await heads()).join());
+  t.check("daily の歯車：daily → general（notes は出ない）", (await heads()).join() === "daily,general", (await heads()).join());
   t.check("daily の歯車にノートの並びは出ない", !/並び/.test(await topText()));
   await into("表示");
   t.check("daily の表示に「ノートの並び」はもう無い", !(await topText()).includes("ノートの並び"));
@@ -111,7 +111,7 @@ print(json.dumps(out, ensure_ascii=False))
   await page.click('.tab[data-tab="notes"]');
   await settled("notes");
   await openSettings();
-  t.check("ノートの席の歯車：notes → General", (await heads()).join() === "notes,General", (await heads()).join());
+  t.check("ノートの席の歯車：notes → general", (await heads()).join() === "notes,general", (await heads()).join());
   const R0 = await topText();
   t.check("notes に並び・ノートブック・タグ・書き出し・ロック（daily の行は出ない）",
     ["並び", "ノートブック", "タグ", "書き出し", "ロック"].every((x) => R0.includes(x)) && !R0.includes("「あの日」を出す"), R0.slice(0, 300));
@@ -262,7 +262,7 @@ print(json.dumps(out, ensure_ascii=False))
   /* ---- 言葉 ---- */
   await back();
   const texts = await page.$$eval(".set-layer", (ls) => ls.map((l) => l.innerText).join("\n"));
-  const notesPart = texts.slice(texts.indexOf("notes"), texts.indexOf("General"));
+  const notesPart = texts.slice(texts.indexOf("notes"), texts.indexOf("general"));
   const bad = FORBIDDEN.filter((w) => notesPart.includes(w));
   t.check("notes の行に数・評価の言葉が無い", !bad.length, bad.join());
   t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(texts));
