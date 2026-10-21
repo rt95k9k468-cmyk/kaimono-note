@@ -861,7 +861,7 @@
         const len = Number(t.minutes) > 0;
         /* 起きた時刻（無ければ道の始まり）より前の用事は、そこに始まったものとして（reach の注）。 */
         const sh = Math.max(0, up - it.atMin);
-        if (sh) it = { ...it, atMin: it.atMin + sh, untilMin: it.untilMin + sh };
+        if (sh) it = { ...it, atMin: it.atMin + sh, untilMin: it.untilMin + sh, planUntilMin: it.planUntilMin + sh };
         const d0 = g.dist(it.atMin);
         /* 出る時刻（段7）。「前に30分」なら、停留所の手前30分に点線の区間。
            済ませたものには描きません（もう出ることはないので）。 */
@@ -879,7 +879,8 @@
           stops.push({ t, at: doneMin, until: doneMin + (len ? 1 : 0), len, d0: d, lead: 0, dl: d, doneMin, act });
           return;
         }
-        stops.push({ t, at: it.atMin, until: it.untilMin, len, d0, lead,
+        // 決めた終わり（時間割の枠は済ませた時刻で縮むが、道は下の reach が自分で縮める）。
+        stops.push({ t, at: it.atMin, until: it.planUntilMin != null ? it.planUntilMin : it.untilMin, len, d0, lead,
                      dl: lead ? g.dist(Math.max(up, it.atMin - lead)) : d0,
                      doneMin, act });
         return;

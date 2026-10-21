@@ -6814,7 +6814,6 @@ button.note-when:active { opacity: var(--press-fade); }
 .note-pop.is-subs .tl-sub-name::after { display: none; }
 .note-pop.is-subs .tl-sub-name {
   text-decoration: line-through 2px transparent;
-  transition: text-decoration-color var(--m-strike) var(--ease-out);
 }
 .note-pop.is-subs .tl-sub.is-done .tl-sub-name,
 .note-pop.is-subs .tl-sub.is-skipped .tl-sub-name { text-decoration-color: var(--c-text-3); }
