@@ -37,6 +37,8 @@
   let homeNb = null;
 
   const N = () => KN.notes;
+  /* 紙を画面いっぱいにするか（端末ごと。記録には入れない）。 */
+  const FULL = "kn-note-wide";
 
   /* 種と問いは、独り立ちの入力にしないでタグ（思考のホーム。docs/thinking.md）。タグの小窓には、まだ
      どのノートにも無くてもこの二つを並べる（押せば付く）。問いの一覧は「問い」のノートも引く。 */
@@ -1714,6 +1716,13 @@
 
     /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
        姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
+    /* 広い画面だけ：紙を画面いっぱいに（2026年10月21日、利用者「パソコンで最大化できない？」）。端末ごとに覚える。 */
+    const wideItem = () => (!matchMedia("(min-width: 640px)").matches ? [] : [{
+      label: () => (h.el.classList.contains("is-wide") ? "元の大きさ" : "画面いっぱい"),
+      onPick: () => {
+        const on = h.el.classList.toggle("is-wide");
+        try { localStorage.setItem(FULL, on ? "1" : ""); } catch (_) {}
+      } }]);
     const headingItems = () => {
       const hs = F.headings(textIn.value);
       if (hs.length < 3) return [];
@@ -1778,13 +1787,14 @@
     paintTree();
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
+    try { if (localStorage.getItem(FULL)) h.el.classList.add("is-wide"); } catch (_) {}
     /* 頭：左に戻る ‹、右に ⋯（Evernote の並び）。閉じ方は紙のまま
        （×と同じ tryClose。払っても閉じる）。 */
     const closeBtn = h.el.querySelector(".js-close");
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);

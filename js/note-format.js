@@ -143,6 +143,101 @@
     return out;
   }
 
+  /* ---------------- 表（「| … |」） ----------------
+
+     Notion から来た表は、マスの中の改行がそのまま行を切っている（2026年10月21日、利用者
+     「全然読めない」）。本文は直さず、読むときだけ区切りの行（| --- |）の列の数まで行を
+     つなぐ。つなげない行が来たら、表はそこまで（後ろは素の行のまま）。 */
+  const ROW_MAX = 40;
+  const isRow = (l) => /^\s*\|/.test(l);
+  const isSep = (l) => isRow(l) && /-{3}/.test(l) && !/[^\s|:-]/.test(l);
+  /** 「\|」でない「|」の位置。 */
+  function bars(t) {
+    const r = [];
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] === "\\") i++;
+      else if (t[i] === "|") r.push(i);
+    }
+    return r;
+  }
+  /** 本文の表：頭の行 → { end（表の次の行）, to（表の終わりの字の位置）, n（列の数）, rows（マスの a〜b は本文の位置） }。 */
+  function tablesOf(lines) {
+    const out = new Map();
+    const starts = [];
+    let at = 0;
+    lines.forEach((l) => { starts.push(at); at += l.length + 1; });
+    const cellsOf = (a, b) => {
+      const text = lines.slice(a, b).join("\n");
+      const p = bars(text);
+      const cells = [];
+      for (let j = 0; j + 1 < p.length; j++) {
+        let x = p[j] + 1;
+        let y = p[j + 1];
+        while (x < y && /\s/.test(text[x])) x++;
+        while (y > x && /\s/.test(text[y - 1])) y--;
+        cells.push({ a: starts[a] + x, b: starts[a] + y, text: text.slice(x, y) });
+      }
+      return cells;
+    };
+    let from = 0;
+    for (let s = 1; s < lines.length; s++) {
+      if (!isSep(lines[s])) continue;
+      const n = bars(lines[s].trim()).length - 1;
+      if (n < 1) continue;
+      let h = -1;
+      for (let k = s - 1; k >= Math.max(from, s - ROW_MAX); k--) {
+        if (!isRow(lines[k])) continue;
+        const c = bars(lines.slice(k, s).join("\n")).length;
+        if (c === n + 1) { h = k; break; }
+        if (c > n + 1) break;
+      }
+      if (h < 0) continue;
+      const rows = [cellsOf(h, s)];
+      let k = s + 1;
+      while (k < lines.length && isRow(lines[k])) {
+        let e = k;
+        let ok = false;
+        for (let c = 0; e < lines.length && e - k < ROW_MAX; e++) {
+          c += bars(lines[e]).length;
+          if (c >= n + 1 && /\|\s*$/.test(lines[e])) { ok = true; break; }
+        }
+        if (!ok) break;
+        rows.push(cellsOf(k, e + 1));
+        k = e + 1;
+      }
+      out.set(h, { end: k, to: starts[k - 1] + lines[k - 1].length, n, rows });
+      from = k;
+      s = k - 1;
+    }
+    return out;
+  }
+  /** マスの字：行ごとに前後の空白を外し、「\|」は「|」。 */
+  const cellText = (t) => t.split("\n").map((l) => l.trim()).join("\n").replace(/\\\|/g, "|");
+  function tableEl(tb) {
+    const el = document.createElement("div");
+    el.className = "nv-table";
+    const table = document.createElement("table");
+    tb.rows.forEach((cells, r) => {
+      const tr = document.createElement("tr");
+      for (let j = 0; j < Math.max(tb.n, cells.length); j++) {
+        const c = cells[j];
+        const td = document.createElement(r ? "td" : "th");
+        const t = document.createElement("span");
+        t.className = "nv-t";
+        if (c) {
+          fill(t, cellText(c.text));
+          td.dataset.at = String(c.a);
+          td.dataset.end = String(c.b);
+        }
+        td.append(t);
+        tr.append(td);
+      }
+      table.append(tr);
+    });
+    el.append(table);
+    return el;
+  }
+
   /* ---------------- 読むときに整える ---------------- */
 
   /**
@@ -156,7 +251,23 @@
     const lines = String(body || "").split("\n");
     let at = 0;
     let prev = null;
+    const tabs = tablesOf(lines);
+    let skip = 0;
     lines.forEach((line, i) => {
+      if (i < skip) { at += line.length + 1; return; }
+      const tb = tabs.get(i);
+      if (tb) {
+        /* 表は一つの塊（中のマスがそれぞれ本文の位置を持つ）。 */
+        const el = tableEl(tb);
+        el.dataset.at = String(at);
+        el.dataset.end = String(tb.to);
+        el.dataset.line = String(i);
+        box.append(el);
+        prev = el;
+        skip = tb.end;
+        at += line.length + 1;
+        return;
+      }
       const p = parse(line);
       let el;
       if (p.kind === "file" && PIC.test(p.id) && prev && prev.className === "nv-img") {
@@ -566,5 +677,5 @@
     };
   }
 
-  KN.noteFormat = { parse, plain, searchable, unbold, unmark, askOf, asks, headings, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();

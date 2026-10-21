@@ -5929,6 +5929,18 @@ textarea.note-title-in {
   /* 左端から払っているあいだは指につく（紙の transition を着たままだと遅れて追う）。 */
   .sheet.is-note.is-edge { transition: none; }
 }
+/* 広い画面で「画面いっぱい」（⋯ から。screen-notes.js の wideItem）。四方を同じだけ空けた一枚。 */
+@media (min-width: 640px) {
+  .sheet.is-note.is-wide {
+    --note-gap: var(--sp-4);
+    width: calc(100% - var(--note-gap) * 2);
+    bottom: calc(var(--kb, 0px) + var(--pad, 0px) + var(--note-gap));
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--note-gap) * 2);
+    max-height: none;
+    border-radius: var(--r-xl);
+  }
+  .sheet.is-note.is-wide:not(.is-open):not(.is-from-origin) { transform: translate(-50%, calc(100% + var(--note-gap))); }
+}
 .sheet.is-note .sheet-head { padding: var(--sp-1) var(--sp-2); }
 /* 底の安全域（ホームの棒のぶん）は、キーボードが出ているあいだは要らない
    ——紙の底に残ると、道具の帯とキーボードの間に白い隙間が空く（2026年
@@ -5958,6 +5970,12 @@ textarea.note-title-in {
 .nv-h3 { font-size: 1.1em; }
 .note-view > .nv-h:first-child { margin-top: 0; }
 .nv-blank { height: .7em; }
+/* 表（note-format.js の tablesOf）。はみ出せば表だけ横に送る。 */
+.note-view > .nv-table { white-space: normal; overflow-x: auto; touch-action: pan-x pan-y; margin: .4em 0; text-align: left; }
+.nv-table table { border-collapse: collapse; font-size: var(--fs-md); line-height: var(--lh-tight); }
+.nv-table :is(th, td) { border: 1px solid var(--c-border-2); padding: var(--sp-1) var(--sp-2); vertical-align: top;
+  white-space: pre-wrap; text-align: left; min-width: 4.5em; max-width: 22em; }
+.nv-table th { font-weight: var(--fw-bold); background: var(--c-surface-2); }
 .nv-li {
   display: flex;
   align-items: flex-start;
