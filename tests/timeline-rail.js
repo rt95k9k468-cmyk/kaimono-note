@@ -6,6 +6,7 @@
      札の色（--pass）はそれぞれ自分の時間の進み具合。うすい地（いま）は続いている用事に残る。
    - 長さを決めていない用事どうし（仮の30分）も、描いた高さで重なれば列に分ける。札どうしは重ならない。
    - 「いま」の札は y(いま) の高さ（行の中を測らない）。
+   - 時刻を決めた用事を始まりより前に済ませたら、札は済ませた時刻（2026年10月21日）。
    `SHOTS=<置き場>` で時間割を撮る。 */
 const { open, checker } = require("./lib");
 
@@ -66,8 +67,12 @@ const PX_MIN = 1.2;
   const find = (w) => r.rows.find((x) => x.title.includes(w)) || {};
   const baby = find("朝のBaby"), bday = find("誕生日");
 
-  c.check("ルーティンの途中で済ませた用事は、ルーティンの隣の列（2列）",
-    baby.lanes === 2 && bday.lanes === 2 && baby.lane === 0 && bday.lane === 1, JSON.stringify({ baby, bday }));
+  /* 夜の用事は 8:50 に済ませたので、札は 8:50 に来る（始まりより前に済ませたら済ませた時刻。2026年10月21日）。
+     ルーティンの途中に済ませた二つが、ルーティンの隣に一列ずつ。 */
+  const night = find("夜のルーティン");
+  c.check("ルーティンの途中で済ませた用事は、ルーティンの隣の列（3列）",
+    [baby, bday, night].every((x) => x.lanes === 3) && baby.lane === 0 && bday.lane > 0 && night.lane > 0
+      && bday.lane !== night.lane, JSON.stringify({ baby, bday, night }));
   c.check("ルーティンの色は自分の時間の進み具合（64分/240分）",
     Math.abs(baby.pass - (NOW - 480) / 240) < 0.002, JSON.stringify(baby));
   c.check("ルーティンはまだ続いているので、うすい地（いま）は残る", baby.live, JSON.stringify(baby));
@@ -83,10 +88,9 @@ const PX_MIN = 1.2;
     r.line.length > 2 && r.line.every((s) => Math.abs(s.pass - want(s)) < 0.002)
       && r.line.filter((s) => s.pass > 0 && s.pass < 1).length === 1,
     JSON.stringify(r.line));
-  const night = find("夜のルーティン");
-  const nightLine = r.line.find((s) => s.at <= night.at && s.until >= night.until) || {};
-  c.check("夕方の用事を朝に済ませた：札は色、その時間の背骨は灰色",
-    night.pass === 1 && nightLine.pass === 0, JSON.stringify({ night, nightLine }));
+  const eve = r.line.find((s) => s.at <= 21 * 60 && s.until >= 21 * 60 + 30) || {};
+  c.check("夕方の用事を朝に済ませた：札は済ませた時刻（8:50）に色で、夕方の背骨は灰色",
+    night.at === 8 * 60 + 50 && night.pass === 1 && eve.pass === 0, JSON.stringify({ night, eve }));
   c.check("いまより前に済ませた用事の時間の背骨は色",
     r.line.filter((s) => s.until <= find("洗濯").at).every((s) => s.pass === 1)
       && r.line.some((s) => s.until <= NOW && s.pass === 1), JSON.stringify(r.line));
