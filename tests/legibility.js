@@ -4,14 +4,48 @@
      （後ろが写真・ガラス・模様のものは数えない——塗りが一色に決まらない）
    - 大きさ：11px 未満の字が無い（HIG の iOS の最小 11pt）
    - 潰れ：字のある箱の幅が 4px 未満になっていない（特大の「kg/週」が 1px になっていた）
+   主な紙（用事・品物・daily の記録）と小窓の暦も開いて同じく数え、SVG の字は描かれた大きさで 11px を見る
+   （docs/log/design-review.md の Y7）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/legibility.js
    VIEW=375 で幅を変える（既定 375×667、10月10日の総点検と同じ）。 */
 const { open, checker } = require("./lib");
 
 const SCREENS = ["todo", "list", "archive", "diet", "notes", "prices", "settings"];
 
-/* 頁の中で走る。見えている字の要素を集めて、だめなものだけ返す。 */
-function measure() {
+/* 段を待っているもの（docs/log/design-review.md）。数えて「待ち」と出すが、落とさない。直したらここから消す。 */
+const WAIT = [
+  [/^\.hero-cap\b/, "用事の紙の頭の添え字（Y3。段D で淡い地＋墨へ）"],
+  [/^svg\.road-hours text\b/, "道の時の数字（道の太さの中に収まる字。段E の道と一緒に）"],
+];
+const waitOf = (b) => { const w = WAIT.find(([re]) => re.test(b.name)); return w && w[1]; };
+
+/* 主な紙と小窓。[名前, いちばん上の一枚]。 */
+const SHEETS = [["用事の紙", ".sheet.is-open"], ["新しい用事の紙", ".sheet.is-open"], ["品物の紙", ".sheet.is-open"],
+  ["daily の記録の紙", ".sheet.is-open"], ["小窓の暦", ".note-pop.is-cal.is-open"]];
+
+/* 頁の中で走る。紙を開く（tools/shots.js の --sheet と同じ開き方）。 */
+async function openSheet(name) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const S = KN.store;
+  if (name === "用事の紙" || name === "新しい用事の紙") {
+    KN.app.showScreen("todo");
+    await wait(400);
+    KN.screens.todo.open(name === "用事の紙" ? S.get().todos.find((x) => x.time).id : null);
+  } else if (name === "品物の紙") {
+    KN.productSheet.open(S.get().products[0].id);
+  } else if (name === "daily の記録の紙") {
+    KN.app.showScreen("archive");
+    await wait(400);
+    document.querySelector('button[aria-label="書く"]').click();
+  } else {
+    KN.app.showScreen("todo");
+    await wait(400);
+    KN.ui.popCalendar(document.querySelector(".screen.is-active button"), { onPick() {} });
+  }
+}
+
+/* 頁の中で走る。見えている字の要素を集めて、だめなものだけ返す。sel を渡すと、いちばん上のその一枚だけ（紙・小窓）。 */
+function measure(sel) {
   const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
   const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
   /* color-mix() は color(srgb …)・oklab() などで返るので、書き方を問わず canvas に塗って読む。 */
@@ -40,9 +74,19 @@ function measure() {
     return base;
   }
   const hex = (c) => "#" + c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
-  const roots = [document.querySelector(".screen.is-active"), document.querySelector(".tabbar")].filter(Boolean);
+  const roots = sel ? [[...document.querySelectorAll(sel)].pop()].filter(Boolean)
+    : [document.querySelector(".screen.is-active"), document.querySelector(".tabbar")].filter(Boolean);
   const bad = [];
   const seen = new Set();
+  /* SVG の字（design-review の Y7）。描かれた大きさ＝字の大きさ×図の縮み。--fs-k は掛けない図なので、ここで別に数える。 */
+  for (const root of roots) for (const el of root.querySelectorAll("svg text")) {
+    if (!el.textContent.trim() || !el.checkVisibility || !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+    const m = el.getScreenCTM();
+    const px = parseFloat(getComputedStyle(el).fontSize) * (m ? Math.hypot(m.a, m.b) : 1);
+    const own = String(el.className.baseVal).trim().split(/\s+/).filter(Boolean);
+    const name = `svg.${String(el.parentNode.className.baseVal || "").trim().split(/\s+/)[0]} text${own.map((c) => "." + c).join("")}`;
+    if (px < 10.95 && !seen.has("small" + name)) { seen.add("small" + name); bad.push({ kind: "small", name, text: el.textContent.trim().slice(0, 12), v: `${px.toFixed(1)}px` }); }
+  }
   for (const root of roots) for (const el of root.querySelectorAll("*")) {
     const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     if (!own || el.closest("svg, .sr-only")) continue;
@@ -68,6 +112,11 @@ function measure() {
     if (ratio < (large ? 3 : 4.5) - 0.005) push("contrast", `${ratio.toFixed(2)}:1 ${hex(ink)} on ${hex(back)}`);
   }
   return bad;
+}
+
+const waits = new Map();
+function waited(bad, where) {
+  for (const b of bad) { const w = waitOf(b); if (w && !waits.has(w)) waits.set(w, `${where} ${b.name}「${b.text}」${b.v}`); }
 }
 
 (async () => {
@@ -111,11 +160,28 @@ function measure() {
         await page.evaluate((id) => KN.app.showScreen(id), id);
         await page.waitForTimeout(500);
         const bad = await page.evaluate(measure);
+        waited(bad, `${theme}・${size}・${id}`);
         for (const kind of ["contrast", "small", "squash"]) {
-          const hit = bad.filter((b) => b.kind === kind);
+          const hit = bad.filter((b) => b.kind === kind && !waitOf(b));
           t.check(`${theme}・${size}・${id}：${{ contrast: "コントラスト不足", small: "11px 未満", squash: "潰れ" }[kind]}が0`,
             !hit.length, hit.map((b) => `${b.name}「${b.text}」${b.v}`).join(" / "));
         }
+      }
+      /* 紙と小窓（design-review の Y7。用事の紙の頭 Y3 はここで漏れていた）。 */
+      for (const [name, sel] of SHEETS) {
+        await page.evaluate(openSheet, name);
+        await page.waitForTimeout(900);
+        const bad = await page.evaluate(measure, sel);
+        waited(bad, `${theme}・${size}・${name}`);
+        t.check(`${theme}・${size}・${name}：開いた`, await page.evaluate((s) => !!document.querySelector(s), sel));
+        for (const kind of ["contrast", "small", "squash"]) {
+          const hit = bad.filter((b) => b.kind === kind && !waitOf(b));
+          t.check(`${theme}・${size}・${name}：${{ contrast: "コントラスト不足", small: "11px 未満", squash: "潰れ" }[kind]}が0`,
+            !hit.length, hit.map((b) => `${b.name}「${b.text}」${b.v}`).join(" / "));
+        }
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(600);
+        if (await page.evaluate((s) => !!document.querySelector(s), sel)) { await page.keyboard.press("Escape"); await page.waitForTimeout(600); }
       }
     }
   }
@@ -159,6 +225,7 @@ function measure() {
     await page.emulateMedia({ contrast: "no-preference" });
   }
   t.check("頁のエラーなし", !errors.length, errors.join(" | "));
+  for (const [w, first] of waits) console.log(`  待ち ${w}：${first}`);
   await browser.close();
   t.done();
 })();

@@ -85,6 +85,12 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
   保存の道具は一つも呼ばない。偽の記録は開いた日から作り、閉じると消える。
 - 決まったら消す。
 
+## shots.js — 見比べの画像を撮る（docs/log/design-review.md の柱G）
+
+393×852・2倍で、試しの記録・明暗・時刻・特大・紙を開く・差し替えの style を組み合わせて撮り、差し替えを横に並べて
+番号を書いた `compare.png` を作る。使い方は頭のコメント（`--screens`・`--theme`・`--size`・`--clock`・`--sheet`・
+`--scroll`・`--css 'B=…'`）。試しの記録は無難な字だけ。
+
 ## vendor/
 
 - `pdf.min.mjs` / `pdf.worker.min.mjs` — Mozilla の pdf.js v4.10.38。

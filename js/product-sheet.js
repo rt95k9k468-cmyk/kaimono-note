@@ -862,7 +862,7 @@
       const best = p ? store.bestPrice(p) : null;
       const st = best ? store.getStore(best.storeId) : null;
       /* 旬は事実を一行だけ（roadmap-3.1 の K4。js/shun.js）。名前や絵が変わると引き直す。 */
-      const text = [best && st ? `最安 ${st.name} ${yen(best.price)}` : "", KN.shun.label(p)]
+      const text = [best && st ? `${store.currentPrices(p).length > 1 ? "最安 " : ""}${st.name} ${yen(best.price)}` : "", KN.shun.label(p)]
         .filter(Boolean).join("　");
       f.known.hidden = !text;
       f.known.textContent = text;

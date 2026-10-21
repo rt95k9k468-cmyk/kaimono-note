@@ -983,7 +983,11 @@
        体重が高い日の点と印が同じ高さで並んで、どちらか読めません。 */
     const hasMarks = D.daysBetween(all.length ? all[0].day : today, today)
       .some((d) => store.drinkTotals(d));
-    const W = 320, H = 180, padL = 34, padR = 8, padB = 18;
+    /* AX は軸と目標の字の大きさ（css の .diet-axis・.diet-goal-tag と同じ）。図は 320 の幅で描いて縮むので、
+       375 の幅で描かれて 11px を割らない大きさ（design-review の Y7）。左の余白と字の置き場はこれに合わせる。 */
+    const AX = 11.5;
+    const W = 320, H = 180, padL = 40, padR = 8, padB = 20;
+    const axW = (s) => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 255 ? 1 : 0.6), 0) * AX;
     const padT = hasMarks ? 22 : 10;
     // 線は記録の頭から均し、期間の中だけを描きます（weightSummary の「平均」と同じ数）。
     const ma7 = D.trendLine(all, 7).filter((m) => m.day >= from && m.value != null);
@@ -1177,7 +1181,7 @@
         ${KN.util.raw(gridVals.map((v, i) => {
           const yy = y(v);
           return `<line class="diet-gridline ${i ? "" : "is-base"}" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}"/>`
-            + `<text class="diet-axis" x="${padL - 6}" y="${(yy + 3.2).toFixed(1)}" text-anchor="end">${kgText(v)}</text>`;
+            + `<text class="diet-axis" x="${padL - 6}" y="${(yy + AX * 0.36).toFixed(1)}" text-anchor="end">${kgText(v)}</text>`;
         }).join(""))}
         ${goal == null ? "" : goalIn
           ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`
@@ -1225,7 +1229,8 @@
         ${/* 端の日付。右は「いちばん新しい記録」の下に置きます——右端に
               置くと、そこに点が無いのに日付だけがある形になります。 */""}
         <text class="diet-axis" x="${padL}" y="${H - 5}">${U.formatDay(base).replace("今日", "")}</text>
-        <text class="diet-axis" x="${Math.min(W - padR, Math.max(padL + 40, x(pts[pts.length - 1].day))).toFixed(1)}"
+        <text class="diet-axis" x="${Math.min(W - padR, Math.max(padL + axW(U.formatDay(base).replace("今日", "")) + 8
+                + axW(U.formatDay(pts[pts.length - 1].day)), x(pts[pts.length - 1].day))).toFixed(1)}"
               y="${H - 5}" text-anchor="end">${U.formatDay(pts[pts.length - 1].day)}</text>
       </svg>
     `);

@@ -1,7 +1,7 @@
 /* 旬の印（docs/roadmap-3.1.md の K4。js/shun.js）。
    - 表：鍵はどれも絵の辞書にある・月は 1〜12・名前から引いた答え（年をまたぐ・二つの季節・
      束ねた鍵は言葉で・束の名だけや通年のものは出さない）
-   - 画面：品物の紙の頭の一行に「旬 9〜10月」。値段があれば最安と並ぶ。名前を直すと引き直す。
+   - 画面：品物の紙の頭の一行に「旬 9〜10月」。値段があれば店と値段が並ぶ（「最安」は店が二つ以上のとき）。名前を直すと引き直す。
      行には出さない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/shun.js */
 const { open, checker } = require("./lib");
@@ -60,7 +60,8 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(700);
   let c = await cap();
   t.check("紙：頭の一行に旬", !!c && !c.hidden && c.text.includes("旬 9〜10月"), JSON.stringify(c));
-  if (ids.store) t.check("紙：最安と並ぶ", !!c && /^最安 .+　旬 9〜10月$/.test(c.text), JSON.stringify(c));
+  /* 値段は一つの店だけ——比べていないので「最安」とは言わない（design-review の Y8）。 */
+  if (ids.store) t.check("紙：値段と並ぶ（店が一つなら「最安」と言わない）", !!c && /^[^最].+ .+　旬 9〜10月$/.test(c.text), JSON.stringify(c));
 
   await page.fill(".pd-hero .js-name", "白菜");
   await page.waitForTimeout(700);
