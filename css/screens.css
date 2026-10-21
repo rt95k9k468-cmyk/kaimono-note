@@ -7165,6 +7165,11 @@ button.note-when:active { opacity: var(--press-fade); }
 .tl-row.is-someday .check { order: -1; width: 22px; height: 22px; border-radius: 6px; border-color: var(--c-border-2); }
 .tl-row.is-someday .check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
 
+/* 前の日から（今日の面の頭・screen-todo.js の prevSection）。これからと同じ箱の形で、地は白（灰は見づらい）。赤くしない。 */
+.tl-prev-sec { margin: var(--sp-3) var(--sp-4) 0; }
+.tl-prev-sec > .todo-head { padding: var(--sp-2) var(--sp-1); font-size: var(--fs-sm); color: var(--c-text-2); }
+.tl-prev { padding: 0 var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+
 /* 背骨（縦の線）は引きません。時刻が無いので、つなぐ時間がありません。
    丸だけが残ります。 */
 .tl-row.is-someday .tl-rail::before,

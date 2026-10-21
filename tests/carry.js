@@ -5,7 +5,7 @@
      ルーティンだけ次に当たる日へ（時刻は持ったまま）。何も動かさないときは書かない。
    - 前の版が付けた印 `carried` は消さない。settleCarried は印の付いた記録をいままでどおり選び直せる。
    - 数（todosDue＝バッジ）は過ぎた日のものを数えない。
-   - 画面：頭に札を出さない。昨日の用事は道に立たない。週の面では、今週の過ぎた日のものは今週に、
+   - 画面：頭に札を出さない。昨日の用事は道に立たない。今日の面の頭に「前の日から」（七日前まで・記録はそのまま。10月21日）。週の面では、今週の過ぎた日のものは今週に、
      先週より前のものはこれからに。七日の行の過ぎた日にはやることを出さない。過ぎた買い物の一件はどこにも出さない。
    - 形の崩れた印は読み直しで落とす。印の無い記録に欄を足さない。
 
@@ -88,6 +88,8 @@ const { open, checker } = require("./lib");
     S.addTodo({ title: "病院", due: y, time: "13:00" });
     S.addTodo({ title: "先週の書類", due: old });
     S.addTodo({ title: "買い物へ行く", due: y, shop: true });
+    S.addTodo({ title: "古い用事", due: U.shiftDay(today, -10) });
+    S.addTodo({ title: "昨日の会議", due: y, time: "10:00", kind: "event" });
     S.rescheduleOverdue();
     return { y, sameWeek: y >= w.from };
   });
@@ -120,8 +122,15 @@ const { open, checker } = require("./lib");
   const day = await page.evaluate(() => ({
     late: document.querySelectorAll("#screen-todo .tl-late").length,
     stop: [...document.querySelectorAll("#screen-todo .day-road .road-marks button")].some((b) => /病院/.test(b.textContent)),
+    prev: [...document.querySelectorAll("#screen-todo .tl-prev-sec .item-name")].map((e) => e.textContent.trim()),
+    first: (document.querySelector("#screen-todo .day-slide") || {}).firstElementChild?.className || "",
+    due: KN.store.get().todos.find((x) => x.title === "病院").due,
   }));
   t.check("今日の面にも札は出ない・昨日の用事は道に立たない", day.late === 0 && !day.stop, JSON.stringify(day));
+  t.check("今日の面の頭に「前の日から」：昨日のやることが居る", /tl-prev-sec/.test(day.first) && day.prev.includes("病院"), JSON.stringify(day));
+  t.check("七日より前・予定・買い物の一件は出さない",
+    !day.prev.some((n) => /古い用事|昨日の会議|買い物へ行く/.test(n)), JSON.stringify(day.prev));
+  t.check("記録は書き換えない（昨日のまま）", day.due === scr.y, day.due);
 
   /* 形の崩れた印は落とす。印の無い記録に欄を足さない（既存の記録は書き換えない）。 */
   await page.evaluate(() => {
