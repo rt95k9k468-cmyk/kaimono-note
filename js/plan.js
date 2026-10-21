@@ -207,7 +207,8 @@
       const dn = doneSpan(t);
       if (dn && dn.end > start && dn.end - start < len) len = dn.end - start;
       // 重なっているかは、並べ終わってから時刻の順に見ます（下の sorted）。
-      items.push({ todo: t, atMin: start, untilMin: start + len,
+      // planUntilMin は縮める前の決めた終わり（道は自分で済ませた時刻まで縮めるので、こちらを読む）。
+      items.push({ todo: t, atMin: start, untilMin: start + len, planUntilMin: start + minutesOf(t),
                    minutes: len, fixed: true, clash: false });
       addBlock(blocks, start, start + len);
     });
