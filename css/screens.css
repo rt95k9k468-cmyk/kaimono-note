@@ -6035,7 +6035,7 @@ textarea.note-title-in {
   pointer-events: none;
 }
 .note-live .nv-link { cursor: text; }
-.note-live :is(.nv-hr, .nv-img, .nv-file) { -webkit-user-select: none; user-select: none; }
+.note-live :is(.nv-hr, .nv-img, .nv-file, .nv-table) { -webkit-user-select: none; user-select: none; }
 /* 書いているあいだの色付け（screen-notes.js の ink・note-format.js の ink）。欄の字は
    透かし、同じ字を同じ位置に並べた写しを重ねる。写しは欄のあとに置く（字が
    カーソルと選んだ色の上に乗る）。字の幅を変えないこと——太字は font-weight で

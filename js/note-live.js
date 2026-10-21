@@ -1,5 +1,5 @@
 /* =========================================================
-   くらしノート — 見たままの書く欄（docs/notes-unify.md「書き方：見たまま」の段A）
+   くらしノート — 見たままの書く欄（docs/notes-unify.md「書き方：見たまま」の段A・段B＝表）
 
    本文の正は今までどおり Markdown の字（screen-notes.js の書く欄 .js-text が持つ）。
    ここは画面の上だけ：開くとき Markdown → 行の並び、打ったら行の並び → Markdown。
@@ -107,6 +107,43 @@
     el.append(t);
     return el;
   }
+
+  /** 表（段B）：頭から終わりまでの行で一つの塊。読む姿と同じ表で、触れない（押すと、その表だけ行に開く）。 */
+  function table(md) {
+    const el = F().tableEl(F().tablesOf(md.split("\n")).get(0));
+    el._md = md;
+    el._fixed = true;
+    el._table = true;
+    el.contentEditable = "false";
+    return el;
+  }
+  const isTable = (c) => !!(c && c.nodeType === 1 && c._table);
+  /** 本文を塊に（一行が一つ、表は一つ）。keep（本文の位置 [s, e]）に掛かる表は行のまま——書いている表。 */
+  function blocks(v, keep) {
+    const lines = String(v).split("\n");
+    const tabs = F().tablesOf(lines);
+    const out = [];
+    let at = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const tb = tabs.get(i);
+      const sub = tb ? lines.slice(i, tb.end) : null;
+      /* 表だけ切り出しても同じ表になるときだけ畳む（でなければ行のまま）。 */
+      const one = sub && F().tablesOf(sub).get(0);
+      /* 表のすぐ下の空の行も表のうち（表の終わりで改行して、次の行を打つところ）。 */
+      const to = tb ? tb.to + (lines[tb.end] === "" ? 1 : 0) : 0;
+      if (one && one.end === sub.length && !(keep && keep[0] <= to && keep[1] >= at)) {
+        out.push({ md: sub.join("\n"), table: true });
+        at = tb.to + 1;
+        i = tb.end - 1;
+        continue;
+      }
+      out.push({ md: lines[i], prev: i ? lines[i - 1] : null });
+      at += lines[i].length + 1;
+    }
+    return out;
+  }
+  const make = (b) => (b.table ? table(b.md) : build(b.md, b.prev));
+  const lastLine = (md) => md.slice(md.lastIndexOf("\n") + 1);
 
   const isGap = (n) => !!(n.parentNode && n.parentNode.classList && n.parentNode.classList.contains("lv-gap"));
   /** 字の節の字（間の詰め物の中は、詰め物の字を数えない）。 */
@@ -267,8 +304,7 @@
   function fits(md) {
     const v = String(md == null ? "" : md);
     const box = document.createElement("div");
-    let prev = null;
-    v.split("\n").forEach((l) => { box.append(build(l, prev)); prev = l; });
+    blocks(v).forEach((b) => box.append(make(b)));
     return [...box.childNodes].flatMap(linesOf).join("\n") === v;
   }
 
@@ -442,8 +478,10 @@
       }
       return pointAt(at.el, at.k);
     }
-    /** 本文の s〜e を選ぶ。 */
-    function place(s, e) {
+    /** 本文の s〜e を選ぶ。畳んだ表の中なら、その表を行に開いてから。 */
+    function place(s, e, laid) {
+      const t = e == null ? s : e;
+      if (!laid && [s, t].some((k) => { const x = lineAt(k); return x && isTable(x.el); })) { set(md(), [s, t]); return; }
       const a = pointOf(s);
       const b = e == null || e === s ? a : pointOf(e);
       const ws = window.getSelection();
@@ -457,25 +495,25 @@
       return k;
     };
 
-    /** 本文を並べる。前と同じ行の要素は使い回す（頭と尻の同じところ）。sel があれば選ぶ。 */
+    /** 本文を並べる。前と同じ塊の要素は使い回す（頭と尻の同じところ）。sel があれば選ぶ（そこに掛かる表は行のまま）。 */
     function set(v, s) {
-      const lines = String(v).split("\n");
+      const bl = blocks(v, s);
       const kids = [...root.childNodes];
       let a = 0;
-      while (a < lines.length && a < kids.length && known(kids[a]) && !dirty.has(kids[a]) && kids[a]._md === lines[a]) a++;
+      while (a < bl.length && a < kids.length && known(kids[a]) && !dirty.has(kids[a]) && kids[a]._md === bl[a].md) a++;
       let b = 0;
-      while (b < lines.length - a && b < kids.length - a) {
+      while (b < bl.length - a && b < kids.length - a) {
         const c = kids[kids.length - 1 - b];
-        if (!known(c) || dirty.has(c) || c._md !== lines[lines.length - 1 - b]) break;
+        if (!known(c) || dirty.has(c) || c._md !== bl[bl.length - 1 - b].md) break;
         b++;
       }
       /* 画像の原本は上の行で姿が変わるので、変わった所の下の一行も作り直す。 */
-      if (b > 0 && (a < lines.length - b || a < kids.length - b)) b--;
+      if (b > 0 && (a < bl.length - b || a < kids.length - b)) b--;
       const tail = kids[kids.length - b] || null;
       kids.slice(a, kids.length - b).forEach((c) => c.remove());
       const made = [];
-      for (let i = a; i < lines.length - b; i++) {
-        const el = build(lines[i], i ? lines[i - 1] : null);
+      for (let i = a; i < bl.length - b; i++) {
+        const el = make(bl[i]);
         root.insertBefore(el, tail);
         made.push(el);
       }
@@ -487,7 +525,7 @@
         const up = el.previousSibling;
         if (el.className === "nv-orig" && up && up.className === "nv-img") { up.dataset.orig = el.dataset.file; up.dataset.origName = el.dataset.name; }
       });
-      if (s) place(s[0], s[1]);
+      if (s) place(s[0], s[1], true);
     }
     /** はじめて並べる（書く欄に入るとき）。往復して一字も違えば false（呼ぶ側が印で開く）。 */
     function load(v) {
@@ -521,7 +559,7 @@
         v = to + v.slice(m[0].length);
         shift = to.length - m[0].length;
       }
-      const prev = el.previousSibling && known(el.previousSibling) ? el.previousSibling._md : null;
+      const prev = el.previousSibling && known(el.previousSibling) ? lastLine(el.previousSibling._md) : null;
       const fresh = build(v, prev);
       if (!shift && sig(fresh) === sig(el)) {
         if (looks(fresh) !== looks(el)) dressLike(el, fresh);
@@ -584,6 +622,19 @@
         run(e, { from: s, to: en, text, s: s + text.length, e: s + text.length }, t.startsWith("delete") ? "del" : "type");
         return;
       }
+      /* 畳んだ表のすぐ下の頭で ⌫・すぐ上の終わりで Delete：空の行なら消す、でなければ表を開くだけ（行を表へつながない）。 */
+      const near = s === en && t.startsWith("delete") && lineAt(s);
+      if (near && near.el.nodeType === 1 && !near.el._fixed) {
+        const len = mdLen(near.el);
+        const up = t.endsWith("Backward") && near.k === 0 && isTable(near.el.previousSibling);
+        const down = t.endsWith("Forward") && near.k === len && isTable(near.el.nextSibling);
+        if (up || down) {
+          e.preventDefault();
+          if (len) { place(up ? s - 1 : s + 1); return; }
+          o.apply(up ? { from: s - 1, to: s, text: "", s: s - 1, e: s - 1 } : { from: s, to: s + 1, text: "", s, e: s }, "del");
+          return;
+        }
+      }
       if (s === en && t.startsWith("delete") && t.endsWith("Backward")) {
         const b = back(v, s);
         if (b) { run(e, b, "del"); return; }
@@ -638,6 +689,16 @@
       o.apply(F().shift(v, r[0], r[1], e.shiftKey ? -1 : 1), "tool");
     });
     root.addEventListener("click", (e) => {
+      /* 畳んだ表：押したマスの終わりへ（表は行に開く）。中のリンクも開かない。 */
+      const tbl = e.target.closest(".nv-table");
+      if (tbl && tbl.parentNode === root && isTable(tbl)) {
+        e.preventDefault();
+        const td = e.target.closest("[data-end]");
+        const k = td && tbl.contains(td) ? Number(td.dataset.end) : tbl._md.length;
+        if (document.activeElement !== root) root.focus({ preventScroll: true });
+        place(startOf(tbl) + k);
+        return;
+      }
       const pic = e.target.closest(".nv-img.is-on");
       if (pic) { if (o.pic) o.pic(pic); return; }
       const doc = e.target.closest(".nv-file");
@@ -659,6 +720,25 @@
         if (!last || e.clientY > last.getBoundingClientRect().bottom) o.tail();
       }
     });
+
+    /* カーソルが行に開いた表から出たら（別の行へ移ったとき）、表に畳む。打った表もここで畳まれる。 */
+    let seen = null;
+    const onSel = () => {
+      if (!alive || composing || !root.isConnected) return;
+      const ws = window.getSelection();
+      if (!ws || !ws.rangeCount || !root.contains(ws.focusNode)) return;
+      const l = lineOf(ws.focusNode);
+      if (l === seen) return;
+      collect(mo.takeRecords());
+      if (dirty.size || rootDirty) return;
+      seen = l;
+      const v = md();
+      if (!v.includes("|")) return;
+      const s = sel();
+      /* 畳むだけ（表の下の空の行へ移っても開かない）。 */
+      if (s && blocks(v, s).length < root.childNodes.length) set(v, s);
+    };
+    document.addEventListener("selectionchange", onSel);
 
     /** カーソルの上下（画面の位置）。字の箱が取れなければ、その行の箱。 */
     function caretRect() {
@@ -701,7 +781,7 @@
         mo.takeRecords();
         return true;
       },
-      destroy() { alive = false; mo.disconnect(); },
+      destroy() { alive = false; mo.disconnect(); document.removeEventListener("selectionchange", onSel); },
     };
   }
 

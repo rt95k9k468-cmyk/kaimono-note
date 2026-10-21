@@ -678,5 +678,5 @@
     };
   }
 
-  KN.noteFormat = { parse, marksOf, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, marksOf, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, tableEl, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();
