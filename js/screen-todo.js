@@ -2935,6 +2935,8 @@
       隣の日のものと入れ替わります。 */
   function daySlide(day, open) {
     const el = node(html`<div class="day-slide"></div>`);
+    const prev = day === todayKey() ? prevSection(open) : null;
+    if (prev) el.append(prev);
     el.append(daySection(day, open));
     // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
     el.append(somedaySection(open));
@@ -3662,6 +3664,35 @@
       }
       sec.append(fold);
     });
+    return sec;
+  }
+
+  /* 「前の日から」（2026年10月21日、利用者：昨日を見に行かないと気付かなかった）。日の過ぎたまだのやることを、
+     今日の面の頭に七日前まで。記録は書き換えない（決めごと1）——済ませる・道へ運ぶ・紙で直すは手で。
+     数は出さない・赤くしない。予定・買い物の一件・くり返し・待つ／いつかは除く。 */
+  function prevSection(open) {
+    const today = todayKey(), from = KN.util.shiftDay(today, -7);
+    const rows = open.filter((t) => t.due && t.due < today && t.due >= from && !t.trace
+      && !t.repeat && t.kind !== "event" && !t.shop && !t.shelf);
+    if (!rows.length) return null;
+    const sec = node(html`
+      <section class="todo-group tl-prev-sec" data-group="prev">
+        <h2 class="todo-head tl-prev-head">前の日から</h2>
+      </section>
+    `);
+    // 道へ運べば今日のその時刻に決まる（tl-someday の手つきのまま）。
+    const list = node(html`<ul class="tl tl-someday tl-prev"></ul>`);
+    rows.slice().sort((a, b) => (a.due === b.due ? (a.order || 0) - (b.order || 0) : a.due < b.due ? 1 : -1))
+      .forEach((t) => {
+        const li = somedayRow(t);
+        const body = li.querySelector(".tl-body");
+        let facts = li.querySelector(".tl-facts");
+        if (!facts && body) { facts = node(html`<span class="tl-facts"></span>`); body.append(facts); }
+        if (facts) facts.prepend(node(html`<span class="tl-due">${formatDay(t.due)}</span>`));
+        list.append(li);
+      });
+    sec.append(list);
+    wireDrag(list, null);
     return sec;
   }
 
