@@ -4609,6 +4609,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 /* 低い札は一行に：題と事実（済ませた時刻・手順）を横に並べ、メモは外す。三列では題だけ（幅が約90px）。
    flex にするのは .tl-body まで——行数を絞る .item-name は .tl-open（block）の中なので畳まれない。 */
+/* 低い札（30分など）は、左の時刻も札の縦中央へ（上に付いていて、絵・題・印より5px高く見えた）。背の高い札は頭のまま。 */
+.tl-list > li.tl-row.is-short > .tl-time { top: 50%; translate: 0 -50%; }
 .tl-list > li.tl-row.is-short > .item.tl-item { padding-top: 3px; padding-bottom: 3px; align-items: center; }
 .tl-list > li.tl-row.is-short .tl-cap { display: none; }
 .tl-list > li.tl-row.is-short .tl-body { display: flex; align-items: center; gap: var(--sp-2); }
