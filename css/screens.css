@@ -4604,13 +4604,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   box-sizing: border-box;
   height: calc(100% - 2px);
   margin: 1px 0 1px 12px;
-  align-items: flex-start;
+  align-items: center;   /* 題は枠の縦中央（2026年10月21日、利用者）。絵は題の一行目にそろえて .tl-body の中 */
   overflow: clip;
 }
 /* 低い札は一行に：題と事実（済ませた時刻・手順）を横に並べ、メモは外す。三列では題だけ（幅が約90px）。
    flex にするのは .tl-body まで——行数を絞る .item-name は .tl-open（block）の中なので畳まれない。 */
-/* 丸い印（26px）の中心を題の一行目（20.8px）にそろえる。低い札は flex の中央ぞろえで済んでいる。 */
-.tl-list > li.tl-row:not(.is-short) > .item.tl-item > .check:not(.is-sub) { margin-top: -2.6px; }
 .tl-list > li.tl-row.is-short > .item.tl-item { padding-top: 3px; padding-bottom: 3px; align-items: center; }
 .tl-list > li.tl-row.is-short .tl-cap { display: none; }
 .tl-list > li.tl-row.is-short .tl-body { display: flex; align-items: center; gap: var(--sp-2); }
