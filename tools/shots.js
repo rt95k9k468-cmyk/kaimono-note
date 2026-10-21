@@ -40,8 +40,8 @@ const VARIANTS = [{ name: "A", css: "" }, ...all("css").map((s) => {
   return { name, css: fs.existsSync(body) ? fs.readFileSync(body, "utf8") : body };
 })];
 
-/* 頁の中で走る。3週間ぶんの体重とお酒・二つの店の値段・時刻のある用事・daily の記録。 */
-function seed() {
+/* 頁の中で走る。3週間ぶんの体重とお酒・二つの店の値段・時刻のある用事・daily の記録・ノート。 */
+async function seed() {
   const S = KN.store, U = KN.util;
   const day = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return U.dayKey(d); };
   const [a, b] = ["スーパー", "ドラッグストア"].map((n) => S.addStore(n));
@@ -63,6 +63,10 @@ function seed() {
   S.addTodo({ title: "電球を替える", due: day(-1) });
   S.addEntry({ date: day(0), type: "reading", title: "試しの本", at: "21:00", minutes: 30 });
   S.addEntry({ date: day(1), type: "done", title: "散歩" });
+  const at = (n) => new Date(Date.now() - n * 3600e3).toISOString();
+  await KN.notes.addMany(["献立の案", "旅行の持ち物", "読みたい本", "部屋の片づけ", "電話のメモ", "庭の手入れ", "来月の予定", "レシピ"]
+    .map((title, i) => ({ id: `n-shot${i}`, title, body: "試しの本文", notebook: "private", tags: [], fav: false,
+      createdAt: at(i * 20), updatedAt: at(i * 20), deletedAt: null })));
 }
 
 /* 頁の中で走る。紙を開く。 */
