@@ -4248,7 +4248,8 @@ button.tl-over:active { opacity: var(--press-fade); }
 .tl-row.is-live .item.tl-item {
   /* 12% から 8% へ。丸薬が二色になったぶん、地まで濃いと、塗りが題の
      ほうへ流れ出したように見えます。 */
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) 8%, transparent);
+  background: var(--c-surface);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat, var(--c-primary-fill)) 55%, transparent);
   border-radius: 14px;
 }
 
@@ -4500,11 +4501,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 題は札の色（2026年10月20日、利用者）。そのままの色では地の上で読めないので、字の色へ寄せる。 */
 .tl-row:not(.is-done):not(.is-someday) .tl-item .item-name { color: color-mix(in srgb, var(--cat) 55%, var(--c-text)); }
 .tl-row .item.tl-item { margin-right: var(--sp-4); }
-.tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 9%, var(--c-surface)); border-radius: 14px; }
+/* いまの札（2026年10月21日、利用者）：淡い塗りは背景と同化したので、白い地に札の色の枠で立たせる。 */
+.tl-row.is-live .item.tl-item { background: var(--c-surface); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat) 55%, transparent); border-radius: 14px; }
 /* 済ませた札は透かさない（一覧の .item.is-checked の 0.55 が効いて、目盛りの線が札を透けていた）。取り消し線と塗った印で見分ける。 */
 .tl-row .item.tl-item.is-checked { opacity: 1; }
-/* 済ませた札（2026年10月20日、利用者）：札は白のまま、題・時刻・印・絵・棒を灰へ寄せて抑える。済みはいつも出す（畳まない）。 */
-.tl-list > li.tl-row.is-done .tl-node { background: color-mix(in srgb, var(--c-text-3) 45%, var(--c-surface-2)); z-index: 2; }
+/* 済ませた札（2026年10月20日・21日、利用者）：札の地を薄く、題・時刻・印・絵を灰へ寄せて抑える。棒は軸と同じ色のまま（灰にしない）。済みはいつも出す（畳まない）。 */
+.tl-list > li.tl-row.is-done .tl-node { z-index: 2; }
+.tl-list > li.tl-row.is-done > .item.tl-item { background: color-mix(in srgb, var(--c-surface) 35%, var(--c-bg)); }
+.tl-list > li.tl-row.is-done .tl-body { opacity: .7; }
 .tl-list > li.tl-row.is-done .tl-ico { filter: grayscale(1); opacity: .5; }
 .tl-list > li.tl-row.is-done .tl-item .item-name { color: var(--c-text-3); text-decoration-color: var(--c-text-3); }
 .tl-list > li.tl-row.is-done .check:not(.is-sub)[aria-checked="true"],
@@ -4684,7 +4688,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   mask: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);
 }
 .tl-fold-text {
-  margin-left: var(--tl-gut);
+  margin-left: calc(var(--tl-gut) + 20px);   /* 軸（gut+4px）に字を刺さない */
   font-size: var(--fs-sm);
   color: var(--c-text-3);
   white-space: nowrap;
