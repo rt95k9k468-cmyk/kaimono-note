@@ -6,7 +6,7 @@
      ければ言わない。くり返しでない用事・写しそのものには言わない。記録が増えれば変わる。
    - plan：長さを決めていないくり返しの用事は、30分の代わりにいつもの長さで並べる。
      人が決めた長さがあれば、そちら。
-   - 画面：編集の紙の長さに「いつもの25分」の札（押すまで決めない）と「いつもの長さで」。
+   - 画面：編集の紙の長さは「なし」の札のまま（押すまで決めない）。「いつもの」の字は出さない（10月21日）。
      道の上で決める紙に「いつもは15分くらい」。道には描かない（停留所は点のまま）。
      評価の言葉・絵文字なし。
 
@@ -113,8 +113,8 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
     const first = sh.querySelector(".js-mins .chip");
     return v ? { dur: v.textContent.trim(), down: v === first, text: sh.textContent } : null;
   });
-  c.check("時刻の札に「9:00 〜 9:25」と「いつもの25分」", /9:00 〜 9:25/.test(durRow) && /いつもの25分/.test(durRow), durRow);
-  c.check("長さは「いつもの25分」（決めないまま。先頭の札）", !!ed && ed.dur === "いつもの25分" && ed.down, JSON.stringify(ed && { d: ed.dur, x: ed.down }));
+  c.check("時刻の札に「9:00 〜 9:25」（「いつもの」は出さない）", /9:00 〜 9:25/.test(durRow) && !/いつもの/.test(durRow), durRow);
+  c.check("長さは「なし」（決めないまま。先頭の札）・「いつもの」は無い", !!ed && ed.dur === "なし" && ed.down && !/いつもの/.test(ed.text), JSON.stringify(ed && { d: ed.dur, x: ed.down }));
   c.check("編集の紙も評価しない・絵文字なし", !!ed && !BAN.test(ed.text) && !/\p{Extended_Pictographic}/u.test(ed.text));
   for (let i = 0; i < 3 && await page.locator(".sheet.is-open").count(); i++) {
     await page.keyboard.press("Escape");

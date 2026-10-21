@@ -1051,7 +1051,7 @@
       const dl = deadline ? (() => { const d = KN.util.dayDate(deadline); return `${d.getMonth() + 1}/${d.getDate()}まで`; })() : "";
       row(".js-row-time",
           time ? (len ? `${tlClock(time)} 〜 ${tlClock(KN.plan.toTime(KN.plan.toMin(time) + len))}` : tlClock(time)) : "時刻なし",
-          [minutes ? KN.plan.humanSpan(minutes) : usual ? `いつもの${KN.plan.humanSpan(usual)}` : "", dl].filter(Boolean).join("　"));
+          [minutes ? KN.plan.humanSpan(minutes) : usual ? KN.plan.humanSpan(usual) : "", dl].filter(Boolean).join("　"));
       /* 毎朝・毎晩（part が端）は毎日として言います。前は札に無い "dawn" を引いて空になり、
          朝のルーティンが「くりかえし」だけで何も出ていなかった（2026年10月2日）。 */
       const rid = repeatChipId();
@@ -1153,7 +1153,7 @@
       const len = minutes || usual || P.DEFAULT_MINUTES;
       const until = P.toTime(at + len);
       const guess = minutes ? ""
-        : usual ? "（いつもの長さ）"
+        : usual ? ""
         : "（仮に30分）";
       /* 時刻の書き方は、時間割の左の列と揃えます（頭の0を落とす）。
          同じ時刻が画面によって「07:00」と「7:00」に見えると、同じもの
@@ -1227,14 +1227,14 @@
        なので、ここでは扱いません。 */
     /* かかる時間は札（2026年10月2日・利用者の希望で −／＋ から戻した。8時間まで何度も
        押すことになるので）。先頭は「なし」（決めない＝minutes は null。組み立ては30分として
-       扱う）。いつもの長さが言える用事は、「なし」のかわりに「いつもの25分」（null のまま、
-       いつもの長さで組む）。札に無い長さを持っているものは、その長さも札に足す。 */
+       扱う）。2026年10月21日（利用者）から「いつもの◯分」の札は出さない（わけが分からない）。
+       札に無い長さを持っているものは、その長さも札に足す。 */
     const MINS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, 600, 720];
     function paintMins() {
-      const list = MINS.filter((m) => m !== usual);
+      const list = MINS.slice();
       if (minutes && !list.includes(minutes)) list.push(minutes), list.sort((a, b) => a - b);
       KN.ui.chipRow(body.pick(".js-mins"),
-        [{ id: "", label: usual ? `いつもの${KN.plan.humanSpan(usual)}` : "なし" }]
+        [{ id: "", label: "なし" }]
           .concat(list.map((m) => ({ id: String(m), label: KN.plan.humanSpan(m) }))), {
           activeId: minutes ? String(minutes) : "",
           onPick: (id) => {
