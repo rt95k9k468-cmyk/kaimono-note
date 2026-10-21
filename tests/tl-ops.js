@@ -1,6 +1,6 @@
 /* 今日の面の物差し・段3の操作（docs/timeline-scale-design.md の §5・§6-3(a)）。
-   - 手順をひらいた札は、下の札を押し下げる（重ならない）。たたむと戻る。組み直しても押し下げたまま。
-   - 長押しで動かす：指の高さ → 時刻（5分きざみ）を y の逆で引く。押し下げの継ぎ目の下でもずれない。
+   - 手順はその場の小窓に出る（2026年10月21日）。札は動かない・下の札も押し下げない。組み直しても小窓は残る。
+   - 長押しで動かす：指の高さ → 時刻（5分きざみ）を y の逆で引く。
    - 時刻が変わって並びが動いた札は、もといた場所から滑る（flipRows の translate）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/tl-ops.js */
 const { open, checker } = require("./lib");
@@ -38,12 +38,11 @@ const DAY = "2026-10-20";
 
   await page.click('#screen-todo .tl-row:has-text("朝のしたく") .tl-subs-chip');
   await page.waitForTimeout(800);
-  const a1 = await box("朝のしたく"), b1 = await box("会議"), l1 = await box("昼ごはん");
-  c.check("ひらくと札が手順の段まで伸びる（段が札からはみ出さない）",
-    a1.wrapBottom != null && a1.wrapBottom <= a1.bottom + 1 && a1.bottom - a1.top > a0.bottom - a0.top + 40, JSON.stringify(a1));
-  c.check("下の札は押し下がる（重ならない）", b1.top >= a1.bottom - 1 && b1.top > b0.top + 40, JSON.stringify([a1, b1]));
-  c.check("さらに下の札も同じだけ下がる", Math.abs((l1.top - b1.top) - ((await box("昼ごはん")).top - b1.top)) < 1 && l1.top - b1.top > 100,
-    JSON.stringify([b1, l1]));
+  const a1 = await box("朝のしたく"), b1 = await box("会議");
+  const pop1 = await page.evaluate(() => document.querySelectorAll(".note-pop.is-subs.is-open .tl-sub").length);
+  c.check("ひらくと手順は小窓に出る（5件）・札の下には広げない", pop1 === 5 && a1.wrapBottom == null, JSON.stringify({ pop1, a1 }));
+  c.check("札も下の札も動かない", Math.abs(a1.bottom - a0.bottom) < 1 && Math.abs(b1.top - b0.top) < 1,
+    JSON.stringify([a0, a1, b0, b1]));
 
   // 手順を一つ済ませる → 組み直し。押し下げたままで、跳ねない。
   await page.evaluate((day) => {
@@ -52,7 +51,14 @@ const DAY = "2026-10-20";
   }, DAY);
   await page.waitForTimeout(80);
   const a2 = await box("朝のしたく"), b2 = await box("会議");
-  c.check("組み直しても押し下げたまま（次の描きの最初から）", b2.top >= a2.bottom - 1 && Math.abs(b2.top - b1.top) < 4, JSON.stringify([a2, b2, b1]));
+  const pop2 = await page.evaluate(() => !!document.querySelector(".note-pop.is-subs.is-open"));
+  c.check("組み直しても小窓は残り、札は動かない", pop2 && Math.abs(b2.top - b1.top) < 1 && Math.abs(a2.bottom - a1.bottom) < 1, JSON.stringify([a2, b2, b1]));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+  const a2b = await box("朝のしたく");
+  c.check("閉じると手順は札へ戻る（畳んだまま）・小窓は消える",
+    a2b.wrapBottom == null && await page.evaluate(() => !document.querySelector(".note-pop.is-subs")
+      && !!document.querySelector("#screen-todo .tl-sub-list[hidden]")), JSON.stringify(a2b));
 
   /* 長押しで動かす。会議（いま押し下がっている）を、指の高さ＝12:35 あたりへ。
      端で送らないよう、先に一覧の頭を画面の上のほうへ。 */
@@ -98,11 +104,8 @@ const DAY = "2026-10-20";
   const flips = await page.evaluate(() => window.__flip);
   c.check("置き直した札は、もといた場所から滑る（flipRows）", flips.length > 0, JSON.stringify(flips));
 
-  // たたむと戻る。
-  await page.click('#screen-todo .tl-row:has-text("朝のしたく") .tl-subs-chip');
-  await page.waitForTimeout(800);
   const a3 = await box("朝のしたく");
-  c.check("たたむと札は時間どおりの高さへ戻る（1時間＝72px）", Math.abs((a3.bottom - a3.top) - (a0.bottom - a0.top)) < 2, JSON.stringify([a0, a3]));
+  c.check("札は時間どおりの高さのまま（1時間＝72px）", Math.abs((a3.bottom - a3.top) - (a0.bottom - a0.top)) < 2, JSON.stringify([a0, a3]));
 
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

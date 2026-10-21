@@ -4,7 +4,7 @@
      いちばん早く終わるはずだった水やりの下端から y(いま) まで一本（色は変えない。橙は道だけ）。押すと一覧の紙
    - 済ませると、その一件ぶん線が縮む／全部済ませると消える
    - 時刻は1時間ごとに振る。用事の時刻・「いま」と同じ高さの字は出さない
-   - 手順をひらくと札ごと伸び（継ぎ目）、棒は札の下端まで。上端は動かない。たたむと戻る */
+   - 手順は小窓に出す（札は伸びない・2026年10月21日） */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-30";
@@ -44,14 +44,14 @@ const PX_MIN = 1.2;
     const now = scr.querySelector(".tl-now");
     const nr = now ? now.getBoundingClientRect() : null;
     const subs = row(ids.prep).querySelector(".tl-sub-list");
-    const sr = subs.getBoundingClientRect();
+    const sr = subs ? subs.getBoundingClientRect() : { bottom: 0 };   // 小窓が開いているあいだは札に居ない
     const ln = scr.querySelector(".tl-list > .tl-late-line");
     const lr = ln ? ln.getBoundingClientRect() : null;
     const hours = [...scr.querySelectorAll(".tl-tick")].filter((t) => getComputedStyle(t.querySelector(".tl-hour")).visibility !== "hidden")
       .map((t) => t.textContent.trim());
     return { line: lr ? { top: lr.top - o, bottom: lr.bottom - o, w: lr.width } : null, hours,
       water: box(ids.water), routine: box(ids.routine), mail: box(ids.mail), prep: box(ids.prep),
-      now: nr ? nr.top - o : null, subsBottom: sr.bottom - o, subsHidden: subs.hidden,
+      now: nr ? nr.top - o : null, subsBottom: sr.bottom - o, subsHidden: subs ? subs.hidden : true,
       text: scr.querySelector(".tl").textContent };
   }, ids);
 
@@ -80,32 +80,18 @@ const PX_MIN = 1.2;
   await page.waitForFunction(() => !document.querySelector(".tl-more-row"), null, { timeout: 3000 });
   c.check("まだ終わっていない用事は is-late にならない", !r.prep.late && !r.mail.late, JSON.stringify([r.prep, r.mail]));
 
-  /* 手順をひらく（段3：札の下端に継ぎ目を入れて押し下げる）。 */
+  /* 手順は小窓に出す（2026年10月21日）。札は伸びず、上端も高さも動かない。閉じると畳んだまま。 */
   const shut = r.prep;
   await page.click(`#screen-todo .tl-row[data-todo-id="${ids.prep}"] .tl-subs-chip`);
-  await page.waitForFunction((id) => {
-    const li = document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"]`);
-    const l = li.parentElement;
-    return !l.classList.contains("is-push-open") && !l.classList.contains("is-push-shut")
-      && li.querySelector(".tl-node").getBoundingClientRect().bottom >= li.querySelector(".tl-sub-list").getBoundingClientRect().bottom - 1;
-  }, ids.prep, { timeout: 5000 });
+  await page.waitForSelector(".note-pop.is-subs.is-open .tl-sub", { timeout: 5000 });
   r = await read();
-  c.check("手順をひらくと、札ごと伸びて棒は手順の段の下まで",
-    !r.subsHidden && r.prep.cardH > shut.cardH + 20 && r.prep.bottom >= r.subsBottom - 1
-      && Math.abs(r.prep.bottom - (r.prep.cardTop + r.prep.cardH)) < 2,
-    JSON.stringify([r.prep, r.subsBottom]));
-  c.check("ひらいても札と棒の上端は動かない",
-    Math.abs(r.prep.cardTop - shut.cardTop) < 1 && Math.abs(r.prep.top - shut.top) < 1, JSON.stringify([shut, r.prep]));
+  c.check("手順をひらいても札は伸びない（小窓に出る）",
+    Math.abs(r.prep.h - shut.h) < 1 && Math.abs(r.prep.cardTop - shut.cardTop) < 1, JSON.stringify([shut, r.prep]));
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
-  await page.click(`#screen-todo .tl-row[data-todo-id="${ids.prep}"] .tl-subs-chip`);
-  await page.waitForFunction((id) => {
-    const li = document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"]`);
-    const l = li.parentElement;
-    return !l.classList.contains("is-push-open") && !l.classList.contains("is-push-shut")
-      && Math.abs(li.getBoundingClientRect().height - 45 * 1.2) < 1;
-  }, ids.prep, { timeout: 5000 });
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
   r = await read();
-  c.check("たたむと戻る（45分＝54px）", Math.abs(r.prep.h - 45 * PX_MIN) < 2, JSON.stringify(r.prep));
+  c.check("閉じても45分＝54px のまま", Math.abs(r.prep.h - 45 * PX_MIN) < 2, JSON.stringify(r.prep));
 
   /* 済ませると、その一件ぶん線が縮み、全部済ませると消える。 */
   const done = async (id) => {

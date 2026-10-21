@@ -71,7 +71,7 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
     await page.waitForTimeout(250);
   };
   const subBox = (i) => page.evaluate((i) => {
-    const b = document.querySelectorAll("#screen-todo .tl-sub .check.is-sub")[i];
+    const b = document.querySelectorAll(".note-pop.is-subs .tl-sub .check.is-sub")[i];
     if (!b) return null;
     b.scrollIntoView({ block: "center" });
     const r = b.getBoundingClientRect();
@@ -86,7 +86,7 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
 
   /* つまみが付いている */
   const has = await page.evaluate(() => ({
-    sub: !!document.querySelector("#screen-todo .tl-sub .check.is-sub > .feel-switch"),
+    sub: !!document.querySelector(".note-pop.is-subs .tl-sub .check.is-sub > .feel-switch"),
     main: !!document.querySelector("#screen-todo .tl-row .check:not(.is-sub) > .feel-switch"),
   }));
   c.check("iPhone の振り：手順の丸・済ませる丸につまみ", has.sub && has.main, JSON.stringify(has));
@@ -161,8 +161,9 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
     c.check(`${label}：送ったあとの click は押したことにしない`,
       JSON.stringify(before) === JSON.stringify(after), JSON.stringify({ before, after }));
   };
-  await scrollFrom("#screen-todo .tl-sub .check.is-sub", "手順の丸から送る",
-    () => Promise.all([0, 1, 2, 3].map(subSt)));
+  /* 手順は小窓に出す（2026年10月21日）。画面を送るのは済ませる丸から確かめる——小窓を閉じてから。 */
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
   await scrollFrom("#screen-todo .tl-row .check:not(.is-sub)", "済ませる丸から送る",
     () => page.evaluate((rest) => rest.map((id) => !!KN.store.getTodo(id).done), ids.rest));
 

@@ -6115,16 +6115,14 @@
          組み直すと一瞬で入れ替わるので、手順が「出てきた」のか「もとから
          あった」のかが分かりません。読んでいた位置も、開閉のたびに
          測り直しになります。高さを動かすだけなら、行はその場に残ります。 */
+      /* 2026年10月21日（利用者）から、手順は札の下に広げず、その場にポッと出る小窓で見せる。
+         札の下に広げると、隣の列と幅を分け合って題が折り返し、物差しも下へずれた。
+         行（とその押し方）はそのまま小窓へ移し、閉じたら札へ戻す。 */
       const chip = li.querySelector(".tl-subs-chip");
       chip.addEventListener("click", (e) => {
         e.stopPropagation();
-        const open = !openSubs.has(subsKey);
-        if (open) openSubs.add(subsKey); else openSubs.delete(subsKey);
         KN.motion.fire("select", chip);
-        chip.setAttribute("aria-expanded", String(open));
-        chip.setAttribute("aria-label", `${t.title} の手順を${open ? "たたむ" : "ひらく"}`);
-        const rest = slideSubs(wrap, open);
-        pushBelow(li, wrap, subsKey, open, rest);
+        popSubs(li, chip, wrap, list, t);
       });
       li.__subWrap = wrap;
       li.append(wrap);
@@ -6132,66 +6130,41 @@
     return li;
   }
 
-  /** 手順の段を、高さで開け閉めします。
-
-      height を auto のままでは動かせないので、実測した高さまで動かして、
-      着いたら auto に戻します（戻さないと、あとで手順が増えたときに
-      古い高さで切れます）。動きを減らす設定の人には、瞬時に。 */
-  function slideSubs(wrap, open) {
-    const list = wrap.querySelector(".tl-sub-list");
-    if (!list) return 0;
-    wrap.classList.toggle("is-open", open);
-    const clear = () => {
-      list.style.height = "";
-      list.style.overflow = "";
-      list.style.transition = "";
-    };
-    if (KN.motion.still()) {
-      clear();
-      list.hidden = !open;
-      return 0;
+  /** 手順を、押した札のそばの小窓に出す。残りを上、済み（できなかったも）を下に畳む
+      （「済み n」で開く）。中で押しても並びは動かさない。閉じたら行を元の順で札へ戻す。 */
+  function popSubs(li, chip, wrap, list, t) {
+    const lines = [...list.children];
+    const doneOf = (l) => l.classList.contains("is-done") || l.classList.contains("is-skipped");
+    const rest = lines.filter((l) => !doneOf(l)), done = lines.filter(doneOf);
+    let more = null;
+    const pop = KN.ui.popOver(chip, { side: "left", cls: "is-subs", label: `${t.title} の手順`,
+      onClose: () => {
+        chip.setAttribute("aria-expanded", "false");
+        if (more) more.remove();
+        lines.forEach((l) => { l.hidden = false; list.append(l); });
+        list.hidden = true;
+        wrap.append(list);
+        wrap.hidden = false;
+      } });
+    const cat = getComputedStyle(li).getPropertyValue("--cat");
+    if (cat) pop.el.style.setProperty("--cat", cat);
+    chip.setAttribute("aria-expanded", "true");
+    wrap.hidden = true;
+    rest.concat(done).forEach((l) => list.append(l));
+    list.hidden = false;
+    pop.el.append(list);
+    if (rest.length && done.length) {
+      done.forEach((l) => { l.hidden = true; });
+      more = node(html`<button type="button" class="tl-subs-more">済み ${done.length}</button>`);
+      more.addEventListener("click", (e) => {
+        e.stopPropagation();
+        done.forEach((l) => { l.hidden = false; });
+        more.remove(); more = null;
+        pop.place();
+      });
+      pop.el.append(more);
     }
-    const dur = KN.motion.ms(open ? "--m-sheet-open" : "--m-sheet-close");
-    if (open) list.hidden = false;
-    const h = list.scrollHeight;
-    list.style.overflow = "hidden";
-    list.style.height = (open ? 0 : h) + "px";
-    /* 一枚待ってから動かします。同じフレームで from と to を書くと、
-       ブラウザは to しか見ません（動かずに飛びます）。 */
-    requestAnimationFrame(() => {
-      list.style.transition = `height ${dur}ms var(--ease-${open ? "out" : "in"})`;
-      list.style.height = (open ? h : 0) + "px";
-    });
-    setTimeout(() => {
-      clear();
-      if (!open) list.hidden = true;
-    }, dur + 40);
-    return open ? h : 0;
-  }
-
-  /** 手順の段をひらく・たたむのに合わせて、下の札を押し下げる・引き上げる。
-      rest は、段のうちまだ高さに出ていないぶん（slideSubs が 0 から動かす高さ）。
-      札の top／height は同じ速さ・曲線で滑る（.is-push-open／.is-push-shut）。 */
-  function pushBelow(li, wrap, key, open, rest) {
-    const list = li.parentElement;
-    if (!list || !list.__tl) return;
-    const c = list.__tl.cards.find((x) => x.id === li.__k);
-    if (!c) return;
-    const base = c.height - (subsPush.get(key) || 0);
-    const item = li.querySelector(":scope > .item.tl-item");
-    const extra = open && item ? Math.max(0, Math.ceil(item.getBoundingClientRect().height + 2 + wrap.getBoundingClientRect().height + rest - base)) : 0;
-    subsPush.set(key, extra);
-    const cls = open ? "is-push-open" : "is-push-shut";
-    const still = KN.motion.still();
-    list.classList.remove("is-push-open", "is-push-shut");
-    if (!still) list.classList.add(cls);
-    tlRelayout(list);
-    const ax = list.closest(".tl") && list.closest(".tl").querySelector(".tl-axis");
-    clearTimeout(list.__pushT);
-    list.__pushT = setTimeout(() => {
-      list.classList.remove(cls);
-      if (ax && ax.__paint) ax.__paint();
-    }, still ? 0 : KN.motion.ms(open ? "--m-sheet-open" : "--m-sheet-close") + 40);
+    pop.place();
   }
 
   /* ---------------- picking one up ----------------
