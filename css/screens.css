@@ -4502,11 +4502,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row:not(.is-done):not(.is-someday) .tl-item .item-name { color: color-mix(in srgb, var(--cat) 55%, var(--c-text)); }
 .tl-row .item.tl-item { margin-right: var(--sp-4); }
 /* いまの札（2026年10月21日、利用者）：淡い塗りは背景と同化したので、白い地に札の色の枠で立たせる。 */
-.tl-row.is-live .item.tl-item { background: var(--c-surface); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat) 55%, transparent); border-radius: 14px; }
+.tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 12%, var(--c-surface)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat) 55%, transparent); border-radius: 14px; }
 /* 済ませた札は透かさない（一覧の .item.is-checked の 0.55 が効いて、目盛りの線が札を透けていた）。取り消し線と塗った印で見分ける。 */
 .tl-row .item.tl-item.is-checked { opacity: 1; }
 /* 済ませた札（2026年10月20日・21日、利用者）：札の地を薄く、題・時刻・印・絵を灰へ寄せて抑える。棒は軸と同じ色のまま（灰にしない）。済みはいつも出す（畳まない）。 */
-.tl-list > li.tl-row.is-done .tl-node { z-index: 2; }
+.tl-list > li.tl-row.is-done .tl-node { z-index: 2; background: var(--c-primary-fill); }   /* 軸（.tl-seg）の過ぎた色と同じ */
 .tl-list > li.tl-row.is-done > .item.tl-item { background: color-mix(in srgb, var(--c-surface) 35%, var(--c-bg)); }
 .tl-list > li.tl-row.is-done .tl-body { opacity: .7; }
 .tl-list > li.tl-row.is-done .tl-ico { filter: grayscale(1); opacity: .5; }
