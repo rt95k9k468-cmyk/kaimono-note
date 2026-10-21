@@ -41,7 +41,8 @@
      長すぎると空きが無いように見えるからです。どちらも「配り直す材料」
      としては嘘になります。30分は、家事も用事もだいたいこのくらい、
      という当たりです（人が決めた数があれば、必ずそちらを使います）。 */
-  const DEFAULT_MINUTES = 30;
+  const DEFAULT_MINUTES = 30;   // 長さの無い既存の用事を描くときの仮の長さ（保存はしない）
+  const NEW_MINUTES = 60;       // 新しい用事の長さ（2026年10月21日、利用者）
 
   /* 一日の枠。ここから外は「今日」として扱いません。設定で動かせます。
 
@@ -401,6 +402,6 @@
 
   KN.plan = {
     buildDay, slotsFor, humanSpan, toMin, toTime, refit,
-    DEFAULT_MINUTES, minutesOf, DEFAULT_START, DEFAULT_END, MIN_GAP,
+    DEFAULT_MINUTES, NEW_MINUTES, minutesOf, DEFAULT_START, DEFAULT_END, MIN_GAP,
   };
 })();

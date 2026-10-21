@@ -2,7 +2,7 @@
 
    - 時刻・時間・期限は「時刻」の一枚。時刻は車輪（5分きざみ）、時間は札、期限はスイッチ。
    - 時間は「なし」から（いつもの長さがある用事は「いつもの◯分」——tests/usual-pace.js）。
-   - 新しい用事は30分から（10月16日）。触らずに追加すると 30、1時間を押して追加すると 60。
+   - 新しい用事は1時間から（10月21日。10月16日の30分から変えた）。触らずに追加すると 60。
      くり返しは長さに触らなければ null（いつもの長さを殺さない）。
    - 新しい紙だけ「済ませた」のスイッチ。入れると今の時刻、追加すると済ませた用事に。
    - 絵文字なし。 */
@@ -28,7 +28,7 @@ const { open, checker } = require("./lib");
   });
   c.check("札は日付・時刻・くりかえし・済ませたの4つ（通知・カレンダーは⋯の中）",
     rows.length === 4 && /js-row-done/.test(rows[3]) && !rows.some((x) => /js-row-dur|js-row-limit|js-row-notify|js-row-cal/.test(x)), JSON.stringify(rows));
-  c.check("決めていなければ「時刻なし」、長さは30分", /^時刻なし\s*30分$/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
+  c.check("決めていなければ「時刻なし」、長さは1時間", /^時刻なし\s*1時間$/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
   c.check("くりかえしの札は「くりかえし なし」", /くりかえし\s*なし/.test(await rowText(".js-row-repeat")), await rowText(".js-row-repeat"));
   await page.locator(".sheet.is-open .js-menu").last().click();
   await page.waitForTimeout(500);
@@ -55,7 +55,7 @@ const { open, checker } = require("./lib");
   let sh = await sheet();
   c.check("時刻は「なし」で車輪は薄く、純正の時刻欄は無い", sh.time === "なし" && sh.off && sh.wheels === 2 && !sh.native, JSON.stringify(sh));
   c.check("分の車輪は5分きざみ（12行）", sh.mins === 12, JSON.stringify(sh));
-  c.check("時間は札で、「30分」が点いている（なし＋14）", sh.dur === "30分" && sh.chips === 15, JSON.stringify(sh));
+  c.check("時間は札で、「1時間」が点いている（なし＋14）", sh.dur === "1時間" && sh.chips === 15, JSON.stringify(sh));
   /* 車輪を 9時・00分 へ回す */
   await page.evaluate(() => {
     const sh = document.querySelector(".note-pop.is-form");
@@ -65,7 +65,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(500);
   sh = await sheet();
   c.check("車輪を回すと時刻が決まる（まん中が9時00分）", sh.time === "9:00" && !sh.off && sh.mid === "9時00分", JSON.stringify(sh));
-  c.check("時刻だけ決めると札は「9:00 〜 9:30」", /^9:00 〜 9:30\s*30分$/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
+  c.check("時刻だけ決めると札は「9:00 〜 10:00」", /^9:00 〜 10:00\s*1時間$/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
   await page.evaluate(() => [...document.querySelector(".note-pop.is-form")
     .querySelectorAll(".js-mins .chip")].find((b) => b.textContent.trim() === "1時間").click());
   sh = await sheet();
@@ -99,7 +99,7 @@ const { open, checker } = require("./lib");
   const saved = await page.evaluate(() => KN.store.get().todos.find((t) => t.title === "時間の札の試し"));
   c.check("追加すると minutes は 60", !!saved && saved.minutes === 60, JSON.stringify(saved && { m: saved.minutes, t: saved.time }));
 
-  /* 押さずに追加したら30分 */
+  /* 押さずに追加したら1時間 */
   await page.evaluate(() => KN.screens.todo.open(null));
   await page.waitForTimeout(800);
   await page.locator(".sheet.is-open .js-title").last().fill("長さを決めない試し");
@@ -109,7 +109,7 @@ const { open, checker } = require("./lib");
     const t = KN.store.get().todos.find((x) => x.title === "長さを決めない試し");
     return t ? { m: t.minutes == null ? null : t.minutes, plan: KN.plan.minutesOf(t) } : null;
   });
-  c.check("触らずに追加すると保存は30分", !!bare && bare.m === 30 && bare.plan === 30, JSON.stringify(bare));
+  c.check("触らずに追加すると保存は1時間", !!bare && bare.m === 60 && bare.plan === 60, JSON.stringify(bare));
 
   /* くり返しは長さに触らなければ null（いつもの長さを残す） */
   await page.evaluate(() => KN.screens.todo.open(null));

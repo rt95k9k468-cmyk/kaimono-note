@@ -187,7 +187,7 @@
     const rec = S().addTodo({
       title, due, time: found ? res.time || null : null,
       // 新しい用事は30分（くり返しは null のまま。docs/todo-items.md「時間の札」）。
-      minutes: (found && res.minutes) || (found && res.repeat ? null : (KN.plan ? KN.plan.DEFAULT_MINUTES : 30)),
+      minutes: (found && res.minutes) || (found && res.repeat ? null : (KN.plan ? KN.plan.NEW_MINUTES : 60)),
       deadline: found ? res.deadline || null : null,
       repeat: found ? res.repeat || null : null,
       repeatDays: found ? res.repeatDays || [] : [],

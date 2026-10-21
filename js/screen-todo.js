@@ -559,9 +559,9 @@
     /* 打った字に時刻があれば予定（決めごと3）。札を自分で押したら、もう替えない。 */
     let kindHand = editing;
     let flagged = editing ? !!t.flagged : false;
-    /* 新しい用事は30分から（2026年10月16日、利用者）。くり返しは長さに触らなければ null のまま
+    /* 新しい用事は1時間から（2026年10月21日、利用者。30分から変えた）。くり返しは長さに触らなければ null のまま
        保存する（いつもの長さ＝段4を殺さないため。`newMins`）。 */
-    let minutes = editing ? (t.minutes || null) : KN.plan.DEFAULT_MINUTES;
+    let minutes = editing ? (t.minutes || null) : KN.plan.NEW_MINUTES;
     let minsPicked = false;
     // 出る時刻の「前に◯分」（段7）。時刻を決めたときだけ欄が出る。
     let lead = editing ? (t.lead || null) : null;
@@ -2027,7 +2027,7 @@
         const rec = store.addTodo({ title: v.title, due: fx, deadline: v.deadline,
           part: fx ? v.part : null, time: fx ? v.time : null,
           repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth,
-          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes || (v.repeat ? null : KN.plan.DEFAULT_MINUTES),
+          repeatEvery: v.repeatEvery, memo, flagged, minutes: v.minutes || (v.repeat ? null : KN.plan.NEW_MINUTES),
           ...planPick(v.repeat, v.repeatWeeks, v.kind) });
         if (rec) { doneNow(rec); made.push(rec.id); }
       });
@@ -3679,7 +3679,7 @@
     const wk = KN.util.weekOf(today);
     const mark = !event && !v.repeat && due && wk.from <= due && due <= wk.to ? due : null;
     const rec = store.addTodo({ title: v.title, due, time: due ? v.time : null,
-      minutes: (found && res.minutes) || (v.repeat ? null : KN.plan.DEFAULT_MINUTES),
+      minutes: (found && res.minutes) || (v.repeat ? null : KN.plan.NEW_MINUTES),
       deadline: found ? res.deadline || null : null,
       repeat: v.repeat, repeatDays: v.repeatDays, repeatNth: v.repeatNth, repeatEvery: v.repeatEvery,
       kind: event ? "event" : null, side,
