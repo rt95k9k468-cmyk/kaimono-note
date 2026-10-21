@@ -199,8 +199,12 @@
        先に固定を全部置いてから、残りを隙間に入れます。 */
     const fixedOf = (t) => U.isTime(t.time);
     [].concat(dawn, middle, dusk).filter(fixedOf).forEach((t) => {
-      const len = minutesOf(t);
       const start = toMin(t.time);
+      /* 早く済ませたら、枠は済ませた時刻で閉じます。遅れても延ばしません
+         （終わりは予定のまま）。 */
+      let len = minutesOf(t);
+      const dn = doneSpan(t);
+      if (dn && dn.end > start && dn.end - start < len) len = dn.end - start;
       // 重なっているかは、並べ終わってから時刻の順に見ます（下の sorted）。
       items.push({ todo: t, atMin: start, untilMin: start + len,
                    minutes: len, fixed: true, clash: false });
