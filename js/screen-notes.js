@@ -1120,7 +1120,8 @@
        書くあいだの画面だけ行の並び。開いて戻して一字でも違うノートと、印で書く端末は今の書く欄。 */
     let lv = false;
     const ed = () => (lv ? liveEl : textIn);
-    const inEd = () => document.activeElement === ed();
+    /* 見たままの表のマスは欄の中の別の打つ欄（note-live.js の table）。 */
+    const inEd = () => document.activeElement === ed() || (lv && liveEl.contains(document.activeElement));
     /** いまの本文（見たままで書いているあいだは並びから写した字が新しい）。 */
     const val = () => (lv && writing ? live.md() : textIn.value);
     /** 選んでいる範囲（本文の位置）。 */
@@ -1342,7 +1343,7 @@
         if (!closed && inEd()) fn();
       }, ms));
     };
-    [textIn, liveEl].forEach((x) => x.addEventListener("focus", () => {
+    [textIn, liveEl].forEach((x) => x.addEventListener("focusin", () => {
       if (!writing) toWrite(null);
     }));
     /* キーボードの高さが変わったら（出きる・絵文字や予測の棚が出入りする）、
@@ -1354,7 +1355,7 @@
       showCaret();
     });
     if (vv) vv.addEventListener("resize", onViewport);
-    [textIn, liveEl].forEach((x) => x.addEventListener("blur", () => {
+    [textIn, liveEl].forEach((x) => x.addEventListener("focusout", () => {
       /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */
       setTimeout(() => {
         if (writing && !inEd() && !closed) toView();
@@ -1565,15 +1566,21 @@
       const v = val();
       const at = (inEd() ? selNow() : lastSel)[0];
       const kind = F.kindAt(v, Math.min(at, v.length));
+      /* 表のマスの中では、行の形を変える道具は効かない（表が崩れる）。 */
+      const cell = lv && writing && live.inCell();
       tools.querySelectorAll(".js-tool").forEach((b) => {
         const k = b.dataset.k;
         if (k === "undo" || k === "redo") b.setAttribute("aria-disabled", String(!can[k]));
+        else if (cell && k !== "bold") b.setAttribute("aria-disabled", "true");
         else if (k === "image") {
           b.hidden = !KN.noteImg || KN.noteImg.state() !== "on";
           b.setAttribute("aria-disabled", String(picking));
         }
         else if (k === "bold") b.setAttribute("aria-pressed", String(F.boldAt(v, Math.min(at, v.length))));
-        else if (["head", "bullet", "num", "task", "quote"].includes(k)) b.setAttribute("aria-pressed", String(kind === k));
+        else {
+          b.removeAttribute("aria-disabled");
+          if (["head", "bullet", "num", "task", "quote"].includes(k)) b.setAttribute("aria-pressed", String(kind === k));
+        }
       });
     };
     /* カーソルが動いたら、押されている印を合わせます。 */

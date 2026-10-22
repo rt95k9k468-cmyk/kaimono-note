@@ -217,11 +217,19 @@
     const el = document.createElement("div");
     el.className = "nv-table";
     const table = document.createElement("table");
+    /* 列の細さの下限：字の多い列は7字ぶんまで広げ、画面に押し込まずに表だけ横へ送る（数の列は詰まったまま）。 */
+    const body = tb.rows.length > 1 ? tb.rows.slice(1) : tb.rows;
+    const wide = [];
+    for (let j = 0; j < tb.n; j++) {
+      const len = Math.max(0, ...body.map((cells) => (cells[j] ? Math.max(...cellText(cells[j].text).split("\n").map((l) => [...l].reduce((k, ch) => k + (ch.charCodeAt(0) < 0x2e80 ? 0.6 : 1), 0))) : 0)));
+      wide.push(Math.min(7, Math.max(4.5, Math.ceil(len))));
+    }
     tb.rows.forEach((cells, r) => {
       const tr = document.createElement("tr");
       for (let j = 0; j < Math.max(tb.n, cells.length); j++) {
         const c = cells[j];
         const td = document.createElement(r ? "td" : "th");
+        if (wide[j] > 4.5) td.style.setProperty("--cw", `${wide[j]}em`);
         const t = document.createElement("span");
         t.className = "nv-t";
         if (c) {
@@ -678,5 +686,5 @@
     };
   }
 
-  KN.noteFormat = { parse, marksOf, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, tableEl, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
+  KN.noteFormat = { parse, marksOf, plain, searchable, unbold, unmark, askOf, asks, headings, tablesOf, tableEl, cellText, render, ink, sourceAt, toggleTask, setKind, bold, boldAt, rule, putLine, shift, onEnter, kindAt, history };
 })();

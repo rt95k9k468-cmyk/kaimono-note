@@ -5977,7 +5977,7 @@ textarea.note-title-in {
 .note-view > .nv-table { white-space: normal; overflow-x: auto; touch-action: pan-x pan-y; margin: .4em 0; text-align: left; }
 .nv-table table { border-collapse: collapse; font-size: var(--fs-md); line-height: var(--lh-tight); }
 .nv-table :is(th, td) { border: 1px solid var(--c-border-2); padding: var(--sp-1) var(--sp-2); vertical-align: top;
-  white-space: pre-wrap; text-align: left; min-width: 4.5em; max-width: 22em; }
+  white-space: pre-wrap; text-align: left; min-width: var(--cw, 4.5em); max-width: 22em; }
 .nv-table th { font-weight: var(--fw-bold); background: var(--c-surface-2); }
 .nv-li {
   display: flex;
@@ -6036,6 +6036,8 @@ textarea.note-title-in {
 }
 .note-live .nv-link { cursor: text; }
 .note-live :is(.nv-hr, .nv-img, .nv-file, .nv-table) { -webkit-user-select: none; user-select: none; }
+/* 表のマスは、それぞれが打てる欄（note-live.js の table）。マス全体が押せるように塊に。 */
+.note-live .nv-table .lv-cell { display: block; min-height: 1lh; outline: none; -webkit-user-select: text; user-select: text; cursor: text; }
 /* 書いているあいだの色付け（screen-notes.js の ink・note-format.js の ink）。欄の字は
    透かし、同じ字を同じ位置に並べた写しを重ねる。写しは欄のあとに置く（字が
    カーソルと選んだ色の上に乗る）。字の幅を変えないこと——太字は font-weight で
