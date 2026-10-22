@@ -89,8 +89,10 @@ const PX_MIN = 1.2;
   c.check("手順をひらいても札は伸びない（小窓に出る）",
     Math.abs(r.prep.h - shut.h) < 1 && Math.abs(r.prep.cardTop - shut.cardTop) < 1, JSON.stringify([shut, r.prep]));
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
-  await page.keyboard.press("Escape");
+  /* 他のタブへ移れば、手順の小窓は閉じる（帯は覆いより手前なので、覆いでは閉じない）。 */
+  await page.evaluate(() => KN.app.showScreen("notes"));
   await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
+  await page.evaluate(() => KN.app.showScreen("todo"));
   r = await read();
   c.check("閉じても45分＝54px のまま", Math.abs(r.prep.h - 45 * PX_MIN) < 2, JSON.stringify(r.prep));
 

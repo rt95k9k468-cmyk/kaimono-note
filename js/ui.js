@@ -1546,6 +1546,8 @@
     requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
     return { el: pop, close, place };
   }
+  /** 開いている小窓を全部閉じる（画面を移るとき。帯は覆いより手前なので、覆いが受けない）。 */
+  function closePops() { pops.slice().reverse().forEach((c) => c()); }
 
   /** 「⋯」の中身を、押した ⋯ のすぐ下に縦に並べる。選ぶか外を押すと閉じる。 */
   function popMenu(anchor, items) {
@@ -2794,7 +2796,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, popMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
+    sheet, actionSheet, popOver, closePops, popMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard, reopen, keepDraft, dropDraft, takeDraft, takeGone,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,
