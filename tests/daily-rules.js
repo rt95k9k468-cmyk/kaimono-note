@@ -171,6 +171,14 @@ const FORBIDDEN = [
   t.check("ノートの面に評価の言葉が出ない", !hits3.length, hits3.join(","));
   t.check("ノートの面に件数・割合が出ない", !/\d\s*件|\d\s*[%％]/.test(nf.text), nf.text.slice(0, 120));
   t.check("daily・notes の席に数の札が出ない", !nf.badge, String(nf.badge));
+  /* やることの席は点だけ（時刻が過ぎるたびに増える「まだの数」を出さない。docs/tabbar.md）。 */
+  const td = await page.evaluate(async () => {
+    KN.store.addTodo({ title: "点の試し", due: KN.util.todayKey() });
+    await new Promise((r) => setTimeout(r, 300));
+    const b = document.querySelector('.tab[data-tab="todo"] .tab-badge');
+    return b ? { dot: b.classList.contains("is-dot"), text: b.textContent.trim() } : null;
+  });
+  t.check("やることの席は数でなく点", !!td && td.dot && td.text === "", JSON.stringify(td));
 
   /* ---- コピー：先の予定・長期タスク（まだ済んでいないもの）は写さない ---- */
   const copied = await page.evaluate(async () => {

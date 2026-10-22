@@ -97,6 +97,8 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
   持ち上げ（`is-m-number`）は **badge-in を並べたまま**足すこと——`animation` を m-number だけに
   すると、外した瞬間に名前が badge-in へ戻って頭から始まり直し、数が変わるたびに札が
   0 から膨らみ直す（試験 `tests/arrive.js`）。
+- やることの席は数でなく点（`.tab-badge.is-dot`。2026年10月22日、design-review）。今日の分と遅れた分は時刻が過ぎる
+  たびに増え、「溜まった数」になるので。数を出すのは買うものだけ。`tests/daily-rules.js` が見張る。
 
 ### いま居る席の印は、席から席へ滑る一枚（`js/tab-lens.js`）
 

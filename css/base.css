@@ -2198,6 +2198,8 @@ a { color: var(--c-primary); }
   animation: badge-in var(--m-poke) var(--spring) both;
 }
 @keyframes badge-in { from { scale: 0; opacity: 0; } }
+/* やることの席は数ではなく点（app.js の paintTabBadge。docs/tabbar.md）。 */
+.tab-badge.is-dot { min-width: 8px; width: 8px; height: 8px; padding: 0; top: 7px; translate: 10px 0; }
 /* 数が変わったときの持ち上げは、**badge-in を並べたまま**足すこと。
    `.is-m-number` の `animation: m-number` だけにすると、外した瞬間に
    animation の名前が badge-in へ戻り、そこで頭から始まり直す——数が
