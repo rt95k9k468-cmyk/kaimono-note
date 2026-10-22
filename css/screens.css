@@ -6876,9 +6876,9 @@ button.note-when:active { opacity: var(--press-fade); }
 .note-pop.is-subs .tl-sub-list { margin-top: 0; }
 .note-pop.is-subs .tl-sub-name { display: inline; }
 /* 済ませた手順は、済みの畳みへ沈んで（下向き。item-drop と同じ向き）、席を詰める。 */
-.tl-sub.is-sinking { animation: item-drop var(--m-delete) var(--ease-in) forwards; pointer-events: none; }
+.tl-sub.is-sinking { animation: item-drop var(--m-delete) var(--ease-in) forwards; }
 .tl-sub.is-collapsing {
-  overflow: hidden; padding-block: 0; opacity: 0;
+  overflow: hidden; pointer-events: none; padding-block: 0; opacity: 0;
   transition: height var(--m-state) var(--ease-out), padding var(--m-state) var(--ease-out);
 }
 .tl-subs-more {

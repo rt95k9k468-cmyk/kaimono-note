@@ -6221,26 +6221,54 @@
       showMore();
     }
     /* チェックが描かれ終わってから、行は済みの畳みへ沈み（item-drop と同じ下向き）、
-       席を詰める。畳みの数は一つ弾む。 */
+       席を詰める。畳みの数は一つ弾む。
+       - 沈むあいだに押し直したら（済みでなくなったら）、取りやめて元の席へ（すぐ押し直せば戻る）。
+       - 指が小窓に触れているあいだは席を詰めない（長押しの指の下で行がずれないように）。 */
+    let pressing = false;
+    const waiting = [];
+    pop.el.addEventListener("pointerdown", () => {
+      pressing = true;
+      const up = () => {
+        document.removeEventListener("pointerup", up, true);
+        document.removeEventListener("pointercancel", up, true);
+        pressing = false;
+        waiting.splice(0).forEach((f) => f());
+      };
+      document.addEventListener("pointerup", up, true);
+      document.addEventListener("pointercancel", up, true);
+    });
+    const back = (l) => {
+      l.classList.remove("is-sinking", "is-collapsing");
+      l.style.height = "";
+      l.hidden = false;
+      if (done.includes(l)) done.splice(done.indexOf(l), 1);
+      if (!rest.includes(l)) rest.push(l);
+    };
     const sink = (l) => {
       rest.splice(rest.indexOf(l), 1);
       done.push(l);
       const h = l.offsetHeight;
+      const still = () => l.isConnected && (doneOf(l) || (back(l), false));
       setTimeout(() => {
-        if (!l.isConnected || !folded) { l.hidden = false; return; }
+        if (!still()) return;
+        if (!folded) { l.hidden = false; return; }
         l.classList.add("is-sinking");
         setTimeout(() => {
-          l.style.height = `${h}px`;
-          void l.offsetHeight;
-          l.classList.add("is-collapsing");
-          l.style.height = "0px";
-          setTimeout(() => {
-            l.hidden = true;
-            l.classList.remove("is-sinking", "is-collapsing");
-            l.style.height = "";
-            list.append(l);
-            showMore(); bump(); pop.place();
-          }, KN.motion.ms("--m-state"));
+          const collapse = () => {
+            if (!still()) return;
+            l.style.height = `${h}px`;
+            void l.offsetHeight;
+            l.classList.add("is-collapsing");
+            l.style.height = "0px";
+            setTimeout(() => {
+              l.hidden = true;
+              l.classList.remove("is-sinking", "is-collapsing");
+              l.style.height = "";
+              list.append(l);
+              showMore(); bump(); pop.place();
+            }, KN.motion.ms("--m-state"));
+          };
+          if (pressing) waiting.push(collapse); else collapse();
         }, KN.motion.ms("--m-delete"));
       }, KN.motion.ms("--m-check"));
     };
