@@ -126,6 +126,7 @@
     /* 引っ込んだ＋は透けたまま上の端だけ画面に残るので、箱では見分けられない
        （真ん中は画面の下の外＝キーボードの裏へ縮んでいた）。 */
     if (document.documentElement.classList.contains("kb-open")) return null;
+    if (document.querySelector("#dock.is-away")) return null;
     const fab = document.querySelector("#dock .add-fab");
     const f = fab && fab.getBoundingClientRect();
     const y = f && f.top + f.height / 2;

@@ -6,6 +6,7 @@
    - U17：＋の紙は四隅の丸いカード（is-fab-card）
    - U17：打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ縮んで帰る
    - ＋は帯の右端の上（カプセル上端から 8px 上・右端そろえ）、帯は画面いっぱい。一覧の底とトーストは＋より上
+   - Y4：下へ送るあいだ＋は引っ込む。上へ戻す・止まる・席を移ると出る。仕掛けの送りでは動かない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fab-home.js */
 const { open, checker } = require("./lib");
 
@@ -174,6 +175,44 @@ const { open, checker } = require("./lib");
   t.check("打っているあいだ：紙は片づく", await page.evaluate(() => !document.querySelector(".sheet")));
 
   t.check("エラーなし（打っているあいだ）", errors.length === 0, errors.join("\n"));
+
+  /* ---- 下へ送るあいだ＋は引っ込む（design-review の Y4。base.css の .dock.is-away） ---- */
+  await page.evaluate(() => {
+    for (let i = 0; i < 30; i++) { const p = KN.store.addProduct({ name: `品${i}` }); if (p) KN.store.addItem(p.id); }
+    KN.app.showScreen("list");
+  });
+  await page.waitForTimeout(700);
+  const away = () => page.evaluate(() => document.querySelector("#dock").classList.contains("is-away"));
+  const sc = () => page.evaluate(() => KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop);
+  await page.mouse.move(195, 420);
+  await page.mouse.wheel(0, 10);
+  await page.waitForTimeout(80);
+  t.check("送る：少し下へでは引っ込まない", !(await away()));
+  for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
+  t.check("送る：下へ送ると引っ込む", await away(), String(await sc()));
+  await page.waitForTimeout(400);
+  t.check("送る：引っ込んだ＋は薄れて押せない", await page.evaluate(() => {
+    const s = getComputedStyle(document.querySelector("#dock"));
+    return s.opacity === "0" && s.pointerEvents === "none";
+  }));
+  await page.waitForTimeout(500);
+  t.check("送る：止まると出る", !(await away()));
+  for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
+  t.check("送る：もう一度下へで引っ込む", await away());
+  await page.mouse.wheel(0, -20);
+  await page.waitForTimeout(80);
+  t.check("送る：上へ戻すとすぐ出る", !(await away()));
+  /* 仕掛けの送り（開いたときの位置の戻し・上へ戻す滑り）では動かない。 */
+  await page.waitForTimeout(800);
+  await page.evaluate(() => { KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop += 300; });
+  await page.waitForTimeout(80);
+  t.check("送る：仕掛けの送りでは引っ込まない", !(await away()));
+  for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
+  await page.evaluate(() => KN.app.showScreen("todo"));
+  await page.waitForTimeout(400);
+  t.check("送る：席を移ると出ている", !(await away()));
+
+  t.check("エラーなし（送る）", errors.length === 0, errors.join("\n"));
   await browser.close();
   t.done();
 })();

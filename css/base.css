@@ -2281,7 +2281,27 @@ a { color: var(--c-primary); }
    欄の上に丸だけが浮きます（ダイエットの食事欄で実際にそうなりました）。
    打っている最中に足すものは無いので、一緒に下がってもらいます。 */
 .has-fab.kb-open .dock { opacity: 0; pointer-events: none; transform: translateY(120%); }
-.has-fab .dock { transition: opacity var(--m-nav) var(--ease), transform var(--m-nav) var(--ease-out); }
+.has-fab .dock {
+  transition: opacity var(--m-nav) var(--ease), transform var(--m-nav) var(--ease-out),
+    translate var(--m-nav) var(--ease-out), scale var(--m-nav) var(--spring);
+}
+
+/* 下へ送るあいだも、＋は**引っ込みます**（docs/tabbar.md の「送るあいだ＋は引っ込む」）。
+   付け外しは app.js の `watchFabAway`。右端の列（済ませる丸・済みの印）を＋が隠さないように。
+
+   キーボードのときのように下へ滑らせると、帯の上を横切ってから消えます。ここでは
+   **その場で縮みながら少し沈んで薄れる**——帯へ吸い込まれる形。去るときは速く `--ease-in`、
+   戻るときは `--m-nav` で、縮みだけ `--spring` で一度ふくらんで収まる（来たと分かる）。
+   動かすのは `translate` / `scale`（キーボードの `transform` と取り合わない）。 */
+.has-fab .dock.is-away {
+  opacity: 0;
+  pointer-events: none;
+  translate: 0 calc(var(--fab-gap) * 2);
+  scale: .5;
+  transition: opacity var(--m-state) var(--ease-in), translate var(--m-state) var(--ease-in),
+    scale var(--m-state) var(--ease-in);
+}
+.has-fab .dock { transform-origin: 50% 100%; }
 
 /* =========================================================
    基調色（accent themes）
