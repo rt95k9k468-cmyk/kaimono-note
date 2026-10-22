@@ -87,6 +87,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const closeSheet = async () => {
     await page.click(".sheet.is-open .js-ok");
     await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 }).catch(() => {});
+    /* 閉じかけの紙は片づくまで押すものを受け止める（重いときは 150ms では残っていた）。 */
+    await page.waitForFunction(() => !document.querySelector("#sheet-root .sheet"), null, { timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(150);
   };
   const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")]
