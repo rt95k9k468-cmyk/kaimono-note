@@ -24,7 +24,7 @@ const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js", "heavy-pac
 
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */
-const GATE = ["registry", "traps", "unknown-keep", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break", "backup-budget",
+const GATE = ["registry", "traps", "unknown-keep", "live-slim", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break", "backup-budget",
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
   "sky",           // 帯の空：時間帯の区切りと、空の上の字の濃さの比（画素で）を門で見張る
   "motion-dict", "look-tokens",

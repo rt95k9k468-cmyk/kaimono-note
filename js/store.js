@@ -1381,12 +1381,43 @@
      state は本文つきのまま。作れなければ、本文つきのまま書きます（あふれれば
      保存が落ちて知らせるだけで、何も失いません）。 */
   function liveShape() {
+    let s = state;
     try {
-      return KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
+      s = KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
     } catch (err) {
       console.error("live shape", err);
-      return state;
+      s = state;
     }
+    try { s = slimTodos(s); } catch (err) { console.error("live slim", err); }
+    return s;
+  }
+
+  /* やることの既定値の欄を省いた浅い複製（R26 の段1。docs/storage.md「R26 の案」）。元と写しへ
+     書くときだけ。reconcile() が同じ既定で埋め戻すので、記憶・書き出し・控え・Dropbox は今のまま。
+     省くのは下の一覧（許す欄）だけ——欠けても reconcile() の値が一つに決まり、ほかの欄の読み方を
+     変えない欄。id・題・作成日（今日で埋まる）・並び（何件目かで埋まる）・repeatEvery（種類で 7 か
+     null）は入れない。足すときは tests/live-slim.js の形にも足す。表は関数の中に（TDZ）。 */
+  function slimDefaults() {
+    return {
+      due: null, deadline: null, repeat: null, repeatDays: [], repeatNth: null, part: null, time: null,
+      minutes: null, lead: null, shelf: null, waitFor: null, review: null, slips: [], editedAt: null,
+      notifiedFor: null, memo: "", flagged: false, done: false, doneAt: null, archived: false,
+      archivedAt: null, trace: false, shop: false, subs: [], subState: {}, skipDays: [], icon: null,
+    };
+  }
+  function slimTodos(s) {
+    if (!s || !Array.isArray(s.todos) || !s.todos.length) return s;
+    const D = new Map(Object.entries(slimDefaults()));
+    const isDefault = (v, d) => (Array.isArray(d) ? Array.isArray(v) && !v.length
+      : d && typeof d === "object" ? !!v && typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length
+      : v === d);
+    const todos = s.todos.map((t) => {
+      if (!t || typeof t !== "object") return t;
+      const out = {};
+      for (const k of Object.keys(t)) if (!(D.has(k) && isDefault(t[k], D.get(k)))) out[k] = t[k];
+      return out;
+    });
+    return { ...s, todos };
   }
 
   let saveTimer = null;
@@ -5026,6 +5057,7 @@
     get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
     // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
     liveChars: () => JSON.stringify(liveShape()).length,
+    slimKeys: () => Object.keys(slimDefaults()),
     saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
