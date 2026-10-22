@@ -2909,9 +2909,10 @@
 .diet-cell[data-type="sleep"]  .diet-cell-ico { color: var(--c-m-sleep); }
 .diet-cell[data-type="drink"]  .diet-cell-ico { color: var(--c-m-drink); }
 .diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
-/* 記録の無い枠は輪が無い低い札。隣に輪があって背が伸びても、字は真ん中に。 */
+/* 記録の無い枠は輪が無い低い札。隣に輪があって背が伸びても、字は真ん中に。
+   「—」は墨を細字で（薄墨は暗い面のお酒の地 --c-urge-bg の上で 3.4:1、--c-text-2 でも 4.3:1。legibility.js）。 */
 .diet-cell.is-blank { justify-content: center; }
-.diet-cell.is-blank .diet-cell-value { color: var(--c-text-3); }
+.diet-cell.is-blank .diet-cell-value { color: var(--c-text); font-weight: var(--fw-regular); }
 
 /* 見出しの右に添える一言（この数字は何時時点か、など）。 */
 .section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-3); letter-spacing: 0; }
@@ -7377,19 +7378,33 @@ button.note-when:active { opacity: var(--press-fade); }
   /* 歩いたぶんの道と、通った・済ませた停留所（.is-past）の色。いまの丸だけを濃く残す
      （2026年10月3日・利用者が三つ並べた中から 65% を選んだ。上の時刻は白のまま）。 */
   --road-past: color-mix(in srgb, var(--c-primary-fill) 65%, var(--c-sheet));
-  /* 歩く人の色（利用者が選んだ絵のまま。脚だけ白い紙で沈まないよう少し濃く）。 */
-  --me-skin: #f7a845;
-  --me-shirt: #7f8ccd;
-  --me-shirt-d: #6571c4;
-  --me-leg: #c6c1bd;
-  --me-leg-b: #a29d9a;
-  /* 寝床（利用者が貼った絵の色を、歩く人の色に寄せて。台は奥の袖の藍）。 */
-  --bed-frame: var(--me-shirt-d);
-  --bed-sheet: #bfe2f2;
-  --bed-quilt: #f2b3b5;
-  --bed-fold: #f8d5d8;
-  --bed-z: #f0b04e;
+  /* 歩く人と寝床は主色の一色（形は利用者が選んだ絵のまま。人は「いま」の印なので主色。
+     2026年10月22日・design-review の Y5。前は肌・シャツ・ズボン・布団の色つき）。部品の名前は残す。 */
+  --me-skin: var(--c-primary);
+  --me-shirt: var(--c-primary);
+  --me-shirt-d: var(--c-primary);
+  --me-leg: var(--c-primary);
+  --me-leg-b: var(--c-primary);
+  --bed-frame: var(--c-primary);
+  --bed-sheet: var(--c-primary);
+  --bed-quilt: var(--c-primary);
+  --bed-fold: var(--c-primary);
+  --bed-z: var(--c-primary);
   padding: var(--sp-2) var(--sp-4) var(--sp-2);
+}
+/* 暗い面の道は紙へ寄せる（design-review の Y11）。同じ塗りでも暗い紙の上では明るい面の倍ほど強く見え、
+   道と橙の延びが画面の主役になっていた。明るい面と同じ強さに。橙は橙のまま（10月の利用者の声）。 */
+:root[data-theme="dark"] .day-road {
+  --road-go: color-mix(in srgb, var(--c-primary-fill) 60%, var(--c-sheet));
+  --road-past: color-mix(in srgb, var(--c-primary-fill) 42%, var(--c-sheet));
+  --road-late: color-mix(in srgb, #f0a35e 60%, var(--c-sheet));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .day-road {
+    --road-go: color-mix(in srgb, var(--c-primary-fill) 60%, var(--c-sheet));
+    --road-past: color-mix(in srgb, var(--c-primary-fill) 42%, var(--c-sheet));
+    --road-late: color-mix(in srgb, #f0a35e 60%, var(--c-sheet));
+  }
 }
 .road-map { position: relative; max-width: 440px; margin: 0 auto; }
 .road-svg {
@@ -7406,8 +7421,8 @@ button.note-when:active { opacity: var(--press-fade); }
   transition-delay: var(--m-press);
 }
 .road-went { stroke: var(--road-past); }
-/* 寝ていたぶんは、薄くなった寝床（.road-bed の .16）と同じ薄さの紫。 */
-.road-slept { stroke: color-mix(in srgb, var(--bed-frame) 16%, var(--c-sheet)); stroke-width: 9; }
+/* 寝ていたぶんは墨の淡い灰（寝床が主色になったので、主色の薄い「これから」と分ける）。 */
+.road-slept { stroke: color-mix(in srgb, var(--c-text) 10%, var(--c-sheet)); stroke-width: 9; }
 /* 時の数字（目盛りの代わり。2026年10月2日）。道の上に、立てたまま。これからの薄い道の上は
    塗りの色、歩いたぶん（.is-went）と停留所の塗りの上（.is-over）は白。 */
 .road-hours text {
