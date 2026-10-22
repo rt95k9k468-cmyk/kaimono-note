@@ -1260,7 +1260,8 @@ a { color: var(--c-primary); }
    空は出さず、帯の上端から画面の下まで一枚（帯の後ろ、空より手前）に広重を敷く。画面は地を塗らず
    角も丸めない——題と中身が一つの面に乗る。中身は画面の中で送られ、帯の下で切れる（帯の後ろを流れない）。
    絵の値は screen-notes.js が帯にも書く（js/season-art.js の apply）。絵が切ってあれば地の色だけ。
-   席を移る一拍で薄れて入れ替わる。 */
+   席を移る一拍で薄れて入れ替わる。
+   絵は題と「すべてのノート」の段まで（--season-end）。一覧の下には敷かない（2026年10月22日・docs/season-art.md）。 */
 .head::after {
   content: "";
   position: absolute;
@@ -1277,10 +1278,10 @@ a { color: var(--c-primary); }
 .head[data-season]::after {
   --season-k: inherit;
   --season-veil: color-mix(in srgb, var(--c-bg) calc(100% - var(--season-alpha, 34%)), transparent);
-  --season-h: calc(100vw * var(--season-ar, 0.67));
+  --season-end: 130px;
   background:
-    linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent 55%),
-    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-h) * 0.55), var(--c-bg) var(--season-h)),
+    linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent var(--season-end)),
+    linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-end) - 70px), var(--c-bg) var(--season-end)),
     var(--season-img, none) center top / 100vw auto no-repeat,
     var(--c-bg);
 }
@@ -1662,11 +1663,17 @@ a { color: var(--c-primary); }
   padding: 2px var(--sp-3) var(--tab-drop);
   /* 地はここではなく ::before（カプセル本体）が持ちます。帯そのものは
      ただの枠なので、指も素通りさせます——カプセルの外の左右と下は、
-     下の一覧に触れたままにしておきたいので。 */
-  background: none;
+     下の一覧に触れたままにしておきたいので。幕は下の規則の言い分。 */
+  background: linear-gradient(to top, var(--bar-veil, var(--c-sheet)) 30%, transparent);
   pointer-events: none;
   z-index: var(--z-bar);
 }
+/* 帯の裏の幕（上の .tabbar の background。design-review の Y7・柱F。2026年10月22日）。送った中身の字がガラス越しに読めて席の名前と
+   重なっていた。地の色から透明への一枚で、下三割だけ地のまま。ぼかしは足さない（重くしない）。
+   上へ行くほど透けるので「まだ続きがある」は残る。後ろが暗いと読んだ帯（.is-on-dark。暗い面ではいつも）は
+   夜の色の幕——明るい幕は暗い地の上に白く浮く。ノートと設定は紙を持たないので地の色（--c-bg）。 */
+.tabbar.is-on-dark { --bar-veil: var(--glass-night-cast); }
+.screens:is(:has(#head.is-notes), :has(#screen-settings.is-active)) ~ .tabbar { --bar-veil: var(--c-bg); }
 
 /* カプセル本体。
 
