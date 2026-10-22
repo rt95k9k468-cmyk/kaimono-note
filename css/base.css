@@ -900,6 +900,20 @@ html.has-top-tap::after { content: ""; display: block; height: 1px; }
    なので、月をめくるだけで「上へ戻れ」と言ったことになります。
    ここに錨で守るべき中身は無い——1pxしかないので、外します。 */
 html.has-top-tap { overflow-anchor: none; }
+/* 上のきわの見えない一色の帯（2026年10月22日）。iOS を更新した日から、ホーム画面アプリだけ
+   上の帯の字がぼやけた。新しい iOS は上のきわに貼りついた（fixed）一色の面を探し、見つからないと
+   そこへぼかしを掛けるとみる。地の色を持つ fixed の帯を置き、塗りは字の形にだけ（字が無いので
+   何も描かれず、場所も取らない）。実機で直った。消さない（tests/sky.js が見張る。docs/screens-nav.md）。 */
+.edge-top {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 12px;
+  z-index: 2147483647;
+  pointer-events: none;
+  background-color: var(--c-bg);
+  -webkit-background-clip: text;
+          background-clip: text;
+}
 
 body {
   font-family: var(--font);

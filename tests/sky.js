@@ -437,6 +437,15 @@ function rgbOf(s) {
   /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   c.check("時計の帯は default（black-translucent に戻さない）", /apple-mobile-web-app-status-bar-style" content="default"/.test(html));
+  /* 上のきわの見えない一色の帯（無いと iOS 更新後のホーム画面アプリで上の字がぼやける。docs/screens-nav.md） */
+  const edge = await page.evaluate(() => {
+    const e = document.querySelector("body > .edge-top");
+    if (!e) return null;
+    const s = getComputedStyle(e);
+    return { pos: s.position, top: e.getBoundingClientRect().top, pe: s.pointerEvents, clip: s.backgroundClip || s.webkitBackgroundClip };
+  });
+  c.check("上のきわに見えない一色の帯（fixed・押せない・字の形にだけ塗る）",
+    !!edge && edge.pos === "fixed" && edge.top === 0 && edge.pe === "none" && edge.clip === "text", JSON.stringify(edge));
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
