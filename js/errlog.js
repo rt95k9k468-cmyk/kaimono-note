@@ -152,10 +152,22 @@
     try { sizing = CSS.supports("field-sizing", "content"); autospace = CSS.supports("text-autospace", "normal"); } catch (_) { /* 無い */ }
     const head = `版 ${version} | ホーム画面 ${yes(home)} | persisted ${persisted == null ? "?" : yes(persisted)}`
       + ` | field-sizing ${yes(sizing)} | text-autospace ${yes(autospace)}`;
+    /* 寸法（題のぼやけの切り分け。端数があれば層が半端な画素に乗っている）。 */
+    let size = "";
+    try {
+      const vv = window.visualViewport;
+      const bar = document.querySelector("#head > .topbar");
+      const r = bar ? bar.getBoundingClientRect() : null;
+      const n = (v) => (v == null ? "?" : Math.round(v * 100) / 100);
+      size = `寸法 | dpr ${n(window.devicePixelRatio)} | scrollY ${n(window.scrollY)} | inner ${n(window.innerHeight)}`
+        + ` | vv ${vv ? `${n(vv.offsetTop)}+${n(vv.height)}×${n(vv.scale)}` : "?"}`
+        + ` | 帯 ${r ? `${n(r.left)},${n(r.top)} ${n(r.width)}×${n(r.height)}` : "?"}`
+        + ` | ${bar ? getComputedStyle(bar).position : "?"}`;
+    } catch (_) { /* 測れない */ }
     const from = { net: "ネット", kept: "控え" };
     const rows = launches().slice().reverse().map((l) => `起動 ${from[l.from] || "?"} | 入口 ${l.entry == null ? "?" : l.entry + "ms"}`
       + ` | 組み終わり ${l.built}ms${l.reload ? " | 読み直し" : ""}`);
-    return [head, ...rows].join("\n");
+    return [head, size, ...rows].filter(Boolean).join("\n");
   }
 
   /** コピーする字。端末の事実のあとに、いちばん新しいものから。 */

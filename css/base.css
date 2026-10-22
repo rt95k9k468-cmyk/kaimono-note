@@ -1604,6 +1604,10 @@ a { color: var(--c-primary); }
 }
 
 .topbar.is-stuck { border-bottom-color: var(--c-border); }
+/* 試し（2026年10月22日）：共通の帯は送られない（`.screens` の外）ので貼りつきは要らない。
+   iOS 26 のホーム画面アプリだけで題・虫めがね・歯車がぼやける件で、sticky が作る別の層を
+   疑って外している。直らなければこの規則ごと消す（docs/screens-nav.md）。 */
+.head > .topbar { position: relative; }
 
 .topbar-row {
   display: flex;
