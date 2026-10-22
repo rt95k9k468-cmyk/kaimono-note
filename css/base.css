@@ -1605,10 +1605,6 @@ a { color: var(--c-primary); }
 }
 
 .topbar.is-stuck { border-bottom-color: var(--c-border); }
-/* 試し（2026年10月22日）：ホーム画面アプリだけ題・虫めがね・歯車がぼやける件。iOS が
-   画面の上のきわに敷くぼかし（場所に付く）か、帯そのものの描き方（物に付く）かを分けるため、
-   題の行を 24px 下げている。確かめたら外す（docs/screens-nav.md）。 */
-.head > .topbar { padding-top: calc(var(--safe-t) + var(--sp-1) + 24px); }
 
 .topbar-row {
   display: flex;
