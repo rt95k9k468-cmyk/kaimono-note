@@ -424,6 +424,8 @@
     return { per, all, cut };
   }
 
+  const LIVE_CAP = 2000000;
+
   /** localStorage にあと何字書けるか（試しに書いて消す。同期のまま終えるので、途中で保存が割りこまない）。 */
   function roomLeft() {
     const K = "kn-room-probe", CAP = 4 * 1024 * 1024;
@@ -469,7 +471,9 @@
     const { sources, bad } = await read(files).catch(() => ({ sources: [], bad: files.map((f) => f.name) }));
     const have = KN.store.googleIds();
     const today = U.todayKey();
-    const room = roomLeft();
+    /* 入れたあとの記録は200万字まで（日記の取り込みを断る線と同じ。枠はおよそ260万字、残りは
+       毎日の書き足しに。2026年10月22日、八割まで入れて記録が241万字になったため）。plan() は room の八割まで。 */
+    const room = Math.min(roomLeft(), Math.max(0, LIVE_CAP - KN.store.liveChars()) / 0.8);
     const P = S();
     const body = node(html`<div class="stack"></div>`);
     const foot = node(html`<div class="stack gap-2"><button class="btn btn-primary js-go">${icon("download")}<span class="js-word">取り込む</span></button></div>`);

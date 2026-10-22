@@ -1144,6 +1144,7 @@
     const deck = document.getElementById("deck");
     if (deck) deck.style.transform = "";
     const from = active;
+    if (from !== id && KN.ui.closePops) KN.ui.closePops();
     active = id;
     /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
        のぞかせた頭は「この後ろに買うものがある」という札なので、daily や

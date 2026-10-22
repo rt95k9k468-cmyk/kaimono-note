@@ -6194,17 +6194,89 @@
     rest.concat(done).forEach((l) => list.append(l));
     list.hidden = false;
     pop.el.append(list);
-    if (rest.length && done.length) {
+    /* 済みの畳み。開いたあとに済ませた手順も、ここへ沈めて見えなくする（2026年10月22日、利用者）。
+       「済み n」を開いているあいだは、済ませてもその場に残す（開いて見ているので）。 */
+    let folded = rest.length > 0;
+    const bump = () => {
+      more.classList.remove("is-m-check");
+      void more.offsetWidth;
+      more.classList.add("is-m-check");
+    };
+    const showMore = () => {
+      if (!more) {
+        more = node(html`<button type="button" class="tl-subs-more"></button>`);
+        more.addEventListener("click", (e) => {
+          e.stopPropagation();
+          folded = false;
+          done.forEach((l) => { l.hidden = false; });
+          more.remove(); more = null;
+          pop.place();
+        });
+        pop.el.append(more);
+      }
+      more.textContent = `済み ${done.length}`;
+    };
+    if (folded && done.length) {
       done.forEach((l) => { l.hidden = true; });
-      more = node(html`<button type="button" class="tl-subs-more">済み ${done.length}</button>`);
-      more.addEventListener("click", (e) => {
-        e.stopPropagation();
-        done.forEach((l) => { l.hidden = false; });
-        more.remove(); more = null;
-        pop.place();
-      });
-      pop.el.append(more);
+      showMore();
     }
+    /* チェックが描かれ終わってから、行は済みの畳みへ沈み（item-drop と同じ下向き）、
+       席を詰める。畳みの数は一つ弾む。
+       - 沈むあいだに押し直したら（済みでなくなったら）、取りやめて元の席へ（すぐ押し直せば戻る）。
+       - 指が小窓に触れているあいだは席を詰めない（長押しの指の下で行がずれないように）。 */
+    let pressing = false;
+    const waiting = [];
+    pop.el.addEventListener("pointerdown", () => {
+      pressing = true;
+      const up = () => {
+        document.removeEventListener("pointerup", up, true);
+        document.removeEventListener("pointercancel", up, true);
+        pressing = false;
+        waiting.splice(0).forEach((f) => f());
+      };
+      document.addEventListener("pointerup", up, true);
+      document.addEventListener("pointercancel", up, true);
+    });
+    const back = (l) => {
+      l.classList.remove("is-sinking", "is-collapsing");
+      l.style.height = "";
+      l.hidden = false;
+      if (done.includes(l)) done.splice(done.indexOf(l), 1);
+      if (!rest.includes(l)) rest.push(l);
+    };
+    const sink = (l) => {
+      rest.splice(rest.indexOf(l), 1);
+      done.push(l);
+      const h = l.offsetHeight;
+      const still = () => l.isConnected && (doneOf(l) || (back(l), false));
+      setTimeout(() => {
+        if (!still()) return;
+        if (!folded) { l.hidden = false; return; }
+        l.classList.add("is-sinking");
+        setTimeout(() => {
+          const collapse = () => {
+            if (!still()) return;
+            l.style.height = `${h}px`;
+            void l.offsetHeight;
+            l.classList.add("is-collapsing");
+            l.style.height = "0px";
+            setTimeout(() => {
+              l.hidden = true;
+              l.classList.remove("is-sinking", "is-collapsing");
+              l.style.height = "";
+              list.append(l);
+              showMore(); bump(); pop.place();
+            }, KN.motion.ms("--m-state"));
+          };
+          if (pressing) waiting.push(collapse); else collapse();
+        }, KN.motion.ms("--m-delete"));
+      }, KN.motion.ms("--m-check"));
+    };
+    rest.slice().forEach((l) => {
+      new MutationObserver(() => {
+        if (rest.includes(l) && doneOf(l)) sink(l);
+      }).observe(l, { attributes: true, attributeFilter: ["class"] });
+    });
     pop.place();
   }
 

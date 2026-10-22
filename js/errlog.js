@@ -167,7 +167,17 @@
     const from = { net: "ネット", kept: "控え" };
     const rows = launches().slice().reverse().map((l) => `起動 ${from[l.from] || "?"} | 入口 ${l.entry == null ? "?" : l.entry + "ms"}`
       + ` | 組み終わり ${l.built}ms${l.reload ? " | 読み直し" : ""}`);
-    return [head, size, ...rows].filter(Boolean).join("\n");
+    /* 記録の大きさと、大きい棚（鍵の名前と字数だけ。中身は出さない）。枠は iPhone でおよそ260万字。 */
+    let parts = "";
+    try {
+      const raw = KN.store && localStorage.getItem(KN.store.KEY);
+      if (raw) {
+        const o = JSON.parse(raw);
+        const top = Object.keys(o).map((k) => [k, JSON.stringify(o[k] ?? null).length]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        parts = `記録 ${raw.length}字 | ` + top.map(([k, n]) => `${k} ${n}`).join(" | ");
+      }
+    } catch (_) { /* 測れない */ }
+    return [head, size, parts, ...rows].filter(Boolean).join("\n");
   }
 
   /** コピーする字。端末の事実のあとに、いちばん新しいものから。 */

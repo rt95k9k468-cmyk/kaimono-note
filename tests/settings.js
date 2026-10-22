@@ -149,6 +149,13 @@ const { open, checker } = require("./lib");
     && has("続けて同じ").n === 3, JSON.stringify(E1.list.map((r) => [r.msg, r.n])));
   t.check("日記の道で起きたものは、文ではなく種類だけ", !E1.raw.includes("日記の本文") && E1.list.some((r) => r.file === "diary-idb.js" && r.msg === "Error"),
     JSON.stringify(E1.list.find((r) => r.file === "diary-idb.js")));
+  const parts = await page.evaluate(async () => {
+    KN.store.update((s) => { s.todos.push({ id: "t-errlog", title: "大きさの試験の中身" }); });
+    await new Promise((r) => setTimeout(r, 1200));
+    return KN.errlog.text().split("\n").find((l) => l.startsWith("記録 ")) || "";
+  });
+  t.check("コピーに記録の大きさと大きい棚の字数（鍵の名前と数だけ・中身は出さない）",
+    /^記録 \d+字 \| \w+ \d+/.test(parts) && !parts.includes("大きさの試験の中身"), parts);
   t.check("控えは store の外の鍵（記録にも書き出しにも乗らない）",
     await page.evaluate(() => !JSON.stringify(KN.store.get()).includes("試験のエラー")
       && !KN.store.exportJSON().includes("試験のエラー") && !(localStorage.getItem("kaimono-note-v2") || "").includes("試験のエラー")));
