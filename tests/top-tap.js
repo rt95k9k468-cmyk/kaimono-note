@@ -16,6 +16,15 @@ const { open, checker } = require("./lib");
     document.querySelector(".screen.is-active").dataset.screen === i
     && !document.querySelector(".screen.is-face-front, .screen.is-face-settle"), id, { timeout: 4000 });
 
+  /* 試しのあいだ（app.js の TOP_TAP_TRIAL_OFF）は 1px を送らないことを確かめて終わる。 */
+  if (await page.evaluate(() => KN.app.topTapTrialOff)) {
+    t.check("試しのあいだは文書を送らない",
+      await page.evaluate(() => !document.documentElement.classList.contains("has-top-tap") && window.scrollY === 0));
+    t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
+    await browser.close();
+    t.done();
+    return;
+  }
   t.check("タッチの端末では文書が 1px 送られて待つ",
     await page.evaluate(() => document.documentElement.classList.contains("has-top-tap") && window.scrollY >= 1));
 

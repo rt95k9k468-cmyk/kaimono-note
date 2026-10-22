@@ -1540,6 +1540,8 @@
 
   /* The one pixel the document is given, and where it rests. */
   const TOP_TAP_PARK = 1;
+  const TOP_TAP_TRIAL_OFF = true;
+  KN.app.topTapTrialOff = TOP_TAP_TRIAL_OFF;
   const topTapOn = () => document.documentElement.classList.contains("has-top-tap");
   /* 紙を閉じた直後は（閉じる拍にキーボードも下りる）、窓が 0 へ戻るのを上のきわの
      一押しと読みません（iPhone でノートを読んで戻ると一覧が頭へ送られた。
@@ -1613,6 +1615,11 @@
        there is one. On a desktop the pixel would just be a pixel of wheel
        travel that jumps the list to the top for no reason. */
     if (!window.matchMedia || !window.matchMedia("(pointer: coarse)").matches) return;
+    /* 試し（2026年10月22日）：iOS 26 は文書が 1px でも送られていると、状態バーの下に
+       ぼかしの帯を敷き、上の帯の題がずっとぼやける——その見立てを実機で確かめるあいだ、
+       1px を送らない（状態バーを押して上へは効かない。題を押して上へは上のまま）。
+       戻すときは TOP_TAP_TRIAL_OFF を false に（docs/screens-nav.md）。 */
+    if (TOP_TAP_TRIAL_OFF) return;
 
     const root = document.documentElement;
     root.classList.add("has-top-tap");
