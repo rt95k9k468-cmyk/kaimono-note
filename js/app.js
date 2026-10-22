@@ -543,9 +543,7 @@
     /* 数は、その面が出ているときだけ。価格を見ているのに「買うもの3件」と
        出ていると、いま見ている画面の数だと読まれます。 */
     paintTabBadge("list", active === "prices" ? 0 : tripCount());
-    /* やることは点だけ（数を出さない）。今日の分と遅れた分は時刻が過ぎるたびに増える
-       （朝3→夜6）——「溜まった数」を見せることになるので（design-review、docs/tabbar.md）。 */
-    paintTabBadge("todo", todoBadge(), true);
+    paintTabBadge("todo", todoBadge());
     /* ダイエットに数は出しません。「残り◯件」にあたるものが無いからです——
        体重を量っていない日を「1件」と数えるのは催促であって、記録ではない。
        daily も同じで、書いていない日は「0件」ではなく、ただの休みです。 */
@@ -577,13 +575,11 @@
     if (face) KN.motion.fire("poke", face);
   };
 
-  function paintTabBadge(tabId, count, dot) {
+  function paintTabBadge(tabId, count) {
     const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
     if (!tab) return;
     const existing = tab.querySelector(".tab-badge");
-    if (count > 0 && dot) {
-      if (!existing) tab.append(node(html`<span class="tab-badge is-dot" aria-label="あり"></span>`));
-    } else if (count > 0) {
+    if (count > 0) {
       const text = count > 99 ? "99+" : String(count);
       if (existing) {
         /* **数が変わったときだけ**、一度だけ持ち上げます（`--m-number`）。
