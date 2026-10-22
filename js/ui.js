@@ -1488,6 +1488,7 @@
       if (o) pop.style.transformOrigin = o;
       pop.classList.remove("is-open");
       document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("pointerdown", onOutside, true);
       cover.remove();
       setTimeout(() => pop.remove(), KN.motion.ms("--m-pop-grow") + 40);
       if (onClose) onClose();
@@ -1498,9 +1499,17 @@
       e.stopImmediatePropagation();
       close();
     };
+    /* 覆いより手前にある帯（上の帯・下の帯）を押しても閉じる。覆いや小窓（中から開いた小窓も）の
+       上の指は、覆いの click・小窓の中の操作に任せる。 */
+    const onOutside = (e) => {
+      if (pops[pops.length - 1] !== close) return;
+      if (e.target.closest && e.target.closest(".note-pop, .note-pop-cover")) return;
+      close();
+    };
     pops.push(close);
     cover.addEventListener("click", close);
     document.addEventListener("keydown", onKey, true);
+    document.addEventListener("pointerdown", onOutside, true);
     document.body.append(cover, pop);
     /* 横は left で決め、画面の中へ収めます。right で置くと、口が左寄りで
        小窓が幅広いとき（タグの「＋」）、左の外へはみ出していた（2026年10月1日、

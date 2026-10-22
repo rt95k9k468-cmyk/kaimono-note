@@ -60,6 +60,16 @@ const DAY = "2026-10-20";
     a2b.wrapBottom == null && await page.evaluate(() => !document.querySelector(".note-pop.is-subs")
       && !!document.querySelector("#screen-todo .tl-sub-list[hidden]")), JSON.stringify(a2b));
 
+  // 下の帯を押しても小窓は閉じる（覆いより手前の帯の上で、小窓と覆いが残っていた）。
+  await page.click('#screen-todo .tl-row:has-text("朝のしたく") .tl-subs-chip');
+  await page.waitForSelector(".note-pop.is-subs.is-open", { timeout: 3000 });
+  await page.click('.tab[data-tab="diet"]');
+  await page.waitForTimeout(500);
+  c.check("下の帯を押すと手順の小窓は閉じる（覆いも残らない）",
+    await page.evaluate(() => !document.querySelector(".note-pop.is-subs") && !document.querySelector(".note-pop-cover")));
+  await page.click('.tab[data-tab="todo"]');
+  await page.waitForTimeout(500);
+
   /* 長押しで動かす。会議（いま押し下がっている）を、指の高さ＝12:35 あたりへ。
      端で送らないよう、先に一覧の頭を画面の上のほうへ。 */
   await page.evaluate(() => {
