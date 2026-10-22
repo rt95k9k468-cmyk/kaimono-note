@@ -89,6 +89,15 @@ const PX_MIN = 1.2;
   c.check("手順をひらいても札は伸びない（小窓に出る）",
     Math.abs(r.prep.h - shut.h) < 1 && Math.abs(r.prep.cardTop - shut.cardTop) < 1, JSON.stringify([shut, r.prep]));
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+  /* 手順を済ませると、チェックが描かれてから済みの畳みへ沈んで見えなくなり、「済み 1」になる。 */
+  await page.click(".note-pop.is-subs .tl-sub:first-child button.check");
+  await page.waitForFunction(() => {
+    const ls = [...document.querySelectorAll(".note-pop.is-subs .tl-sub")];
+    const m = document.querySelector(".note-pop.is-subs .tl-subs-more");
+    return ls.some((l) => l.hidden) && m && /済み 1/.test(m.textContent);
+  }, null, { timeout: 5000 });
+  c.check("済ませた手順は小窓から消え、残りは二つ",
+    await page.$$eval(".note-pop.is-subs .tl-sub:not([hidden])", (l) => l.length) === 2);
   /* 他のタブへ移れば、手順の小窓は閉じる（帯は覆いより手前なので、覆いでは閉じない）。 */
   await page.evaluate(() => KN.app.showScreen("notes"));
   await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });

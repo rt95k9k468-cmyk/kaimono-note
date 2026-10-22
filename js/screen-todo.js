@@ -6194,17 +6194,61 @@
     rest.concat(done).forEach((l) => list.append(l));
     list.hidden = false;
     pop.el.append(list);
-    if (rest.length && done.length) {
+    /* 済みの畳み。開いたあとに済ませた手順も、ここへ沈めて見えなくする（2026年10月22日、利用者）。
+       「済み n」を開いているあいだは、済ませてもその場に残す（開いて見ているので）。 */
+    let folded = rest.length > 0;
+    const bump = () => {
+      more.classList.remove("is-m-check");
+      void more.offsetWidth;
+      more.classList.add("is-m-check");
+    };
+    const showMore = () => {
+      if (!more) {
+        more = node(html`<button type="button" class="tl-subs-more"></button>`);
+        more.addEventListener("click", (e) => {
+          e.stopPropagation();
+          folded = false;
+          done.forEach((l) => { l.hidden = false; });
+          more.remove(); more = null;
+          pop.place();
+        });
+        pop.el.append(more);
+      }
+      more.textContent = `済み ${done.length}`;
+    };
+    if (folded && done.length) {
       done.forEach((l) => { l.hidden = true; });
-      more = node(html`<button type="button" class="tl-subs-more">済み ${done.length}</button>`);
-      more.addEventListener("click", (e) => {
-        e.stopPropagation();
-        done.forEach((l) => { l.hidden = false; });
-        more.remove(); more = null;
-        pop.place();
-      });
-      pop.el.append(more);
+      showMore();
     }
+    /* チェックが描かれ終わってから、行は済みの畳みへ沈み（item-drop と同じ下向き）、
+       席を詰める。畳みの数は一つ弾む。 */
+    const sink = (l) => {
+      rest.splice(rest.indexOf(l), 1);
+      done.push(l);
+      const h = l.offsetHeight;
+      setTimeout(() => {
+        if (!l.isConnected || !folded) { l.hidden = false; return; }
+        l.classList.add("is-sinking");
+        setTimeout(() => {
+          l.style.height = `${h}px`;
+          void l.offsetHeight;
+          l.classList.add("is-collapsing");
+          l.style.height = "0px";
+          setTimeout(() => {
+            l.hidden = true;
+            l.classList.remove("is-sinking", "is-collapsing");
+            l.style.height = "";
+            list.append(l);
+            showMore(); bump(); pop.place();
+          }, KN.motion.ms("--m-state"));
+        }, KN.motion.ms("--m-delete"));
+      }, KN.motion.ms("--m-check"));
+    };
+    rest.slice().forEach((l) => {
+      new MutationObserver(() => {
+        if (rest.includes(l) && doneOf(l)) sink(l);
+      }).observe(l, { attributes: true, attributeFilter: ["class"] });
+    });
     pop.place();
   }
 
