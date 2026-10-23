@@ -845,7 +845,7 @@
   /** Nothing matched the name: a plain package, painted in whatever colour the
    *  category uses, so the row still belongs to a group by sight. */
   const fallback = (tint) => S(`
-    <rect x="3.4" y="5.6" width="17.2" height="14.4" rx="2" fill="${tint || "#b9c3be"}"/>
+    <rect x="3.4" y="5.6" width="17.2" height="14.4" rx="2" fill="${KN.util.escapeHtml(tint || "#b9c3be")}"/>
     <rect x="3.4" y="5.6" width="17.2" height="4.2" rx="2" fill="#000000" opacity=".17"/>
     <rect x="10.9" y="9.8" width="2.2" height="10.2" fill="#000000" opacity=".13"/>
   `);

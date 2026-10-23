@@ -787,26 +787,6 @@
     } catch (err) { return Promise.resolve(null); }
   }
 
-  /**
-   * アドレスの #health=… から。ショートカットが「URLを開く」で渡す道です。
-   * ホーム画面のアプリとSafariは別々の保存領域なので、この道が効くのは
-   * Safariで開いているときだけ——それでも、最初の一回を試すには十分です。
-   */
-  function importFromHash() {
-    const m = /[#&]health=([^&]+)/.exec(location.hash || "");
-    if (!m) return null;
-    let text = "";
-    try { text = decodeURIComponent(m[1]); } catch (err) { text = m[1]; }
-    // 二重に隠したいときのために base64 も受けます
-    if (/^[A-Za-z0-9+/=]+$/.test(text) && text.length > 24) {
-      try { text = decodeURIComponent(escape(atob(text))); } catch (err) { /* そのまま */ }
-    }
-    const res = importText(text);
-    // 読んだら消す。同じURLで開き直すたびに入れ直すのは、取り込みではなく事故です。
-    history.replaceState(null, "", location.pathname + location.search + "#diet");
-    return res;
-  }
-
   /** 取り込みの結果を、そのまま人に読ませられる一行に。 */
   function describe(res) {
     if (!res) return "";
@@ -825,7 +805,7 @@
   }
 
   KN.healthSync = {
-    importText, importFromClipboard, importFromHash, describe, preview,
+    importText, importFromClipboard, describe, preview,
     locked, LOCKED_MSG,
     clipboardState, explain, readClipboard,
     parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
