@@ -294,14 +294,11 @@
   function makePath(len) {
     const n = len || 16;
     const out = new Array(n);
-    if (window.crypto && window.crypto.getRandomValues) {
-      const buf = new Uint32Array(n);
-      window.crypto.getRandomValues(buf);
-      for (let i = 0; i < n; i++) out[i] = ALPHABET[buf[i] % ALPHABET.length];
-    } else {
-      // ここに落ちる端末はまず無いが、落ちたときに弱い道を黙って配らない。
-      for (let i = 0; i < n; i++) out[i] = ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-    }
+    /* Math.random で代わりを作らない。当てられる道を黙って配るより、作れないほうがまし
+       （crypto が無い端末は、このアプリの他の所も動かない）。 */
+    const buf = new Uint32Array(n);
+    window.crypto.getRandomValues(buf);
+    for (let i = 0; i < n; i++) out[i] = ALPHABET[buf[i] % ALPHABET.length];
     return "/kn-" + out.join("");
   }
 

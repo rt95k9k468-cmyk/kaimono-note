@@ -102,7 +102,7 @@ npx wrangler deploy
 ## コードのほうのテスト
 
 ```sh
-cd ai && npm install && node worker.test.mjs      # → 46 passed
+cd ai && npm install && node worker.test.mjs      # → 61 passed
 ```
 
 Claude の偽物（fetch の差し替え）を使うので、外に出ず、料金もかかりません。

@@ -44,7 +44,8 @@ const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "pr
   "update-path",                   // roadmap-seamless の N1・N2・N4：版の入れ替えで読み直すのは要るときだけ（見えないとき）・入口は1.5秒で控えへ・控えは揃ってから
   "ime-enter",                     // roadmap-seamless の N5：改行は KN.util.isEnter だけ・変換を決める改行で手順が増えない
   "security-gate",                 // 配信の守り（セキュリティ S1）：CSP の形・外のスクリプト・eval・外への通信（docs/dev.md）
-  "xss-probe"];                    // 画面の中の守り（セキュリティ S2）：記録の字が要素にならない（docs/dev.md）
+  "xss-probe",                     // 画面の中の守り（セキュリティ S2）：記録の字が要素にならない（docs/dev.md）
+  "relay-worker"];                 // 外との口の守り（セキュリティ S3）：中継所のふるまいと埋めた写し（docs/dev.md）
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */

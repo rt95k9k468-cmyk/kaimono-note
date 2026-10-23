@@ -102,6 +102,15 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - 道具の頁（`diary-import.html`）は `esc()` を通す。日記の字を `innerHTML` に入れない。
 - **外から来るリンク（アドレスの `#…`）で記録を書かない。** 開く・見せるだけ（`#health=` の受け口は使わない道だったので消した）。
 
+## 外との口の守り（セキュリティ S3、2026年10月23日）
+
+- 中継所・AI の窓口は**道が合言葉**。それでも漏れたときに口を広げない：本文は `Content-Length` を見て読む前に断る・
+  押し先は押しの窓口（Apple・Google・Mozilla・Microsoft）だけ・DELETE の棚の名前は置くときと同じ形・返事は `nosniff`。
+- `relay/worker.js` を直したら `node relay/embed.js`（アプリが配る写し）。`tests/relay-worker.js`（門）が中継所の試験と写しのずれを見る。
+  `ai/` の試験は SDK が要るので門の外（`cd ai && npm ci --omit=dev && node worker.test.mjs`）。
+- ワーカーの直しは、利用者が Cloudflare に置き直すまで効かない。置き直さなくても今の口は動く（アプリ側は変えていない）。
+- 道は `crypto.getRandomValues` だけで作る（`Math.random` の代わりを持たない）。Dropbox は PKCE＋コードを貼る形（戻り先なし）のまま。
+
 ## アーキテクチャのクセ
 
 - グローバル名前空間は `KN.*`。`<script>` の読み込み順は `index.html` が

@@ -385,7 +385,12 @@ const verOf = (res) => res.headers.get("x-kn-ver");
   check("中身の読めない押し先は断る",
     (await call(env, "POST", PATH + "?bell=sub", "{\"endpoint\":\"http://x\"}")).status === 400);
 
-  const SUB = JSON.stringify({ endpoint: "https://push.test/abc", keys: { p256dh: "x", auth: "y" } });
+  check("押しの窓口でない押し先は断る（よその URL へ毎分 POST しない）",
+    (await call(env, "POST", PATH + "?bell=sub", "{\"endpoint\":\"https://example.com/hook\"}")).status === 400
+    && (await call(env, "POST", PATH + "?bell=sub", "{\"endpoint\":\"https://web.push.apple.com.example.com/x\"}")).status === 400
+    && !env.MAIL._m.has("bell:sub"));
+
+  const SUB = JSON.stringify({ endpoint: "https://web.push.apple.com/abc", keys: { p256dh: "x", auth: "y" } });
   check("押し先を置ける", (await call(env, "POST", PATH + "?bell=sub", SUB)).status === 200);
 
   const now = Date.now();
@@ -413,7 +418,7 @@ const verOf = (res) => res.headers.get("x-kn-ver");
   globalThis.fetch = async (u, init) => { sent.push({ u: String(u), init }); return new Response(null, { status: 201 }); };
   try {
     await worker.scheduled({ scheduledTime: now }, env, { waitUntil() {} });
-    check("来た時刻で一度だけ押す", sent.length === 1 && sent[0].u === "https://push.test/abc", String(sent.length));
+    check("来た時刻で一度だけ押す", sent.length === 1 && sent[0].u === "https://web.push.apple.com/abc", String(sent.length));
     const h = (sent[0] && sent[0].init.headers) || {};
     check("中身なし（本文を送らない）", sent[0] && sent[0].init.body === undefined);
     check("TTL と Urgency", h.TTL === "600" && h.Urgency === "high");
@@ -422,7 +427,7 @@ const verOf = (res) => res.headers.get("x-kn-ver");
     if (m) {
       const dec = (s) => JSON.parse(atob(s.replace(/-/g, "+").replace(/_/g, "/")));
       const claims = dec(m[2]);
-      check("aud は押し先の origin", claims.aud === "https://push.test", claims.aud);
+      check("aud は押し先の origin", claims.aud === "https://web.push.apple.com", claims.aud);
       check("sub（連絡先）がある", /^https:\/\//.test(claims.sub || ""));
       check("exp は24時間より先にしない", claims.exp - now / 1000 <= 24 * 3600 && claims.exp > now / 1000);
       const key = await crypto.subtle.importKey("raw", raw, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
@@ -474,6 +479,30 @@ const verOf = (res) => res.headers.get("x-kn-ver");
     (await call(env, "DELETE", PATH)).status === 200 && env.MAIL._m.has("bell:vapid"));
   check("道が違えば bell も 404",
     (await call(env, "POST", "/kn-wrongpath000?bell=key")).status === 404);
+}
+
+/* ---------- 外との口の守り（セキュリティ S3） ---------- */
+{
+  const env = env0();
+  await call(env, "POST", PATH, "steps=1");
+  const got = await call(env, "GET", PATH);
+  check("中身は字のまま見せる（nosniff）", got.headers.get("x-content-type-options") === "nosniff");
+  check("違う道にも nosniff",
+    (await call(env, "GET", "/kn-wrongpath000")).headers.get("x-content-type-options") === "nosniff");
+
+  /* 本文を読む前に、名乗った大きさで断る。本文は一字なので、読んでから測れば通ってしまう。 */
+  const huge = (path, size) => worker.fetch(new Request("https://relay.test" + path, {
+    method: "POST", headers: { "Content-Length": String(size) }, body: "x",
+  }), env);
+  let r;
+  try { r = await huge(PATH, 64 * 1024 + 1); } catch (err) { r = { status: "読んだ：" + err.message }; }
+  check("大きいと名乗った便は読まずに 413", r.status === 413, String(r.status));
+  try { r = await huge(PATH + "?bell=sub", 16 * 1024 + 1); } catch (err) { r = { status: "読んだ：" + err.message }; }
+  check("bell も読まずに 413", r.status === 413, String(r.status));
+
+  check("知らない形の棚は DELETE できない",
+    (await call(env, "DELETE", PATH + "?slot=" + encodeURIComponent("../x"))).status === 400
+    && env.MAIL._m.get("box:text") === "steps=1");
 }
 
 /* ---------- アプリに埋めた写しが、元とずれていない ---------- */

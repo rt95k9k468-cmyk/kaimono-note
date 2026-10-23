@@ -47,6 +47,7 @@ const call = (env, method, path, body, headers) =>
   const miss = await call(env0(), "POST", "/kn-wrong", { kind: "coach", question: "x" });
   check("道が違えば 404", miss.status === 404, String(miss.status));
   check("そのとき Claude は呼ばない", sent.length === 0);
+  check("返事は字のまま見せる（nosniff）", miss.headers.get("x-content-type-options") === "nosniff");
 
   const noPath = await call({ ANTHROPIC_API_KEY: KEY }, "GET", PATH);
   check("AI_PATH が無ければ 500 で止まる", noPath.status === 500, String(noPath.status));

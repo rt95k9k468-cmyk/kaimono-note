@@ -325,48 +325,55 @@ async function check(client) {
   return json({ ok: true, kind: "kurashi-ai", model: model.id });
 }
 
+/* 返すのは JSON と短い字だけです。道をブラウザで開かれても、HTML と読み替えさせません。 */
+const plain = (res) => { res.headers.set("X-Content-Type-Options", "nosniff"); return res; };
+
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS });
-    }
-    /* 道が違えば、それ以上何も言いません。AI_PATH を置き忘れたまま公開すると
-       「合言葉なし」の窓口になり、誰でもあなたの鍵を使えてしまうので、
-       未設定は 404 ではなく、はっきり止めます。 */
-    if (!env.AI_PATH || !/^\/\S{8,}$/.test(env.AI_PATH)) {
-      return fail(500, "AI_PATH が設定されていません（Settings → Variables and Secrets に Secret で置いてください）");
-    }
-    if (url.pathname !== env.AI_PATH) {
-      return new Response("not found", { status: 404, headers: CORS });
-    }
-    if (!env.ANTHROPIC_API_KEY) {
-      return fail(500, "ANTHROPIC_API_KEY が設定されていません（Settings → Variables and Secrets に Secret で置いてください）");
-    }
-
-    /* アプリは60秒で待ちきるので、それより長く粘っても誰も受け取りません。
-       混雑のときの答え直しも一度だけにします。 */
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 60 * 1000, maxRetries: 1 });
-
-    try {
-      if (request.method === "GET") return await check(client);
-      if (request.method !== "POST") return fail(405, "GET か POST で呼んでください");
-
-      const size = Number(request.headers.get("Content-Length") || 0);
-      if (size > MAX_BODY) return fail(413, "大きすぎます");
-      const raw = await request.text();
-      if (raw.length > MAX_BODY) return fail(413, "大きすぎます");
-      let body;
-      try { body = JSON.parse(raw); }
-      catch (err) { return fail(400, "JSON として読めません"); }
-
-      if (body && body.kind === "coach") return await coach(client, body);
-      if (body && body.kind === "photo") return await photo(client, body);
-      if (body && body.kind === "estimate") return await estimate(client, body);
-      return fail(400, "kind は coach・photo・estimate のどれかです");
-    } catch (err) {
-      return apiFailure(err);
-    }
+    return plain(await answer(request, env));
   },
 };
+
+async function answer(request, env) {
+  const url = new URL(request.url);
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS });
+  }
+  /* 道が違えば、それ以上何も言いません。AI_PATH を置き忘れたまま公開すると
+     「合言葉なし」の窓口になり、誰でもあなたの鍵を使えてしまうので、
+     未設定は 404 ではなく、はっきり止めます。 */
+  if (!env.AI_PATH || !/^\/\S{8,}$/.test(env.AI_PATH)) {
+    return fail(500, "AI_PATH が設定されていません（Settings → Variables and Secrets に Secret で置いてください）");
+  }
+  if (url.pathname !== env.AI_PATH) {
+    return new Response("not found", { status: 404, headers: CORS });
+  }
+  if (!env.ANTHROPIC_API_KEY) {
+    return fail(500, "ANTHROPIC_API_KEY が設定されていません（Settings → Variables and Secrets に Secret で置いてください）");
+  }
+
+  /* アプリは60秒で待ちきるので、それより長く粘っても誰も受け取りません。
+     混雑のときの答え直しも一度だけにします。 */
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, timeout: 60 * 1000, maxRetries: 1 });
+
+  try {
+    if (request.method === "GET") return await check(client);
+    if (request.method !== "POST") return fail(405, "GET か POST で呼んでください");
+
+    const size = Number(request.headers.get("Content-Length") || 0);
+    if (size > MAX_BODY) return fail(413, "大きすぎます");
+    const raw = await request.text();
+    if (raw.length > MAX_BODY) return fail(413, "大きすぎます");
+    let body;
+    try { body = JSON.parse(raw); }
+    catch (err) { return fail(400, "JSON として読めません"); }
+
+    if (body && body.kind === "coach") return await coach(client, body);
+    if (body && body.kind === "photo") return await photo(client, body);
+    if (body && body.kind === "estimate") return await estimate(client, body);
+    return fail(400, "kind は coach・photo・estimate のどれかです");
+  } catch (err) {
+    return apiFailure(err);
+  }
+}

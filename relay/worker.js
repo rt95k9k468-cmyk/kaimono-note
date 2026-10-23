@@ -118,11 +118,16 @@ const INBOX = "add";
 const INBOX_HEAD = "kn-inbox";
 const INBOX_MAX = 200;          // 一週間でこれを越えることはまず無い。越えたら古いほうから
 
+const SLOT = /^[a-zA-Z0-9_-]{1,16}$/;
 const slotOf = (url, body) => {
   const q = url.searchParams.get("slot");
-  if (q && /^[a-zA-Z0-9_-]{1,16}$/.test(q)) return q;
+  if (q && SLOT.test(q)) return q;
   return /^\s*[[{]/.test(body) ? "json" : "text";
 };
+
+/* 本文を読む前に、名乗った大きさで断ります。読んでから測ると、大きな本文を
+   まるごと抱えてからになります。名乗らない送り手は、読んだあとの測りで断ります。 */
+const tooBig = (request, limit) => Number(request.headers.get("Content-Length") || 0) > limit;
 
 /* このアプリのページから読めるようにするための約束。GETに custom header を
    付けないので、これだけで足ります（DELETE だけは単純な動詞ではないので
@@ -152,6 +157,14 @@ const BELL_MAX = 300;              // 7日ぶん。一日四十を越える時�
 /* JWT の sub（連絡先）。Apple は無いと断ります。人の名前やメールを置かないで
    済むよう、公開のリポジトリを指します。 */
 const BELL_CONTACT = "https://github.com/rt95k9k468-cmyk/kaimono-note";
+
+/* 押し先は、ブラウザの押しの窓口だけ（Apple・Google・Mozilla・Microsoft）。道が漏れても、
+   この中継所を「毎分よその URL へ POST する口」にしないためです。 */
+const PUSH_HOST = /(^|\.)push\.apple\.com$|^fcm\.googleapis\.com$|(^|\.)push\.services\.mozilla\.com$|\.notify\.windows\.com$/;
+function pushOk(endpoint) {
+  if (!/^https:\/\/\S+$/.test(endpoint || "")) return false;
+  try { return PUSH_HOST.test(new URL(endpoint).hostname); } catch (err) { return false; }
+}
 
 const b64u = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
   .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -214,7 +227,7 @@ async function bellPush(env, now) {
   if (!raw) return 0;
   let sub;
   try { sub = JSON.parse(raw); } catch (err) { return 0; }
-  if (!sub || !/^https:\/\//.test(sub.endpoint || "")) return 0;
+  if (!sub || !pushOk(sub.endpoint)) return 0;
   const keys = await bellKeys(env.MAIL);
   const jwt = await vapidJwt(keys, sub.endpoint, now);
   let res;
@@ -264,6 +277,7 @@ async function bell(request, env, url) {
   const bad = (status, msg) => new Response(msg, { status, headers: { ...CORS, ...CAN,
     "Access-Control-Expose-Headers": EXPOSE } });
   if (request.method !== "POST") return bad(405, "bell は POST だけです");
+  if (tooBig(request, 16 * 1024)) return bad(413, "大きすぎます");
   const body = await request.text();
   if (body.length > 16 * 1024) return bad(413, "大きすぎます");
 
@@ -272,7 +286,7 @@ async function bell(request, env, url) {
   if (what === "sub") {
     let sub;
     try { sub = JSON.parse(body); } catch (err) { return bad(400, "押し先が読めません"); }
-    if (!sub || !/^https:\/\/\S+$/.test(sub.endpoint || "") || body.length > 4096) {
+    if (!sub || !pushOk(sub.endpoint) || body.length > 4096) {
       return bad(400, "押し先が読めません");
     }
     /* 同じなら書きません（KV の書き込みは一日千回まで）。 */
@@ -347,160 +361,13 @@ function verOf(slots) {
   return String(max || 1);
 }
 
+/* 中身は利用者の字（健康データ・品物の名前）です。道をブラウザで開かれても、
+   HTML と読み替えさせずに字のまま見せます。 */
+const plain = (res) => { res.headers.set("X-Content-Type-Options", "nosniff"); return res; };
+
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS });
-    }
-    /* 道が違えば、それ以上何も言いません。「そこは違う」と教えるのは、
-       総当たりで探している相手への手がかりになります。
-
-       RELAY_PATH を置き忘れたまま公開すると、道が「合言葉なし」になって
-       しまいます。だから未設定は 404 ではなく、はっきり止めます。 */
-    if (!env.RELAY_PATH || !/^\/\S{8,}$/.test(env.RELAY_PATH)) {
-      return new Response(
-        "RELAY_PATH が設定されていません（Settings → Variables and Secrets に Secret で置いてください）",
-        { status: 500, headers: CORS });
-    }
-    if (url.pathname !== env.RELAY_PATH) {
-      return new Response("not found", { status: 404, headers: CORS });
-    }
-    if (!env.MAIL) {
-      return new Response("KV が結ばれていません（binding 名は MAIL）", { status: 500, headers: CORS });
-    }
-
-    /* 鳴らす役は棚の道より先に。棚の POST・DELETE に落ちると、健康データの
-       棚にしまわれたり、郵便受けが空になったりします。 */
-    if (url.searchParams.has("bell")) return bell(request, env, url);
-
-    if (request.method === "POST" || request.method === "PUT") {
-      const body = await request.text();
-      if (body.length > MAX) {
-        return new Response("大きすぎます", { status: 413, headers: CORS });
-      }
-      if (!body.trim()) {
-        return new Response("空です", { status: 400, headers: CORS });
-      }
-      /* 差出人ごとの棚にしまいます。同じ差出人の前の便は「ひとつ前」へ
-         下ろしますが、**別の差出人の便には触れません**。
-
-         同じ中身がもう一度来たときは下ろしません——同じものを二通持っても、
-         読む側にできることは増えないので。 */
-      const slot = slotOf(url, body);
-      /* 受け箱に来るのは品物の名前一つか二つです。一通を小さく抑えて、
-         二百通溜まっても棚が膨らまないようにします。 */
-      if (slot === INBOX && body.length > 1024) {
-        return new Response("大きすぎます", { status: 413, headers: CORS });
-      }
-
-      /* 版は**必ず進めます**。時計の分解能はミリ秒なので、二本の
-         ショートカットが同じ拍で置くと同じ数になり、読む側が「変わって
-         いない」と読んでしまいます。前より大きいことだけが要るので、
-         同じか古ければ 1 足します。受け箱の一通に添える数もこれです。 */
-      const slots = await readIndex(env.MAIL);
-      const now = Date.now();
-      const top = Number(verOf(slots)) || 0;
-      const stamp = now > top ? now : top + 1;
-
-      if (slot === INBOX) {
-        const kept = inboxLines(await env.MAIL.get("box:" + slot), now);
-        kept.push(JSON.stringify({ at: stamp, text: body }));
-        await env.MAIL.put("box:" + slot, [INBOX_HEAD].concat(kept).join("\n"),
-          { expirationTtl: TTL });
-      } else {
-        const cur = await env.MAIL.get("box:" + slot);
-        if (cur != null && cur !== body) {
-          await env.MAIL.put("box:" + slot + ":prev", cur, { expirationTtl: TTL });
-        }
-        await env.MAIL.put("box:" + slot, body, { expirationTtl: TTL });
-      }
-
-      slots[slot] = stamp;
-      await writeIndex(env.MAIL, slots);
-
-      return new Response("ok", {
-        status: 200,
-        headers: { ...CORS, ...CAN, "Content-Type": "text/plain; charset=utf-8",
-                   "Access-Control-Expose-Headers": EXPOSE,
-                   "X-Kn-Ver": verOf(slots) },
-      });
-    }
-
-    if (request.method === "GET") {
-      const slots = await readIndex(env.MAIL);
-
-      /* 仕切りの無かったころの "box"。差出人の棚へ移してから渡します
-         ——移さずに毎回そのまま渡すと、版の外に置かれたものが混じって、
-         「変わっていないのに 200 が返る」ことになります。 */
-      const legacy = await env.MAIL.get("box");
-      if (legacy != null) {
-        await env.MAIL.put("box:legacy", legacy, { expirationTtl: TTL });
-        await env.MAIL.delete("box");
-        slots.legacy = Date.now();
-        await writeIndex(env.MAIL, slots);
-      }
-
-      const ver = verOf(slots);
-      const head = {
-        ...CORS,
-        ...CAN,
-        "Cache-Control": "no-store",
-        "Access-Control-Expose-Headers": EXPOSE,
-        "X-Kn-Ver": ver,
-      };
-
-      /* 版が同じなら、中身は読みません。ここが「何度覗いてもタダ」の本体で、
-         アプリが数分おきに覗けるのはこの 204 があるからです。 */
-      const since = url.searchParams.get("since");
-      if (ver === "0" || (since && since === ver)) {
-        return new Response(null, { status: 204, headers: head });
-      }
-
-      /* **ひとつ前 → いま** の順に並べます。読む側は順に取り込むので、
-         後に来たほうが勝ちます——いまの便が読めれば、それが残ります。 */
-      const parts = [];
-      for (const slot of Object.keys(slots)) {
-        const prev = await env.MAIL.get("box:" + slot + ":prev");
-        if (prev != null) parts.push(prev);
-        const one = await env.MAIL.get("box:" + slot);
-        if (one != null) parts.push(one);
-      }
-      /* 控えには名前が残っているが、中身はTTLで消えた——というときです。
-         異常ではないので、空と同じに答えます。 */
-      if (!parts.length) return new Response(null, { status: 204, headers: head });
-
-      return new Response(parts.join(SEP), {
-        status: 200,
-        headers: { ...head, "Content-Type": "text/plain; charset=utf-8",
-                   "X-Kn-Parts": String(parts.length) },
-      });
-    }
-
-    /* 捨てる口。渡しても消えなくなったぶん、**意図して空にする道**が要ります
-       ——アプリの「中継所を確かめる」が置いた試しの便を片づけるのは、ここです
-       （片づけないと、試すたびに歩数 1234 が記録に入ります）。 */
-    if (request.method === "DELETE") {
-      const slots = await readIndex(env.MAIL);
-      const q = url.searchParams.get("slot");
-      const names = q ? [q] : Object.keys(slots);
-      for (const s of names) {
-        await env.MAIL.delete("box:" + s);
-        await env.MAIL.delete("box:" + s + ":prev");
-        delete slots[s];
-      }
-      if (!q) await env.MAIL.delete("box");
-      await writeIndex(env.MAIL, slots);
-      return new Response("ok", {
-        status: 200,
-        headers: { ...CORS, ...CAN, "Content-Type": "text/plain; charset=utf-8",
-                   "Access-Control-Expose-Headers": EXPOSE,
-                   "X-Kn-Ver": verOf(slots) },
-      });
-    }
-
-    return new Response("method not allowed", { status: 405, headers: CORS });
+    return plain(await route(request, env));
   },
 
   /* 毎分の見回り（wrangler.jsonc の triggers.crons）。時刻の列が空なら、
@@ -511,3 +378,163 @@ export default {
     return run;
   },
 };
+
+
+async function route(request, env) {
+  const url = new URL(request.url);
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS });
+  }
+  /* 道が違えば、それ以上何も言いません。「そこは違う」と教えるのは、
+     総当たりで探している相手への手がかりになります。
+
+     RELAY_PATH を置き忘れたまま公開すると、道が「合言葉なし」になって
+     しまいます。だから未設定は 404 ではなく、はっきり止めます。 */
+  if (!env.RELAY_PATH || !/^\/\S{8,}$/.test(env.RELAY_PATH)) {
+    return new Response(
+      "RELAY_PATH が設定されていません（Settings → Variables and Secrets に Secret で置いてください）",
+      { status: 500, headers: CORS });
+  }
+  if (url.pathname !== env.RELAY_PATH) {
+    return new Response("not found", { status: 404, headers: CORS });
+  }
+  if (!env.MAIL) {
+    return new Response("KV が結ばれていません（binding 名は MAIL）", { status: 500, headers: CORS });
+  }
+
+  /* 鳴らす役は棚の道より先に。棚の POST・DELETE に落ちると、健康データの
+     棚にしまわれたり、郵便受けが空になったりします。 */
+  if (url.searchParams.has("bell")) return bell(request, env, url);
+
+  if (request.method === "POST" || request.method === "PUT") {
+    if (tooBig(request, MAX)) {
+      return new Response("大きすぎます", { status: 413, headers: CORS });
+    }
+    const body = await request.text();
+    if (body.length > MAX) {
+      return new Response("大きすぎます", { status: 413, headers: CORS });
+    }
+    if (!body.trim()) {
+      return new Response("空です", { status: 400, headers: CORS });
+    }
+    /* 差出人ごとの棚にしまいます。同じ差出人の前の便は「ひとつ前」へ
+       下ろしますが、**別の差出人の便には触れません**。
+
+       同じ中身がもう一度来たときは下ろしません——同じものを二通持っても、
+       読む側にできることは増えないので。 */
+    const slot = slotOf(url, body);
+    /* 受け箱に来るのは品物の名前一つか二つです。一通を小さく抑えて、
+       二百通溜まっても棚が膨らまないようにします。 */
+    if (slot === INBOX && body.length > 1024) {
+      return new Response("大きすぎます", { status: 413, headers: CORS });
+    }
+
+    /* 版は**必ず進めます**。時計の分解能はミリ秒なので、二本の
+       ショートカットが同じ拍で置くと同じ数になり、読む側が「変わって
+       いない」と読んでしまいます。前より大きいことだけが要るので、
+       同じか古ければ 1 足します。受け箱の一通に添える数もこれです。 */
+    const slots = await readIndex(env.MAIL);
+    const now = Date.now();
+    const top = Number(verOf(slots)) || 0;
+    const stamp = now > top ? now : top + 1;
+
+    if (slot === INBOX) {
+      const kept = inboxLines(await env.MAIL.get("box:" + slot), now);
+      kept.push(JSON.stringify({ at: stamp, text: body }));
+      await env.MAIL.put("box:" + slot, [INBOX_HEAD].concat(kept).join("\n"),
+        { expirationTtl: TTL });
+    } else {
+      const cur = await env.MAIL.get("box:" + slot);
+      if (cur != null && cur !== body) {
+        await env.MAIL.put("box:" + slot + ":prev", cur, { expirationTtl: TTL });
+      }
+      await env.MAIL.put("box:" + slot, body, { expirationTtl: TTL });
+    }
+
+    slots[slot] = stamp;
+    await writeIndex(env.MAIL, slots);
+
+    return new Response("ok", {
+      status: 200,
+      headers: { ...CORS, ...CAN, "Content-Type": "text/plain; charset=utf-8",
+                 "Access-Control-Expose-Headers": EXPOSE,
+                 "X-Kn-Ver": verOf(slots) },
+    });
+  }
+
+  if (request.method === "GET") {
+    const slots = await readIndex(env.MAIL);
+
+    /* 仕切りの無かったころの "box"。差出人の棚へ移してから渡します
+       ——移さずに毎回そのまま渡すと、版の外に置かれたものが混じって、
+       「変わっていないのに 200 が返る」ことになります。 */
+    const legacy = await env.MAIL.get("box");
+    if (legacy != null) {
+      await env.MAIL.put("box:legacy", legacy, { expirationTtl: TTL });
+      await env.MAIL.delete("box");
+      slots.legacy = Date.now();
+      await writeIndex(env.MAIL, slots);
+    }
+
+    const ver = verOf(slots);
+    const head = {
+      ...CORS,
+      ...CAN,
+      "Cache-Control": "no-store",
+      "Access-Control-Expose-Headers": EXPOSE,
+      "X-Kn-Ver": ver,
+    };
+
+    /* 版が同じなら、中身は読みません。ここが「何度覗いてもタダ」の本体で、
+       アプリが数分おきに覗けるのはこの 204 があるからです。 */
+    const since = url.searchParams.get("since");
+    if (ver === "0" || (since && since === ver)) {
+      return new Response(null, { status: 204, headers: head });
+    }
+
+    /* **ひとつ前 → いま** の順に並べます。読む側は順に取り込むので、
+       後に来たほうが勝ちます——いまの便が読めれば、それが残ります。 */
+    const parts = [];
+    for (const slot of Object.keys(slots)) {
+      const prev = await env.MAIL.get("box:" + slot + ":prev");
+      if (prev != null) parts.push(prev);
+      const one = await env.MAIL.get("box:" + slot);
+      if (one != null) parts.push(one);
+    }
+    /* 控えには名前が残っているが、中身はTTLで消えた——というときです。
+       異常ではないので、空と同じに答えます。 */
+    if (!parts.length) return new Response(null, { status: 204, headers: head });
+
+    return new Response(parts.join(SEP), {
+      status: 200,
+      headers: { ...head, "Content-Type": "text/plain; charset=utf-8",
+                 "X-Kn-Parts": String(parts.length) },
+    });
+  }
+
+  /* 捨てる口。渡しても消えなくなったぶん、**意図して空にする道**が要ります
+     ——アプリの「中継所を確かめる」が置いた試しの便を片づけるのは、ここです
+     （片づけないと、試すたびに歩数 1234 が記録に入ります）。 */
+  if (request.method === "DELETE") {
+    const slots = await readIndex(env.MAIL);
+    const q = url.searchParams.get("slot");
+    if (q && !SLOT.test(q)) return new Response("知らない棚です", { status: 400, headers: CORS });
+    const names = q ? [q] : Object.keys(slots);
+    for (const s of names) {
+      await env.MAIL.delete("box:" + s);
+      await env.MAIL.delete("box:" + s + ":prev");
+      delete slots[s];
+    }
+    if (!q) await env.MAIL.delete("box");
+    await writeIndex(env.MAIL, slots);
+    return new Response("ok", {
+      status: 200,
+      headers: { ...CORS, ...CAN, "Content-Type": "text/plain; charset=utf-8",
+                 "Access-Control-Expose-Headers": EXPOSE,
+                 "X-Kn-Ver": verOf(slots) },
+    });
+  }
+
+  return new Response("method not allowed", { status: 405, headers: CORS });
+}
