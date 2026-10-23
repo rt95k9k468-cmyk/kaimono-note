@@ -42,7 +42,7 @@
         ? card(...rows)
         : foot("ありません。"),
       card(navRow({ ico: "copy", tint: TINT.data, title: "コピー",
-        onTap: () => copyText([KN.errlog.text(), journal].filter(Boolean).join("\n\n"), "困ったときの記録") })),
+        onTap: () => copyText([KN.errlog.text(), journal, KN.todoPast ? KN.todoPast.text() : ""].filter(Boolean).join("\n\n"), "困ったときの記録") })),
       foot("新しい50件まで。日記の中身は残しません。"),
     ];
   }

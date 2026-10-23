@@ -1539,6 +1539,13 @@
         if (document.visibilityState === "visible") KN.diaryIdb.retry();
       });
     }
+    /* 過去のやることの棚（js/todo-past.js。R26 の段2）。読めなかった日は、前に出てきたときにもう一度。 */
+    if (KN.todoPast) {
+      KN.todoPast.start();
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") KN.todoPast.retry();
+      });
+    }
     KN.backup.init();
     /* 大きな保存場所の中身（控えの数・日記の写しの様子）が動いたら、設定が
        出ているときだけ描き直します。控えは離れるたびに取るので、ほかの

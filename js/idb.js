@@ -27,6 +27,7 @@
     snaps: { keyPath: "id", autoIncrement: true },
     snapBodies: { keyPath: "id" },
     meta: { keyPath: "k" },
+    todoPast: { keyPath: "id" },   // 過去のやることの棚（js/todo-past.js。R26 の段2）
   };
 
   /* 開くのを待つ上限。WebKit には、開いたまま返事をしない時期が
