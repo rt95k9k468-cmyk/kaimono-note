@@ -5,10 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# 権限はジョブごとに（docs/dev.md「配信の守り」）。ここは何も渡さない。
+permissions: {}
 
 # Let a running deploy finish; queue at most one more.
 concurrency:
@@ -24,9 +22,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v6
         with:
@@ -44,6 +46,10 @@ jobs:
 
   deploy:
     needs: test
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -51,6 +57,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # Requires Pages to be on: Settings → Pages → Source: GitHub Actions.
       # `enablement: true` cannot do it for us — GITHUB_TOKEN is not allowed to
@@ -71,6 +79,10 @@ jobs:
       # The test scripts (tests/) are for local runs only; keep them off the site.
       - name: Leave the test scripts out of the site
         run: rm -rf tests
+
+      # 見本（偽の記録の試作）は手元で開くだけ。サイトには載せない（docs/dev.md「配信の守り」）。
+      - name: Leave the prototypes out of the site
+        run: rm -f tools/notes-proto*.html tools/todo-proto.html
 
       # Since v4 dotfiles (.nojekyll, .claude/) stay out; an Actions deploy runs no Jekyll.
       - name: Upload artifact

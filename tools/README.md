@@ -57,6 +57,9 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 1枚25KBまで）にし、平均の色を出す。`photo` を付けると写真（`tools/season-photo-src/` → `img/season-photo/`）、`sky` で帯の空（`tools/sky-src/` → `img/sky/`）。
 写真と空の大きさ・上限は道具の頭の定数（2026年10月8日に画質を上げた）。Playwright の Chromium の canvas で処理する。手順と対応表は `docs/season-art.md`。
 
+見本（`notes-proto*.html`・`todo-proto.html`）は**サイトに配らない**（2026年10月23日。`pages.yml` が消してから上げる）。
+開くのは手元で：`python3 -m http.server` → `localhost:8000/tools/…`。下の `.../tools/…` はその道。
+
 ## notes-proto.html — ノートの見本（Notion・Evernote から移るかを決めるため）
 
 階層・検索・見やすさ・表・書き出しを、iPad・パソコン・iPhone で触って確かめるページ。

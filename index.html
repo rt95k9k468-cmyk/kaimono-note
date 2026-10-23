@@ -7,7 +7,7 @@
 <!-- 二つ目の鍵（R29、docs/settings.md）。字の無害化（html）が一か所漏れても、よそのスクリプトは動かない。
      直書きのスクリプトは無い。style 属性を使うので style は unsafe-inline。中継所・AI の窓口・Dropbox は
      利用者が決める URL なので connect は https 全般。写真は data:、.ics などは blob:。 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' https:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; form-action 'none'; worker-src 'self'; manifest-src 'self'">
 <!-- No maximum-scale: every text field is 16px or larger, so iOS has no
      reason to zoom on focus, and capping the scale would only take
      pinch-zoom away from people who need to enlarge the text. -->

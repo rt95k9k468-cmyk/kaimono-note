@@ -79,6 +79,19 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   （ビルド時にCI側が使うもの）。
 - PRは明示的に頼まれない限り作らない。
 
+## 配信の守り（セキュリティ S1、2026年10月23日）
+
+- **Actions の権限はジョブごと**：上は `permissions: {}`、試験は `contents: read` だけ、deploy に `pages: write`・`id-token: write`。
+  checkout は `persist-credentials: false`（試験が走る間、書ける鍵を残さない）。
+- **CSP は `tests/security-gate.js`（門）が形ごと見張る**。index.html の CSP を変えるなら、台本の `INDEX_CSP` も一緒に直す。
+  `connect-src` の `https:` は中継所・AI の窓口（利用者の入れる URL）のため。
+- 道具の頁（`tools/calendar.html`・`diary-import.html`）は `default-src 'none'`。直書きのスクリプトは sha256 で許す——
+  **中身を一字でも直したら meta の値も直す**（門が落ちて、入れる値を出す）。
+- 見本（`tools/notes-proto*.html`・`todo-proto.html`）は配らない（deploy が消す）。手元のサーバーで開く。
+- `js/`・`sw.js` に `eval`・`new Function`・外から読むスクリプトを置かない。通信してよいのは自分と Dropbox
+  （api・content・www・notify）と、利用者が入れた中継所・AI の窓口だけ。
+- `ai/`・`relay/` は `package-lock.json` を持つ。入れるのは `npm ci`、上げるときだけ `npm install` して lock ごとコミット。
+
 ## アーキテクチャのクセ
 
 - グローバル名前空間は `KN.*`。`<script>` の読み込み順は `index.html` が
