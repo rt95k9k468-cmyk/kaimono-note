@@ -434,7 +434,7 @@
       const inner = svg
         ? `<span class="todo-mark">${svg}</span>`
         : `<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
-      return `<i class="cal-mark" style="--cat:${KN.store.productColor(p) || "var(--c-primary-fill)"}">${inner}</i>`;
+      return `<i class="cal-mark" style="--cat:${KN.util.escapeHtml(KN.store.productColor(p) || "var(--c-primary-fill)")}">${inner}</i>`;
     }).join("");
   }
 

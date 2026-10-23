@@ -1221,7 +1221,7 @@
           const heavy = Math.min(1, (m.t.alcoholG || 0) / (DR.GUIDE_G * 1.5));
           const s = 11 / 24;                       // 絵は24四方。11pxまで縮めます
           const cx = x(m.day), cy = markY;
-          return `<g class="diet-beer" data-day="${m.day}" opacity="${(0.5 + heavy * 0.5).toFixed(2)}">`
+          return `<g class="diet-beer" data-day="${KN.util.escapeHtml(m.day)}" opacity="${(0.5 + heavy * 0.5).toFixed(2)}">`
             + `<g transform="translate(${(cx - 5.5).toFixed(1)} ${(cy - 5.5).toFixed(1)}) scale(${s.toFixed(3)})">`
             + `<path class="diet-beer-mug" d="M6.2 4.6h9.2v13.2a2 2 0 0 1-2 2H8.2a2 2 0 0 1-2-2Z"/>`
             + `<path class="diet-beer-mug" d="M15.4 7.6h2.2a2.4 2.4 0 0 1 0 4.8h-2.2"/>`
@@ -1258,8 +1258,8 @@
           ${KN.util.raw(rows.map((d) => `
             <div class="diet-drink-row">
               <b>${d.time ? KN.util.escapeHtml(d.time) + "　" : ""}${KN.util.escapeHtml(DR.describeItem(d))}</b>
-              <span>${d.abv}%${d.estimated ? "（推定）" : ""}</span>
-              <span class="mono-num">純アルコール ${d.estimated ? "約" : ""}${d.alcoholG}g</span>
+              <span>${KN.util.escapeHtml(d.abv)}%${d.estimated ? "（推定）" : ""}</span>
+              <span class="mono-num">純アルコール ${d.estimated ? "約" : ""}${KN.util.escapeHtml(d.alcoholG)}g</span>
               <span class="mono-num">${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal</span>
               ${moodOf(d) ? `<span class="diet-mood">${KN.util.escapeHtml(moodOf(d))}</span>` : ""}
             </div>`).join(""))}
@@ -1806,7 +1806,7 @@
           <span class="urge-row-time mono-num">${u.day !== card.day ? "昨日 " : ""}${urgeTime(u)}</span>
           ${/* 矢は絵なので raw で通します——`html` は補間した値を escape します。 */""}
           <span class="urge-row-lv mono-num">${u.before}${
-            KN.util.raw(u.after != null ? `<i>→</i>${u.after}` : "")}</span>
+            KN.util.raw(u.after != null ? `<i>→</i>${KN.util.escapeHtml(u.after)}` : "")}</span>
           <span class="urge-row-text">${urgeSummary(u)}</span>
           <span class="urge-row-go" aria-hidden="true">${icon("chevron")}</span>
         </button>
@@ -2352,8 +2352,8 @@
           ${KN.util.raw(items.map((it) => `
             <div class="diet-drink-row">
               <b>${KN.util.escapeHtml(DR.describeItem(it))}</b>
-              <span>${it.abv}%${it.estimated ? "（推定）" : ""}</span>
-              <span class="mono-num">純アルコール ${it.estimated ? "約" : ""}${it.alcoholG}g</span>
+              <span>${KN.util.escapeHtml(it.abv)}%${it.estimated ? "（推定）" : ""}</span>
+              <span class="mono-num">純アルコール ${it.estimated ? "約" : ""}${KN.util.escapeHtml(it.alcoholG)}g</span>
               <span class="mono-num">${it.estimated ? "約" : ""}${it.kcal.toLocaleString()}kcal</span>
             </div>`).join(""))}
           ${items.length > 1 ? KN.util.raw(`
@@ -2417,7 +2417,7 @@
           <button class="row">
             <span class="row-main">
               <span class="row-title">${d.time ? d.time + "　" : ""}${DR.describeItem(d)}</span>
-              <span class="row-sub">${d.estimated ? "約" : ""}${d.alcoholG}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal${
+              <span class="row-sub">${d.estimated ? "約" : ""}${KN.util.escapeHtml(d.alcoholG)}g ・ ${d.estimated ? "約" : ""}${d.kcal.toLocaleString()}kcal${
                 moodOf(d) ? "　" + moodOf(d) : ""}</span>
             </span>
             <span class="row-chevron">${icon("edit")}</span>
@@ -2488,7 +2488,7 @@
                 <label class="diet-edit-row">
                   <span class="diet-edit-name">${r.label}</span>
                   <input class="input js-v" data-type="${r.type}" inputmode="${r.type === "sleep" ? "text" : "decimal"}"
-                         value="${shown}" placeholder="${r.hint}">
+                         value="${KN.util.escapeHtml(shown)}" placeholder="${r.hint}">
                   <span class="diet-edit-unit">${r.unit}</span>
                   <span class="diet-edit-src">${v == null ? ""
                     : mine ? "手入力"
@@ -2505,9 +2505,9 @@
                 <div class="row">
                   <span class="row-main">
                     <span class="row-title">${KN.util.escapeHtml(w.label || "ワークアウト")}</span>
-                    <span class="row-sub">${Math.round(w.value)}分${w.kcal != null ? ` ・ ${Math.round(w.kcal)}kcal` : ""}${w.time ? ` ・ ${w.time}` : ""}</span>
+                    <span class="row-sub">${Math.round(w.value)}分${w.kcal != null ? ` ・ ${Math.round(w.kcal)}kcal` : ""}${w.time ? ` ・ ${KN.util.escapeHtml(w.time)}` : ""}</span>
                   </span>
-                  <button class="icon-btn js-wdel" data-id="${w.id}" aria-label="消す">${icon("trash")}</button>
+                  <button class="icon-btn js-wdel" data-id="${KN.util.escapeHtml(w.id)}" aria-label="消す">${icon("trash")}</button>
                 </div>`).join(""))}
             </div>` : html`<p class="diet-note">この日のワークアウトはありません。</p>`}
           <button class="btn btn-soft btn-sm js-wadd">${icon("plus")}ワークアウトを記録</button>

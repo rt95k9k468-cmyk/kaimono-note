@@ -912,7 +912,7 @@
       + `<rect width="${W}" height="${g.H}" fill="url(#${hid}-p)"/></mask></defs>`;
     const stopSvg = stops.map((s, k) =>
       `<g class="road-stop${closed(s.t) ? " is-done" : ""}${s.act ? " is-act" : ""}" data-s="${k}"`
-        + `${s.act ? ` style="--act-c:${s.act}"` : ""}>`
+        + `${s.act ? ` style="--act-c:${U.escapeHtml(s.act)}"` : ""}>`
         + `<path class="road-stop-edge"/><path class="road-stop-in"/><path class="road-stop-hatch" mask="url(#${hid})"/>`
         + `<path class="road-stop-went"/><path class="road-stop-went-hatch" mask="url(#${hid})"/></g>`).join("");
     /* 出る時刻からの区間は、道の下に敷く点線の帯（道の上下に点がのぞく）。

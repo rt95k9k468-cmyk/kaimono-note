@@ -312,7 +312,7 @@
 
     const handle = KN.ui.sheet({
       title: st.name,
-      titleMark: KN.util.raw(`<span class="dot" style="background:${st.color};width:14px;height:14px"></span>`),
+      titleMark: KN.util.raw(`<span class="dot" style="background:${KN.util.escapeHtml(st.color)};width:14px;height:14px"></span>`),
       content: body,
       footer: node(html`<button class="btn btn-primary btn-block js-done">完了</button>`),
       menu: KN.ui.delMenu(removePrice, { sheet: () => handle, after: () => onChanged && onChanged() }),

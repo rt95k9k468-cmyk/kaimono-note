@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-XiiIlYvDqdtUKeqx68zCCWVxPbPSboeDjxiV7Hq2ROg='; worker-src 'self'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-QplUtG0ah/BvWlqQRGMdd5dip88TQ8bASfU+aZu2Bic='; worker-src 'self'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>くらしノート — 日記の取り込み</title>
 
@@ -211,6 +211,8 @@ import * as pdfjs from "./vendor/pdf.min.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = "./vendor/pdf.worker.min.mjs";
 
 const $ = (id) => document.getElementById(id);
+/* 日記の字・正規表現の誤りを innerHTML に入れるときは、かならずこれを通す（docs/dev.md「画面の中の守り」）。 */
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const X = window.KN.diaryCrypto;
 
 let pages = [];       // 取り出した文字。1要素 = 1ページ
@@ -455,7 +457,7 @@ $("custom").addEventListener("input", () => {
   const src = $("custom").value.trim();
   if (!src) return;
   let re;
-  try { re = new RegExp(src); } catch (e) { $("dmsg").innerHTML = `<span class="bad">${e.message}</span>`; return; }
+  try { re = new RegExp(src); } catch (e) { $("dmsg").innerHTML = `<span class="bad">${esc(e.message)}</span>`; return; }
   choose({ label: "自分で書いたもの", re }, null);
 });
 
@@ -478,7 +480,7 @@ function choose(pat, tr) {
   $("counter").hidden = !n;
   if (n) {
     const ex = raw.find((d) => hasCounter(d.body)).body.split("\n")[0].trim();
-    $("countmsg").innerHTML = `日付のすぐ下に「<b>${ex}</b>」のような数えの行が、`
+    $("countmsg").innerHTML = `日付のすぐ下に「<b>${esc(ex)}</b>」のような数えの行が、`
       + `<b>${n}日ぶん</b>あります。本文から落としますか？`
       + `<br><span class="note">日記アプリが自動で足した数なら落として構いません。`
       + `子の生まれてからの日数のように、あなたにとって意味のある数なら、そのまま残してください。</span>`;
