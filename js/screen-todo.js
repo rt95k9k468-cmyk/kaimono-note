@@ -6266,6 +6266,8 @@
               l.style.height = "";
               list.append(l);
               showMore(); bump(); pop.place();
+              /* 手順がぜんぶ済んだら、小窓は自分で消える（2026年10月23日、利用者）。 */
+              if (!rest.length && !pressing) setTimeout(() => { if (!rest.length) pop.close(); }, KN.motion.ms("--m-check"));
             }, KN.motion.ms("--m-state"));
           };
           if (pressing) waiting.push(collapse); else collapse();
