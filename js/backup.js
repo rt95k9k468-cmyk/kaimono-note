@@ -434,7 +434,11 @@
    */
   function take(reason, opts) {
     const o = opts || {};
-    const gate = !o.now && KN.diaryIdb ? KN.diaryIdb.ready() : Promise.resolve();
+    const gates = [];
+    if (!o.now && KN.diaryIdb) gates.push(KN.diaryIdb.ready());
+    /* 元から外した過去のやること（印）が残っていれば、棚から戻るのを待つ（R26 の罠b）。 */
+    if (!o.now && KN.todoPast && store.todoOut().length) gates.push(KN.todoPast.ready());
+    const gate = Promise.all(gates);
     return gate.then(() => {
       const p = chain.then(() => takeNow(reason, o.state, o.force));
       chain = p.catch(() => {});

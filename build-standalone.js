@@ -60,6 +60,7 @@ const JS = [
   "js/store.js",
   "js/live-idb.js",
   "js/diary-idb.js",
+  "js/todo-past.js",
   "js/note-format.js",
   "js/note-live.js",
   "js/diary-posts.js",

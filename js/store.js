@@ -972,6 +972,15 @@
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
     })).filter((t) => t.title).map(fixBookend);
+    /* 元から外した過去のやることの id（印。R26 の段2・js/todo-past.js）。棚から戻るまで持ち越す。
+       いま記録にある id は落とす（戻った・前の版が書き戻した）。無ければ欄ごと持たない。 */
+    {
+      const have = new Set(out.todos.map((t) => t.id));
+      const marks = Array.isArray(s.todoOut)
+        ? [...new Set(s.todoOut.filter((id) => typeof id === "string" && id && !have.has(id)))] : [];
+      if (marks.length) out.todoOut = marks;
+      else delete out.todoOut;
+    }
 
     out.diet = reconcileDiet(s.diet);
 
@@ -1301,6 +1310,8 @@
       if (KN.diaryIdb) KN.diaryIdb.afterWrite(seq, lsSeq === seq);
       /* 記録の写しへ（js/live-idb.js）。同じ理由で、書けなかったときも。 */
       if (KN.liveIdb) KN.liveIdb.afterWrite(json, seq);
+      /* 過去のやることの棚へ（js/todo-past.js。R26 の段2）。同じ理由で、書けなかったときも。 */
+      if (KN.todoPast) KN.todoPast.afterWrite();
     }
   }
 
@@ -1372,6 +1383,7 @@
     version++;
     if (!wrote) { bulk = true; persist(); }
     if (KN.diaryIdb) KN.diaryIdb.reloaded();
+    if (KN.todoPast) KN.todoPast.reloaded();
     emit();
     return true;
   }
@@ -1381,12 +1393,43 @@
      state は本文つきのまま。作れなければ、本文つきのまま書きます（あふれれば
      保存が落ちて知らせるだけで、何も失いません）。 */
   function liveShape() {
+    let s = state;
     try {
-      return KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
+      s = KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
     } catch (err) {
       console.error("live shape", err);
-      return state;
+      s = state;
     }
+    try { s = slimTodos(s); } catch (err) { console.error("live slim", err); }
+    return s;
+  }
+
+  /* やることの既定値の欄を省いた浅い複製（R26 の段1。docs/storage.md「R26 の案」）。元と写しへ
+     書くときだけ。reconcile() が同じ既定で埋め戻すので、記憶・書き出し・控え・Dropbox は今のまま。
+     省くのは下の一覧（許す欄）だけ——欠けても reconcile() の値が一つに決まり、ほかの欄の読み方を
+     変えない欄。id・題・作成日（今日で埋まる）・並び（何件目かで埋まる）・repeatEvery（種類で 7 か
+     null）は入れない。足すときは tests/live-slim.js の形にも足す。表は関数の中に（TDZ）。 */
+  function slimDefaults() {
+    return {
+      due: null, deadline: null, repeat: null, repeatDays: [], repeatNth: null, part: null, time: null,
+      minutes: null, lead: null, shelf: null, waitFor: null, review: null, slips: [], editedAt: null,
+      notifiedFor: null, memo: "", flagged: false, done: false, doneAt: null, archived: false,
+      archivedAt: null, trace: false, shop: false, subs: [], subState: {}, skipDays: [], icon: null,
+    };
+  }
+  function slimTodos(s) {
+    if (!s || !Array.isArray(s.todos) || !s.todos.length) return s;
+    const D = new Map(Object.entries(slimDefaults()));
+    const isDefault = (v, d) => (Array.isArray(d) ? Array.isArray(v) && !v.length
+      : d && typeof d === "object" ? !!v && typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length
+      : v === d);
+    const todos = s.todos.map((t) => {
+      if (!t || typeof t !== "object") return t;
+      const out = {};
+      for (const k of Object.keys(t)) if (!(D.has(k) && isDefault(t[k], D.get(k)))) out[k] = t[k];
+      return out;
+    });
+    return { ...s, todos };
   }
 
   let saveTimer = null;
@@ -1542,6 +1585,7 @@
     try { lastTotal = totalOf(state); } catch (_) { lastTotal = null; }
     version++;
     if (KN.diaryIdb) KN.diaryIdb.reloaded();
+    if (KN.todoPast) KN.todoPast.reloaded();
     emit();
   }
 
@@ -1890,11 +1934,64 @@
   function addTodo(args) {
     const rec = buildTodo(args);
     if (!rec) return null;
+    const cut = pastCutoff();
     update((s) => {
-      s.todos.forEach((t) => { t.order = (t.order || 0) + 1; });
+      // 過去のやること（棚 todoPast に写す行）はずらさない（R26 の罠d。ずらすと全部を写し直す）。
+      s.todos.forEach((t) => { if (!isPastTodo(t, cut)) t.order = (t.order || 0) + 1; });
       s.todos.unshift(rec);
     });
     return rec;
+  }
+
+  /* ---- 過去のやること（R26 の段2。js/todo-past.js・docs/storage.md「R26 の案」） ----
+     閉じた（済ませた・片づけた）日が30日より前の単発。くり返しの元・未完・閉じた日の無いものは入らない。
+     くり返しの「やった記録」（trace）は単発なので入る。表と数は関数の中に（TDZ）。 */
+  function pastCutoff() {
+    return KN.util.shiftDay(KN.util.todayKey(), -30);
+  }
+  function pastDay(t) {
+    const at = t && (t.doneAt || t.archivedAt);
+    return at ? KN.util.dayKey(at) : "";
+  }
+  function isPastTodo(t, cut) {
+    if (!t || !t.id || t.repeat || !(t.done || t.archived)) return false;
+    const day = pastDay(t);
+    return !!day && day < (cut || pastCutoff());
+  }
+  /** 元から外した過去のやることの id（印）。 */
+  function todoOut(s) {
+    const st = s || state;
+    return Array.isArray(st && st.todoOut) ? st.todoOut.slice() : [];
+  }
+  /** 棚から読んだ行を記録へ戻して、印を外します。戻した件数。 */
+  function bringTodos(list) {
+    const ids = new Set();
+    const fresh = reconcile({ todos: Array.isArray(list) ? list : [] }).todos
+      .filter((t) => (ids.has(t.id) ? false : ids.add(t.id)));
+    if (!fresh.length) return 0;
+    let n = 0;
+    update((s) => {
+      const have = new Set(s.todos.map((t) => t.id));
+      fresh.forEach((t) => { if (!have.has(t.id)) { s.todos.push(t); n++; } });
+      const marks = todoOut(s).filter((id) => !ids.has(id));
+      if (marks.length) s.todoOut = marks;
+      else delete s.todoOut;
+    });
+    return n;
+  }
+  /* 戻すファイルの印へ、いま記録にある行を当てます（fillMemoOut と同じ考え。無ければ印のまま）。 */
+  function fillTodoOut(next, s) {
+    const marks = todoOut(next);
+    if (!marks.length) return;
+    const have = new Map((s.todos || []).map((t) => [t.id, t]));
+    const left = [];
+    marks.forEach((id) => {
+      const mine = have.get(id);
+      if (mine) next.todos.push(JSON.parse(JSON.stringify(mine)));
+      else left.push(id);
+    });
+    if (left.length) next.todoOut = left;
+    else delete next.todoOut;
   }
 
   /* ---- Google からの取り込み（js/google-import.js。docs/todo-items.md「Google 取り込み」） ----
@@ -1906,8 +2003,9 @@
   function importGoogle(list, batch) {
     const recs = (list || []).map((x) => buildTodo({ ...x, gbatch: batch })).filter(Boolean);
     if (!recs.length) return 0;
+    const cut = pastCutoff();
     update((s) => {
-      s.todos.forEach((t) => { t.order = (t.order || 0) + recs.length; });
+      s.todos.forEach((t) => { if (!isPastTodo(t, cut)) t.order = (t.order || 0) + recs.length; });
       recs.forEach((r, i) => { r.order = i; });
       s.todos.unshift(...recs);
     });
@@ -4833,7 +4931,7 @@
       products: len(st && st.products),
       stores: len(st && st.stores),
       items: len(st && st.items),
-      todos: len(st && st.todos),
+      todos: len(st && st.todos) + len(st && st.todoOut),   // 外した過去のやること（印）も
       days,
       entries: len(arc.entries),
       diet: len(d.weights) + len(d.meals) + len(d.health) + len(d.drinks)
@@ -4933,6 +5031,7 @@
     bulk = true;
     update((s) => {
       fillMemoOut(next, s);
+      fillTodoOut(next, s);
       /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
          おぼえた振り分け（learned）と daily を足し忘れて直したあとも、
          `iconOverrides`（食事メモの絵の言い換え）と `iconReports` が
@@ -4940,6 +5039,9 @@
          入らない。足し忘れる形そのものをやめます。書き出しの付けたし
          （exportedAt・app）は state の欄ではないので、戻しません。 */
       Object.keys(emptyState()).forEach((k) => { s[k] = next[k]; });
+      // 外した過去のやることの印（R26 の段2）は emptyState() に無い欄なので、ここで。
+      if (next.todoOut) s.todoOut = next.todoOut;
+      else delete s.todoOut;
       s.schema = SCHEMA;
     });
   }
@@ -5026,6 +5128,7 @@
     get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
     // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
     liveChars: () => JSON.stringify(liveShape()).length,
+    slimKeys: () => Object.keys(slimDefaults()),
     saveError: () => saveError,
     getProduct, getStore, getCategory,
     sortedCategories, sortedStores,
@@ -5035,7 +5138,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, importGoogle, unimportGoogle, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

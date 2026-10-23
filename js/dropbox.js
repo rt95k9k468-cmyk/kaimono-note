@@ -437,6 +437,16 @@
       save();
       return "held";
     }
+    /* 元から外した過去のやること（印）が記録へ戻っていないうちも、送らない（R26 の罠b）。 */
+    if (store.todoOut && store.todoOut().length) {
+      if (KN.todoPast) { try { await KN.todoPast.ready(); } catch (err) { /* 下で見る */ } }
+      if (store.todoOut().length) {
+        cfg.error = "過去のやることを読めていないので、上書きを見合わせています";
+        cfg.errorAt = new Date().toISOString();
+        save();
+        return "held";
+      }
+    }
     /* ノート（docs/notes.md）も読み終えるのを待ちます。中身は記録とは別の
        一番上の鍵 noteBook。「前と同じなら送らない」にも数えます。 */
     if (KN.notes) {

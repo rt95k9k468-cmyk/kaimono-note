@@ -466,7 +466,18 @@
     return c;
   };
 
+  /* 元から外した過去のやること（印）が記録へ戻るまでは、取り込み・取り消しをしない
+     （gid の重複も束も見落とすので。R26 の罠c）。 */
+  async function pastReady() {
+    if (!KN.store.todoOut().length) return true;
+    if (KN.todoPast) await KN.todoPast.ready().catch(() => {});
+    if (!KN.store.todoOut().length) return true;
+    KN.ui.toast("過去のやることを読めていません", { long: true });
+    return false;
+  }
+
   async function show(files) {
+    if (!(await pastReady())) return;
     KN.ui.toast("読んでいます");
     const { sources, bad } = await read(files).catch(() => ({ sources: [], bad: files.map((f) => f.name) }));
     const have = KN.store.googleIds();
@@ -537,7 +548,7 @@
   /** 取り込みを束ごと元に戻す（直したものは残す）。 */
   async function undo() {
     const list = KN.store.googleBatches();
-    if (!list.length) return;
+    if (!list.length || !(await pastReady())) return;
     const b = list[0];
     const ok = await KN.ui.confirm({ title: "取り込みを取り消す", message: `${b.n}件を元に戻します。取り込んだあとに直したものは残します。`, okLabel: "取り消す", danger: true });
     if (!ok) return;
