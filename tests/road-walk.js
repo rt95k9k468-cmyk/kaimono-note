@@ -188,10 +188,13 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
     if (dFoot * dHand > 0) against++; else with_++;
   });
   c.check("半ばの腕は脚と逆に振る", against > 5 && with_ === 0, JSON.stringify({ against, with_ }));
+  /* 一コマ（16.7ms）あたりに直して比べる。並べて回すと機械が混んでコマの間が延び、その延びたぶん腕が「跳んだ」と
+     数えて落ちていた（2026年10月24日、全部回しで 97.6・81.5。一本なら通る）。 */
   let jump = 0;
   for (let i = 1; i < F.length; i++) {
     const a = pts(F[i - 1].armB)[2], b = pts(F[i].armB)[2];
-    jump = Math.max(jump, Math.hypot(b.x - a.x, b.y - a.y));
+    const dt = Math.max(1000 / 60, F[i].t - F[i - 1].t);
+    jump = Math.max(jump, Math.hypot(b.x - a.x, b.y - a.y) * (1000 / 60) / dt);
   }
   c.check("腕は一フレームで跳ばない（奥の手の動きが 1 フレーム 80 以内）", jump < 80, String(jump));
   const k = await page.evaluate(() => KN.motion.ms("--m-walk"));

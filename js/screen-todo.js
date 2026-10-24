@@ -2677,12 +2677,20 @@
 
       分まで入れるのは**今日を見ているときだけ**。過ぎた日・先の日の
       組み立ては「いま」を渡されないので、分が変わっても絵は動きません。 */
+  /* 時刻を決めていない用事を並べはじめる「いま」は、5分きざみ（切り捨て）。道と時間割の組み立て、紙の見分け字の三つが
+     これを使う。分のままだと見分け字が分ごとに変わり、席を移って戻るたびに今日の紙を丸ごと組み直していた（CPU 4倍で
+     約650ms。2026年10月24日）。切り捨てなので先頭の一件は「いま進んでいる」のまま。「いま」の線と色は本当の時刻（paintNow）。 */
+  function planNow() {
+    const m = KN.plan.toMin(KN.util.nowTime());
+    return KN.plan.toTime(Math.floor(m / 5) * 5);
+  }
+
   function sheetDigest(day) {
     const st = store.get();
     return JSON.stringify([
       day, todayKey(), face, weekMore, workOnly, laterOpen,
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
-      day === todayKey() ? KN.util.nowTime() : "",
+      day === todayKey() ? planNow() : "",
       st.settings,
       (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
       [...openSubs].sort(),
@@ -3502,7 +3510,7 @@
        その日の道へ（写さず引く。js/activity.js の forRoad）。 */
     const act = KN.activity;
     const plan = KN.plan.buildDay(day, act ? act.forRoad(day, todos) : todos, {
-      start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
+      start: s.dayStart, end: s.dayEnd, now: isToday ? planNow() : null,
     });
     /* 長期タスク（段8・段B）。道の外周のくぼみに浮かべ、道へ運べば日と時刻が付く。
        過ぎた日には出さない（置ける道が無いので）。並びは**期限の近い順**——くぼみの
@@ -4786,7 +4794,7 @@
     const day = shelf && shelf.day ? shelf.day : todayKey();
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     const plan = P.buildDay(day, rows.concat(done), {
-      start: s.dayStart, end: s.dayEnd, now: isToday ? KN.util.nowTime() : null,
+      start: s.dayStart, end: s.dayEnd, now: isToday ? planNow() : null,
     });
     /* 今日、時刻を決めた用事を始まりより前に済ませたら、札は**済ませた時刻**に置く（道と同じ。
        2026年10月21日・利用者の声）。いつ始めたかは記録に無いので長さは付けない。記録は書き換えない。 */

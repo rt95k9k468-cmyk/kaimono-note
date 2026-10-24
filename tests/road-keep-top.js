@@ -18,7 +18,16 @@ const { open, checker } = require("./lib");
   const top = () => page.evaluate(() => KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop);
   await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 700; });
   await page.waitForTimeout(200);
-  await page.clock.setFixedTime(new Date(2026, 9, 6, 9, 41));
+  /* 時刻なしを並べる「いま」は5分きざみ（screen-todo.js の planNow。2026年10月24日）。同じ5分のうちは紙をそのまま使い回す。 */
+  await page.clock.setFixedTime(new Date(2026, 9, 6, 9, 43));
+  const kept = await page.evaluate(() => {
+    const scr = document.querySelector("#screen-todo");
+    const old = KN.app.scrollerOf(scr);
+    KN.screens.todo.render();
+    return KN.app.scrollerOf(scr) === old;
+  });
+  c.check("同じ5分のうちは紙を組み直さない", kept);
+  await page.clock.setFixedTime(new Date(2026, 9, 6, 9, 45));
   const fell = await page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
     const old = KN.app.scrollerOf(scr);
@@ -27,7 +36,7 @@ const { open, checker } = require("./lib");
     sc.scrollTop = 0;   // WebKit が落とした形
     return { swapped: sc !== old, now: sc.scrollTop };
   });
-  c.check("分が変わると紙が替わる（前提）", fell.swapped, JSON.stringify(fell));
+  c.check("5分の区切りを越えると紙が替わる（前提）", fell.swapped, JSON.stringify(fell));
   await page.waitForTimeout(200);
   const a = await top();
   c.check("一拍あとに読んでいた場所へ戻る", Math.abs(a - 700) <= 2, String(a));
