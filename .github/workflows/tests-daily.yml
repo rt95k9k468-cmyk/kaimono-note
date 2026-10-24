@@ -48,6 +48,16 @@ jobs:
           KN_TZ: Asia/Tokyo
         run: node tests/run-all.js
 
+      # AI の窓口の試験は SDK が要るので門の外。lock どおりに入れて、毎日ここで回す（docs/dev.md「外との口の守り」）。
+      # audit は配るもの（dependencies）だけ・high 以上で赤に。
+      - name: AI worker tests
+        if: ${{ !cancelled() }}   # 全部の試験が落ちても回す
+        working-directory: ai
+        run: |
+          npm ci --omit=dev --no-audit --no-fund
+          npm audit --omit=dev --audit-level=high
+          node worker.test.mjs
+
   # WebKit の列（roadmap-3.2 の G3・X22 (a)）：エンジンで違いが出る台本だけ。知らせるだけ——門にも配るのにも入れない。
   # Linux の WebKit は iOS の Safari と同じではない。ここで落ちても、iPhone で確かめるまでアプリは直さない。
   # CDP・page.coverage を使う台本は入れない（Chromium だけ）。
