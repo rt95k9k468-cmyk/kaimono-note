@@ -127,6 +127,29 @@ const slowIdb = (ms) => (ctx) => ctx.addInitScript((ms) => {
   };
 }, ms);
 
+/* 大きな保存場所の返事を、台本が window.__idbGo() を呼ぶまで止める。決め打ちの ms だと、混んだ機械では
+   手前の待ちだけで ms を使いきり、確かめる前に読み込みが済んでいた（2026年10月24日、全部回しの3本並べ）。
+   止めておけるのはアプリの待ち（idb.js の OPEN_WAIT_MS）まで——確かめたらすぐ放す。 */
+const holdIdb = (ctx) => ctx.addInitScript(() => {
+  const held = [];
+  let go = false;
+  window.__idbGo = () => { go = true; held.splice(0).forEach((f) => f()); };
+  const orig = IDBFactory.prototype.open;
+  IDBFactory.prototype.open = function (...a) {
+    const req = orig.apply(this, a);
+    let h = null;
+    Object.defineProperty(req, "onsuccess", {
+      configurable: true,
+      get() { return h; },
+      set(fn) {
+        h = fn;
+        req.addEventListener("success", (e) => { const f = () => fn.call(req, e); if (go) f(); else held.push(f); });
+      },
+    });
+    return req;
+  };
+});
+
 /* 設定（daily の歯車）→ 書き出し →「月ぶんを書き出す」を押す。押したあと、その紙が出ているか。 */
 async function tapMonthExport(page) {
   await page.evaluate(() => KN.app.showScreen("archive"));
@@ -445,9 +468,11 @@ async function tapMonthExport(page) {
 
   /* ================= 読み込み中：書かせない・写させない・控えを取らない ================= */
   {
-    // 大きな保存場所の返事を 4 秒遅らせる（開いた直後の「読み込み中」を長くする）
-    const { browser, page, errors } = await open({ before: slowIdb(4000) });
+    // 大きな保存場所の返事を、確かめ終えるまで止める（holdIdb）
+    const { browser, page, errors } = await open({ before: holdIdb });
     t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
+    /* 控えは先に頼んでおく（紙・書き出しを確かめるあいだも、済むのを待ったまま）。 */
+    await page.evaluate(() => { window.__took = null; KN.backup.take("試験").then((r) => { window.__took = r; }); });
     await page.evaluate(() => KN.app.showScreen("archive"));
     await page.waitForTimeout(200);
     const today = await page.evaluate(() => KN.util.todayKey());
@@ -459,14 +484,13 @@ async function tapMonthExport(page) {
     t.check("読み込み中は、設定の「月ぶんを書き出す」を断る（罠d）",
       !monthSheet && (await toastText(page)).includes("読み込んでいる") && (await page.evaluate(() => KN.diaryIdb.body())) === "loading",
       `${monthSheet} ${await toastText(page)}`);
+    t.check("読み込み中は控えを取らない（済むのを待つ）",
+      await page.evaluate(() => window.__took === null && KN.diaryIdb.body() === "loading"));
+    await page.evaluate(() => window.__idbGo());
     await page.evaluate(() => KN.app.showScreen("archive"));
-    await page.waitForTimeout(200);
-    await page.evaluate(() => { window.__took = null; KN.backup.take("試験").then((r) => { window.__took = r; }); });
-    await page.waitForTimeout(300);
-    t.check("読み込み中は控えを取らない（済むのを待つ）", await page.evaluate(() => window.__took === null));
     await page.waitForFunction(() => KN.diaryIdb.body() === "ok", null, { timeout: 8000 });
-    await page.waitForTimeout(400);
-    t.check("済んだら控えが取れる", await page.evaluate(() => window.__took !== null), await page.evaluate(() => String(window.__took)));
+    const took = await page.waitForFunction(() => window.__took !== null, null, { timeout: 8000 }).then(() => true, () => false);
+    t.check("済んだら控えが取れる", took, await page.evaluate(() => String(window.__took)));
     await page.click(`.arc-log-row[data-day="${today}"]`);
     await page.waitForTimeout(400);
     t.check("済んだら日記の紙が開く", await page.evaluate(() => !!document.querySelector(".sheet .js-memo")));

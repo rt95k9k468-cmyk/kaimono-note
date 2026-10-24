@@ -12,7 +12,7 @@ const { open, checker } = require("./lib");
 const t = checker("arrive-tabs");
 const AT = new Date(2026, 9, 7, 14, 0);
 
-/* 押す前から rAF で記録し、ms ぶん集めて返す。read は毎フレーム呼ぶ関数の本文。 */
+/* 押す前から rAF で記録し、ページの時計で ms ぶん集めて返す。read は毎フレーム呼ぶ関数の本文。 */
 const record = async (page, read, click, ms = 2400) => {
   await page.evaluate((src) => {
     const fn = new Function(src);
@@ -28,8 +28,12 @@ const record = async (page, read, click, ms = 2400) => {
     const tick = () => { if (window.__rec !== rec) return; rec.push(fn()); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }, read);
+  /* 記録するあいだはページの時計を止め、runFor で進める（rAF は 16ms ごとに必ず一コマ）。本物の時間で待つと、
+     混んだ機械では拾えるコマが減り「途中の色がいくつも」が落ちた（2026年10月24日、全部回しの3本並べ）。 */
+  await page.clock.pauseAt(AT);
   await page.click(click);
-  await page.waitForTimeout(ms);
+  await page.clock.runFor(ms);
+  await page.clock.resume();
   return page.evaluate(() => { const r = window.__rec; window.__rec = null; return r; });
 };
 const away = async (page, tab) => {

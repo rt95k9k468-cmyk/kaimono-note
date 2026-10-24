@@ -102,6 +102,13 @@
   #3 で日本の朝6時に落ち、8本同時に回すと手元でも出た。アプリの不具合ではない。2026年10月11日）。同じ時計の
   `performance.now` も混むと巻き戻る（本物は戻らない）。それで進む動きを毎フレーム比べるなら、頁の
   `performance.now` を単調に包む（`arrive-tabs` の `record`。2026年10月20日）。
+- **JS の時計（rAF・`performance.now`・setTimeout）で進む動きをコマで数えるなら、数えるあいだ時計を止める。**
+  `p.clock.pauseAt(止めた時刻)` →押す→`p.clock.runFor(ms)`→`resume()`。rAF は 16ms ごとに必ず一コマ、間の待ちも
+  `runFor` で（止めても押しは通り、日付は止めたまま）。CSS の動き（`.is-m-arrive .diet-stack-fill` など）は本物の時間で
+  進むので、そちらは止めない（`road-walk` の `sample`・`arrive` の `stepped`・`arrive-tabs`・`feel-touch`。3本並べで揺れていた。
+  2026年10月24日）。
+- **「読み込み中」を決め打ちの遅れで作らないこと。** 混むと手前の待ちだけで使いきる。台本が放すまで返事を止める
+  （`diary-idb` の `holdIdb`。アプリの待ち `OPEN_WAIT_MS` より前に放す。2026年10月24日）。
 - **字の描いた幅を物差しにしないこと。** 字の形は機械で違う（GitHub は数字が細い）。アプリが字の数からの見積もりで
   置くもの（道の札・いまの時刻、`day-road.js` の `textW`）は、試験も同じ見積もりで測る（`road-now-clear` が
   置き場所は同じなのに GitHub だけで落ちていた。2026年10月10日、毎日の全部回しの #1）。

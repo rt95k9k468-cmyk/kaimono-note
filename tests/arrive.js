@@ -14,7 +14,18 @@
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-29";
+const AT = new Date(2026, 8, 29, 21, 0);
 const t = checker("arrive");
+
+/* 毎フレーム記録するあいだは、ページの時計を止めて runFor で進める（rAF は 16ms ごとに必ず一コマ）。
+   本物の時間で待つと、混んだ機械ではコマの間が揃わず、1 をまたぐ前後の速さが半分に見えて落ちた
+   （2026年10月24日、全部回しの3本並べ）。 */
+const stepped = async (page, act, ms) => {
+  await page.clock.pauseAt(AT);
+  await act();
+  await page.clock.runFor(ms);
+  await page.clock.resume();
+};
 
 const seed = async (page) => {
   await page.evaluate((day) => {
@@ -56,7 +67,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
 (async () => {
   {
     const { browser, page, errors } = await open({
-      before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 21, 0)); },
+      before: async (cx, p) => { await p.clock.setFixedTime(AT); },
     });
     await seed(page);
 
@@ -66,9 +77,18 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
 
     /* 押した一拍から、毎フレーム記録する（ページの中の rAF で。外から覗くと間が飛ぶ）。 */
+    await page.clock.pauseAt(AT);
     const stamp = await page.evaluate(() => performance.now());
     await page.evaluate(() => {
       window.__rec = [];
+      /* is-m-arrive が外れた時刻（同じページの時計で）。 */
+      window.__off = null;
+      const scr = document.getElementById("screen-diet");
+      let seen = false;
+      new MutationObserver((ms, mo) => {
+        if (scr.classList.contains("is-m-arrive")) seen = true;
+        else if (seen) { window.__off = performance.now(); mo.disconnect(); }
+      }).observe(scr, { attributes: true, attributeFilter: ["class"] });
       const t0 = performance.now();
       const tick = () => {
         const rows = [...document.querySelectorAll("#screen-diet .diet-ring")].map((r) => {
@@ -98,9 +118,11 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("health の絵（heart）は二拍打つ（poke-beat）", early.poke && early.pokeName === "poke-beat",
       JSON.stringify(early));
 
+    await page.clock.runFor(3100);
+    await page.clock.resume();
     await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
       null, { timeout: 5000 });
-    const took = (await page.evaluate(() => performance.now())) - stamp;
+    const took = (await page.evaluate(() => window.__off)) - stamp;
     const rec = await page.evaluate(() => window.__rec);
     const [fill, draw, stag] = await page.evaluate(() => ["--m-fill", "--m-draw", "--m-stagger"].map((k) => KN.motion.ms(k)));
 
@@ -256,7 +278,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     }, DAY);
     await page.click('.tab[data-tab="todo"]');
     await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
-    await page.evaluate(() => {
+    await stepped(page, () => page.evaluate(() => {
       window.__rec = [];
       const t0 = performance.now();
       const tick = () => {
@@ -273,11 +295,9 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
         if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
       };
       tick();
-    });
-    await page.click('.tab[data-tab="diet"]');
+    }).then(() => page.click('.tab[data-tab="diet"]')), 3300);
     await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
       null, { timeout: 6000 });
-    await page.waitForTimeout(300);
     const rec = (await page.evaluate(() => window.__rec)).filter((f) => /is-drink/.test(f.cls));
     const moving = rec.filter((f) => f.show != null);
     const end = rec[rec.length - 1] || {};

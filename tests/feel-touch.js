@@ -55,11 +55,16 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
 
   const cdp = await ctx.newCDPSession(page);
   const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
+  /* 手順の丸を押すあいだは、ページの時計を止めて runFor で進める。済んだ手順は 0.66 秒で畳みへ沈んで
+     末尾へ移る（screen-todo.js の popSubs）——本物の時間で待つと、混んだ機械ではその間に並びが替わり、
+     「すぐ押し直す」が隣の丸を押していた。長押しの 500ms（HOLD_MS）も同じ時計で数える（2026年10月24日）。 */
+  let paused = false;
+  const wait = (ms) => (paused ? page.clock.runFor(ms) : page.waitForTimeout(ms));
   const tap = async (x, y, hold = 60) => {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(x, y) });
-    await page.waitForTimeout(hold);
+    await wait(hold);
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await page.waitForTimeout(250);
+    await wait(250);
   };
   const drag = async (x, y0, dy) => {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(x, y0) });
@@ -93,6 +98,8 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
 
   /* 1. 手順の丸を押す：指を受けたつまみが、DOM に居るまま click を出す */
   await page.waitForTimeout(500);
+  await page.clock.pauseAt(new Date(2026, 8, 27, 9, 4));
+  paused = true;
   let p = await subBox(0);
   await reset();
   await tap(p.x, p.y);
@@ -108,18 +115,20 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   c.check("手順の丸：一度押して済む", (await subSt(0)).done === true, JSON.stringify(await subSt(0)));
 
   /* すぐ押し直せば戻る（新しい指は落とさない） */
-  await page.waitForTimeout(150);
+  await wait(150);
   p = await subBox(0);
   await tap(p.x, p.y);
   c.check("手順の丸：すぐ押し直すと戻る", (await subSt(0)).done === false, JSON.stringify(await subSt(0)));
 
   /* 長押しは「できなかった」だけ */
-  await page.waitForTimeout(150);
+  await wait(150);
   p = await subBox(1);
   await tap(p.x, p.y, 750);
   const held = await subSt(1);
   c.check("手順の丸：長押しは「できなかった」だけ（済みにならない）",
     held.skipped === true && held.done === false, JSON.stringify(held));
+  await page.clock.resume();
+  paused = false;
 
   /* 2. 丸の上から送る。iPhone のつまみの「離したら click」を手で真似る */
   const scrollFrom = async (sel, label, state) => {

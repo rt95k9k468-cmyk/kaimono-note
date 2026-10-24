@@ -17,6 +17,7 @@
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-29";
+const AT = new Date(2026, 8, 29, 9, 43);
 /* 止まった形（day-road.js の REST。9月29日に利用者が選んだ）。元の絵と同じ位置で、前に
    出ている脚を奥の脚として描いたもの——脚の字は元の絵の前後が入れ替わるだけ、腕は元の絵に
    ほぼ同じ（腕と脚のずれを 0.95π にした10月4日から、手の位置で 3 ほど）。 */
@@ -45,12 +46,16 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
 (async () => {
   const c = checker("road-walk");
   const { browser, page, errors } = await open({
-    before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 9, 43)); },
+    before: async (cx, p) => { await p.clock.setFixedTime(AT); },
   });
 
   /* 毎フレーム、人の形を写す。t は写し始めからの ms。押した時刻も同じ物差しで
-     （やることの席を押した時刻は、読み直したあとに仕込む見張りが控える）。 */
+     （やることの席を押した時刻は、読み直したあとに仕込む見張りが控える）。
+     写すあいだはページの時計を止め、runFor で進める（rAF は 16ms ごとに必ず一コマ）。本物の時間で待つと、
+     混んだ機械では押してから最初のコマまでが延びて「歩き出す」が落ちた（2026年10月24日、全部回しの3本並べ）。
+     act の中の待ちも page.clock.runFor で。 */
   async function sample(ms, act) {
+    await page.clock.pauseAt(AT);
     await page.evaluate((KEYS) => {
       const log = window.__walkLog = { t0: performance.now(), frames: [], stop: false };
       const f = () => {
@@ -73,9 +78,9 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
       requestAnimationFrame(f);
     }, KEYS);
     if (act) await act();
-    await page.waitForTimeout(ms);
-    /* 決め打ちの ms だけだと、ページの時計が遅れた回に歩き終わる前に撮り終える
-       （3回に1回、最後のフレームが歩きの途中だった）。歩き終わるまで待つ。 */
+    await page.clock.runFor(ms);
+    await page.clock.resume();
+    /* 歩き終わっているはず（止めた時計で ms 進めた）。念のため確かめてから撮り終える。 */
     await page.waitForFunction(() => {
       const m = document.querySelector('.screen[data-screen="todo"] .day-road .road-me');
       return !m || !m.__walk;
@@ -266,7 +271,7 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
   await page.waitForTimeout(500);
   log = await sample(2900, async () => {
     await page.click('.tab[data-tab="todo"]');
-    await page.waitForTimeout(500);
+    await page.clock.runFor(500);
     await page.click('.tab[data-tab="todo"]');
   });
   F = log.frames;
@@ -323,6 +328,7 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
   await page.click('.tab[data-tab="archive"]');
   await page.waitForTimeout(400);
   await page.evaluate(() => localStorage.setItem("kn-road-seen", "2026-09-29 553"));
+  await page.clock.pauseAt(AT);
   await page.click('.tab[data-tab="todo"]');
   const gapAt = () => page.evaluate(() => {
     const r = document.querySelector('.screen[data-screen="todo"] .day-road');
@@ -331,10 +337,11 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
     const [W, H] = m.__box;
     return { dx: parseFloat(b.style.left) * W / 100 - v[0], dy: parseFloat(b.style.top) * H / 100 - v[1], x: v[0] };
   });
-  await page.waitForTimeout(600);
+  await page.clock.runFor(600);
   const mid = await gapAt();
-  await page.waitForTimeout(1500);
+  await page.clock.runFor(1500);
   const end = await gapAt();
+  await page.clock.resume();
   c.check("連れは人と一緒に歩く：途中も人との間は止まったときと同じ",
     Math.abs(mid.x - end.x) > 3 && Math.abs(mid.dx - end.dx) < 1 && Math.abs(mid.dy - end.dy) < 1,
     JSON.stringify({ mid, end }));
