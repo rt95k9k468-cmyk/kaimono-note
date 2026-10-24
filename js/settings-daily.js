@@ -191,7 +191,7 @@
   function dailyOutRows() {
     return [
       card(
-        navRow({
+        KN.util.folded("monthExport") ? null : navRow({
           ico: "download", tint: TINT.sub, title: "月ぶんを書き出す",
           onTap: openMonthExport,
         }),

@@ -13,7 +13,7 @@ const YEST = "2026-10-05";
 
 (async () => {
   const c = checker("slips");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ unfold: ["slips", "reviewFacts"],
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 11, 0)); },
   });
   const wait = (ms) => page.waitForTimeout(ms);

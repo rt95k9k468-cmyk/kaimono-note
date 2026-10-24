@@ -73,8 +73,9 @@ function clockAt(hms) {
 }
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
-    before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false } = {}) {
+    before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。
+    unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。 */
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false, unfold = [] } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
@@ -104,6 +105,13 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (!live) await ctx.addInitScript(() => { try { localStorage.setItem("kn-note-marks", "1"); } catch (_) {} });
   /* やることは開いたときは今日の面（2026年10月20日。以前は週）。ほかの台本は席の二度押しが何もしない。週の面から始める台本だけ `weekFirst: true`。 */
   await ctx.addInitScript((f) => { try { sessionStorage.setItem("kn-todo-face", f); } catch (_) {} }, weekFirst ? "week" : "today");
+  /* 畳んだ面を開く：util.js が KN.util を置いた瞬間に、その名前を FOLDED から外す（アプリに試験の口を作らない）。 */
+  if (unfold.length) await ctx.addInitScript((names) => {
+    const KN = (window.KN = window.KN || {});
+    let u;
+    Object.defineProperty(KN, "util", { configurable: true, enumerable: true, get: () => u,
+      set: (v) => { u = v; if (v && v.FOLDED) names.forEach((n) => v.FOLDED.delete(n)); } });
+  }, unfold);
   /* KN_NO_FIT=1：伸びる欄を、field-sizing の効かない端末の道（JS が測る）で回す（roadmap-3.1 の S2）。 */
   if (process.env.KN_NO_FIT) await ctx.addInitScript(noFit);
   /* KN_NO_ANCHOR=1：スクロールの錨の無い端末（iOS 26 まで）の道で回す（roadmap-3.1 の S1）。 */

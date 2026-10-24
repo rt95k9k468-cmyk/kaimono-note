@@ -17,7 +17,7 @@ const { open, checker, ASKS } = require("./lib");
 
 (async () => {
   const t = checker("asks");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ unfold: ["readMark"],
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 12, 34)); },
   });
   await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });

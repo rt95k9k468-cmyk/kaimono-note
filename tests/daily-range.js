@@ -15,7 +15,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("daily-range");
-  const { browser, page, errors } = await open();
+  const { browser, page, errors } = await open({ unfold: ["monthExport"] });
 
   /* ---- store ---- */
   const st = await page.evaluate(() => {

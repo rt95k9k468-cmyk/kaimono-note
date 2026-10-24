@@ -40,7 +40,7 @@ const FAKE = "https://relay.invalid/kn-testonlypath0000";
 const SEP = "\u001E";
 
 (async () => {
-  const { browser, page, errors } = await open();
+  const { browser, page, errors } = await open({ unfold: ["listDest"] });
 
   /* ---- 表：行き先（画面の中の本物の辞書で） ---- */
   const TABLE = [

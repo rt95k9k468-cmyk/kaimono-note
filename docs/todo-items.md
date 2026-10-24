@@ -676,7 +676,7 @@ node の表で測れます（`icon-eval.json` と同じ考えかた。道具は�
   開いて8秒後・前に出たとき・用事を直して2分後（変わらなければ送らない）。失敗は黙る（控えの error に混ぜない）。
   中身は `{v, day, at, workOnly, events:[{time,name,side}], marks:[名前]}`。試験は `tests/glance-sync.js`。
 - **②を作った（10月18日）**：Dropbox の紙の「小窓の組み方」→ 設定の `more()` 一ページ（`glanceHow`・`glanceHowRows`、`calHowRows` と同じ作り）。
-- **③を作った（10月18日）**：設定の Dropbox の紙の「受け箱へ置く」（`settings.inboxPost`・既定切・PC で入）。入のあいだ、
+- **③を作った（10月18日）**：設定の Dropbox の紙の「この端末は PC」（10月24日まで「受け箱へ置く」。`settings.inboxPost`・既定切・PC で入）。入のあいだ、
   やることの紙の「追加」（新しく足すときだけ。10月20日に小窓から移した）は用事にならず、題（分けた行は一件ずつ）が `inbox/<時刻>-<乱数>.json`（`{v,text}`・`add`）へ一件ずつ置かれる（`dropbox.js` の `inboxPut`）。
   取り込むのは控えを送る端末（`cfg.sender` が偽でなく、`inboxPost` が切）だけ——開いて8秒後と前に出たとき（`inboxTake`）、
   読んだら `weekAdd`（週の面の一行と同じ読み）で**仕事の用事**として入れて受け箱から消す。失敗は黙る。試験は `tests/inbox-take.js`。

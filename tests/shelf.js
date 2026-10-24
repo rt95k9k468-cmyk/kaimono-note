@@ -16,7 +16,7 @@ const TODAY = "2026-10-06";
 
 (async () => {
   const c = checker("shelf");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ unfold: ["sekki", "reviewFacts"],
     before: async (cx, p) => {
       await p.clock.setFixedTime(new Date(2026, 9, 6, 9, 0));
       /* 古い長期タスク（review なし・9月12日に作った）と、新しめの一件 */

@@ -1,6 +1,6 @@
-/* 題の木をコピー（docs/notes.md「題の木」）。
+/* 目次をコピー（docs/notes.md「題の木」）。
 
-   ノートの歯車の notes に「題の木をコピー」／木は ノートブック → 字下げで深さ・id の尻6字・
+   ノートの歯車の notes に「目次をコピー」／木は ノートブック → 字下げで深さ・id の尻6字・
    本文が空なら □ ／本文は一字も入らない／最近削除したノートは入らない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-title-tree.js */
@@ -37,8 +37,8 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
-  const has = await page.locator(".set-layer:last-child .set-row", { hasText: "題の木をコピー" }).count();
-  t.check("ノートの歯車に「題の木をコピー」", has === 1, String(has));
+  const has = await page.locator(".set-layer:last-child .set-row", { hasText: "目次をコピー" }).count();
+  t.check("ノートの歯車に「目次をコピー」", has === 1, String(has));
 
   t.check("エラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();

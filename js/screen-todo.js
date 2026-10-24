@@ -4283,8 +4283,8 @@
   function factsOf(t) {
     const bits = [];
     /* 最初に置いた日（控えの最初の「前の日」、無ければ作った日）・置き直しの回数・前に置いていた時刻（D1）。 */
-    const slips = t.slips || [];
-    const since = (slips[0] && slips[0].from) || dayOfStamp(t.createdAt);
+    const slips = KN.util.folded("reviewFacts") ? [] : t.slips || [];
+    const since = KN.util.folded("reviewFacts") ? null : (slips[0] && slips[0].from) || dayOfStamp(t.createdAt);
     if (since) bits.push(`${mdJa(since)}から`);
     const n = slips.length;
     if (n) bits.push(`${n}回置き直し`);

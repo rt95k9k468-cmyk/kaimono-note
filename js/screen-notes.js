@@ -1820,7 +1820,7 @@
     /* 読んだところ（思考のホーム。docs/thinking.md）。終わりに「### 10月12日 p.」の見出しを足し、押した流れの
        まま続きへ（ページは任意。論文のタグなら「p.」を付けない）。下に書くのは自分の気づき・問い・やってみること
        ——要約の欄は作らない。前の「種をまく」（段6）は外した：種はタグ。つながった記録の札・小窓は今のまま。 */
-    const readItem = () => (!stored || blank() ? [] : [{ icon: "book", label: "読んだところ",
+    const readItem = () => (!stored || blank() || KN.util.folded("readMark") ? [] : [{ icon: "book", label: "読んだところ",
       onPick: () => {
         const d = new Date();
         const line = `### ${d.getMonth() + 1}月${d.getDate()}日${note.tags.includes("論文") ? " " : " p."}`;

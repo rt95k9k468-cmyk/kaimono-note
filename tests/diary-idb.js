@@ -168,7 +168,7 @@ async function tapMonthExport(page) {
 
   /* ================= 突き合わせ：写しが正しい ================= */
   {
-    const { browser, page, errors } = await open();
+    const { browser, page, errors } = await open({ unfold: ["monthExport"] });
     await settled(page);
     await page.evaluate(({ A, B }) => {
       KN.store.setDayLog(A, { memo: "一日目の試験の一行" });
@@ -280,7 +280,7 @@ async function tapMonthExport(page) {
 
   /* ================= 段2の2a：印の行（memoOut）を手で作った記録で ================= */
   {
-    const { browser, page, errors } = await open();
+    const { browser, page, errors } = await open({ unfold: ["monthExport"] });
     await settled(page);
     const today = await page.evaluate(() => KN.util.todayKey());
     const BA = "印の試験：写しにある一日目";
@@ -405,7 +405,7 @@ async function tapMonthExport(page) {
   /* ================= 罠e：印の行があるのに、写しの記録が無い ================= */
   {
     const NORMAL = "罠eの試験：ふつうの一日";
-    const { browser, page, errors } = await open({
+    const { browser, page, errors } = await open({ unfold: ["monthExport"],
       before: async (ctx) => {
         await slowIdb(2500)(ctx);
         // まっさらの端末に、印の行を持つ元だけがある（写しは丸ごと失った形）。
@@ -469,7 +469,7 @@ async function tapMonthExport(page) {
   /* ================= 読み込み中：書かせない・写させない・控えを取らない ================= */
   {
     // 大きな保存場所の返事を、確かめ終えるまで止める（holdIdb）
-    const { browser, page, errors } = await open({ before: holdIdb });
+    const { browser, page, errors } = await open({ unfold: ["monthExport"], before: holdIdb });
     t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
     /* 控えは先に頼んでおく（紙・書き出しを確かめるあいだも、済むのを待ったまま）。 */
     await page.evaluate(() => { window.__took = null; KN.backup.take("試験").then((r) => { window.__took = r; }); });
@@ -502,7 +502,7 @@ async function tapMonthExport(page) {
   {
     /* 時計は昼から進める：この節は40秒ほどかかり、0:00 をまたぐと「今日」の行が消える（roadmap-seamless の
        N10）。止めはしない——「前に試してから5秒は読み直さない」が Date.now で進むので。 */
-    const { browser, page, errors } = await open({
+    const { browser, page, errors } = await open({ unfold: ["monthExport"],
       before: async (ctx, p) => {
         await p.clock.install({ time: new Date(2026, 9, 1, 12, 0) });
         await ctx.addInitScript(() => {

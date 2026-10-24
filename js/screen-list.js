@@ -189,7 +189,7 @@
 
     /* 行き先の札（R4）。「明日 19:00 歯医者」は、やることらしい——押せばそちらへ。
        押さなければ今までどおり買うものに入る。 */
-    const paintDest = KN.capture
+    const paintDest = KN.capture && !KN.util.folded("listDest")
       ? KN.capture.bindChip(destEl, {
         from: "list",
         text: () => (picked ? "" : nameEl.value),

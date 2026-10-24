@@ -18,7 +18,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("notes-format");
-  const { browser, ctx, page, errors } = await open();
+  const { browser, ctx, page, errors } = await open({ unfold: ["readMark"] });
 
   const active = () => page.evaluate(() => document.querySelector(".screen.is-active").dataset.screen);
   const settled = (id) => page.waitForFunction((i) =>

@@ -1040,9 +1040,11 @@
         }) : null
       ),
       card(navRow({ ico: "calendar", tint: TINT.sync, title: "小窓の組み方", onTap: () => go("glanceHow") })),
-      /* PC から（docs/todo-items.md 段4の③）。入れた端末で足したやることは、用事にせず受け箱へ。 */
+      /* PC から（docs/todo-items.md 段4の③）。入れた端末で足したやることは、用事にせず受け箱へ。
+         題は「受け箱へ置く」だと何の行か分からなかった（2026年10月24日、利用者）——PC で入れる行だと言う。 */
+      head("PC"),
       card(switchRow({
-        title: "足したやることを受け箱へ置く", on: store.get().settings.inboxPost === true,
+        title: "この端末は PC", on: store.get().settings.inboxPost === true,
         onTap: (v) => { store.update((x) => { x.settings.inboxPost = v; }); },
       })),
       card(dangerRow({

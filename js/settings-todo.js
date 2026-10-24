@@ -41,7 +41,8 @@
     });
     return [
       card(pick("next", "これから"), pick("wait", "待つ"), pick("someday", "いつか")),
-      card(
+      /* 畳んだ面（util.js の FOLDED）。オンのあいだは切れるように出す。 */
+      KN.util.folded("sekki") && s.reviewSekki !== true ? null : card(
         switchRow({
           title: "節気の初日に揃える", on: s.reviewSekki === true,
           onTap: (v) => {
@@ -144,14 +145,14 @@
           ico: "bell", tint: TINT.goal, title: "通知",
           value: notify.enabled() ? "オン" : "オフ", onTap: () => go("notify"),
         }) : null,
-        KN.ics && KN.ics.apple() ? navRow({
+        KN.ics && KN.ics.apple() && !(KN.util.folded("calShortcut") && s.calShortcut !== true) ? navRow({
           ico: "calendar", tint: TINT.sync, title: "カレンダー",
           value: s.calShortcut === true ? "オン" : "オフ", onTap: () => go("cal"),
         }) : null
       ),
       /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。三行とも四角を付ける
          （前は四角の無い行と有る行が一枚に混ざり、字の頭が揃っていなかった）。 */
-      card(
+      KN.util.folded("googleImport") ? null : card(
         navRow({ ico: "download", tint: TINT.sync, title: "Google から取り込む", onTap: () => KN.googleImport.open() }),
         navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
         batches.length
@@ -160,7 +161,7 @@
           : null
       ),
       /* 崩れ方の事実（3.0 の D1）。並べるだけ。 */
-      card(
+      KN.util.folded("slips") ? null : card(
         navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの控え",
                  value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
                  onTap: () => go("slips") })

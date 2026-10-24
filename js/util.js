@@ -889,7 +889,24 @@
      改行を見る所はみなこれを通す（tests/ime-enter.js が見張る）。 */
   function isEnter(e) { return e.key === "Enter" && !e.isComposing && e.keyCode !== 229; }
 
+  /* 畳んだ面（docs/settings.md の「畳んだ面」・2026年10月24日、利用者が選んだ）。名前がここにあれば出さない。
+     実行時の印だけで、保存しない——記録・設定の鍵はそのまま。戻すときは名前を消す。試験は delete して開く。 */
+  const FOLDED = new Set([
+    "monthExport",   // 設定 daily → 書き出し →「月ぶんを書き出す」（「期間を選んで書き出す」と重なる）
+    "googleImport",  // 設定 tasks →「Google から取り込む」「誕生日のショートカット」「取り込みを取り消す」
+    "slips",         // 設定 tasks →「置き直しの控え」
+    "reviewFacts",   // 見直しの紙の頭の「◯日から · ◯回置き直し · 前は ◯」（期限・待つは出す）
+    "calShortcut",   // 設定 tasks →「カレンダー」（オンのあいだは出す）
+    "sekki",         // 見直す →「節気の初日に揃える」（オンのあいだは出す）
+    "layout",        // 外観 →「並べ方」（タイルのあいだは出す）
+    "searchBar",     // 外観 →「探す窓をいつも出す」（オンのあいだは出す）
+    "listDest",      // 買うものの足す紙の行き先の札（「→ やること …」）
+    "readMark",      // ノートの「⋯」の「読んだところ」
+  ]);
+  const folded = (k) => FOLDED.has(k);
+
   KN.util = {
+    FOLDED, folded,
     raw, html, node, frag, escapeHtml,
     uid, clamp, debounce,
     yen, yenFine, parseNum,

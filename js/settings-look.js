@@ -230,9 +230,9 @@
       ),
       KN.sky ? S.more("空の写真の出典", "Wikimedia Commons ／ " + KN.sky.credits()
         .map((c) => `${c.name}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
-      head("一覧"),
-      card(
-        pickRow({
+      /* 並べ方・探す窓は畳んだ面（util.js の FOLDED）。既定から変えているあいだは戻せるように出す。 */
+      ...(() => { const rows = [
+        KN.util.folded("layout") && !KN.ui.isTiles() ? null : pickRow({
           title: "並べ方", value: KN.ui.isTiles() ? "タイル" : "リスト",
           onTap: () => choose({
             title: "並べ方", value: KN.ui.isTiles() ? "tiles" : "list",
@@ -243,14 +243,14 @@
             onPick: () => { KN.ui.toggleLayout(); render(); },
           }),
         }),
-        switchRow({
+        KN.util.folded("searchBar") && s.searchBar !== true ? null : switchRow({
           title: "探す窓をいつも出す", on: s.searchBar === true,
           onTap: (v) => {
             store.update((x) => { x.settings.searchBar = v; });
             render();
           },
-        })
-      ),
+        }),
+      ].filter(Boolean); return rows.length ? [head("一覧"), card(...rows)] : []; })(),
       canBadge ? head("ホーム画面") : null,
       canBadge ? card(
         switchRow({

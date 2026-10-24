@@ -10,7 +10,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("settings");
-  const { browser, ctx, page, errors } = await open();
+  const { browser, ctx, page, errors } = await open({ unfold: ["monthExport", "calShortcut"] });
   await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://localhost:8765" });
   const top = ".set-layer:last-child";
   const rowOf = (text) => page.locator(`${top} .set-row`, { hasText: text }).first();

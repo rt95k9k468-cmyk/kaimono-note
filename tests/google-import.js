@@ -6,7 +6,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("Google 取り込み");
-  const { browser, page, errors } = await open({ timezoneId: "Asia/Tokyo" });
+  const { browser, page, errors } = await open({ unfold: ["googleImport"], timezoneId: "Asia/Tokyo" });
 
   const r = await page.evaluate(async () => {
     const U = KN.util, today = U.todayKey();
