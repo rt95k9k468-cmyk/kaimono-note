@@ -379,7 +379,6 @@ export default {
   },
 };
 
-
 async function route(request, env) {
   const url = new URL(request.url);
 

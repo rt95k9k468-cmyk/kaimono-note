@@ -21,6 +21,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 const ROOT = __dirname;
 const OUT_DIR = path.join(ROOT, "dist");
@@ -170,6 +171,7 @@ const head = `
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="くらしノート">
+__CSP__
 <link rel="manifest" href="${manifestUri}">
 <link rel="icon" href="${iconSvg}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${iconPng}">
@@ -177,18 +179,27 @@ const head = `
 ${css}
 </style>`.trim();
 
+const FLAG = "window.KN_STANDALONE = true;";
+const APP = `\n${js}\n`;
 const bodyContent = `
 ${shell}
 
-<script>window.KN_STANDALONE = true;</script>
-<script>
-${js}
-</script>`.trim();
+<script>${FLAG}</script>
+<script>${APP}</script>`.trim();
+
+/* index.html と同じ CSP（docs/dev.md「画面の中の守り」）。ここではスクリプトが直書きなので、
+   'self' の代わりにこの二本だけを sha256 で許す。manifest は data: で埋めてある。
+   門の tests/security-gate.js が組んで開き、違反が出ないかを見る。 */
+const sha = (code) => `'sha256-${crypto.createHash("sha256").update(code, "utf8").digest("base64")}'`;
+const cspFor = (scripts) => '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; '
+  + `script-src ${scripts.map(sha).join(" ")}; object-src 'none'; base-uri 'self'; img-src 'self' data: blob:; `
+  + "style-src 'self' 'unsafe-inline'; connect-src 'self' https:; form-action 'none'; worker-src 'self'; "
+  + "manifest-src 'self' data:\">";
 
 const fullDoc = `<!DOCTYPE html>
 <html lang="ja">
 <head>
-${head}
+${head.replace("__CSP__", cspFor([FLAG, APP]))}
 </head>
 <body>
 ${bodyContent}
@@ -208,10 +219,9 @@ ${bodyContent}
 /* ---- two-file deploy: index.html + sw.js ---- */
 
 // Same document, minus the standalone flag, so app.js registers ./sw.js.
-const webIndex = fullDoc.replace(
-  '<script>window.KN_STANDALONE = true;</script>\n',
-  ""
-);
+const webIndex = fullDoc
+  .replace(`<script>${FLAG}</script>\n`, "")
+  .replace(cspFor([FLAG, APP]), cspFor([APP]));
 
 const webSw = `/* くらしノート — offline cache for the two-file deploy. */
 const CACHE = "kaimono-note-inline-v1";

@@ -5,10 +5,12 @@
      sha256 で許したものだけ（中身を直したら、頁の meta の値も直す——ここが値を出す）
    - 配る頁と js/・sw.js に、外から読むスクリプトが無い
    - js/・sw.js に eval と new Function が無い
-   - 一通り動かしても、自分の origin と Dropbox 以外へ通信しない。道具の頁も CSP の違反なしに動く */
+   - 一通り動かしても、自分の origin と Dropbox 以外へ通信しない。道具の頁も CSP の違反なしに動く
+   - 1ファイル版（build-standalone.js）にも CSP があり、起ち上がって違反が出ない（dist/ は .gitignore） */
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { spawnSync } = require("child_process");
 const { open, checker, ROOT } = require("./lib");
 
 /* index.html の CSP。connect-src の https: は中継所・AI の窓口（利用者が URL を入れる）と Dropbox のため。 */
@@ -95,7 +97,7 @@ let browser;
   await ctx.route("**/*", (r) => {
     const u = new URL(r.request().url());
     if (u.origin === self) return r.continue();
-    if (/^(data|blob):$/.test(u.protocol)) return r.continue();
+    if (/^(data|blob|file):$/.test(u.protocol)) return r.continue();
     if (!(u.protocol === "https:" && DROPBOX.includes(u.hostname))) away.push(u.origin);
     return r.abort();   // 試験では外へは出ない（Dropbox も数えるだけ）
   });
@@ -137,6 +139,29 @@ let browser;
 
   t.check("道具の頁で CSP の違反が出ず、外へも出ない", !violations.length && !away.length && !errors.length,
     [...violations, ...away, ...errors].join(" / "));
+
+  /* 1ファイル版（build-standalone.js）にも CSP。組んで、ファイルのままと置いた版の両方で起ち上がり、違反が出ない。 */
+  const built = spawnSync(process.execPath, [path.join(ROOT, "build-standalone.js")], { encoding: "utf8" });
+  for (const [name, at] of [["kaimono-note.html", `file://${path.join(ROOT, "dist", "kaimono-note.html")}`],
+    ["web/index.html", `${self}/dist/web/index.html`]]) {
+    const html = built.status === 0 ? read(`dist/${name}`) : "";
+    const c = cspOf(html);
+    const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    t.check(`1ファイル版 ${name}：CSP があり、直書きはみな sha256 で許してある`, !!c
+      && inline.length > 0 && inline.every((s) => c["script-src"].includes(sha(s)))
+      && !/unsafe-(eval|inline)/.test(String(c["script-src"])) && String(c["object-src"]) === "'none'",
+      built.stderr || JSON.stringify(c && c["script-src"]));
+    const one = await ctx.newPage();
+    const pageErr = [];
+    one.on("pageerror", (e) => pageErr.push(e.message));
+    const before = violations.length;
+    await one.goto(at);
+    const up = await one.waitForFunction(() => window.KN && KN.app && KN.app.activeScreen(), null, { timeout: 20000 })
+      .then(() => true, () => false);
+    t.check(`1ファイル版 ${name}：起ち上がり、CSP の違反が出ない`, up && violations.length === before && !pageErr.length,
+      [...violations.slice(before), ...pageErr].join(" / "));
+    await one.close();
+  }
 
   await browser.close();
   t.done();
