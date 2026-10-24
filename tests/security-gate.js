@@ -6,7 +6,8 @@
    - 配る頁と js/・sw.js に、外から読むスクリプトが無い
    - js/・sw.js に eval と new Function が無い
    - 一通り動かしても、自分の origin と Dropbox 以外へ通信しない。道具の頁も CSP の違反なしに動く
-   - 1ファイル版（build-standalone.js）にも CSP があり、起ち上がって違反が出ない（dist/ は .gitignore） */
+   - 1ファイル版（build-standalone.js）にも CSP があり、起ち上がって違反が出ない（dist/ は .gitignore）
+   - よその頁の枠（iframe）の中では見せない（js/frame-guard.js。meta の CSP では frame-ancestors が効かない） */
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -162,6 +163,23 @@ let browser;
       [...violations.slice(before), ...pageErr].join(" / "));
     await one.close();
   }
+
+  /* よその頁の枠の中では見せない（js/frame-guard.js）。ふつうに開けば見える。1ファイル版は枠でも止めない。 */
+  const shownIn = async (f) => f.evaluate(() => getComputedStyle(document.documentElement).display !== "none");
+  const top = await ctx.newPage();
+  await top.goto(`${self}/index.html`);
+  await top.waitForFunction(() => window.KN && KN.app && KN.app.activeScreen());
+  t.check("ふつうに開いたアプリは見える", await shownIn(top));
+  await top.close();
+  const host = await ctx.newPage();
+  await host.setContent(`<iframe src="${self}/index.html" width="390" height="600"></iframe>
+    <iframe src="${self}/dist/kaimono-note.html" width="390" height="600"></iframe>`);
+  const [app, solo] = host.frames().slice(1);
+  await Promise.all([app, solo].map((f) => f.waitForFunction(() => window.KN && KN.app && KN.app.activeScreen(), null, { timeout: 20000 })
+    .catch(() => {})));
+  t.check("よその頁の枠に入れたアプリは隠れる", !(await shownIn(app)));
+  t.check("1ファイル版は枠の中でも見える", await shownIn(solo));
+  await host.close();
 
   await browser.close();
   t.done();

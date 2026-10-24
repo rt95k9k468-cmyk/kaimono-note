@@ -110,6 +110,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - `relay/worker.js` を直したら `node relay/embed.js`（アプリが配る写し）。`tests/relay-worker.js`（門）が中継所の試験と写しのずれを見る。
   `ai/` の試験は SDK が要るので門の外（`cd ai && npm ci --omit=dev && node worker.test.mjs`）。
 - ワーカーの直しは、利用者が Cloudflare に置き直すまで効かない。置き直さなくても今の口は動く（アプリ側は変えていない）。
+- **よその頁の枠の中では見せない**（`js/frame-guard.js`、いちばん先に読む）。meta の CSP では `frame-ancestors` が効かず、Pages ではヘッダも足せないため。
+  1ファイル版は枠で開く使い方があるので止めない。
 - 道は `crypto.getRandomValues` だけで作る（`Math.random` の代わりを持たない）。Dropbox は PKCE＋コードを貼る形（戻り先なし）のまま。
 
 ## アーキテクチャのクセ
