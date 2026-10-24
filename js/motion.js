@@ -231,6 +231,7 @@
 
   function buzz(spec) {
     if (!navigator.vibrate) return;
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;   // まだ触れていない頁（util の haptic と同じ）
     try {
       if (spec.pattern) navigator.vibrate(spec.pattern);
       else if (spec.ms) navigator.vibrate(spec.ms);

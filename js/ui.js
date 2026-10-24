@@ -640,8 +640,11 @@
     const inFoot = (n) => !!(footer && footer.contains && footer.contains(n));
     const fields = () => [...el.querySelectorAll("input, textarea, select")]
       .filter((f) => !f.readOnly && !f.disabled && f.type !== "file" && !inFoot(f));
+    /* 空のままの `data-blank-ok` の欄（足したばかりの手順など）は数えない。空の手順は保存で落ちるので、
+       足して何も書かずに閉じただけで「直しました」と保存が走っていた（2026年10月24日）。 */
     const snapshot = () =>
-      fields().map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
+      fields().filter((f) => !(f.hasAttribute("data-blank-ok") && !String(f.value).trim()))
+        .map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
       + "\u241E"
       + [...el.querySelectorAll("[aria-pressed]")].filter((b) => !inFoot(b))
         .map((b) => b.getAttribute("aria-pressed")).join(",");

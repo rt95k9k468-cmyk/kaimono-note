@@ -2232,7 +2232,7 @@
     const editing = editId ? store.drinksOfDay(day).find((d) => d.id === editId) : null;
 
     const body = node(html`
-      <div class="stack">
+      <div class="stack diet-form">
         <div class="diet-daynav">
           <b>${U.formatDay(day)}</b>
         </div>
@@ -2266,7 +2266,6 @@
                  value="${editing ? editing.mood || "" : ""}">
         </label>
         <div class="diet-chips js-moodtags"></div>
-        <p class="diet-note js-moodnote"></p>
 
         <div class="js-list"></div>
       </div>
@@ -2379,16 +2378,11 @@
        自分の飲み方が他人の言葉で記録されます。 */
     function paintMoodTags() {
       const host = body.querySelector(".js-moodtags");
-      const note = body.querySelector(".js-moodnote");
       const seen = DR.moodSuggestions(store.get().diet.drinks, 5);
       const words = [...new Set(seen.map((x) => x.word).concat(tags))];
       host.innerHTML = "";
-      if (!words.length) {
-        note.hidden = false;
-        note.textContent = "書いた言葉は、次から押せる札になります。";
-        return;
-      }
-      note.hidden = true;
+      /* はじめての人には何も出さない（「次から札になります」の説明は外した。画面に説明文を書かない）。 */
+      if (!words.length) return;
       words.forEach((w) => {
         const on = tags.includes(w);
         const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
@@ -2847,6 +2841,8 @@
         <div class="chip-row diet-slot-cands" role="list" aria-label="前に書いたもの"></div>
       </div>
     `);
+    /* 前に書いた言葉がまだ一つも無い枠では、札の二段ぶん（約94px）を空けて待たない（開いているあいだは増えない）。 */
+    if (!words.length) box.querySelector(".diet-slot-cands").hidden = true;
     row.replaceWith(box);
     const ta = box.querySelector("textarea");
     const cands = box.querySelector(".diet-slot-cands");
@@ -3987,7 +3983,7 @@
     let clothed = seed.clothed == null ? null : seed.clothed;
 
     const body = node(html`
-      <div class="stack">
+      <div class="stack diet-form">
         <div class="field-row">
           <label class="field grow">
             <span class="field-label">日付</span>

@@ -1111,6 +1111,14 @@
 /* 時刻 in the sheet. Optional, and one line rather than a full-width field
    under the chips — a block the size of the date field reads as something you
    are expected to fill in, and most todos do not happen at a time. */
+/* 設定の「見直す日」は一枚として押しのけて出るので、紙（.sheet）の札の規則が届かない。段を分け、札は見出しの頭に
+   そろえる（見出しが上の札にくっつき、札だけ 16px 右へずれていた。2026年10月24日）。 */
+.review-days { gap: var(--sp-4); }
+.review-days .chip-row { flex-wrap: wrap; overflow-x: visible; row-gap: var(--sp-2); padding-inline: 0; }
+/* からだの書く紙（体重・お酒）。欄の名前が上の欄にくっついて見えた（.stack は間を持たない。2026年10月24日）。
+   空の入れもの（読み・選んだ札・一覧）は間を作らない。 */
+.sheet .stack.diet-form { gap: var(--sp-4); }
+.sheet .stack.diet-form > :empty { display: none; }
 .time-row { display: flex; align-items: center; gap: var(--sp-2); }
 .time-label { flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }

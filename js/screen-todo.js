@@ -1277,7 +1277,7 @@
             <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
             <button type="button" class="sub-check js-sub-check ${subOn(s) ? "is-on" : ""}" role="checkbox"
                     aria-checked="${String(subOn(s))}" aria-label="${i + 1}つめの手順を済ませる">${icon("check")}</button>
-            <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う"
+            <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う" data-blank-ok
                    aria-label="${i + 1}つめの手順" autocomplete="off" enterkeyhint="enter">
             <button type="button" class="icon-btn js-sub-del"
                     aria-label="この手順を消す">${icon("close")}</button>

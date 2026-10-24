@@ -833,8 +833,10 @@
 
   /* ---------- feedback ---------- */
 
+  /* まだ一度も触れていない頁では震わせない（起動の一枚目で呼ぶと、ブラウザが断って誤りの行を残す）。 */
+  const touched = () => !navigator.userActivation || navigator.userActivation.hasBeenActive;
   function haptic(ms) {
-    if (navigator.vibrate) { try { navigator.vibrate(ms || 8); } catch (_) {} }
+    if (navigator.vibrate && touched()) { try { navigator.vibrate(ms || 8); } catch (_) {} }
   }
 
   /* ---------- 写す ---------- */
