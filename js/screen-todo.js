@@ -4569,6 +4569,13 @@
     jumpToDay(day);
   }
 
+  /** 紙の頭に貼りつく「今日｜週｜月」の帯の丈（.wk-faces は sticky top:0）。送った行がその裏に潜らないよう、送り先から引く
+      （引かずに 8px だけ下げていて、押した日の行が帯の裏に隠れ、次の日から見えていた。2026年10月24日）。 */
+  function faceFloor() {
+    const bar = root && root.querySelector(".wk-faces");
+    return bar && bar.getClientRects().length ? bar.offsetHeight : 0;
+  }
+
   /** 月の面で押した日：別の月ならその月へ、同じ月ならその日（か次に予定のある日）の行へ送る。題もその日に。 */
   function monthAt(day) {
     if (day.slice(0, 7) !== shownDay().slice(0, 7)) { goDay(day); markDay(day, true); return; }
@@ -4578,7 +4585,7 @@
       const r = rows.find((x) => x.dataset.day >= day) || rows[rows.length - 1];
       if (!r) return;
       const sc = KN.app.scrollerOf(root);
-      KN.app.glideTo(sc, Math.max(0, sc.scrollTop + r.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8));
+      KN.app.glideTo(sc, Math.max(0, sc.scrollTop + r.getBoundingClientRect().top - sc.getBoundingClientRect().top - faceFloor() - 8));
     });
   }
 
@@ -4590,7 +4597,7 @@
       const r = root && root.querySelector(`.wk-day[data-day="${day}"]`);
       if (!r) return;
       const sc = KN.app.scrollerOf(root);
-      KN.app.glideTo(sc, Math.max(0, sc.scrollTop + r.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8));
+      KN.app.glideTo(sc, Math.max(0, sc.scrollTop + r.getBoundingClientRect().top - sc.getBoundingClientRect().top - faceFloor() - 8));
     });
   }
 

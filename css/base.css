@@ -1098,6 +1098,10 @@ a { color: var(--c-primary); }
   max-width: calc(min(100vw, var(--maxw)) - 128px);
   left: calc(-1 * var(--sp-2)); }
 .head.is-notes .head-name.is-sub { pointer-events: auto; }
+/* 降りた面の題は一段小さく、道すじとのあいだも詰める（「‹ Notes › すべてのノート」が 390px で「すべてのノ…」と切れていた。
+   2026年10月24日）。 */
+.head-name.is-sub { font-size: calc(clamp(15px, 5vw, 21px) * var(--fs-k)); }
+.head-name.is-sub .head-name-t { gap: var(--sp-1); }
 .head-name-t { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; overflow: hidden; }
 .head-name-t > span:last-child { overflow: hidden; text-overflow: ellipsis; }
 /* 道すじ「Notes ›」（段1b）。今の面の名前より小さく薄く。押すとホーム。 */

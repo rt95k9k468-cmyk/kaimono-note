@@ -73,10 +73,13 @@ const { open, checker } = require("./lib");
   const pos = await page.evaluate(() => {
     const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
     const r = document.querySelector('#screen-todo .mo-day[data-day="2026-10-30"]').getBoundingClientRect();
-    return { top: r.top - sc.getBoundingClientRect().top, scroll: sc.scrollTop };
+    const bar = document.querySelector("#screen-todo .wk-faces").offsetHeight;   // 貼りつく「今日｜週｜月」の帯
+    return { top: r.top - sc.getBoundingClientRect().top, scroll: sc.scrollTop, bar };
   });
   a = await look();
-  c.check("暦の日を押すと、その日の行へ（面は月のまま）", a.face === "月" && pos.scroll > 0 && Math.abs(pos.top - 8) < 4, JSON.stringify(pos));
+  /* 帯の下から 8px（帯の裏に隠れない。前は器の頭から 8px で、押した日の行が帯に隠れていた。2026年10月24日）。 */
+  c.check("暦の日を押すと、その日の行へ（面は月のまま・帯に隠れない）", a.face === "月" && pos.scroll > 0 && pos.bar > 0
+    && Math.abs(pos.top - pos.bar - 8) < 4, JSON.stringify(pos));
   c.check("輪と題もその日", a.here === "2026-10-30" && /30日/.test(a.title), JSON.stringify([a.here, a.title]));
 
   // 紙を頭へ送り戻すと、輪がついてくる
