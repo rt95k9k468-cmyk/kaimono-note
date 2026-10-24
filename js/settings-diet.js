@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow, switchRow, render } = S;
+  const { go, TINT, card, navRow, switchRow } = S;
 
   /* ---------------- 記録の書き出し ----------------
 
@@ -139,14 +139,12 @@
           ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`;
 
     return [
+      /* 「開いたときに自動で読む」は取り込みの一枚へ移した（2026年10月24日。読むのは中継所と
+         コピーした歩数——取り込みの話で、何を読むのかは、あちらの並びが言う）。 */
       card(
         switchRow({
-          title: "開いたときに自動で読む", on: s.settings.dietAutoSync !== false,
-          onTap: (v) => { store.update((x) => { x.settings.dietAutoSync = v; }); render(); },
-        }),
-        switchRow({
-          title: "気づいたことを出す", on: s.settings.showInsight === true,
-          onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); render(); },
+          title: "「気づいたこと」を出す", on: s.settings.showInsight === true,
+          onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); },
         })
       ),
       /* 「›」の四行は一つの束に（一行ずつのカードだと一画面ぶん長かった。2026年10月21日）。
@@ -169,8 +167,16 @@
 
   /** 取り込み（health の「›」の先）。 */
   function intakeRows() {
-    const d = store.get().diet;
+    const s = store.get();
+    const d = s.diet;
     return [
+      /* 開いたときに、中継所とコピーした記録を読む（health-relay.js・screen-diet.js の onEnter）。 */
+      card(
+        switchRow({
+          title: "開いたら自動で取り込む", on: s.settings.dietAutoSync !== false,
+          onTap: (v) => { store.update((x) => { x.settings.dietAutoSync = v; }); },
+        })
+      ),
       card(
         navRow({
           ico: "download", tint: TINT.sync, title: "ヘルスケアから取り込む",

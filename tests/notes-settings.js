@@ -118,8 +118,10 @@ print(json.dumps(out, ensure_ascii=False))
   t.check("並びの右に「直した日」", /並び\s*直した日/.test(R0));
 
   /* ---- 並び ---- */
-  await into("並び");
-  await page.locator(`${top} .set-row.is-choice`, { hasText: "作った日" }).click();
+  /* 二択は行の値のところに小窓（一枚は重ねない。2026年10月24日）。 */
+  await rowOf("並び").click();
+  await page.waitForSelector(".note-pop.set-menu.is-open");
+  await page.locator(".note-pop.set-menu.is-open [role=menuitemradio]", { hasText: "作った日" }).click();
   await page.waitForTimeout(400);
   t.check("並びを作った日に（鍵は notesOrder）", (await page.evaluate(() => KN.store.get().settings.notesOrder)) === "created");
   t.check("根っこの値も作った日", /並び\s*作った日/.test(await topText()));

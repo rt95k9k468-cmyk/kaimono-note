@@ -64,9 +64,9 @@
     };
     paintResult();
 
+    /* URL が無いあいだは薄く（前は値の欄に「URLが要ります」）。押せば先にすることを知らせる。 */
     const verify = navRow({
-      ico: "check", tint: TINT.sync, title: "確かめる",
-      value: on ? "" : "URLが要ります",
+      ico: "check", tint: TINT.sync, title: "確かめる", off: !on, act: true,
       onTap: () => {
         const v = KN.healthRelay.url();
         if (!v) { KN.ui.toast("先に「建てかた」でURLをつなげてください"); return; }
@@ -113,7 +113,7 @@
       /* Siri から買うものへ（D2）。置き先は中継所のURLに ?slot=add を足した
          もので、組み立ては KN.healthRelay がします（ここは渡すだけ）。 */
       on ? card(navRow({
-        ico: "copy", tint: TINT.sub, title: "Siri 用のURLをコピー",
+        ico: "copy", tint: TINT.sub, title: "Siri 用のURLをコピー", act: true,
         onTap: () => copyText(KN.healthRelay.inboxUrl(), "Siri 用のURL"),
       })) : null,
       on ? more("Siri 用の組み方", "ショートカットを「入力を要求 → URLの内容を取得（方法 POST・本文を要求 ファイル・ファイル＝入力）」で組み、このURLを入れます。名前を「買うものに追加」にすると、「Hey Siri、買うものに追加」で入れられます。いくつかなら「牛乳、卵」のように区切って。") : null,
@@ -223,7 +223,7 @@
     });
 
     const codeCard = card(navRow({
-      ico: "copy", tint: TINT.sub, title: "中継所のコードをコピー",
+      ico: "copy", tint: TINT.sub, title: "中継所のコードをコピー", act: true,
       onTap: () => copyText(KN.relayCode, "コード"),
     }));
 

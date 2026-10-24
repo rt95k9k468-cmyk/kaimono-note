@@ -56,12 +56,35 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(500);
   await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
   await page.waitForTimeout(600);
-  await page.locator('.set-layer:last-child .seg-btn[data-size="xl"]').click();
-  await page.waitForTimeout(200);
+  /* 文字の大きさは段のある滑り棒（2026年10月24日。前は四つの札）。右端の段へ動かして離す。 */
+  const range = page.locator(".set-layer:last-child .js-size");
+  t.check("滑り棒は三段・いまは標準（左端）", (await range.getAttribute("max")) === "2" && (await range.inputValue()) === "0");
+  await range.evaluate((r) => {
+    r.value = "2";
+    r.dispatchEvent(new Event("input", { bubbles: true }));
+    r.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(250);
   t.check("特大で倍率 1.25", (await k()) === "1.25", await k());
   t.check("特大の本文は 17.5px", Math.abs((await bodyPx()) - 17.5) < 0.01);
-  t.check("押した札が選ばれている",
-    (await page.locator('.set-layer:last-child .seg-btn[data-size="xl"]').getAttribute("aria-pressed")) === "true");
+  t.check("記録も特大・組み直した棒も右端（読み上げは「特大」）",
+    (await page.evaluate(() => KN.store.get().settings.textSize)) === "xl"
+      && (await page.locator(".set-layer:last-child .js-size").inputValue()) === "2"
+      && (await page.locator(".set-layer:last-child .js-size").getAttribute("aria-valuetext")) === "特大");
+  /* 「iPhone に合わせる」を入れると棒はしまう（端末に任せているあいだ、段は効かない）。 */
+  await page.locator(".set-layer:last-child .set-row.is-sw", { hasText: "iPhone に合わせる" }).click();
+  await page.waitForTimeout(250);
+  t.check("「iPhone に合わせる」で記録は auto・棒は出ない",
+    (await page.evaluate(() => KN.store.get().settings.textSize)) === "auto"
+      && (await page.locator(".set-layer:last-child .js-size").count()) === 0);
+  await page.locator(".set-layer:last-child .set-row.is-sw", { hasText: "iPhone に合わせる" }).click();
+  await page.waitForTimeout(250);
+  await page.locator(".set-layer:last-child .js-size").evaluate((r) => {
+    r.value = "2";
+    r.dispatchEvent(new Event("input", { bubbles: true }));
+    r.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(250);
   const setFs = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".set-layer:last-child .set-title")).fontSize));
   t.check("設定の字も大きくなる（17 → 21.25）", Math.abs(setFs - 21.25) < 0.01, String(setFs));
   if (process.env.SHOTS) await page.screenshot({ path: path.join(process.env.SHOTS, "text-size-settings.png") });

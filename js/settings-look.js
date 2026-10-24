@@ -41,7 +41,7 @@
       list.length
         ? card(...rows)
         : foot("ありません。"),
-      card(navRow({ ico: "copy", tint: TINT.data, title: "コピー",
+      card(navRow({ ico: "copy", tint: TINT.data, title: "コピー", act: true,
         onTap: () => copyText([KN.errlog.text(), journal, KN.todoPast ? KN.todoPast.text() : ""].filter(Boolean).join("\n\n"), "困ったときの記録") })),
       foot("新しい50件まで。日記の中身は残しません。"),
     ];
@@ -74,32 +74,92 @@
     });
   }
 
-  function lookRows() {
-    const s = store.get().settings;
-    const theme = s.theme || "auto";
-
-    const seg = node(html`
+  /* 明るさは、字の札ではなく**小さな画面の絵**で選ぶ（iPhone の「画面表示と明るさ」と同じ形）。
+     「ライト」「ダーク」の字より、どう見えるかを先に見せるほうが早い。絵は CSS だけで描き、
+     いまの基調色の帯を一本入れる（色を選んだ結果も、ここで一緒に見える）。下に丸い印。 */
+  const THEMES = [
+    { id: "auto",  label: "自動" },
+    { id: "light", label: "ライト" },
+    { id: "dark",  label: "ダーク" },
+  ];
+  function themeCard(theme) {
+    const el = node(html`
       <div class="set-card is-pad">
-        <div class="seg">
-          <button class="seg-btn" data-theme="auto"  aria-pressed="${String(theme === "auto")}">自動</button>
-          <button class="seg-btn" data-theme="light" aria-pressed="${String(theme === "light")}">ライト</button>
-          <button class="seg-btn" data-theme="dark"  aria-pressed="${String(theme === "dark")}">ダーク</button>
+        <div class="theme-picks" role="radiogroup" aria-label="明るさ">
+          ${THEMES.map((t) => html`
+            <button type="button" class="theme-pick" data-theme="${t.id}" role="radio"
+                    aria-checked="${String(theme === t.id)}" aria-pressed="${String(theme === t.id)}">
+              <span class="theme-shot is-${t.id}" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="theme-name">${t.label}</span>
+              <span class="theme-mark" aria-hidden="true">${icon("check")}</span>
+            </button>`)}
         </div>
       </div>
     `);
-    seg.querySelectorAll(".seg-btn").forEach((btn) => {
+    el.querySelectorAll(".theme-pick").forEach((btn) => {
       btn.addEventListener("click", () => {
         const v = btn.dataset.theme;
+        if (v === (store.get().settings.theme || "auto")) return;
         store.update((x) => { x.settings.theme = v; });
         KN.app.applyTheme(v);
         haptic();
         render();
       });
     });
+    return el;
+  }
+
+  /* 文字の大きさは**量**なので、段のある滑り棒（標準・大きめ・特大の三段）。左右に小さな「あ」と
+     大きな「あ」。動かすあいだも画面ぜんぶの字がその場で変わり、離したときに預かる（動かしている
+     最中に組み直すと、指の下から棒が消える）。「iPhone に合わせる」を入れると棒は
+     しまう——端末に任せているあいだ、手で決める段は効かないので（iPhone の設定と同じ並び）。 */
+  const SIZES = ["std", "l", "xl"];
+  const SIZE_NAMES = { std: "標準", l: "大きめ", xl: "特大" };
+  function sizeCard(size) {
+    const auto = size === "auto";
+    const at = Math.max(0, SIZES.indexOf(size));
+    const sw = switchRow({
+      title: "iPhone に合わせる", on: auto,
+      onTap: (v) => {
+        const next = v ? "auto" : "std";
+        KN.app.applyTextSize(next);
+        store.update((x) => { x.settings.textSize = next; });
+      },
+    });
+    if (auto) return card(sw);
+    const slider = node(html`
+      <div class="set-row is-slider">
+        <span class="set-slide-a is-small" aria-hidden="true">あ</span>
+        <input type="range" class="set-range js-size" min="0" max="${SIZES.length - 1}" step="1" value="${at}"
+               aria-label="文字の大きさ" aria-valuetext="${SIZE_NAMES[SIZES[at]]}">
+        <span class="set-slide-a is-large" aria-hidden="true">あ</span>
+      </div>
+    `);
+    const range = slider.querySelector(".js-size");
+    let shown = at;
+    const show = () => {
+      const i = Number(range.value);
+      range.setAttribute("aria-valuetext", SIZE_NAMES[SIZES[i]]);
+      if (i !== shown) { shown = i; haptic(); KN.app.applyTextSize(SIZES[i]); }
+    };
+    range.addEventListener("input", show);
+    range.addEventListener("change", () => {
+      show();
+      range.blur();   // 欄が焦点を持ったままだと、紙の組み直しが止まる（paintLayer の頭）
+      const v = SIZES[Number(range.value)];
+      if (v !== (store.get().settings.textSize || "std")) store.update((x) => { x.settings.textSize = v; });
+    });
+    return card(sw, slider);
+  }
+
+  function lookRows() {
+    const s = store.get().settings;
+    const theme = s.theme || "auto";
+    const seg = themeCard(theme);
 
     const accents = node(html`
       <div class="set-card is-pad">
-        <div class="accent-row js-accents" role="group" aria-label="基調色"></div>
+        <div class="accent-row is-grid js-accents" role="group" aria-label="基調色"></div>
       </div>
     `);
     paintAccents(accents.querySelector(".js-accents"));
@@ -114,28 +174,9 @@
        ことをページには何も言いません。だからスイッチ側が言います。 */
     const badgeBlocked = canBadge && badgeOn && badge.blocked && badge.blocked();
 
-    /* 文字の大きさ。明るさと同じで、押したその場で画面ぜんぶが変わる
+    /* 文字の大きさ。明るさと同じで、動かしたその場で画面ぜんぶが変わる
        ——いま読んでいるこの一枚の字で、大きさを確かめられるように。 */
-    const size = s.textSize || "std";
-    const sizes = node(html`
-      <div class="set-card is-pad">
-        <div class="seg">
-          <button class="seg-btn" data-size="std"  aria-pressed="${String(size === "std")}">標準</button>
-          <button class="seg-btn" data-size="l"    aria-pressed="${String(size === "l")}">大きめ</button>
-          <button class="seg-btn" data-size="xl"   aria-pressed="${String(size === "xl")}">特大</button>
-          <button class="seg-btn" data-size="auto" aria-pressed="${String(size === "auto")}">端末</button>
-        </div>
-      </div>
-    `);
-    sizes.querySelectorAll(".seg-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const v = btn.dataset.size;
-        store.update((x) => { x.settings.textSize = v; });
-        KN.app.applyTextSize(v);
-        haptic();
-        render();
-      });
-    });
+    const sizes = sizeCard(s.textSize || "std");
 
     /* 書体。どれも字が欠けない三つ（base.css の「書体」の規則）。ボタンは
        自分の書体で名前を出し、押せば文字の大きさと同じく画面ぜんぶが変わる。 */
@@ -159,13 +200,37 @@
       });
     });
 
+    /* 「表示」の六行は、どこに効くかで二つに割った（2026年10月24日）：全タブの**上の帯**（暦・
+       これからの二週間・空）と、**一覧**（並べ方・探す窓）。見出しが効く場所を言うので、スイッチの
+       題は出るものの名前だけにする（「〜を出す」を六回くり返さない）。 */
     return [
       head("明るさ"), seg,
       head("基調色"), accents,
       head("文字の大きさ"), sizes,
-      foot("「端末」は iPhone の文字サイズに合わせます。"),
       head("書体"), fonts,
-      head("表示"),
+      head("上の帯"),
+      card(
+        calSwitch(),
+        /* 上の帯の「これからの二週間」。既定で畳む（roadmap-3.1 の S4）。 */
+        switchRow({
+          title: "これからの二週間", on: s.showUpcoming === true,
+          onTap: (v) => {
+            store.update((x) => { x.settings.showUpcoming = v; });
+            render();
+          },
+        }),
+        /* 帯と暦の後ろの空（js/sky.js・docs/sky.md）。既定は出す。 */
+        switchRow({
+          title: "空の写真", on: s.sky !== false,
+          onTap: (v) => {
+            store.update((x) => { x.settings.sky = v; });
+            render();
+          },
+        })
+      ),
+      KN.sky ? S.more("空の写真の出典", "Wikimedia Commons ／ " + KN.sky.credits()
+        .map((c) => `${c.name}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
+      head("一覧"),
       card(
         pickRow({
           title: "並べ方", value: KN.ui.isTiles() ? "タイル" : "リスト",
@@ -179,35 +244,17 @@
           }),
         }),
         switchRow({
-          title: "探す窓を出しておく", on: s.searchBar === true,
+          title: "探す窓をいつも出す", on: s.searchBar === true,
           onTap: (v) => {
             store.update((x) => { x.settings.searchBar = v; });
             render();
           },
-        }),
-        calSwitch(),
-        /* 上の帯の「これからの二週間」。既定で畳む（roadmap-3.1 の S4）。 */
-        switchRow({
-          title: "これからの二週間", on: s.showUpcoming === true,
-          onTap: (v) => {
-            store.update((x) => { x.settings.showUpcoming = v; });
-            render();
-          },
-        }),
-        /* 帯と暦の後ろの空（js/sky.js・docs/sky.md）。既定は出す。 */
-        switchRow({
-          title: "空を出す", on: s.sky !== false,
-          onTap: (v) => {
-            store.update((x) => { x.settings.sky = v; });
-            render();
-          },
         })
       ),
-      KN.sky ? S.more("空の写真の出典", "Wikimedia Commons ／ " + KN.sky.credits()
-        .map((c) => `${c.name}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
+      canBadge ? head("ホーム画面") : null,
       canBadge ? card(
         switchRow({
-          title: "アイコンにも数を出す", on: badgeOn,
+          title: "アイコンに数を出す", on: badgeOn,
           onTap: async (v) => {
             haptic();
             if (!v) { badge.disable(); render(); return; }
@@ -234,7 +281,7 @@
   function calSwitch() {
     const on = store.calPrefs().shown;
     return switchRow({
-      title: "暦を出す", on,
+      title: "暦", on,
       onTap: (v) => { store.setCalPref(null, { shown: v }); render(); },
     });
   }

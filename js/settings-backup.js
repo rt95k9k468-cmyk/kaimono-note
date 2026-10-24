@@ -10,7 +10,7 @@
   const { html, node, icon, formatDate } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow, dangerRow, switchRow, render, fieldCard } = S;
+  const { go, TINT, card, head, foot, navRow, dangerRow, switchRow, render, fieldCard } = S;
 
   /* ---------------- data ---------------- */
 
@@ -19,7 +19,7 @@
   function exportSub() {
     const last = KN.backup.lastExportAt();
     if (!last) return "";
-    return `前回 ${snapStamp(last)}`;
+    return `前回の書き出し：${snapStamp(last)}`;
   }
 
   /** 記録の数を一行で。控えの一覧・復元の確認・書き出しの確かめで使います。 */
@@ -677,27 +677,52 @@
     return `iPhone の枠（約260万字）の${part}。${share >= 0.6 ? "記録が大きくなってきました。" : ""}`;
   }
 
-  function usageText(u) {
+  /* この端末の中（R24 の使用量。2026年10月24日に一段落から組み直した）。iPhone の「ストレージ」と同じ形：
+     枠の帯を色で分け（日記・AI の原文・そのほかの記録・同じ枠にある控え）、その下に同じ色の粒を付けた内訳の行。
+     帯は**色を変えて急かさない**——6割を越えても同じ色のまま、カードの下に一行だけ（backup.js の決めごと）。
+     写しの様子（記録の写し・日記の写し）は事実の文なので、カードの下へ。 */
+  const USE_TINT = { diary: "#7f68ad", ai: "#9a6fae", live: "#6a7d92", snap: "#a3adb9" };
+  function usageRows(u) {
     const ai = aiChars();
     /* 日記の本文を記録から外してあれば（段2の2b）、日記は記録の外（大きな保存場所）。 */
     const out = !!(u.diary && u.diary.out);
-    const inner = [!out && u.diaryChars ? `日記 ${charText(u.diaryChars)}` : "", ai ? `AI の原文 ${charText(ai)}` : ""]
-      .filter(Boolean).join("・");
-    const diary = inner ? `（うち${inner}）` : "";
-    const apart = out && u.diaryChars ? `日記 ${charText(u.diaryChars)}と` : "";
+    const diary = !out ? (u.diaryChars || 0) : 0;
     /* 控えが大きな保存場所（IndexedDB）にあれば、もう記録と枠を分け合って
        いません。そう言わないと、前の「分け合っています」を読んだ人が、
        控えを減らさなければと思い続けます。 */
-    let t = u.where === "idb"
-      ? `この端末の中：記録 ${charText(u.liveChars)}${diary}。${apart}自動バックアップ ${u.count}件は別の保存場所。`
-      : `この端末の中：記録 ${charText(u.liveChars)}${diary}・自動バックアップ ${u.count}件 ${charText(u.snapChars)}。${apart ? `${apart.slice(0, -1)}は別の保存場所。` : ""}`;
-    t += liveCopyText();
-    t += roomText(u);
-    t += diaryCopyText(u.diary);
-    if (u.tight) {
-      t += `自動バックアップは${u.fits}件まで。こまめに「バックアップを保存」を。`;
-    }
-    return t;
+    const snapIn = u.where === "idb" ? 0 : (u.snapChars || 0);
+    const rest = Math.max(0, u.liveChars - diary - ai);
+    const pct = (n) => `${Math.min(100, (n / IPHONE_CHARS) * 100).toFixed(2)}%`;
+    const bar = node(html`
+      <div class="set-meter-row">
+        <div class="set-meter" role="img" aria-label="${roomText(u)}">
+          ${diary ? html`<span style="width:${pct(diary)};background:${USE_TINT.diary}"></span>` : ""}
+          ${ai ? html`<span style="width:${pct(ai)};background:${USE_TINT.ai}"></span>` : ""}
+          <span style="width:${pct(rest)};background:${USE_TINT.live}"></span>
+          ${snapIn ? html`<span style="width:${pct(snapIn)};background:${USE_TINT.snap}"></span>` : ""}
+        </div>
+        <p class="set-meter-cap">${roomText(u).replace(/記録が大きくなってきました。$/, "")}</p>
+      </div>
+    `);
+    const fact = (tint, title, value, note) => node(html`
+      <div class="set-row is-fact">
+        ${tint ? html`<span class="set-key" style="background:${tint}"></span>` : ""}
+        <span class="set-title">${title}${note ? html`<span class="set-note">${note}</span>` : ""}</span><span class="set-val">${value}</span>
+      </div>`);
+    const rows = [
+      bar,
+      fact(USE_TINT.live, "記録", charText(u.liveChars)),
+      diary ? fact(USE_TINT.diary, "うち日記", charText(diary)) : null,
+      ai ? fact(USE_TINT.ai, "うち AI の原文", charText(ai)) : null,
+      out && u.diaryChars ? fact("", "日記", charText(u.diaryChars), "別の保存場所") : null,
+      u.where === "idb"
+        ? fact("", "自動バックアップ", `${u.count}件`, "別の保存場所")
+        : fact(USE_TINT.snap, "自動バックアップ", `${u.count}件・${charText(u.snapChars)}`),
+    ];
+    let t = liveCopyText() + diaryCopyText(u.diary);
+    if ((u.where === "idb" ? u.liveChars : u.liveChars + (u.snapChars || 0)) / IPHONE_CHARS >= 0.6) t += "記録が大きくなってきました。";
+    if (u.tight) t += `自動バックアップは${u.fits}件まで。こまめに「バックアップを保存」を。`;
+    return [head("この端末の中"), card(rows), foot(t)];
   }
 
   /* 記録の写し（js/live-idb.js。B1）：いつの状態か。書くたびに追うので、ふだんは
@@ -764,11 +789,11 @@
     const st = D.status();
     if (st.out) {
       if (st.phase !== "on" || JSON.stringify(store.get()).length > DIARY_LIVE_LIMIT) return [];
-      return [navRow({ ico: "undo", tint: TINT.sub, title: "日記を記録に戻す", onTap: putBackDiary })];
+      return [navRow({ ico: "undo", tint: TINT.sub, title: "日記を記録に戻す", act: true, onTap: putBackDiary })];
     }
     if (st.phase !== "on") return [];
-    if (outReadyNow()) return [navRow({ ico: "download", tint: TINT.data, title: "書き出して外す", onTap: exportAndOut })];
-    return [navRow({ ico: "book", tint: TINT.sub, title: "日記を記録から外す", onTap: prepareOut })];
+    if (outReadyNow()) return [navRow({ ico: "download", tint: TINT.data, title: "書き出して外す", act: true, onTap: exportAndOut })];
+    return [navRow({ ico: "book", tint: TINT.sub, title: "日記を記録から外す", act: true, onTap: prepareOut })];
   }
 
   async function prepareOut() {
@@ -858,11 +883,15 @@
     const asksFile = asksImportInput();
     const snaps = KN.backup.list();
     const gone = store.goneList();
+    /* 2026年10月24日：束ごとに見出し（端末の外の控え・この端末の控え・この端末の中・取り込み）。その場で
+       済む行（保存・ファイルを選ぶ・点検）には「›」を付けない。題は一行に収まる長さに（前は
+       「保存したバックアップを確かめる」「自動バックアップから戻す」が二行に割れていた）。 */
     return [
+      head("端末の外の控え"),
       card(
-        navRow({ ico: "download", tint: TINT.data, title: "バックアップを保存", onTap: saveBackup }),
-        navRow({ ico: "check", tint: TINT.data, title: "保存したバックアップを確かめる", onTap: () => verify.click() }),
-        navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", onTap: () => file.click() })
+        navRow({ ico: "download", tint: TINT.data, title: "バックアップを保存", act: true, onTap: saveBackup }),
+        navRow({ ico: "check", tint: TINT.data, title: "バックアップを確かめる", act: true, onTap: () => verify.click() }),
+        navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", act: true, onTap: () => file.click() })
       ),
       foot(exportSub()),
       KN.dropbox ? card(navRow({
@@ -870,27 +899,29 @@
         value: dropboxValue(KN.dropbox.status()),
         onTap: () => go("dropbox"),
       })) : null,
+      head("この端末の控え"),
       card(
         navRow({
-          ico: "undo", tint: TINT.sub, title: "自動バックアップから戻す",
+          ico: "undo", tint: TINT.sub, title: "自動バックアップ", off: !snaps.length,
           value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
         }),
         gone.length ? navRow({ ico: "undo", tint: TINT.sub, title: "さっき消したもの", value: `${gone.length}件`, onTap: openGone }) : null,
         /* 記録を書き出す（→ health）・年の本（→ daily の書き出し）・おぼえた
            振り分け（→ shopping）は、中身の持ち主のタブへ移しました。ここに
            残すのは、全部の記録にかかわるものだけ。 */
-        navRow({ ico: "check", tint: TINT.sub, title: "記録を点検する", onTap: openAudit })
+        navRow({ ico: "check", tint: TINT.sub, title: "記録を点検する", act: true, onTap: openAudit })
       ),
-      foot(usageText(KN.backup.usage())),
-      /* 日記の取り込み（D7）。取り込み道具の README が「設定 → 日記を取り込む」
+      ...usageRows(KN.backup.usage()),
+      /* 日記の取り込み（D7）。取り込み道具の README が「設定 → general → バックアップ → 日記を取り込む」
          と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
+      head("取り込み"),
       card(
-        navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", onTap: () => diaryFile.click() }),
+        navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", act: true, onTap: () => diaryFile.click() }),
         diaryOutRows(),
-        navRow({ ico: "thought", tint: TINT.sub, title: "問いの元を取り込む",
+        navRow({ ico: "thought", tint: TINT.sub, title: "問いの元を取り込む", act: true,
           value: KN.store.get().asks.length ? `${KN.store.get().asks.length}問` : "なし", onTap: () => asksFile.click() })
       ),
-      foot(`本文の無い日と、書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
+      foot(`日記は、本文の無い日と書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
       file,
       verify,
       diaryFile,
@@ -927,9 +958,10 @@
           onSave: (v) => { db.setAppKey(v); render(); },
         }),
         card(
+          /* App key が無いあいだの二行は薄く（前は値の欄に「App key が要ります」と書き、題が二行に割れていた）。
+             押せば何が先かを知らせる。 */
           navRow({
-            ico: "route", tint: TINT.data, title: "Dropbox でゆるす",
-            value: s.appKey ? "" : "App key が要ります",
+            ico: "route", tint: TINT.data, title: "Dropbox でゆるす", off: !s.appKey,
             onTap: () => {
               const url = db.authUrl();
               if (!url) {
@@ -940,8 +972,9 @@
             },
           }),
           navRow({
-            ico: "check", tint: TINT.data, title: "出てきたコードを貼る",
+            ico: "check", tint: TINT.data, title: "出てきたコードを貼る", off: !s.appKey, act: true,
             onTap: async () => {
+              if (!s.appKey) { KN.ui.toast("先に App key を入れてください"); return; }
               if (!db.authUrl()) { KN.ui.toast("先に「Dropbox でゆるす」を"); return; }
               const code = await KN.ui.prompt({ title: "Dropbox のコード", label: "ゆるしたあとに出てきたコード", okLabel: "つなぐ" });
               if (code == null || !String(code).trim()) return;
@@ -965,7 +998,7 @@
     /* 控えを送るのは一台だけ（js/dropbox.js「控えを送る端末は一台だけ」）。ほかの端末は役を取れるだけ。 */
     const send = s.sender
       ? navRow({
-        ico: "upload", tint: TINT.data, title: "いま送る",
+        ico: "upload", tint: TINT.data, title: "いま送る", act: true,
         onTap: async () => {
           const r = await db.sync();
           KN.ui.toast(r === "sent" ? "送りました" : r === "same" ? "前に送ったものと同じです"
@@ -974,7 +1007,7 @@
         },
       })
       : navRow({
-        ico: "upload", tint: TINT.data, title: "この端末から控えを送る",
+        ico: "upload", tint: TINT.data, title: "この端末から控えを送る", act: true,
         onTap: async () => {
           const ok = await KN.ui.confirm({
             title: "この端末から送りますか？",
@@ -993,20 +1026,24 @@
         navRow({ ico: "undo", tint: TINT.sub, title: "Dropbox の控えから戻す", onTap: openDropboxBackups })
       ),
       foot(s.sender ? last + err : "控えはほかの端末から送っています。"),
+      /* 小窓（ホーム画面のショートカットの小窓。docs/todo-items.md 段4）。「仕事だけ」は写しているときだけ効くので、
+         そのときだけ出す。組み方の行は、四角の付く行どうしで別のカードに（字の頭を揃える）。 */
+      head("小窓"),
       card(
         switchRow({
           title: "小窓へ写す", on: store.get().settings.glance === true,
-          onTap: (v) => { store.update((x) => { x.settings.glance = v; }); if (v) db.glance(true); render(); },
+          onTap: (v) => { store.update((x) => { x.settings.glance = v; }); if (v) db.glance(true); },
         }),
-        switchRow({
-          title: "仕事だけ", on: store.get().settings.glanceWork !== false,
-          onTap: (v) => { store.update((x) => { x.settings.glanceWork = v; }); db.glance(true); render(); },
-        }),
-        navRow({ ico: "calendar", tint: TINT.sync, title: "小窓の組み方", onTap: () => go("glanceHow") })
+        store.get().settings.glance === true ? switchRow({
+          title: "仕事のやることだけ", on: store.get().settings.glanceWork !== false,
+          onTap: (v) => { store.update((x) => { x.settings.glanceWork = v; }); db.glance(true); },
+        }) : null
       ),
+      card(navRow({ ico: "calendar", tint: TINT.sync, title: "小窓の組み方", onTap: () => go("glanceHow") })),
+      /* PC から（docs/todo-items.md 段4の③）。入れた端末で足したやることは、用事にせず受け箱へ。 */
       card(switchRow({
-        title: "受け箱へ置く", on: store.get().settings.inboxPost === true,
-        onTap: (v) => { store.update((x) => { x.settings.inboxPost = v; }); render(); },
+        title: "足したやることを受け箱へ置く", on: store.get().settings.inboxPost === true,
+        onTap: (v) => { store.update((x) => { x.settings.inboxPost = v; }); },
       })),
       card(dangerRow({
         ico: "close", title: "Dropbox とのつながりを切る",

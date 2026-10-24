@@ -4649,7 +4649,7 @@
           最後を<b>「URLの内容を取得」（POST）</b>に変えると、開いたときに自動で入ります。
           ${KN.healthRelay.configured()
             ? html`いまの中継所：<b>${KN.healthRelay.host()}</b>`
-            : html`建て方は<b>設定 → ダイエット → 取り込み → 中継所</b>。`}
+            : html`建て方は<b>設定 → health → 取り込み → 中継所</b>。`}
         </p>
 
         <div class="divider"></div>
@@ -4717,7 +4717,7 @@ distance=6.0km</pre>
        押したのに何も言われないのが、いちばん困ります。 */
     body.querySelector(".js-relay").addEventListener("click", () => {
       if (!KN.healthRelay.configured()) {
-        KN.ui.toast("設定 → ダイエット → 取り込み → 中継所 でURLを入れてください");
+        KN.ui.toast("設定 → health → 取り込み → 中継所 でURLを入れてください");
         return;
       }
       const btn = body.querySelector(".js-relay");

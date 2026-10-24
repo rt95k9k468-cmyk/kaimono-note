@@ -10,48 +10,9 @@
   const { html, node } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, head, foot, navRow, switchRow, pickRow, render, copyText } = S;
+  const { go, TINT, card, head, foot, navRow, switchRow, pickRow, timeRow, choose, render, copyText } = S;
 
   /* ---------------- やること ---------------- */
-
-  /** 一日の枠。時間割はこの幅の中に組み、空き時間もここから数えます。
-      行の中に時刻の欄を二つ並べていましたが、そこだけ行が二段になって、
-      一覧の高さがそろわなくなっていました。 */
-  function openDaySpan() {
-    const P = KN.plan;
-    const st = store.get().settings;
-    const body = node(html`
-      <div class="stack">
-        <div class="row-times">
-          <input class="input js-a" type="hidden" data-when="time" aria-label="一日の始まり"
-                 value="${st.dayStart || P.DEFAULT_START}">
-          <span class="row-dash">〜</span>
-          <input class="input js-b" type="hidden" data-when="time" aria-label="一日の終わり"
-                 value="${st.dayEnd || P.DEFAULT_END}">
-        </div>
-      </div>
-    `);
-    const save = node(html`<button class="btn btn-primary btn-block">保存</button>`);
-    KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: "一日の始まりと終わり", content: body, footer: save });
-
-    save.addEventListener("click", () => {
-      const av = body.querySelector(".js-a").value;
-      const bv = body.querySelector(".js-b").value;
-      const a = KN.util.isTime(av) ? av : P.DEFAULT_START;
-      let b = KN.util.isTime(bv) ? bv : P.DEFAULT_END;
-      /* 終わりが始まりより前なら、一日が裏返ります。組めないので直します
-         ——黙って受け取って空きが負になるより、その場で戻すほうが親切です。 */
-      if (P.toMin(b) <= P.toMin(a)) {
-        b = P.DEFAULT_END;
-        KN.ui.toast("終わりは始まりより後にしてください");
-      }
-      store.update((s) => { s.settings.dayStart = a; s.settings.dayEnd = b; });
-      h.close();
-      render();
-      KN.motion.fire("save");
-    });
-  }
 
   /* 見直す日（3.0 の B1）。これから・待つ・いつかへ入れたとき、何日あとに見直すか。
      札から選ぶだけ（打たせない）。既定は 2週・1週・1か月（store.reviewDays）。 */
@@ -61,104 +22,30 @@
     someday: [[14, "2週"], [30, "1か月"], [90, "3か月"]],
   };
   const daysLabel = (key, n) => ((REVIEW_PICKS[key].find((p) => p[0] === n) || [n, `${n}日`])[1]);
-  function openReviewDays() {
-    const box = node(html`<div class="stack review-days"></div>`);
-    const paint = () => {
-      const d = store.reviewDays();
-      box.innerHTML = "";
-      [["next", "これから"], ["wait", "待つ"], ["someday", "いつか"]].forEach(([key, label]) => {
-        const row = node(html`<div class="field"><span class="field-label">${label}</span><div class="js-c"></div></div>`);
-        KN.ui.chipRow(row.querySelector(".js-c"), REVIEW_PICKS[key].map(([n, l]) => ({ id: String(n), label: l })), {
-          activeId: String(d[key]),
-          onPick: (id) => {
-            store.update((s) => { s.settings.reviewDays = { ...store.reviewDays(), [key]: Number(id) }; });
-            KN.motion.fire("select");
-            paint();
-            render();
-          },
-        });
-        box.append(row);
-      });
-    };
-    paint();
-    KN.ui.sheet({ title: "見直す日", content: box });
-  }
 
-  function todoRows() {
+  /** 見直す日（tasks の「›」の先）。三つの棚の日数は、行の値のところで選ぶ（前は札を並べた紙）。
+      節気に揃える（roadmap-3.1 の K3）も、日数と同じ話なのでここに。オンのときだけ、いま入れたら付く日を下に
+      （説明の代わりの事実）。 */
+  function reviewRows() {
     const s = store.get().settings;
-    const P = KN.plan;
-    /* 「05:00」ではなく「5:00」。時刻の欄が返す形と、画面に書く形は別。 */
-    const trim = (t) => String(t).replace(/^0/, "");
-    const span = `${trim(s.dayStart || P.DEFAULT_START)}〜${trim(s.dayEnd || P.DEFAULT_END)}`;
-    const notify = KN.notify;
-    const canNotify = notify && notify.supported();
-
-    function roadSeg(s) {
-      const at = s.todoRoad === false ? "off" : s.todoRoadAt === "below" ? "below" : "above";
-      const el = node(html`
-        <div class="set-card is-pad">
-          <div class="seg js-road">
-            <button class="seg-btn" data-road="above" aria-pressed="${String(at === "above")}">上</button>
-            <button class="seg-btn" data-road="below" aria-pressed="${String(at === "below")}">下</button>
-            <button class="seg-btn" data-road="off" aria-pressed="${String(at === "off")}">出さない</button>
-          </div>
-        </div>
-      `);
-      el.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => {
-        const v = b.dataset.road;
-        store.update((x) => {
-          x.settings.todoRoad = v !== "off";
-          if (v === "below") x.settings.todoRoadAt = "below";
-          else if (v === "above") delete x.settings.todoRoadAt;
-        });
-        render();
-        KN.motion.fire("select");
-      }));
-      return el;
-    }
+    const d = store.reviewDays();
+    const pick = (key, label) => pickRow({
+      title: label, value: daysLabel(key, d[key]),
+      onTap: () => choose({
+        title: label, value: String(d[key]),
+        options: REVIEW_PICKS[key].map(([n, l]) => ({ id: String(n), label: l })),
+        onPick: (id) => {
+          store.update((x) => { x.settings.reviewDays = { ...store.reviewDays(), [key]: Number(id) }; });
+        },
+      }),
+    });
     return [
+      card(pick("next", "これから"), pick("wait", "待つ"), pick("someday", "いつか")),
       card(
-        switchRow({
-          title: "今日を時間割で見る", on: s.todoTimeline !== false,
-          onTap: (v) => {
-            store.update((x) => { x.settings.todoTimeline = v; });
-            render();
-            KN.motion.fire("select");
-          },
-        })
-      ),
-      /* 一日の道（js/day-road.js）。時間割で見ているときだけ効きます。上・下・出さない（2026年10月19日、利用者）。
-         既定は上（設定を持たない保存は `todoRoad !== false` で出る）。下は `todoRoadAt: "below"` を選んだときだけ書く。 */
-      head("一日の道"),
-      roadSeg(s),
-      card(
-        pickRow({ title: "一日の始まりと終わり", value: span, onTap: openDaySpan })
-      ),
-      /* 崩れ方の事実（3.0 の D1）。並べるだけ。 */
-      card(
-        navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの控え",
-                 value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
-                 onTap: () => go("slips") })
-      ),
-      /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。 */
-      card(
-        pickRow({ title: "Google から取り込む", onTap: () => KN.googleImport.open() }),
-        navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
-        store.googleBatches().length
-          ? pickRow({ title: "取り込みを取り消す", value: `${store.googleBatches()[0].n}件`, onTap: () => KN.googleImport.undo().then(render) })
-          : null
-      ),
-      card(
-        pickRow({ title: "見直す日", onTap: openReviewDays, value: (() => {
-          const d = store.reviewDays();
-          return `${daysLabel("next", d.next)}・${daysLabel("wait", d.wait)}・${daysLabel("someday", d.someday)}`;
-        })() }),
-        /* 節気に揃える（roadmap-3.1 の K3）。オンのときだけ、いま入れたら付く日を下に（説明の代わりの事実）。 */
         switchRow({
           title: "節気の初日に揃える", on: s.reviewSekki === true,
           onTap: (v) => {
             store.update((x) => { x.settings.reviewSekki = v; });
-            render();
             KN.motion.fire("select");
           },
         })
@@ -168,6 +55,87 @@
         const one = ([l, k]) => html`<span class="set-nw">${l} ${md(store.reviewFrom(k))}</span>`;
         return html`${one(["これから", null])}・${one(["待つ", "wait"])}・${one(["いつか", "someday"])}`;
       })()) : null,
+    ];
+  }
+
+  /* 一日の道（js/day-road.js）。時間割で見ているときだけ効くので、そのときだけ出す。上・下・出さない
+     （2026年10月19日、利用者）。既定は上（設定を持たない保存は `todoRoad !== false` で出る）。
+     下は `todoRoadAt: "below"` を選んだときだけ書く。 */
+  const ROAD = [
+    { id: "above", label: "時間割の上" },
+    { id: "below", label: "時間割の下" },
+    { id: "off",   label: "出さない" },
+  ];
+  function roadRow(s) {
+    const at = s.todoRoad === false ? "off" : s.todoRoadAt === "below" ? "below" : "above";
+    return pickRow({
+      title: "一日の道", value: ROAD.find((r) => r.id === at).label,
+      onTap: () => choose({
+        title: "一日の道", value: at, options: ROAD,
+        onPick: (v) => {
+          store.update((x) => {
+            x.settings.todoRoad = v !== "off";
+            if (v === "below") x.settings.todoRoadAt = "below";
+            else if (v === "above") delete x.settings.todoRoadAt;
+          });
+        },
+      }),
+    });
+  }
+
+  /** 一日の枠。時間割はこの幅の中に組み、空き時間もここから数えます（時間割を切っていても、
+      「今日に入れる」と「今日は半分」が使うので、いつも出す）。前は「›」の先の紙で、二つの欄と
+      「保存」でしたが、行の値を押せば車輪が出て、決めればその場で預かります。 */
+  function spanRows(s) {
+    const P = KN.plan;
+    const start = s.dayStart || P.DEFAULT_START;
+    const end = s.dayEnd || P.DEFAULT_END;
+    /* 終わりが始まりより前なら、一日が裏返ります。組めないので受け取らない
+       ——黙って受け取って空きが負になるより、その場で言うほうが親切です。 */
+    const put = (key, v) => {
+      if (!KN.util.isTime(v)) return;
+      const a = key === "dayStart" ? v : start;
+      const b = key === "dayEnd" ? v : end;
+      if (P.toMin(b) <= P.toMin(a)) { KN.ui.toast("終わりは始まりより後にしてください"); return; }
+      store.update((x) => { x.settings.dayStart = a; x.settings.dayEnd = b; });
+      KN.motion.fire("save");
+    };
+    return [
+      timeRow({ title: "一日の始まり", value: start, onPick: (v) => put("dayStart", v) }),
+      timeRow({ title: "一日の終わり", value: end, onPick: (v) => put("dayEnd", v) }),
+    ];
+  }
+
+  /* 根っこの束（2026年10月24日に組み直し）：時間割（見方と一日の枠）・見直す日・知らせ（通知・カレンダー）・
+     取り込み（Google・誕生日）・置き直しの控え。前は七枚のカードに散っていて、「一日の道」の見出しの下に
+     一日の始まりと終わりが居たので、道の設定に見えていた。 */
+  function todoRows() {
+    const s = store.get().settings;
+    const notify = KN.notify;
+    const canNotify = notify && notify.supported();
+    const timeline = s.todoTimeline !== false;
+    const d = store.reviewDays();
+    const batches = store.googleBatches();
+    return [
+      card(
+        switchRow({
+          title: "今日を時間割で見る", on: timeline,
+          onTap: (v) => {
+            store.update((x) => { x.settings.todoTimeline = v; });
+            render();
+            KN.motion.fire("select");
+          },
+        }),
+        timeline ? roadRow(s) : null,
+        ...spanRows(s)
+      ),
+      card(
+        navRow({
+          ico: "clock", tint: TINT.cat, title: "見直す日",
+          value: `${daysLabel("next", d.next)}・${daysLabel("wait", d.wait)}・${daysLabel("someday", d.someday)}`,
+          onTap: () => go("review"),
+        })
+      ),
       /* 通知とカレンダーは、どちらもスイッチ二つ（か、スイッチと手順）に
          それぞれの説明が付いて、一画面ぶんあります。根っこに並べると tasks の
          列が説明で埋まるので「›」の先へ（docs/settings.md の「二段の一覧」）。 */
@@ -180,6 +148,22 @@
           ico: "calendar", tint: TINT.sync, title: "カレンダー",
           value: s.calShortcut === true ? "オン" : "オフ", onTap: () => go("cal"),
         }) : null
+      ),
+      /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。三行とも四角を付ける
+         （前は四角の無い行と有る行が一枚に混ざり、字の頭が揃っていなかった）。 */
+      card(
+        navRow({ ico: "download", tint: TINT.sync, title: "Google から取り込む", onTap: () => KN.googleImport.open() }),
+        navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
+        batches.length
+          ? navRow({ ico: "undo", tint: TINT.sub, title: "取り込みを取り消す", value: `${batches[0].n}件`, act: true,
+            onTap: () => KN.googleImport.undo().then(render) })
+          : null
+      ),
+      /* 崩れ方の事実（3.0 の D1）。並べるだけ。 */
+      card(
+        navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの控え",
+                 value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
+                 onTap: () => go("slips") })
       ),
     ];
   }
@@ -250,14 +234,13 @@
           title: "カレンダーはショートカットで入れる", on: s.calShortcut === true,
           onTap: (v) => {
             store.update((x) => { x.settings.calShortcut = v; });
-            render();
             KN.motion.fire("select");
           },
-        }),
-        navRow({ ico: "calendar", tint: TINT.sync, title: "ショートカットの組み方",
-                 onTap: () => go("calHow") })
+        })
       ),
       foot("先に「組み方」のショートカットを二つ作ります。"),
+      /* 四角の付く行は別のカードに（スイッチと一枚に混ぜると、字の頭が揃わない）。 */
+      card(navRow({ ico: "calendar", tint: TINT.sync, title: "ショートカットの組み方", onTap: () => go("calHow") })),
     ];
   }
 
@@ -399,5 +382,5 @@
     ];
   }
 
-  Object.assign(S, { todoRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows });
+  Object.assign(S, { todoRows, reviewRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows });
 })();

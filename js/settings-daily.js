@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow, switchRow, pickRow, choose, render } = S;
+  const { go, TINT, card, head, foot, navRow, switchRow, pickRow, choose, render } = S;
 
   /* ---------------- daily ----------------
 
@@ -57,22 +57,24 @@
     }))];
     if (!L.enabled()) return rows;
     const place = (p, title) => switchRow({ title, on: L.covers(p), onTap: (v) => { L.setPlace(p, v); done(); } });
-    rows.push(card(place("diary", "日記"), place("daily", "daily"), place("notes", "ノート")));
+    rows.push(head("ロックするもの"), card(place("diary", "日記"), place("daily", "daily"), place("notes", "ノート")));
     const bio = switchRow({
       title: "Face ID・Touch ID", on: L.hasBio(),
       onTap: (v) => { if (v) L.bioOn().then(done); else { L.bioOff(); done(); } },
     });
-    bio.hidden = true;
-    L.bioAvailable().then((ok) => { bio.hidden = !ok && !L.hasBio(); });
-    rows.push(card(
-      bio,
-      navRow({ ico: "lock", tint: TINT.sub, title: "番号を変える", onTap: () => L.changeCode().then(done) })
+    /* 顔・指はこの端末で使えるときだけ。スイッチ（四角なし）と「番号を変える」（四角あり）は別のカードに。 */
+    const bioCard = card(bio);
+    bioCard.hidden = true;
+    L.bioAvailable().then((ok) => { bioCard.hidden = !ok && !L.hasBio(); });
+    rows.push(bioCard, card(
+      navRow({ ico: "lock", tint: TINT.sub, title: "番号を変える", act: true, onTap: () => L.changeCode().then(done) })
     ));
+    /* 前は「閉じるまで」。何が閉じるのかが言えていなかった（iPhone の「パスコードを要求」と同じ話）。 */
     const label = (g) => (g ? `${g / 60}分` : "すぐ");
     rows.push(card(pickRow({
-      title: "閉じるまで", value: label(L.grace()),
+      title: "ロックするまで", value: label(L.grace()),
       onTap: () => choose({
-        title: "裏へ回ってから閉じるまで", value: String(L.grace()),
+        title: "ほかのアプリへ移ってからロックするまで", value: String(L.grace()),
         options: L.GRACES.map((g) => ({ id: String(g), label: label(g) })),
         onPick: (v) => { store.update((s) => { s.settings.lockGrace = Number(v); }); render(); },
       }),
@@ -163,7 +165,7 @@
         .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
       card(
         switchRow({
-          title: "月のまとめを出す", on: s.showDigest !== false,
+          title: "月のまとめ", on: s.showDigest !== false,
           onTap: (v) => dailySet("showDigest", v),
         }),
         /* 位置は「上か下か」の決め打ちで、日の間には挟まりません——まとめは

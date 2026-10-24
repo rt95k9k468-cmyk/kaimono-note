@@ -59,7 +59,7 @@
         names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
         names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
-        navRow({ ico: "copy", tint: TINT.sub, title: "題の木をコピー", onTap: copyTitles }),
+        navRow({ ico: "copy", tint: TINT.sub, title: "題の木をコピー", act: true, onTap: copyTitles }),
         ...sixRows(),
         /* 「取り込む」は外した（10月14日、利用者：もう取り込まない。KN.noteImport.open は残す。docs/notes-unify.md「取り込み」）。 */
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
@@ -73,9 +73,10 @@
           title: "季節の絵", on: store.get().settings.notesSeasonArt !== false,
           onTap: (v) => { store.update((s) => { s.settings.notesSeasonArt = v; }); render(); repaintNotes(); },
         }),
-        /* 「⋯」の「道に置く」（3.0 の A2）。既定で畳む（roadmap-3.1 の S4）。 */
+        /* 「⋯」の「道に置く」（3.0 の A2）。既定で畳む（roadmap-3.1 の S4）。題は「道に置く」だけだと、
+           押すとノートが道に置かれるように読めたので、出すもの（⋯ の一行）の名前として括る。 */
         switchRow({
-          title: "道に置く", on: store.get().settings.noteRoad === true,
+          title: "「道に置く」を出す", on: store.get().settings.noteRoad === true,
           onTap: (v) => { store.update((s) => { s.settings.noteRoad = v; }); render(); },
         })
       ),
@@ -202,7 +203,8 @@
     if (!Y || !KN.dropbox) return null;
     const s = Y.status();
     if (!KN.dropbox.status().connected) {
-      return card(navRow({ ico: "upload", tint: TINT.data, title: "同期", value: "Dropbox につなぐ", onTap: () => go("dropbox") }));
+      /* 値は短く（前は「Dropbox につなぐ」で、行の右に入りきらず切れていた）。押せばつなぐ一枚へ。 */
+      return card(navRow({ ico: "upload", tint: TINT.data, title: "同期", value: "オフ", onTap: () => go("dropbox") }));
     }
     const when = (iso) => {
       const d = new Date(iso);
@@ -232,7 +234,7 @@
     const x = Y && Y.stale && Y.stale();
     if (!x) return null;
     return card(navRow({
-      ico: "upload", tint: TINT.data, title: `ノートを${x.days}日合わせられていません`,
+      ico: "upload", tint: TINT.warn, title: `ノートを${x.days}日合わせられていません`, alert: true,
       onTap: () => {
         if (!KN.dropbox.status().connected) go("dropbox");
         else if (x.halt) askRestart();

@@ -40,21 +40,64 @@ const { open, checker } = require("./lib");
     rootText.includes("一日の道") && rootText.includes("外観") && rootText.includes("バックアップ"),
     rootText.slice(0, 120));
 
-  /* 一日の道は 上・下・出さない（2026年10月19日。前は「一日の道を出す」のスイッチ）。 */
-  const was = await page.locator(`${top} .seg-btn[data-road="above"]`).getAttribute("aria-pressed");
-  await page.locator(`${top} .seg-btn[data-road="below"]`).click();
-  await page.waitForTimeout(250);
+  /* 一日の道は 上・下・出さない（2026年10月19日。前は「一日の道を出す」のスイッチ）。
+     短い選択肢は一枚を重ねず、行の値のところに小窓（2026年10月24日。docs/settings.md の「その場で選ぶ」）。 */
+  const menu = ".note-pop.set-menu.is-open";
+  const pickIn = async (row, item) => {
+    await rowOf(row).click();
+    await page.waitForSelector(menu);
+    const seen = await page.locator(`${menu} [role="menuitemradio"]`).evaluateAll((bs) =>
+      bs.map((b) => b.textContent.trim() + (b.getAttribute("aria-checked") === "true" ? "✓" : "")));
+    await page.locator(`${menu} [role="menuitemradio"]`, { hasText: item }).click();
+    await page.waitForFunction(() => !document.querySelector(".note-pop.set-menu.is-open"));
+    await page.waitForTimeout(250);
+    return seen;
+  };
+  const roadRow = await rowOf("一日の道").innerText();
+  const items = await pickIn("一日の道", "時間割の下");
   const below = await page.evaluate(() => KN.store.get().settings.todoRoadAt === "below");
-  await page.locator(`${top} .seg-btn[data-road="off"]`).click();
-  await page.waitForTimeout(250);
+  t.check("一日の道は行の値のところに小窓（三つ・いまのものに ✓・一枚は重ねない）",
+    /時間割の上/.test(roadRow) && items.join() === "時間割の上✓,時間割の下,出さない"
+      && (await page.locator(".set-layer").count()) === 1, `${roadRow} / ${items.join()}`);
+  await pickIn("一日の道", "出さない");
   t.check("押すと記録に入る（一日の道：既定は上 → 下 → 出さない）",
-    was === "true" && below && await page.evaluate(() => KN.store.get().settings.todoRoad === false));
+    below && await page.evaluate(() => KN.store.get().settings.todoRoad === false)
+      && /出さない/.test(await rowOf("一日の道").innerText()));
+
+  /* 一日の始まりと終わりは、行の値を押すと車輪（前は「›」の先の紙と「保存」）。決めればその場で預かる。 */
+  const spin = async (title, h, m) => {
+    await page.locator(`${top} .set-row.is-time`, { hasText: title }).locator(".set-time").click();
+    await page.waitForSelector(".note-pop.is-wheel.is-open");
+    await page.waitForTimeout(300);
+    for (const [i, v] of [[0, h], [1, m]]) {
+      await page.evaluate(([i, v]) => {
+        const col = document.querySelectorAll(".note-pop.is-wheel .note-wheel")[i];
+        const k = [...col.children].findIndex((r) => Number(r.dataset.v) === v);
+        col.scrollTop = k * 40;
+        col.dispatchEvent(new Event("scroll"));
+      }, [i, v]);
+      await page.waitForTimeout(250);
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+  };
+  await spin("一日の始まり", 6, 30);
+  const span1 = await page.evaluate(() => [KN.store.get().settings.dayStart, KN.store.get().settings.dayEnd]);
+  t.check("一日の始まりを車輪で 6:30 に（その場で預かる・行の値も変わる）", span1[0] === "06:30"
+    && /6:30/.test(await page.locator(`${top} .set-row.is-time`, { hasText: "一日の始まり" }).innerText()), JSON.stringify(span1));
+  await spin("一日の終わり", 5, 0);
+  t.check("終わりを始まりより前にはできない（記録は変わらない）",
+    (await page.evaluate(() => KN.store.get().settings.dayEnd)) === span1[1]);
+  await page.evaluate(() => KN.store.update((s) => { delete s.settings.dayStart; delete s.settings.dayEnd; }));
 
   await rowOf("外観").click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
   await layerStill();
   await page.waitForTimeout(300);
-  await page.locator(`${top} .seg-btn[data-theme="dark"]`).click();
+  t.check("明るさは三枚の絵（自動・ライト・ダーク。いまのものに印）",
+    (await page.locator(`${top} .theme-pick`).count()) === 3
+      && (await page.locator(`${top} .theme-pick[data-theme="auto"]`).getAttribute("aria-checked")) === "true");
+  await page.locator(`${top} .theme-pick[data-theme="dark"]`).click();
   await page.waitForTimeout(200);
   t.check("外観で「ダーク」を押すと、その場で暗くなる",
     await page.evaluate(() => document.documentElement.dataset.theme === "dark" && KN.store.get().settings.theme === "dark"));
@@ -97,7 +140,7 @@ const { open, checker } = require("./lib");
       && !D0.includes("出す範囲") && !D0.includes("月ぶんを書き出す"), D0.slice(0, 200));
   const D1 = await into("表示");
   t.check("表示の先に見え方の行（出す範囲・季節のひとこと・月のまとめ）",
-    ["日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "月のまとめを出す"]
+    ["日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "月のまとめ"]
       .every((x) => D1.includes(x)) && !/積み上げ/.test(D1), D1.slice(0, 200));
   /* 「見せ方」（全文・3行・5行）は一枚の紙のときだけ効くので、時刻ごと（既定）では出さない（docs/thinking.md）。 */
   t.check("日記は時刻ごと（既定）・見せ方は一枚のときだけ", /日記\s*時刻ごと/.test(D1) && !D1.includes("見せ方"), D1.slice(0, 200));
@@ -109,6 +152,10 @@ const { open, checker } = require("./lib");
 
   await openSettings("list");
   t.check("shopping の根っこに「おぼえた振り分け」", (await page.locator(top).innerText()).includes("おぼえた振り分け"));
+  /* 何も覚えていなくても「›」の先の一枚（前は知らせが出るだけだった）。 */
+  const LR = await into("おぼえた振り分け");
+  t.check("おぼえた振り分けは一枚（空なら「ありません」）", LR.includes("ありません"), LR.slice(0, 120));
+  await back();
 
   await openSettings("diet");
   const H0 = await page.locator(top).innerText();

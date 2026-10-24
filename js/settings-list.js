@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow, switchRow, render } = S;
+  const { go, TINT, card, foot, navRow, switchRow, dangerRow } = S;
 
   /* ---------------- 買うもの ----------------
 
@@ -31,18 +31,20 @@
           value: `${(s.categories || []).length}件`, onTap: () => go("cats"),
         }),
         /* バックアップの一枚から移しました。カテゴリの自動判定の話なので、
-           カテゴリのすぐ下に。 */
+           カテゴリのすぐ下に。前は紙で、何も覚えていないときは押しても知らせが出るだけだった
+           ——お店・カテゴリと同じ「›」の先の一枚にして、空なら空と見せる。 */
         navRow({
           ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
-          value: `${store.learnedList().length}件`, onTap: openLearned,
+          value: store.learnedList().length ? `${store.learnedList().length}件` : "なし", onTap: () => go("learned"),
         })
       ),
-      foot(`${s.products.length}商品・${s.stores.length}店舗`),
+      /* 店の数は「お店」の行がもう言っているので、ここは商品の数だけ。 */
+      foot(`${s.products.length}商品`),
       /* 既定で畳む（roadmap-3.1 の S4）。 */
       card(
         switchRow({
-          title: "そろそろ切れそう", on: s.settings.showLow === true,
-          onTap: (v) => { store.update((x) => { x.settings.showLow = v; }); render(); },
+          title: "「そろそろ切れそう」を出す", on: s.settings.showLow === true,
+          onTap: (v) => { store.update((x) => { x.settings.showLow = v; }); },
         })
       ),
     ];
@@ -296,64 +298,46 @@
   }
 
   /* What the app has been taught, and a way to take it back. Guessing on the
-     user's behalf is only reasonable if they can see what it decided. */
-  function openLearned() {
-    const rules = store.learnedList();
-    if (!rules.length) {
-      KN.ui.toast("まだ何も覚えていません");
-      return;
-    }
-
-    const body = node(html`
-      <div class="stack">
-        <div class="stack js-rules gap-2"></div>
-        <button class="btn btn-soft btn-sm js-forget-all mt-1">すべて忘れる</button>
-      </div>
-    `);
-
-    let handle = null;
-    const rows = body.querySelector(".js-rules");
-
-    function paint() {
-      rows.innerHTML = "";
-      const list = store.learnedList();
-      if (!list.length) { handle && handle.close(); return; }
-      list.forEach((r) => {
-        const row = node(html`
-          <div class="manage-row" style="--cat:${(r.category && r.category.color) || ""}">
-            <span class="manage-swatch" style="background:${(r.category && r.category.color) || "transparent"}"></span>
-            <span class="manage-name">${r.label}</span>
-            <span class="fine-note">
-              → ${r.category ? r.category.name : "（消えたカテゴリ）"}
-            </span>
-            <button class="icon-btn is-danger js-forget" aria-label="この振り分けを忘れる">${icon("close")}</button>
-          </div>
-        `);
-        row.querySelector(".js-forget").addEventListener("click", () => {
-          store.forgetCategory(r.key);
-          KN.ui.toast(`「${r.label}」を忘れました`);
-          paint();
-        });
-        rows.append(row);
+     user's behalf is only reasonable if they can see what it decided.
+     「›」の先の一枚（お店・カテゴリと同じ並び）。一行ずつ忘れる×と、いちばん下に赤い「すべて忘れる」。
+     store が動けば設定ごと組み直されるので、ここで描き直しは持たない。 */
+  function learnedRows() {
+    const list = store.learnedList();
+    if (!list.length) return [node(html`<div class="set-card"><p class="set-empty">ありません。</p></div>`)];
+    const rows = node(html`<div class="set-card"></div>`);
+    list.forEach((r) => {
+      const row = node(html`
+        <div class="manage-row" style="--cat:${(r.category && r.category.color) || ""}">
+          <span class="manage-swatch" style="background:${(r.category && r.category.color) || "transparent"}"></span>
+          <span class="manage-name">${r.label}</span>
+          <span class="set-val">${r.category ? r.category.name : "（消えたカテゴリ）"}</span>
+          <button class="icon-btn js-forget" aria-label="「${r.label}」の振り分けを忘れる">${icon("close")}</button>
+        </div>
+      `);
+      row.querySelector(".js-forget").addEventListener("click", () => {
+        store.forgetCategory(r.key);
+        KN.ui.toast(`「${r.label}」を忘れました`);
       });
-    }
-    paint();
-
-    body.querySelector(".js-forget-all").addEventListener("click", async () => {
-      const ok = await KN.ui.confirm({
-        title: "覚えた振り分けを全部忘れますか？",
-        message: "商品そのものは消えません。カテゴリの自動判定が、はじめの状態に戻ります。",
-        okLabel: "忘れる",
-        danger: true,
-      });
-      if (!ok) return;
-      store.forgetAllCategories();
-      KN.ui.toast("忘れました");
-      handle && handle.close();
+      rows.append(row);
     });
-
-    handle = KN.ui.sheet({ title: "おぼえた振り分け", content: body });
+    return [
+      rows,
+      card(dangerRow({
+        ico: "close", title: "すべて忘れる",
+        onTap: async () => {
+          const ok = await KN.ui.confirm({
+            title: "おぼえた振り分けを全部忘れますか？",
+            message: "商品そのものは消えません。カテゴリの自動判定が、はじめの状態に戻ります。",
+            okLabel: "忘れる",
+            danger: true,
+          });
+          if (!ok) return;
+          store.forgetAllCategories();
+          KN.ui.toast("忘れました");
+        },
+      })),
+    ];
   }
 
-  Object.assign(S, { listRows, storesGroup, categoriesGroup });
+  Object.assign(S, { listRows, storesGroup, categoriesGroup, learnedRows });
 })();

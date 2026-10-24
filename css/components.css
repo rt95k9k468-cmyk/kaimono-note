@@ -1673,8 +1673,12 @@ button.hero-node:active { scale: var(--press-dot); }
   /* つまみは、わずかに行き過ぎてから収まる（2026年10月8日。docs/motion.md の「反応を足す」）。
      地の色が変わるだけの --m-state では、切り替わったのが一瞬で読めない。「印が付いた」と
      同じ長さと弾み（--m-check・--spring）。 */
-  transition: transform var(--m-check) var(--spring);
+  transition: transform var(--m-check) var(--spring), width var(--m-press) var(--ease);
 }
+/* 押しているあいだ、つまみが少し伸びる（iPhone のスイッチと同じ手ごたえ。2026年10月24日）。オンの側は
+   右端を保ったまま左へ伸びる。 */
+[role="switch"]:active .toggle-knob { width: 44px; }
+[role="switch"][aria-checked="true"]:active .toggle .toggle-knob { transform: translateX(16px); }
 /* オンの目印。**丸のほうには何も無い**（実測で、オフの地は無地の灰でした
    ——iOS の「オン/オフラベル」なら丸も出るはずなので、あちらの自前の絵
    です）。だから、こちらもオンにだけ置きます。 */
@@ -1694,11 +1698,13 @@ button.hero-node:active { scale: var(--press-dot); }
 [aria-checked="true"] .toggle .toggle-mark { opacity: .9; }
 
 /* 暗い面では、オフの地も一段落とす（明るい灰のままだと、切ってあるほうが
-   光って見えます）。iOS の暗い面のスイッチと同じ濃さ。 */
+   光って見えます）。iOS の暗い面のスイッチと同じ濃さ。
+   **オフだけに当てる**（2026年10月24日）：`:root…` の付いたこの規則はオンの塗り（上）より詳細度が高く、
+   暗い面ではオンの地まで灰になり、オンとオフがつまみの位置でしか分からなかった。 */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .toggle { background: #39393d; }
+  :root:not([data-theme="light"]) :not([aria-checked="true"]) > .toggle { background: #39393d; }
 }
-:root[data-theme="dark"] .toggle { background: #39393d; }
+:root[data-theme="dark"] :not([aria-checked="true"]) > .toggle { background: #39393d; }
 
 @media (prefers-reduced-motion: reduce) {
   .toggle, .toggle-knob, .toggle-mark { transition: none; }

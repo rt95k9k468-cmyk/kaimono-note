@@ -337,6 +337,7 @@
     sub:    "#7f8fa3",
     icons:  "#8a7f74",
     danger: "#b8463c",
+    warn:   "#c4692c",
     store:  "#5686bd",
     cat:    "#7f68ad",
     goal:   "#bd7a2e",
@@ -372,20 +373,24 @@
 
   /** 先へ進む行。**色の付いた四角が付くのは、ここだけ**です——あれは
       「押すと続きがある」の合図で、その場で切り替わるスイッチの行には
-      要りません（参考画面もそうなっています）。 */
-  function navRow({ ico, tint, title, value, onTap }) {
+      要りません（参考画面もそうなっています）。
+      `act` … その場で済む操作（コピー・保存・ファイルを選ぶ）。「›」は先がある印なので付けない。
+      `off` … まだ押しても始まらない行（App key が無い、など）。薄く出し、押せば onTap が理由を言う。
+      `alert` … 根っこの頭の知らせ。四角は知らせの色、二行になるときは釣り合いよく折る。 */
+  function navRow({ ico, tint, title, value, onTap, act, off, alert }) {
     const row = node(html`
-      <button type="button" class="set-row is-nav">
+      <button type="button" class="set-row is-nav ${act ? "is-act" : ""} ${off ? "is-off" : ""} ${alert ? "is-alert-row" : ""}"
+              ${off ? html`aria-disabled="true"` : ""}>
         <span class="set-tile" style="background:${tint || TINT.data}">${icon(ico || "gear")}</span>
         <span class="set-title">${title}</span>
         <span class="set-val"></span>
-        <span class="set-chev">${icon("chevron")}</span>
+        ${act ? "" : html`<span class="set-chev">${icon("chevron")}</span>`}
       </button>
     `);
     const slot = row.querySelector(".set-val");
     if (value && typeof value === "object") slot.append(value);
     else if (value) slot.textContent = value;
-    row.addEventListener("click", () => { KN.motion.fire("nav", row); onTap(); });
+    row.addEventListener("click", () => { if (!off) KN.motion.fire("nav", row); onTap(); });
     return row;
   }
 
@@ -422,21 +427,64 @@
   }
 
   /** 二択だが「オン/オフ」ではない行（並べ方、出す範囲…）。右にいまの値、
-      押すと選ぶ紙。スイッチにすると、**どちらがオンなのかを字で言えません**。 */
+      押すと**その場に小窓**（`choose`）。スイッチにすると、**どちらがオンなのかを字で言えません**。
+      印は「›」ではなく上下の山（⌃⌄）——「›」は先の一枚がある印なので、その場で選ぶ行に付けると嘘になる。 */
   function pickRow({ title, value, onTap }) {
     const row = node(html`
-      <button type="button" class="set-row is-pick">
+      <button type="button" class="set-row is-pick" aria-haspopup="menu">
         <span class="set-title">${title}</span>
-        <span class="set-val">${value || ""}</span>
-        <span class="set-chev">${icon("chevron")}</span>
+        <span class="set-pick"><span class="set-val">${value || ""}</span>${icon("updown")}</span>
       </button>
     `);
-    row.addEventListener("click", () => { KN.motion.fire("nav", row); onTap(); });
+    row.addEventListener("click", () => {
+      KN.motion.fire("select", row);
+      /* 小窓の口は値と山のところ。choose はこの押しの中で呼ばれるので、そこへ渡す。 */
+      pickFrom = row.querySelector(".set-pick");
+      try { onTap(); } finally { pickFrom = null; }
+    });
+    return row;
+  }
+  let pickFrom = null;
+
+  /** 時刻の行（一日の始まり・終わり）。値は灰の札で、押すと車輪の小窓（`KN.ui.popTime`）。
+      決まったらその場で預かる——「保存」を押させるためだけの一枚を持たない。 */
+  function timeRow({ title, value, onPick }) {
+    const row = node(html`
+      <div class="set-row is-time">
+        <span class="set-title">${title}</span>
+        <button type="button" class="set-time" aria-label="${title}">${String(value).replace(/^0/, "")}</button>
+      </div>
+    `);
+    const b = row.querySelector(".set-time");
+    b.addEventListener("click", () => {
+      haptic();
+      KN.ui.popTime(b, { value, label: title, onPick });
+    });
     return row;
   }
 
-  /** 選ぶ紙。いまのものに ✓。 */
+  /** 選ぶ。押した行の値のところに小窓が出て、いまのものに ✓（アップルの指針の「短い選択肢は
+      画面を移らずに選ばせる」）。口の分からない呼ばれ方のときだけ、前と同じく一枚を重ねる。 */
   function choose({ title, value, options, onPick }) {
+    if (pickFrom && pickFrom.isConnected && KN.ui.popOver) {
+      const p = KN.ui.popOver(pickFrom, { role: "menu", side: "right", label: title, cls: "set-menu", lift: true });
+      options.forEach((o) => {
+        const on = o.id === value;
+        const b = node(html`
+          <button type="button" class="note-pop-item set-menu-item" role="menuitemradio" aria-checked="${String(on)}">
+            <span class="set-menu-check">${on ? icon("check") : ""}</span>
+            <span class="note-pop-main"><span>${o.label}</span>${o.note ? html`<small class="note-pop-sub">${o.note}</small>` : ""}</span>
+          </button>
+        `);
+        b.addEventListener("click", () => {
+          p.close();
+          if (!on) { haptic(); onPick(o.id); }
+        });
+        p.el.append(b);
+      });
+      p.place();
+      return;
+    }
     const body = node(html`<div class="set-choose"></div>`);
     let h = null;
     options.forEach((o) => {
@@ -508,6 +556,7 @@
     notify:    { title: "通知",     build: () => S.notifyRows() },
     cal:       { title: "カレンダー", build: () => S.calRows() },
     slips:     { title: "置き直しの控え", build: () => S.slipRows() },
+    review:    { title: "見直す日", build: () => S.reviewRows() },
     dailyView: { title: "表示",     build: () => S.dailyViewRows() },
     dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
     lock:      { title: "ロック",   build: () => S.lockRows() },
@@ -516,6 +565,7 @@
     dropbox: { title: "Dropbox へ送る",       build: () => S.dropboxRows() },
     stores: { title: "お店",                 build: () => [S.storesGroup()] },
     cats:   { title: "カテゴリ",              build: () => [S.categoriesGroup()] },
+    learned: { title: "おぼえた振り分け",     build: () => S.learnedRows() },
     icons:  { title: "アイコンについて",       build: () => [S.iconGapsGroup(), S.iconReportsGroup()] },
     calHow:   { title: "ショートカットの組み方", build: () => S.calHowRows() },
     glanceHow: { title: "小窓の組み方", build: () => S.glanceHowRows() },
@@ -591,22 +641,23 @@
        入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) L.body.append(saveErrorBanner());
     /* 歯車の点（R25）の中身を、頭に一行。押すとバックアップへ。 */
+    /* 頭の知らせは、ふつうの行き先と同じ顔にしない（四角を知らせの色に）。 */
     const stale = KN.backup.offDeviceStale && KN.backup.offDeviceStale();
     if (stale) L.body.append(card(navRow({
-      ico: "download", tint: TINT.data, title: staleText(stale),
+      ico: "download", tint: TINT.warn, title: staleText(stale), alert: true,
       onTap: () => go("data"),
     })));
     if (S.notesSyncAlert) put([S.notesSyncAlert()]);
     /* 開いたときの点検（B4、backup.js の doubt）：記録が写しや控えより大きく少ない。
-       記録は「自動バックアップから戻す」へ。ノートは、その控えから消さずに合わせる。 */
+       記録は「自動バックアップ」へ。ノートは、その控えから消さずに合わせる。 */
     const doubt = KN.backup.doubt && KN.backup.doubt();
     if (doubt) L.body.append(card(
       doubt.record ? navRow({
-        ico: "undo", tint: TINT.data, title: "記録が控えより少なくなっています",
+        ico: "undo", tint: TINT.warn, title: "記録が控えより少なくなっています", alert: true,
         value: stampOf(doubt.record.at), onTap: () => go("data"),
       }) : null,
       doubt.notes ? navRow({
-        ico: "undo", tint: TINT.data, title: "ノートが控えより少なくなっています",
+        ico: "undo", tint: TINT.warn, title: "ノートが控えより少なくなっています", alert: true,
         value: stampOf(doubt.notes.at), onTap: () => mergeNotesFrom(doubt.notes.at),
       }) : null
     ));
@@ -648,6 +699,9 @@
     const s = store.get();
     const a = store.ACCENTS.find((x) => x.id === (s.settings.accent || "orange"));
     const notes = S.collectIconGaps().length + (s.iconReports || []).length;
+    /* 二つの束：毎日の暮らしに効くもの（外観・バックアップ）と、困ったときに開くもの
+       （アイコンの報告・エラーの控え）。一つのカードに混ぜると、めったに開かない二行が
+       ふだんの二行と同じ重さに見える。 */
     return [
       card(
         navRow({
@@ -661,7 +715,9 @@
         navRow({
           ico: "download", tint: TINT.data, title: "バックアップ",
           onTap: () => go("data"),
-        }),
+        })
+      ),
+      card(
         navRow({
           ico: "tag", tint: TINT.icons, title: "アイコンについて",
           value: notes ? `${notes}件` : "",
@@ -700,7 +756,7 @@
      立ち上げたときの面が済ませていますし、保存先の話はバックアップの中で
      もう一度、必要な文脈と一緒に出てきます。 */
 
-  Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, choose, render, copyText, fieldCard });
+  Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, timeRow, choose, render, copyText, fieldCard });
 
   KN.screens = KN.screens || {};
   KN.screens.settings = { mount, render, onEnter, where, goTo };
