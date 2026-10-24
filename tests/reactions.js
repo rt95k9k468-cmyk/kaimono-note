@@ -104,7 +104,11 @@ const touch = async (cdp, type, x, y) => cdp.send("Input.dispatchTouchEvent",
       const k = getComputedStyle(box.querySelector(".toggle-knob"));
       const p = getComputedStyle(box.querySelector(".is-thinking"));
       const spring = getComputedStyle(document.documentElement).getPropertyValue("--spring").trim();
-      const out = { ease: k.transitionTimingFunction, spring, name: p.animationName, n: p.animationIterationCount, clip: p.backgroundClip || p.webkitBackgroundClip };
+      /* 動きは transform（収まる）と width（押すあいだ伸びる。2026年10月24日）の二つ。見るのは transform の曲線。 */
+      const props = k.transitionProperty.split(/,\s*/);
+      const fns = k.transitionTimingFunction.match(/cubic-bezier\([^)]*\)|steps\([^)]*\)|[a-z-]+/g) || [];
+      const ease = fns[props.indexOf("transform")] || fns[0] || "";
+      const out = { ease, spring, name: p.animationName, n: p.animationIterationCount, clip: p.backgroundClip || p.webkitBackgroundClip };
       box.remove();
       return out;
     });
