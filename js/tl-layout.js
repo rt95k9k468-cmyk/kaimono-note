@@ -34,9 +34,19 @@
 
     /* 描く大きさ。短い札は最低高まで伸ばす——重なりは**描いた高さ**で数える
        （見た目で重なるなら列に分ける）。 */
+    /* 長さ未定の札が最低高（44px）まで伸びるのは、次の用事までが空いているときだけ。組み立て（plan）は長さ未定を
+       仮の30分で続けて置くので、伸ばしきると次の札と 8px 重なり、続けて置いただけの二件が左右の列に割れていた
+       （2026年10月24日）。詰まっているときは次の札の頭まで（それでも短い札の最低高は守る）。 */
+    const starts = list.map((it) => it.atMin).sort((a, b) => a - b);
     const drawn = list.map((it) => {
-      const len = Math.max(0, (Number(it.untilMin) || it.atMin) - it.atMin);
-      const h = Math.max(len * o.pxMin, it.known ? o.minH : o.minUnknownH);
+      const until = Number(it.untilMin) || it.atMin;
+      const len = Math.max(0, until - it.atMin);
+      let least = it.known ? o.minH : o.minUnknownH;
+      if (!it.known) {
+        const next = starts.find((a) => a > it.atMin);
+        if (next != null && next >= until) least = Math.max(o.minH, Math.min(least, (next - it.atMin) * o.pxMin));
+      }
+      const h = Math.max(len * o.pxMin, least);
       return { it, at: it.atMin, end: it.atMin + h / o.pxMin, h };
     }).sort((a, b) => a.at - b.at || b.end - a.end);
 

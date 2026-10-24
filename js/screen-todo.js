@@ -4829,13 +4829,19 @@
     list.__keys = plan.items.map((it) => subsKeyOf(it.todo, day));
     list.__items = plan.items;
     const L = tlRelayout(list);
-    tlScale(L).forEach((el) => list.append(el));
+    tlScale(L, plan.items).forEach((el) => list.append(el));
     const heads = [];
+    const B = clockBox();
     L.cards.forEach((c) => {
-      // 同じ高さに時刻の字が二つ並ぶなら、あとの札は字を出さない（列の隣どうし）。
-      const quiet = heads.some((y) => Math.abs(y - c.top) < CLOCK_GAP);
-      if (!quiet) heads.push(c.top);
-      const li = itemRow(plan.items[c.id], day, c, quiet, c.more.map((k) => plan.items[k]));
+      /* 時刻の字が先の札の字（「ごろ」も）にかかるなら、あとの札は字を出さない（列の隣どうし）。
+         かかるのが自分の「ごろ」だけなら、時刻だけ出す。 */
+      const it = plan.items[c.id];
+      let about = aboutOf(it);
+      let span = clockSpan(c, about, B);
+      if (about && heads.some((s) => spansMeet(s, span))) { about = false; span = clockSpan(c, false, B); }
+      const quiet = heads.some((s) => spansMeet(s, span));
+      if (!quiet) heads.push(span);
+      const li = itemRow(it, day, c, quiet, c.more.map((k) => plan.items[k]), about);
       li.__k = c.id;
       list.append(li);
     });
@@ -4874,7 +4880,7 @@
     KN.util.setVar(list, "--tl-total", L.height.toFixed(1));
     if (!was) return L;
     const byK = new Map(L.cards.map((c) => [c.id, c]));
-    const scale = tlScale(L);
+    const scale = tlScale(L, list.__items);
     const old = [...list.children].filter((el) => !el.classList.contains("tl-row") && !el.classList.contains("tl-late-line"));
     const same = old.length === scale.length && old.every((el, i) => el.className === scale[i].className);
     for (const li of list.children) {
@@ -5033,6 +5039,27 @@
 
       逃がす向きは、いま居るほう（上にいるなら上へ、下なら下へ）。 */
   const CLOCK_GAP = 17;                     // 字の高さ（16px前後）＋ひと呼吸
+  const SHORT_CARD = 50;                    // これより低い札は一行（.is-short。左の時刻も札の縦中央）
+
+  /* 左の時刻の字が列の中で占める縦の幅（CSS の .tl-time と同じ置き方）。「ごろ」（.tl-about）は時刻の下に
+     浮くので、札の高さや隣の時刻を見るときはそのぶんも数える——数えずにいて、30分の札の「ごろ」が次の札の
+     「10:42」と1時間ごとの「11:00」にかかっていた（2026年10月24日）。箱は字の大きさ（--fs-k）で伸びる。 */
+  function clockBox() {
+    const k = parseFloat(document.documentElement.style.getPropertyValue("--fs-k")) || 1;
+    return { h: 20 * k, about: 11 * k };
+  }
+  /** 時刻の下に「ごろ」が付く用事か（itemRow と同じ条件）。 */
+  function aboutOf(it) {
+    const t = it && it.todo;
+    return !!(t && !it.fixed && it.at && !t.done && !t.archived);
+  }
+  /** [上, 下]。低い札は縦中央（「ごろ」が付けば時刻とひとかたまりで）、ほかは頭から 3px。 */
+  function clockSpan(c, about, B) {
+    const h = B.h + (about ? B.about : 0);
+    const top = c.height < SHORT_CARD ? c.top + c.height / 2 - h / 2 : c.top + 3;
+    return [top, top + h];
+  }
+  const spansMeet = (a, b) => a[0] < b[1] - 1 && b[0] < a[1] - 1;
 
   function clearOfClocks(sec, list, y) {
     const top0 = sec.getBoundingClientRect().top;
@@ -5043,9 +5070,12 @@
       const r = el.getBoundingClientRect();
       if (r.height <= 0) continue;
       const mid = r.top + r.height / 2 - top0;
+      // 「ごろ」は箱の外（下）に浮いているので、下へ逃がすときはそのぶん先へ。
+      const about = el.querySelector(".tl-about");
+      const below = about ? Math.max(0, about.getBoundingClientRect().bottom - r.bottom) : 0;
       const d = out - mid;
-      if (Math.abs(d) >= CLOCK_GAP) continue;
-      out = mid + (d < 0 ? -CLOCK_GAP : CLOCK_GAP);
+      if (d <= -CLOCK_GAP || d >= CLOCK_GAP + below) continue;
+      out = mid + (d < 0 ? -CLOCK_GAP : CLOCK_GAP + below);
     }
     return out;
   }
@@ -5796,14 +5826,17 @@
      1時間ごとの薄い目盛り、札の裏を通る背骨（区間ごと。畳んだところで切れる）、
      長い空きを畳んだ一行。どれも tl-layout の y から置くだけで、測りません。
      背骨と畳みは札と同じ --pass で塗ります（markPass）。 */
-  function tlScale(L) {
+  function tlScale(L, items) {
     const out = [];
     const inFold = (m) => L.folds.some((f) => m > f.fromMin && m < f.untilMin);
-    // 時刻は1時間ごとに振る。用事の時刻と同じ高さなら、用事のほうを残す。
+    const B = clockBox();
+    const spans = L.cards.map((c) => clockSpan(c, aboutOf(items && items[c.id]), B));
+    // 時刻は1時間ごとに振る。用事の時刻（その下の「ごろ」も）にかかるなら、用事のほうを残す。
     for (let h = Math.ceil(L.from / 60) * 60; h <= L.to; h += 60) {
       if (inFold(h)) continue;
       const y = L.y(h);
-      const quiet = L.cards.some((c) => Math.abs(c.top - y) < CLOCK_GAP);
+      const tick = [y + 3, y + 3 + B.h];   // .tl-hour は目盛りの線から 3px 下
+      const quiet = spans.some((s) => spansMeet(s, tick));
       out.push(node(html`<li class="tl-tick${quiet ? " is-quiet" : ""}" aria-hidden="true" data-y="${y.toFixed(1)}"
         style="--top:${y.toFixed(1)}"><span class="tl-hour">${tlClock(KN.plan.toTime(h))}</span></li>`));
     }
@@ -5862,7 +5895,7 @@
 
   /** 一つの用事の札。c は tl-layout の札（top・height・lane・lanes。px）、quiet は時刻の字を
       出さない（隣の列が同じ高さに出している）、more は列に入りきらなかった用事。 */
-  function itemRow(it, day, c, quiet, more) {
+  function itemRow(it, day, c, quiet, more, about) {
     const t = it.todo;
     /* 書くのは「決めたこと」だけ。決めていない長さは出しません。 */
     const facts = [];
@@ -5909,7 +5942,7 @@
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     const closed = t.done || t.archived;
     /* 札の大きさで中身を削る：低い札は題だけ、三列では絵も外す（幅が約90px）。 */
-    const size = c && c.height < 50 ? "is-short" : "";
+    const size = c && c.height < SHORT_CARD ? "is-short" : "";
     const li = node(html`
       <li class="tl-row ${closed ? "is-done" : ""} ${size} ${c && c.lanes > 1 ? "is-lane" : ""} ${c && c.lanes > 2 ? "is-narrow" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
@@ -5924,7 +5957,7 @@
               浮かせます——列は 44px で横に並べる幅が無く、行の中に積むと時刻の
               字が丸の中心からずれるので。済ませたもの（押した時刻）には付けない。 */""}
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${quiet ? "" : html`${tlClock(it.at)}${
-          !it.fixed && !closed && it.at ? html`<span class="tl-about">ごろ</span>` : ""}`}</span>
+          (about == null ? !it.fixed && !closed && it.at : about) ? html`<span class="tl-about">ごろ</span>` : ""}`}</span>
         <span class="tl-rail" data-grow><span class="tl-node">${tlMark(t)}</span></span>
         ${more.length ? html`<button type="button" class="tl-more"
             aria-label="同じ時間の用事をあと${more.length}件見る">＋${more.length}</button>` : ""}

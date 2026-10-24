@@ -736,7 +736,7 @@
         return;
       }
       const dt = U.dayDate(d.date);
-      const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+      const edited = edits(d);
       const out = unread ? null : outText(d);
       /* **button ではなく div です。** iOS も含め、button の中の字は選べません
          （長押しは「押しっぱなし」として扱われ、選択もコピーの吹き出しも
@@ -1293,10 +1293,16 @@
   const stampOnly = (text) => String(text).split("\n").every((l) => !l.trim()
     || /^\d{4}\.\d{1,2}\.\d{1,2}（[日月火水木金土]）$/.test(l.trim()) || /^育休完了まであと\d+日$/.test(l.trim()));
 
+  /** 「更新」を出すか。同じ分のうちに直しただけなら、作成と同じ字が二つ並ぶだけなので出さない。 */
+  function edits(d) {
+    return !!(d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt
+      && U.formatStamp(d.updatedAt) !== U.formatStamp(d.createdAt));
+  }
+
   /** 時刻ごとの日記の行。本文の字は足し引きせず、切って並べるだけ。 */
   function chatRow(d) {
     const dt = U.dayDate(d.date);
-    const edited = d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt;
+    const edited = edits(d);
     const items = KN.diaryPosts.parse(d.memo || "");
     const row = node(html`
       <div class="arc-log-row is-chat ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">

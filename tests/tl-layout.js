@@ -37,6 +37,13 @@ t.check("最低高で見た目が重なれば2列（15分の札の下端は9:30�
 
 r = L([it("a", H(9), H(9, 30), false)], O);
 t.check("長さ未定は最低高44px（30分＝36pxより高い・長さは言わない）", near(r.cards[0].height, 44));
+r = L([it("a", H(9), H(9, 30), false), it("b", H(9, 30), H(10), false), it("c", H(10), H(11))], O);
+t.check("続けて置いた長さ未定は次の札の頭まで（36px）・列に割れない", near(r.cards[0].height, 36) && near(r.cards[1].height, 36)
+  && r.cards.every((c) => c.lanes === 1 && c.lane === 0), JSON.stringify(r.cards));
+r = L([it("a", H(9), H(9, 30), false), it("b", H(9, 45), H(10))], O);
+t.check("次まで空いていれば長さ未定は44px（9:45まで＝54px）", near(r.cards[0].height, 44) && r.cards.every((c) => c.lanes === 1), JSON.stringify(r.cards));
+r = L([it("a", H(9), H(9, 30), false), it("b", H(9, 20), H(10))], O);
+t.check("時間が重なる長さ未定は44pxのまま2列", near(r.cards[0].height, 44) && r.cards.map((c) => c.lane).join() === "0,1", JSON.stringify(r.cards));
 
 // 畳み：9時の用事と17時の用事のあいだ（10時〜17時）は畳む。
 r = L([it("a", H(9), H(10)), it("b", H(17), H(18))], O);

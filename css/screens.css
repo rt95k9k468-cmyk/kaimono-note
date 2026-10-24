@@ -3762,7 +3762,9 @@ a.btn { text-decoration: none; }
   position: absolute; top: 50%; translate: 0 -50%; right: calc(100% + var(--sp-4) + 1px); width: 30px;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
-.arc-post:first-child .arc-post-acts { top: max(50%, 52px); }
+/* 一件目は、日付の欄の曜日の下から（真ん中は 1px＋日の数字＋曜日＋4px＋二つの半分 31px）。前は 52px で、低い吹き出し
+   （一、二行）では直すの絵が曜日の字に重なっていた（2026年10月24日）。 */
+.arc-post:first-child .arc-post-acts { top: max(50%, calc(var(--fs-xl) * 1.15 + var(--fs-xs) * 1.6 + 36px)); }
 .arc-post-act {
   width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--r-full); color: var(--c-text-3);
   transition: opacity var(--m-state) var(--ease);
@@ -4615,6 +4617,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    flex にするのは .tl-body まで——行数を絞る .item-name は .tl-open（block）の中なので畳まれない。 */
 /* 低い札（30分など）は、左の時刻も札の縦中央へ（上に付いていて、絵・題・印より5px高く見えた）。背の高い札は頭のまま。 */
 .tl-list > li.tl-row.is-short > .tl-time { top: 50%; translate: 0 -50%; }
+/* 「ごろ」の付く低い札は、時刻と「ごろ」をひとかたまりで縦中央へ（時刻だけを中央にすると「ごろ」が札の下へはみ出し、
+   次の札の時刻にかかった。2026年10月24日）。JS の clockSpan も同じ置き方で数える。 */
+.tl-list > li.tl-row.is-short > .tl-time:has(.tl-about) { translate: 0 calc(-50% - var(--fs-xs) / 2); }
 .tl-list > li.tl-row.is-short > .item.tl-item { padding-top: 3px; padding-bottom: 3px; align-items: center; }
 .tl-list > li.tl-row.is-short .tl-cap { display: none; }
 .tl-list > li.tl-row.is-short .tl-body { display: flex; align-items: center; gap: var(--sp-2); }
