@@ -2703,6 +2703,8 @@
   }
 
   function renderBody() {
+    /* 探しているあいだは紙が無いので、画面の地を頭から塗る（css の .is-query。写真の下端が結果の札を横切っていた）。 */
+    if (root) root.classList.toggle("is-query", !!query);
     /* 書き替えても、読んでいた場所は動かしません。中身を空にすると
        スクロールは0へ落ちるので、組み直したあとに返します——一件
        片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
@@ -2880,11 +2882,13 @@
     const late = groups.find((g) => g.late);
     if (rowsOf("late").length) shelves.append(groupSection(late, rowsOf("late"), tiles));
 
-    shelves.append(todayPanel(rowsOf, tiles));
+    /* 探しているあいだは、当たった棚だけ（空の棚は運ぶ先なのでふだんは出すが、探した結果では「無い」を並べるだけ。
+       「ゴミ」で今日の2件のほかに、空の見出しが十いくつ並んでいた。2026年10月24日）。 */
+    if (!query || rowsOf("today").length) shelves.append(todayPanel(rowsOf, tiles));
 
     groups.filter((g) => !g.late && !g.today).forEach((g) => {
       const rows = rowsOf(g.id);
-      if (!rows.length && g.onlyWhenFull) return;
+      if (!rows.length && (g.onlyWhenFull || query)) return;
       shelves.append(groupSection(g, rows, tiles));
     });
 

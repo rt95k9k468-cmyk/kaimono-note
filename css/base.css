@@ -1160,6 +1160,8 @@ a { color: var(--c-primary); }
 .head[data-sky] ~ .panes > .screen:is([data-screen="todo"], [data-screen="archive"], [data-screen="list"]):not(.is-face-front, .is-face-parked) {
   background: linear-gradient(var(--c-bg) 0 0) 0 calc(var(--r-xl) + var(--sky-more)) / 100% 100% no-repeat;
 }
+/* やることを探しているあいだは白い紙が無い（js の .is-query）。地を頭から塗らないと、写真の下端が結果の札を横切る。 */
+.head[data-sky] ~ .panes > .screen[data-screen="todo"].is-query:not(.is-face-front, .is-face-parked) { background: var(--c-bg); }
 .head[data-sky] > .topbar,
 .head[data-sky] .cal { background: transparent; }
 .head[data-sky="dawn"]    { --sky-a: #b9d5f0; --sky-c: #eff6fc; --sky-d: #fdf4ec; }
