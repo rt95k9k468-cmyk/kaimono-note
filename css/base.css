@@ -1105,7 +1105,7 @@ a { color: var(--c-primary); }
 .head-crumb-sep { flex: none; font-size: .7em; font-weight: var(--fw-regular); color: var(--c-text-3); }
 .head.is-notes :is(.topbar-day, .js-go-today) { opacity: 0; pointer-events: none; }
 .head.is-notes .js-upcoming { display: none; }
-.head:has(> .head-cal:is(.is-cal-out, .is-cal-in)) :is(.head-name, .topbar-day, .js-go-today) {
+.head.is-cal-moving :is(.head-name, .topbar-day, .js-go-today) {
   transition: opacity var(--m-nav) var(--ease-out);
 }
 /* ---- 帯の空（docs/sky.md・js/sky.js） ----
@@ -1259,7 +1259,7 @@ a { color: var(--c-primary); }
   background-blend-mode: var(--sky-blend), normal, normal;
 }
 /* やることの月の面（暦が画面の65%・`.cal.is-tall`）は正方形の写真では下が足りない。帯いっぱいに広げて余白を出さない。 */
-.head:has(.cal.is-tall) { --sky-size: cover; }
+.head.has-tall-cal { --sky-size: cover; }
 /* 引くと、空が近づく（docs/motion.md の「反応を足す」）。いちばん上で紙を下へ引くと
    （pull-refresh の give）、引いたぶんだけ空が上の端を軸に少しふくらむ——紙を引く指に、
    後ろの景色もついてくる。`--sky-pull`（0〜1）は pull-refresh.js が帯（#head）へ書く。
@@ -1683,7 +1683,8 @@ a { color: var(--c-primary); }
    上へ行くほど透けるので「まだ続きがある」は残る。後ろが暗いと読んだ帯（.is-on-dark。暗い面ではいつも）は
    夜の色の幕——明るい幕は暗い地の上に白く浮く。ノートと設定は紙を持たないので地の色（--c-bg）。 */
 .tabbar.is-on-dark { --bar-veil: var(--glass-night-cast); }
-.screens:is(:has(#head.is-notes), :has(#screen-settings.is-active)) ~ .tabbar { --bar-veil: var(--c-bg); }
+/* 印は js（`.head.is-…` と `data-screen`）。大きな入れ物に :has を掛けない——中の出入りのたびに入れ物ごと見直しになる。 */
+:root:is([data-screen="notes"], [data-screen="settings"]) .tabbar { --bar-veil: var(--c-bg); }
 
 /* カプセル本体。
 

@@ -213,6 +213,9 @@
          なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
          紙の transform が一緒に運んでくれます。 */
       if (c && (c.classList.contains("is-peek") || c.classList.contains("is-settling"))) return;
+      /* 帯から外れた暦（ほかの席へ移った）は測りません。外れた暦は 0 を返し、出ていく画面の床（--cal-h）が
+         流れの途中で 0 へ跳ねて、その画面の様式を組み直していた（2026年10月24日）。戻れば組み直しが測り直す。 */
+      if (c && !c.isConnected) return;
       const h = c && !c.classList.contains("is-hidden")
         ? Math.round(c.getBoundingClientRect().height) : 0;
       if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
@@ -4107,6 +4110,7 @@
     sec.querySelectorAll(".cal-rest").forEach((e) => e.remove());
     sec.querySelectorAll(".cal-name.is-over").forEach((e) => e.classList.remove("is-over"));
     sec.classList.remove("is-tall");
+    if (KN.head.syncTall) KN.head.syncTall();
     const cells = grid ? grid.querySelectorAll(":scope > .cal-day") : [];
     if (!monthFace() || !calOpen() || !calShown() || cells.length < 8) return;
     const cell = cells[0];
@@ -4118,6 +4122,7 @@
     sec.style.setProperty("--cal-row", row + "px");
     sec.dataset.rowLo = lo;
     sec.classList.add("is-tall");
+    if (KN.head.syncTall) KN.head.syncTall();
     // 輪は px で置いてあるので、マスの背が変わったら置き直す。
     const here = grid.querySelector(":scope > .cal-day.is-here");
     if (here && grid.querySelector(".cal-ring.is-on")) moveRing(grid, here, true);

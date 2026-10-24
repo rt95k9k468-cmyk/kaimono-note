@@ -14,8 +14,10 @@
 
   /* 紙の段は CSS が持っています（base.css の「重なりの順」）。重なるたびに
      二段ずつ上げるので、**その足もとだけ**をここで読みます。 */
-  const zSheet = () => parseInt(
-    getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 100;
+  /* 読むのは一度だけ（動かない数）。紙を開くたびに読むと、組んだばかりの紙の様式をその場で計算させる。 */
+  let zSheet0 = 0;
+  const zSheet = () => zSheet0 || (zSheet0 = parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 100);
 
   /* ---------------- 紙が生まれるところ ----------------
 
@@ -1470,8 +1472,7 @@
   function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
-    const zSheet = lift ? parseInt(getComputedStyle(document.documentElement).getPropertyValue("--z-sheet"), 10) || 0 : 0;
-    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || zSheet;
+    const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || (lift ? zSheet() : 0);
     const r = anchor.getBoundingClientRect();
     const cover = node(html`<div class="note-pop-cover"></div>`);
     const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);

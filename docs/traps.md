@@ -41,5 +41,8 @@
   （`isComposing`、古い WebKit は `keyCode 229` だけ）で手順が増えたり題が閉じたりする。打つ欄には出来事で
   `enterkeyhint`（続けて書く `next`・決めて閉じる `done`・足して続ける `enter`・さがす `search`）。
   `tests/ime-enter.js`（門）が見張る。（roadmap-seamless の N5）
+- **大きな入れ物（`body`・`#screens`・`#head`）を主語に `:has()` を書かない。** 中で何かが出入りするたびに入れ物ごと
+  見直しが掛かり、席を移る一拍が約2割重かった（2026年10月24日）。状態は js が印を付ける（`:root[data-screen]`・
+  `.head.is-cal-moving`・`.head.has-tall-cal`）。行の中の小さな `:has()` はよい。（motion）
 - **`position: sticky` の祖先に `overflow: hidden` を置かない。** hidden の箱は送る器になり、外の器を送っても
   留まらない。角を丸く切るだけなら `overflow: clip`（送る器にならない）。（notes-unify の「画面」）

@@ -1142,6 +1142,9 @@
     const from = active;
     if (from !== id && KN.ui.closePops) KN.ui.closePops();
     active = id;
+    /* いまの画面を根に（下の帯の幕・ノートの左の木。CSS の `:has(#screen-….is-active)` をやめた——画面の中で
+       何かが出入りするたびに入れ物ごと見直しが掛かり、席を移る一拍が重くなっていた。2026年10月24日）。 */
+    document.documentElement.dataset.screen = id;
     /* 買うもの・価格から**離れる**ときは、留まっている紙を片づけます。
        のぞかせた頭は「この後ろに買うものがある」という札なので、daily や
        ダイエットの上に残っていては嘘になります。 */

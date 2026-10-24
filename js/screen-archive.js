@@ -1664,6 +1664,9 @@
          なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
          紙の transform が一緒に運んでくれます。 */
       if (c && (c.classList.contains("is-peek") || c.classList.contains("is-settling"))) return;
+      /* 帯から外れた暦（ほかの席へ移った）は測りません。外れた暦は 0 を返し、出ていく画面の床（--cal-h）が
+         流れの途中で 0 へ跳ねて、その画面の様式を組み直していた（2026年10月24日）。戻れば組み直しが測り直す。 */
+      if (c && !c.isConnected) return;
       const h = c && !c.classList.contains("is-hidden")
         ? Math.round(c.getBoundingClientRect().height) : 0;
       if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }

@@ -256,8 +256,9 @@
      大きくはしない——道からはみ出すので。 */
   const HOUR_FS = 7.4;
   const hourFs = () => Math.min(HOUR_FS, HOUR_FS * fsK());
+  /* 字の大きさの倍率は app.js が根の style に直に書く（1 のときは消す）ので、そこを読む——様式の計算を呼ばない。 */
   function fsK() {
-    const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--fs-k"));
+    const v = parseFloat(document.documentElement.style.getPropertyValue("--fs-k"));
     return v > 0 ? v : 1;
   }
 

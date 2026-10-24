@@ -5698,7 +5698,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    紙・覆い・鍵より下（--z-bar）。js/screen-notes.js の paintTree。 */
 .notes-tree { display: none; }
 @media (min-width: 1080px) {
-  html:not(.is-locked) body:has(#screen-notes.is-active) .notes-tree {
+  html:not(.is-locked)[data-screen="notes"] .notes-tree {
     display: block; position: fixed; top: 0; bottom: 0; left: 0; z-index: var(--z-bar);
     width: min(300px, calc((100vw - var(--maxw)) / 2));
     padding: calc(var(--sp-4) + env(safe-area-inset-top)) var(--sp-2) var(--sp-6) calc(var(--sp-2) + env(safe-area-inset-left));

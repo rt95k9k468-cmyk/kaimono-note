@@ -181,7 +181,16 @@
     else if (calMove === "out") calMove = null;
     if (cal.parentNode === els.cal && els.cal.childNodes.length === 1) return;
     els.cal.replaceChildren(cal);
+    syncTall();
     if (s) crossMarks(s, cal);
+  }
+
+  /** 背の高い月の暦（やることの月の面・`.cal.is-tall`）が帯に居るかを、帯の印（`has-tall-cal`）で言う。CSS の
+      `.head:has(.cal.is-tall)` をやめた——帯の中で何かが出入りするたびに帯ごと見直しが掛かり、席を移る一拍が
+      重くなっていた（2026年10月24日。下の `is-cal-moving`、app.js の `data-screen` も同じ）。 */
+  function syncTall() {
+    if (!root || !els.cal) return;
+    root.classList.toggle("has-tall-cal", !!els.cal.querySelector(":scope > .cal.is-tall"));
   }
 
   /* ---------------- 暦の出入り（ノートの席は暦を持たない） ----------------
@@ -211,12 +220,13 @@
     calMove = null;
     if (!m || !root) return;
     const h = slide && !KN.motion.still() ? els.cal.offsetHeight : 0;
-    if (!h) { if (m === "out") els.cal.replaceChildren(); return; }
+    if (!h) { if (m === "out") { els.cal.replaceChildren(); syncTall(); } return; }
     const p = panes();
     [els.cal, p].forEach((e) => {
       e.style.setProperty("--cal-move", `${h}px`);
       e.classList.add(m === "out" ? "is-cal-out" : "is-cal-in");
     });
+    root.classList.add("is-cal-moving");
     clearTimeout(moveT);
     moveT = setTimeout(endMove, KN.motion.ms("--m-nav") + 40);
   }
@@ -225,12 +235,13 @@
   function endMove() {
     clearTimeout(moveT);
     const p = panes();
-    if (els.cal.classList.contains("is-cal-out")) els.cal.replaceChildren();
+    if (els.cal.classList.contains("is-cal-out")) { els.cal.replaceChildren(); syncTall(); }
     [els.cal, p].forEach((e) => {
       if (!e) return;
       e.classList.remove("is-cal-out", "is-cal-in");
       e.style.removeProperty("--cal-move");
     });
+    if (root) root.classList.remove("is-cal-moving");
   }
 
   /* ---------------- 席を移るとき、印だけをふわっと替える（段4） ----------------
@@ -653,5 +664,5 @@
     els.name.append(t);
   }
 
-  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
+  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, syncTall, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
 })();
