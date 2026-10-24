@@ -7365,6 +7365,7 @@ button.note-when:active { opacity: var(--press-fade); }
   font-size: var(--fs-sm);
 }
 .sa-link svg { width: var(--ico-sm); height: var(--ico-sm); }
+.sa-none { min-height: 32px; display: flex; align-items: center; padding: 0 var(--sp-1); color: var(--c-text-3); font-size: var(--fs-sm); }
 .sa { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
 .sa-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); margin: 0 0 var(--sp-1); }
 .sa-rows { display: flex; flex-direction: column; }

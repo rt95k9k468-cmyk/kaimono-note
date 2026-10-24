@@ -265,12 +265,16 @@
 
   function paintHint(wrap, r, raw, from) {
     let row = wrap.querySelector(".sa-hint");
-    if (!r || (!r.total && !r.when)) { if (row) row.remove(); return; }
+    /* daily はこの画面では絞らない（字はここへ渡すだけ）ので、どこにも無いときに何も出ないと、探せたのかが分からない
+       （2026年10月24日）。ほかの画面は自分の一覧が「見つかりませんでした」と言う。 */
+    const none = !!r && !r.total && !r.when && from === "archive";
+    if (!r || (!r.total && !r.when && !none)) { if (row) row.remove(); return; }
     if (!row) {
       row = node(html`<div class="sa-hint"></div>`);
       wrap.append(row);
     }
     row.innerHTML = "";
+    if (none) { row.append(node(html`<p class="sa-none">見つかりませんでした</p>`)); return; }
     if (r.when) {
       const b = node(html`<button type="button" class="sa-link sa-when">${r.when.label}の daily へ${icon("chevron")}</button>`);
       b.addEventListener("click", () => go({ screen: "archive", day: monthDay(r.when.ym) }, raw));
