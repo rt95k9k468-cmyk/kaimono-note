@@ -7644,7 +7644,9 @@ button.note-when:active { opacity: var(--press-fade); }
   transition: background var(--m-state) var(--ease-out);
 }
 .day-road.is-carry-out .road-hollow { background: color-mix(in srgb, var(--road-go) 26%, transparent); }
-.road-bead.is-someday:not(.road-ghost) { animation: road-float var(--m-float) var(--ease) infinite; }
+/* 三回浮いたら止まる（ずっと動かすと、やることを開いているあいだ描き続けて電池を使う。z Z を三回で止めたのと同じ
+   ——2026年10月8日の利用者の答え。くぼみの丸にも当てた。2026年10月24日）。組み直せばまた三回。 */
+.road-bead.is-someday:not(.road-ghost) { animation: road-float var(--m-float) var(--ease) 3; }
 .road-bead.is-someday:nth-of-type(2n) { animation-delay: calc(var(--m-float) / -3); }
 .road-bead.is-someday:nth-of-type(3n) { animation-delay: calc(var(--m-float) * -2 / 3); }
 @keyframes road-float { 50% { translate: 0 -2px; } }
