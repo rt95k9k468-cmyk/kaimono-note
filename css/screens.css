@@ -660,9 +660,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  /* 数字の丸と、下の点のあいだ。1pxしかなく、見ている日の輪が点に
-     くっついて見えていました。輪のぶんを空けます。 */
-  gap: var(--sp-1);
+  /* 数字の丸と、下の段のあいだ。輪は内側に描くので 1px で足りる（2026年10月25日、名前を二段にするため詰めた。
+     前は 4px）。 */
+  gap: 1px;
   padding: 2px 0 3px;
   background: none;
   border: 0;
@@ -675,9 +675,10 @@
 .cal-n {
   display: grid;
   place-items: center;
-  width: 27px; height: 27px;
+  /* 27px・17px から縮めた（2026年10月25日、利用者「予定を二つ書けるように」。浮いた背で名前の二段目を）。 */
+  width: 23px; height: 23px;
   border-radius: var(--r-full);
-  font-size: calc(17px * var(--fs-k));
+  font-size: calc(15px * var(--fs-k));
   font-weight: var(--fw-regular);
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -721,7 +722,7 @@
      残っていたので、輪が数字の丸より小さく、字に食い込んで見えました。
      位置合わせ（moveRing）は .cal-n の左上を基準にしているので、同じ
      大きさにしておけば揺れずに重なります。 */
-  width: 27px; height: 27px;
+  width: 23px; height: 23px;
   border-radius: var(--r-full);
   box-shadow: inset 0 0 0 2px var(--c-primary);
   pointer-events: none;
@@ -754,7 +755,8 @@
 .cal-dots {
   display: flex;
   width: 100%;
-  height: 15px;
+  /* 名前二段ぶん（13px×2＋間 1px）。全タブで同じ背にする——タブを移るたびに暦が伸び縮みしないように。 */
+  height: 27px;
   align-items: center;
   justify-content: center;
   /* マスからはみ出させません。三つ重ねて 15+2×10 = 35px、7分の1のマス
@@ -5117,26 +5119,28 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .mo-date[data-wd="6"] :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
 .mo-date:is([data-wd="0"], .is-holiday) :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
 .mo-evs { min-height: 56px; }
-/* やることの暦の印は名前（2026年10月20日、利用者。絵の丸はやめた）。日付の数字の真下。マスの高さは点の段（15px）のまま、
-   ふつうは先頭の一つだけ。 */
+/* やることの暦の印は名前（2026年10月20日、利用者。絵の丸はやめた）。日付の数字の真下に、月の面と同じ種類の色の札で
+   二つまで（2026年10月25日、利用者「予定を二つ書けるように」。中央に積むと一つの名前の折り返しに見える）。
+   左に寄せ、はみ出しは端を薄く消す（「…」は一字ぶん惜しく、切るだけだと字が欠ける）。 */
 .cal-day { min-width: 0; }   /* 名前の長さで列（1fr）が広がらないように */
+.cal-dots:has(> .cal-name) { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 1px; padding: 0 2px; }
 .cal-name {
-  display: block; min-width: 0; max-width: 100%; padding: 0 2px; text-align: center;
-  font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 15px;
-  color: color-mix(in srgb, var(--cat) 55%, var(--c-text-2));
+  display: block; flex: none; min-width: 0; max-width: 100%; padding: 0 1px 0 3px; text-align: left; border-radius: 3px;
+  font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 13px; color: var(--c-text);
+  background: color-mix(in srgb, var(--cat) 22%, var(--c-bg)); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cat) 75%, var(--c-bg));
 }
-.cal-name ~ .cal-name, .cal-name.is-over { display: none; }
-.cal-name b { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-regular); }
-.cal-name.is-past { color: var(--c-text-3); }
+.cal-name ~ .cal-name ~ .cal-name, .cal-name.is-over { display: none; }
+.cal-name b { display: block; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: var(--fw-regular);
+  mask-image: linear-gradient(to right, #000 calc(100% - 5px), transparent); }
+.cal-name.is-past { color: var(--c-text-2); background: color-mix(in srgb, var(--c-text-3) 14%, var(--c-bg)); box-shadow: inset 2px 0 0 var(--c-border); }
 /* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。字は「…」で切らない（一字ぶん惜しい）。 */
 .cal.is-tall .cal-grid { grid-auto-rows: var(--cal-row); }
 /* 収まるあいだマスの背も滑らせる。JS が書くのは段ごとの背（grid-template-rows。grid-auto-rows は補間されない）。 */
 .cal.is-tall.is-settling .cal-grid { transition: grid-template-rows var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 .cal.is-tall .cal-dots { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; height: auto; flex: 1; min-height: 0; padding: 0 2px; }
-.cal.is-tall .cal-name { display: block; flex: none; text-align: left; padding: 0 2px 0 3px; border-radius: 3px; color: var(--c-text);
-  background: color-mix(in srgb, var(--cat) 22%, var(--c-bg)); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cat) 75%, var(--c-bg)); }
-.cal.is-tall .cal-name b { text-overflow: clip; }
-.cal.is-tall .cal-name.is-past { color: var(--c-text-2); background: color-mix(in srgb, var(--c-text-3) 14%, var(--c-bg)); box-shadow: inset 2px 0 0 var(--c-border); }
+.cal.is-tall .cal-name { padding-right: 2px; line-height: 15px; }
+.cal.is-tall .cal-name ~ .cal-name { display: block; }
+.cal.is-tall .cal-name b { mask-image: none; }
 .cal.is-tall .cal-name.is-over { display: none; }
 /* 引いているあいだはマスの背が動くので、px で置いた輪は伏せる（収まれば組み直しが置き直す）。 */
 .cal.is-tall:is(.is-peek, .is-settling) .cal-ring { opacity: 0; }
