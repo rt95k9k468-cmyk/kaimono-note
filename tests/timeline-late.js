@@ -2,6 +2,7 @@
    docs/todo-timeline.md の「過ぎてもまだは背骨に一本」）。時計を 7:33 に止める。
    - 5:00〜5:20 の水やりと 6:00〜7:00 の朝のルーティンがまだ。棒は札の高さのまま、線（.tl-late-line）は
      いちばん早く終わるはずだった水やりの下端から y(いま) まで一本（色は変えない。橙は道だけ）。押すと一覧の紙
+   - 手順の小窓：済ませてもその場に残り、小窓は動かない。開き直すと「済み n」に畳む。ぜんぶ済むと閉じる
    - 済ませると、その一件ぶん線が縮む／全部済ませると消える
    - 時刻は1時間ごとに振る。用事の時刻・「いま」と同じ高さの字は出さない
    - 手順は小窓に出す（札は伸びない・2026年10月21日）
@@ -89,21 +90,51 @@ const PX_MIN = 1.2;
   c.check("手順をひらいても札は伸びない（小窓に出る）",
     Math.abs(r.prep.h - shut.h) < 1 && Math.abs(r.prep.cardTop - shut.cardTop) < 1, JSON.stringify([shut, r.prep]));
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
-  /* 手順を済ませると、チェックが描かれてから済みの畳みへ沈んで見えなくなり、「済み 1」になる。 */
+  /* 手順を済ませても、行はその場に残り、小窓も動かない（2026年10月25日）。閉じて開き直すと「済み 1」に畳む。 */
+  const popTop = () => page.$eval(".note-pop.is-subs", (el) => Math.round(el.getBoundingClientRect().top));
+  await page.waitForTimeout(600);   // ふくらみ終わってから測る
+  const top0 = await popTop();
   await page.click(".note-pop.is-subs .tl-sub:first-child button.check");
-  await page.waitForFunction(() => {
-    const ls = [...document.querySelectorAll(".note-pop.is-subs .tl-sub")];
-    const m = document.querySelector(".note-pop.is-subs .tl-subs-more");
-    return ls.some((l) => l.hidden) && m && /済み 1/.test(m.textContent);
-  }, null, { timeout: 5000 });
-  c.check("済ませた手順は小窓から消え、残りは二つ",
-    await page.$$eval(".note-pop.is-subs .tl-sub:not([hidden])", (l) => l.length) === 2);
+  await page.waitForTimeout(1500);
+  const stay = await page.evaluate(() => ({
+    shown: document.querySelectorAll(".note-pop.is-subs .tl-sub:not([hidden])").length,
+    first: document.querySelector(".note-pop.is-subs .tl-sub:first-child").classList.contains("is-done"),
+    more: !!document.querySelector(".note-pop.is-subs .tl-subs-more"),
+  }));
+  c.check("済ませた手順はその場に残る（三つとも見え、畳みは出ない）",
+    stay.shown === 3 && stay.first && !stay.more, JSON.stringify(stay));
+  c.check("済ませても小窓は動かない", Math.abs((await popTop()) - top0) < 1, `${top0} → ${await popTop()}`);
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
+  await page.click(`#screen-todo .tl-row[data-todo-id="${ids.prep}"] .tl-subs-chip`);
+  await page.waitForSelector(".note-pop.is-subs.is-open .tl-sub", { timeout: 5000 });
+  const refold = await page.evaluate(() => ({
+    shown: document.querySelectorAll(".note-pop.is-subs .tl-sub:not([hidden])").length,
+    more: (document.querySelector(".note-pop.is-subs .tl-subs-more") || {}).textContent || "",
+  }));
+  c.check("開き直すと、済ませた手順は「済み 1」に畳まれ、残りは二つ",
+    refold.shown === 2 && /済み 1/.test(refold.more), JSON.stringify(refold));
   /* 他のタブへ移れば、手順の小窓は閉じる（帯は覆いより手前なので、覆いでは閉じない）。 */
   await page.evaluate(() => KN.app.showScreen("notes"));
   await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
   await page.evaluate(() => KN.app.showScreen("todo"));
   r = await read();
   c.check("閉じても45分＝54px のまま", Math.abs(r.prep.h - 45 * PX_MIN) < 2, JSON.stringify(r.prep));
+  /* 残りを続けて済ませると、ずれずに押せて、ぜんぶ済んだら小窓は自分で閉じる。 */
+  await page.click(`#screen-todo .tl-row[data-todo-id="${ids.prep}"] .tl-subs-chip`);
+  await page.waitForSelector(".note-pop.is-subs.is-open .tl-sub", { timeout: 5000 });
+  await page.waitForTimeout(600);
+  const boxes = await page.$$eval(".note-pop.is-subs .tl-sub:not([hidden]) button.check", (bs) =>
+    bs.map((b) => { const q = b.getBoundingClientRect(); return { x: q.x + q.width / 2, y: q.y + q.height / 2 }; }));
+  for (const b of boxes) { await page.mouse.click(b.x, b.y); await page.waitForTimeout(120); }
+  const allSubs = await page.evaluate((id) => {
+    const t = KN.store.getTodo(id);
+    return t.subs.every((x) => KN.store.subStatus(t, x, KN.util.todayKey()).done);
+  }, ids.prep);
+  c.check("残りの手順を続けて押すと、どれも済む（行がずれない）", allSubs && boxes.length === 2, JSON.stringify(boxes));
+  const shutSelf = await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 4000 })
+    .then(() => true, () => false);
+  c.check("手順がぜんぶ済んだら、小窓は自分で閉じる", shutSelf);
 
   /* 済ませると、その一件ぶん線が縮み、全部済ませると消える。 */
   const done = async (id) => {
