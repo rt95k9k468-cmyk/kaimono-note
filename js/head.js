@@ -126,16 +126,20 @@
      並べ直させてから測ることになります（やることへ移るたびに 約19ms）。まだ何も
      書き換えていない頭で撮れば、前の一拍の配置のまま安く測れます。 */
   let pre = null;
-  /** 席を移る直前（app.js の show の頭）に、出ていく暦の印を写しておく。 */
+  let fromH = null;       // 出ていく席の暦の置き場の背（enter が pre から引き取り、moveCal が使う）
+  /** 席を移る直前（app.js の show の頭）に、出ていく暦の印を写しておく。暦の置き場の背と、背の高い月の
+      写真の敷き方も（席を移るときに背が違えば滑らせる——resizeCal）。 */
   function snapFor(id) {
     pre = null;
+    fromH = null;
     if (!root || id === "settings" || !TABS.includes(id) || id === owner) return;
-    pre = { id, marks: snapMarks() };
+    pre = { id, marks: snapMarks(), h: els.cal.firstChild ? els.cal.offsetHeight : null, tall: root.classList.contains("has-tall-cal") };
   }
 
   function enter(id) {
     const early = pre && pre.id === id ? pre : null;
     pre = null;
+    fromH = early && early.h != null ? { h: early.h, tall: early.tall } : null;
     if (!root) return;
     if (id === "settings") return;            // 持ち主はそのまま（上を参照）
     if (!TABS.includes(id)) {
@@ -190,7 +194,9 @@
       重くなっていた（2026年10月24日。下の `is-cal-moving`、app.js の `data-screen` も同じ）。 */
   function syncTall() {
     if (!root || !els.cal) return;
-    root.classList.toggle("has-tall-cal", !!els.cal.querySelector(":scope > .cal.is-tall"));
+    const tall = !!els.cal.querySelector(":scope > .cal.is-tall");
+    if (!tall && els.cal.classList.contains("is-cal-resize")) return;   // 縮み終えてから（resizeCal）
+    root.classList.toggle("has-tall-cal", tall);
   }
 
   /* ---------------- 暦の出入り（ノートの席は暦を持たない） ----------------
@@ -218,7 +224,10 @@
   function moveCal(slide) {
     const m = calMove;
     calMove = null;
-    if (!m || !root) return;
+    const from = fromH;
+    fromH = null;
+    if (!root) return;
+    if (!m) { if (from && slide && !KN.motion.still()) resizeCal(from); return; }
     const h = slide && !KN.motion.still() ? els.cal.offsetHeight : 0;
     if (!h) { if (m === "out") { els.cal.replaceChildren(); syncTall(); } return; }
     const p = panes();
@@ -229,6 +238,37 @@
     root.classList.add("is-cal-moving");
     clearTimeout(moveT);
     moveT = setTimeout(endMove, KN.motion.ms("--m-nav") + 40);
+  }
+
+  /* ---------------- 席を移るとき、暦の背が違えば滑らせる ----------------
+
+     帯は全タブで一つなので、ふだん暦の背はどの席でも同じです。違うのは、やることの月の面（背の高い月）と、
+     月を出しているときの段の数（5行と6行）。差し替えた一拍で背が変わると、下の画面が丈ぶん跳ねていました
+     （月の面から買うものへ移ると 413px。2026年10月25日、利用者「パッと」）。横の流れと同じ一拍（`--m-nav`・
+     `--ease-out`）で、暦の置き場の背を前の丈から新しい丈へ滑らせます。中身は差し替えたまま（印は crossMarks）。
+     **毎フレーム並べ直します**（下の画面の丈が変わるので、見かけだけでは足りない）——掴み手で引くときと同じ量。
+     背の高い月から縮むあいだは写真の敷き方（`has-tall-cal`）を残し、縮み終えてから戻します（先に戻すと、
+     縮むあいだ写真の下が足りない）。 */
+  let resizeT = 0;
+
+  function resizeCal(from) {
+    const h1 = els.cal.offsetHeight;
+    if (!els.cal.firstChild || !(Math.abs(h1 - from.h) > 1)) return;
+    endResize();
+    els.cal.style.height = `${from.h}px`;
+    els.cal.classList.add("is-cal-resize");
+    if (from.tall && h1 < from.h) root.classList.add("has-tall-cal");
+    void els.cal.offsetHeight;
+    els.cal.style.height = `${h1}px`;
+    resizeT = setTimeout(endResize, KN.motion.ms("--m-nav") + 40);
+  }
+
+  function endResize() {
+    clearTimeout(resizeT);
+    if (!els.cal || !els.cal.classList.contains("is-cal-resize")) return;
+    els.cal.classList.remove("is-cal-resize");
+    els.cal.style.height = "";
+    syncTall();
   }
 
   /** 動かし終えた（または途中で次の移りが来た）。出ていった暦はここで外します。 */

@@ -344,7 +344,7 @@
      紙が流れるので、透かすと日付や曜日の裏に行の字が重なります。 */
   background: var(--c-bg);
   border-bottom: 1px solid transparent;
-  transition: border-color var(--dur) var(--ease);
+  transition: border-color var(--dur) var(--ease), background-color var(--m-grow) var(--ease-out);
 }
 
 /* 貼りついたら、境目の線だけを出します。
@@ -617,7 +617,7 @@
               opacity var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out));
 }
 .cal.is-settling { transition: padding var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
-                   border-color var(--dur) var(--ease); }
+                   border-color var(--dur) var(--ease), background-color var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 /* **暦は、紙より前に居たままにします**（z-index は動かしません）。紙の箱は
    画面の上へはみ出しているので、紙を前に出すと、送った先では紙の地が暦を
    丸ごと隠します——実測で、ダイエットで下まで送ってから引くと暦が一度も
@@ -631,10 +631,16 @@
 .cal.is-peek.is-week .cal-day.is-off-week { display: flex; }
 .cal.is-peek.is-week .cal-pad.is-off-week { display: block; }
 .cal.is-peek .cal-day.is-off-week { opacity: var(--cal-p, 1); }
+/* 隣の月の日（ふだん .42）は、そのぶん薄いまま開く（剥がした一拍に .42 へ跳ばない）。 */
+.cal.is-peek .cal-day.is-off-week.is-out { opacity: calc(var(--cal-p, 1) * .42); }
+/* 収まるあいだ、隣の週は窓と同じ長さで薄れる（浮かぶ）。`--cal-p` は離した一拍で行き先の数になるので、
+   ここが無いと、押して畳んだとき月の四週が先に消え、空の窓だけが縮んでいた。 */
+.cal.is-settling .cal-day.is-off-week { transition: opacity var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)), background var(--m-state) var(--ease); }
 @media (prefers-reduced-motion: reduce) {
   .cal.is-settling .cal-clip,
   .cal.is-settling .cal-slide,
   .cal.is-settling .cal-wds,
+  .cal.is-settling .cal-day.is-off-week,
   .cal.is-settling { transition: none; }
 }
 
@@ -5076,18 +5082,25 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-dn { font-family: var(--font-num); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text); }
 .wk-day[data-wd="6"] :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
 .wk-day:is([data-wd="0"], .is-holiday) :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
-.wk-day.is-today :is(.wk-dn, .wk-wd) { color: var(--c-primary); }
+/* 今日は暦の今日と同じ塗りの丸（字の色だけだと、日曜・祝日の赤とほぼ同じ色で見分けられなかった。2026年10月25日、利用者
+   「見づらい」）。日曜の規則と詳細度を取り合わないよう、一段上げる。 */
+.wk-week .wk-day.is-today .wk-dn, .mo-list .mo-day.is-today .mo-dn {
+  padding: 3px 6px; border-radius: var(--r-full); background: var(--c-primary); color: var(--c-bg);
+}
+.wk-week .wk-day.is-today .wk-wd, .mo-list .mo-day.is-today .mo-wd { color: var(--c-primary); font-weight: var(--fw-bold); }
 .wk-evs {
   display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; min-height: 58px;
   padding: 8px 0 8px var(--sp-3);
 }
 .wk-evs:not(:has(.wk-ev)) { min-height: 0; }   /* 空の日は低い行（日付の背丈まで） */
-.wk-ev { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 26px; text-align: left; font-size: var(--fs-sm); color: var(--c-text); }
+/* 一行は週と月で同じ（js の wkLine）：点 → 時刻の列（3字ぶん・そろえる）→ 名前（細字）→ 終わりの時刻（薄く）。 */
+.wk-ev { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 26px; text-align: left; font-size: var(--fs-md); color: var(--c-text); }
 .wk-t {
-  flex: none; font-family: var(--font-num); font-variant-numeric: tabular-nums;
+  flex: none; min-width: 3em; font-family: var(--font-num); font-variant-numeric: tabular-nums;
   font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--c-text-2);
 }
-.wk-n { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-bold); }
+.wk-n { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-regular); }
+.wk-end { flex: none; font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: var(--fs-xs); color: var(--c-text-3); }
 /* 締切は字も橙（そのままの橙は白地で読めないので、字の色へ寄せる）。 */
 .wk-ev.is-due .wk-n, .wk-ev.is-due .wk-t { color: color-mix(in srgb, var(--kind-due), var(--c-text) 30%); }
 /* 月の面（2026年10月19日、利用者）。予定のある日だけ、日付の列と行（時刻 → 名前）。 */
@@ -5103,11 +5116,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .mo-wd { font-size: var(--fs-xs); color: var(--c-text-2); }
 .mo-date[data-wd="6"] :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
 .mo-date:is([data-wd="0"], .is-holiday) :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
-.mo-day.is-today :is(.mo-dn, .mo-wd) { color: var(--c-primary); }
 .mo-evs { min-height: 56px; }
-.mo .wk-ev { font-size: var(--fs-md); }
-.mo .wk-t { min-width: 3em; }
-.mo .wk-n { font-weight: var(--fw-regular); }
 /* やることの暦の印は名前（2026年10月20日、利用者。絵の丸はやめた）。日付の数字の真下。マスの高さは点の段（15px）のまま、
    ふつうは先頭の一つだけ。 */
 .cal-day { min-width: 0; }   /* 名前の長さで列（1fr）が広がらないように */
@@ -5121,7 +5130,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .cal-name.is-past { color: var(--c-text-3); }
 /* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。字は「…」で切らない（一字ぶん惜しい）。 */
 .cal.is-tall .cal-grid { grid-auto-rows: var(--cal-row); }
-.cal.is-tall.is-settling .cal-grid { transition: grid-auto-rows var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
+/* 収まるあいだマスの背も滑らせる。JS が書くのは段ごとの背（grid-template-rows。grid-auto-rows は補間されない）。 */
+.cal.is-tall.is-settling .cal-grid { transition: grid-template-rows var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 .cal.is-tall .cal-dots { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; height: auto; flex: 1; min-height: 0; padding: 0 2px; }
 .cal.is-tall .cal-name { display: block; flex: none; text-align: left; padding: 0 2px 0 3px; border-radius: 3px; color: var(--c-text);
   background: color-mix(in srgb, var(--cat) 22%, var(--c-bg)); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cat) 75%, var(--c-bg)); }

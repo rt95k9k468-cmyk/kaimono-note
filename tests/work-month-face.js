@@ -4,6 +4,7 @@
    時刻 → 名前・またがる予定は始まりの日に「〜終わりの日」・下に今月のまとめ）。暦の日を押すとその日の行へ送り、題もその日。
    紙を送ると暦の輪と題がついてくる。暦を畳めば週の面、「今日」「週」へ移れば暦は週へ畳む。
    暦の印は名前（代表は予定 → やること → 締切）。月の面は暦を画面の65%まで背高に、名前は入るだけ・あふれは「+n」。
+   月の面の暦は全タブの暦の札に書かない（ほかのタブへ移っても暦は週。2026年10月25日）。一行は週の面と同じ（終わりは名前のあと）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-month-face.js */
 const { open, checker } = require("./lib");
@@ -57,15 +58,27 @@ const { open, checker } = require("./lib");
     };
   });
   let a = await look();
-  c.check("月を押すと月の面・暦は月の段", a.face === "月" && a.open && !a.week, JSON.stringify([a.face, a.open, a.week]));
+  /* 月の面の暦は月の面のもの。全タブの暦の札（open）は書かない（2026年10月25日。書いていたので、ほかのタブへ移ると暦が月で出ていた）。 */
+  c.check("月を押すと月の面・暦は月の段（全タブの札は書かない）", a.face === "月" && !a.open && !a.week, JSON.stringify([a.face, a.open, a.week]));
   c.check("予定のある日だけ（過ぎた日は予定だけ・毎日のくり返しは出さない）",
     JSON.stringify(a.days) === JSON.stringify(["2026-10-19", "2026-10-22", "2026-10-23", "2026-10-27", "2026-10-29", "2026-10-30"]), JSON.stringify(a.days));
-  c.check("時刻 → 名前の順（時刻の順）", JSON.stringify(a.d22) === JSON.stringify(["9:30定例", "13:00書類", "電球を替える"]), JSON.stringify(a.d22));
-  c.check("締切とまたがる予定", /締切経費の精算/.test(a.d23.join()) && /〜10\/28出張/.test(a.d27.join()), JSON.stringify([a.d23, a.d27]));
+  // 終わりの時刻は名前のあとに薄く（週の面と同じ一行。2026年10月25日）
+  c.check("時刻 → 名前の順（時刻の順）", JSON.stringify(a.d22) === JSON.stringify(["9:30定例", "13:00書類〜14:30", "電球を替える"]), JSON.stringify(a.d22));
+  // またがる予定の終わりの日も名前のあと（時刻の列に入れると列からはみ出し、名前が右へずれていた）
+  c.check("締切とまたがる予定", /締切経費の精算/.test(a.d23.join()) && /出張〜10\/28/.test(a.d27.join()), JSON.stringify([a.d23, a.d27]));
   c.check("今月のまとめ（予定の数・作業時間・締切）", /今月の予定・締切/.test(a.sum) && /予定 4件/.test(a.sum) && /作業時間 1時間30分/.test(a.sum) && /締切 1件/.test(a.sum), a.sum);
   c.check("暦の月の段に名前（代表は予定）", a.n22 === "定例" && a.n23 === "経費の精算" && a.n27 === "出張" && a.n24 === "", JSON.stringify([a.n22, a.n23, a.n27, a.n24]));
   c.check("月の面は暦が画面の65%まで背高", a.tall && a.h > h0 + 20 && Math.abs(a.bottom - a.vh * 0.65) < 8, JSON.stringify([h0, a.h, a.bottom, a.vh]));
   c.check("入りきらない名前は最後の段を「+n」に", a.d30 >= 1 && a.more30 === `+${40 - a.d30}`, JSON.stringify([a.d30, a.more30]));
+
+  // 月の面のまま買うものへ移っても、そちらの暦は週のまま。戻れば月の面（背の高い月）
+  const calOf = () => page.evaluate(() => { const c = document.querySelector("#head .cal"); return { week: c.classList.contains("is-week"), tall: c.classList.contains("is-tall") }; });
+  await page.click("#tabbar .tab-list"); await page.waitForTimeout(700);
+  const shop = await calOf();
+  await page.click("#tabbar .tab-todo"); await page.waitForTimeout(700);
+  const back = await calOf();
+  a = await look();
+  c.check("月の面から買うものへ移っても暦は週・戻れば月の面", shop.week && !shop.tall && back.tall && a.face === "月", JSON.stringify([shop, back, a.face]));
 
   // 暦の日を押すと、その日の行へ送り、題と輪もその日
   await page.click('#head .cal-day[data-day="2026-10-30"]');
@@ -105,15 +118,26 @@ const { open, checker } = require("./lib");
   await page.click('#screen-todo .wk-faces [data-face="week"]');
   await page.waitForTimeout(700);
   a = await look();
-  c.check("週へ移ると暦は週の段・名前は週の段にも出す", a.face === "週" && !a.open && a.n22 === "定例", JSON.stringify([a.face, a.open, a.n22]));
+  c.check("週へ移ると暦は週の段・名前は週の段にも出す", a.face === "週" && !a.open && a.week && !a.tall && a.n22 === "定例", JSON.stringify([a.face, a.open, a.week, a.n22]));
 
-  // 月 → 暦を畳むと週の面
+  // 月 → 題を押して暦を畳むと週の面
   await page.click('#screen-todo .wk-faces [data-face="month"]');
   await page.waitForTimeout(700);
-  await page.evaluate(() => KN.store.setCalPref("todo", { open: false }));
-  await page.waitForTimeout(500);
+  await page.click("#head .js-day-title");
+  await page.waitForTimeout(700);
   a = await look();
-  c.check("暦を畳むと週の面", a.face === "週" && !a.open, JSON.stringify([a.face, a.open]));
+  c.check("題を押して暦を畳むと週の面", a.face === "週" && !a.open && a.week && !a.tall, JSON.stringify([a.face, a.open, a.week, a.tall]));
+
+  // 札が月を開いていたら、月の面を出るとき週へ畳む（docs/todo-items.md「今日・週へは暦を週へ畳む」）
+  await page.evaluate(() => KN.store.setCalPref("todo", { open: true }));
+  await page.waitForTimeout(300);
+  await page.click('#screen-todo .wk-faces [data-face="month"]');
+  await page.waitForTimeout(700);
+  const opened = await calOf();
+  await page.click('#screen-todo .wk-faces [data-face="today"]');
+  await page.waitForTimeout(700);
+  a = await look();
+  c.check("札が月でも、月の面は背の高い月・出れば週へ畳む", opened.tall && !opened.week && a.face === "今日" && !a.open && a.week, JSON.stringify([opened, a.face, a.open, a.week]));
 
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();

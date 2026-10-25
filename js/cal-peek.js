@@ -131,6 +131,7 @@
     const lo = cal.classList.contains("is-tall") ? Math.min(cellH, parseFloat(cal.dataset.rowLo) || cellH) : cellH;
     return {
       cal, clip, slide, grid, cellH, rowH, full, lo,
+      rows: Math.max(1, Math.ceil(grid.querySelectorAll(":scope > .cal-day, :scope > .cal-pad").length / 7)),
       week: idx < 0 ? 0 : Math.floor(idx / 7),
       wds,
       wdsH: wds ? wds.offsetHeight : 0,
@@ -139,11 +140,15 @@
     };
   }
 
+  /** 月ぜんぶの背。k は背の高い月のマスの背（1＝高いまま、0＝ふつうの月の背。押して月の面へ出入りするとき、
+      段は月のまま背だけが変わる——`glide`）。背の高い月でなければ k は効かない。 */
+  const fullOf = (m, k) => m.full - m.rows * (m.cellH - m.lo) * (1 - k);
+
   /** その段のとき、暦は何px見えているか（上下の余白と曜日の行を含む）。 */
-  function visibleH(m, p) {
+  function visibleH(m, p, k = 1) {
     if (p <= -1) return 0;
     const chrome = m.wdsH + m.padT + m.padB;
-    const grid = p <= 0 ? m.lo : m.lo + (m.full - m.lo) * Math.min(1, p);
+    const grid = p <= 0 ? m.lo : m.lo + (fullOf(m, k) - m.lo) * Math.min(1, p);
     /* 暦なし（-1）と週（0）のあいだは、暦ぜんぶが畳まれていきます。 */
     const keep = p < 0 ? 1 + p : 1;
     return (grid + chrome) * keep;
@@ -160,14 +165,16 @@
       上端（丸角＋掴み手）は暦のすぐ下に来ます。掴み手の貼りつく床
       （--cal-h）も同じ数から出すので、送った先でも掴み手は暦の下辺に
       居ます。 */
-  function paint(o, m, p) {
+  function paint(o, m, p, k = 1) {
     const open = p > 0 ? p : 0;          // 0〜1：週から月へ
     const keep = p < 0 ? 1 + p : 1;      // 1〜0：週から暦なしへ
-    const grid = p <= 0 ? m.lo : m.lo + (m.full - m.lo) * Math.min(1, p);
+    const grid = p <= 0 ? m.lo : m.lo + (fullOf(m, k) - m.lo) * Math.min(1, p);
     m.clip.style.height = (grid * keep).toFixed(1) + "px";
     // マスの高さは背の高い月のときだけ動かす（custom property ではなく直に——受け継ぐと中の全部が再計算）。
-    const cell = m.lo + (m.cellH - m.lo) * open;
-    if (m.lo < m.cellH) m.grid.style.gridAutoRows = cell.toFixed(1) + "px";
+    /* 書くのは段ごとの背（grid-template-rows）。grid-auto-rows は滑らない（Chromium は補間せず、収まりはじめの一コマで
+       行き先の背へ跳び、窓に別の週の下半分が映っていた）。段の数ぶん並べて書けば、同じ数どうしで滑る。 */
+    const cell = m.lo + (m.cellH - m.lo) * k * open;
+    if (m.lo < m.cellH) m.grid.style.gridTemplateRows = Array(m.rows).fill(cell.toFixed(1) + "px").join(" ");
     m.slide.style.transform = `translateY(${(-m.week * (cell + m.rowH - m.cellH) * (1 - open)).toFixed(1)}px)`;
     /* 三段目へ向かうぶんは、日のマスだけでは足りません——曜日の行と暦の
        上下の余白も一緒に畳まないと、消したはずの場所に「日 月 火…」と
@@ -203,7 +210,7 @@
     /* 掴み手の床。**毎フレーム、暦の高さと同じ数**を書きます——これが
        無いと、送った先で掴み手だけが暦に潜ります（ダイエットは暦の
        厚みを誰も測っていないので、まるごと88px 潜っていました）。 */
-    if (m.grip) m.grip.style.setProperty("--cal-h", visibleH(m, p).toFixed(1) + "px");
+    if (m.grip) m.grip.style.setProperty("--cal-h", visibleH(m, p, k).toFixed(1) + "px");
   }
 
   /** 指の下で書いた寸法を、ぜんぶ剥がします。 */
@@ -211,7 +218,7 @@
     if (!m) return;
     m.clip.style.height = "";
     m.slide.style.transform = "";
-    m.grid.style.gridAutoRows = "";
+    m.grid.style.gridTemplateRows = "";
     if (m.wds) { m.wds.style.height = ""; m.wds.style.opacity = ""; }
     m.cal.style.paddingTop = "";
     m.cal.style.paddingBottom = "";
@@ -228,8 +235,9 @@
     if (o.root) o.root.classList.remove("is-cal-peek");
   }
 
-  /** 引きはじめ。隠していた週をぜんぶ出してから測ります。 */
-  function begin(o) {
+  /** 引きはじめ。隠していた週をぜんぶ出してから測ります。p・k は描きはじめる姿（既定はいまの段。
+      押して替えるときは、書いたあとの暦に元の姿を描く——`glide`）。 */
+  function begin(o, p, k = 1) {
     const cal = o.cal();
     if (!cal) return null;
     /* 送ってあるぶんを覚えておきます。**この先で暦がいったん月の高さまで
@@ -263,7 +271,7 @@
        そこへ直に書きます（`paint` の節）。掴み手は組み直しのたびに別の
        要素になるので、掴んだこの時点で見つけておくこと。 */
     m.grip = o.sheet ? o.sheet.querySelector(".tl-grip") : null;
-    paint(o, m, at(o));
+    paint(o, m, p === undefined ? at(o) : p, k);
     /* 測るあいだに伸びたぶんを、ブラウザが追いかけていたら戻します。 */
     if (sc0) { void o.root.offsetHeight; sc0.scrollTop = scroll0; }
     return m;
@@ -274,13 +282,15 @@
 
   /** 指を離したあと。行き先まで滑らせて**から**、はじめて設定に書きます。
       先に書くと暦が組み直されて、途中の姿から跳んでしまいます。 */
-  function settle(o, m, to, fling) {
+  function settle(o, m, to, fling, k = 1) {
     const cal = o.cal();
     if (!cal || !m) return;
     const done = () => {
       end(o);
       bare(o, m);
-      o.commit({ shown: to >= 0, open: to > 0 });
+      /* 押して替えたときは、もう書いてある段を言う（滑っているあいだに続けて押されていたら、行き先は古い）。 */
+      const now = m.press ? at(o) : to;
+      o.commit({ shown: now >= 0, open: now > 0 });
       /* 剥がして組み直したところで、また「読んでいた場所」が働きます。
          収まった姿は指の下の姿と同じ寸法なので、送りは引く前のまま。
 
@@ -288,10 +298,13 @@
          上まで戻します。** あちらの暦は紙の頭に印刷してあるものなので、
          送った先では画面の外に居ます——せっかく開いた月が、指を離した
          とたんに見えなくなるので。畳むほうへ収めたときは、読んでいた
-         ところに居させます。 */
-      if (o.root) KN.app.scrollerOf(o.root).scrollTop = (!m.stuck && to > m.from) ? 0 : m.scroll;
+         ところに居させます。
+
+         押して替えたとき（`glide`）は触りません。組み直しはもう済んでいて、送り先は画面が決めた
+         ところ（面の頭・過ぎた日を隠したところ・押した日の行へ滑らせている最中）なので。 */
+      if (o.root && !m.press) KN.app.scrollerOf(o.root).scrollTop = (!m.stuck && to > m.from) ? 0 : m.scroll;
     };
-    m.from = at(o);
+    if (m.from === undefined) m.from = at(o);
     if (KN.motion.still()) { done(); return; }
 
     /* **長さと曲線は、残りの道のりと指の勢いから**（`KN.motion.glide`）。
@@ -304,18 +317,30 @@
        数は `--cal-ms` / `--cal-ease` に置いて、**transition の宣言は
        CSS のまま**にします（どこがどう動くかは CSS が持つ、という決めごと。
        読めなければ `--m-grow` に落ちます）。 */
-    const sp = (fling && fling.span) || 1;
+    /* 押して替えたとき（`glide`）は指の勢いが無いので、勢い 0 の滑り（止まったところから動き出して、静かに着く）。
+       長さは `--m-grow`。`--ease-out` のまま（出だしがいちばん速い曲線）だと、最初の一コマで 220px 跳び、押した
+       ところが「パッと」開いて見えた。道のりは書いたあとの背の差（段が同じでも背だけ変わることがある）。 */
+    const sp = m.press ? Math.max(1, Math.abs(m.dist)) : (fling && fling.span) || 1;
     const from = (fling && typeof fling.from === "number") ? fling.from : m.from;
-    const g = KN.motion.glide((to - from) * sp, (fling && fling.v) || 0, { span: sp });
+    const g = m.press ? KN.motion.glide(m.dist, 0, { span: sp, base: KN.motion.ms("--m-grow") })
+      : KN.motion.glide((to - from) * sp, (fling && fling.v) || 0, { span: sp });
     cal.style.setProperty("--cal-ms", g.ms + "ms");
     cal.style.setProperty("--cal-ease", g.ease);
+    const ms = g.ms;
 
     cal.classList.add("is-settling");
     if (o.root) o.root.classList.remove("is-cal-peek");   // ここからは滑らせます
-    paint(o, m, to);
+    paint(o, m, to, k);
     let over = false;
     const fin = (e) => {
       if (over || (e && e.target !== m.clip)) return;
+      /* 収まる途中で指が掴み直した（`begin` が is-settling を外した）。あとはその指のもの——剥がさない。 */
+      if (!cal.classList.contains("is-settling")) {
+        over = true;
+        clearTimeout(tm);
+        m.clip.removeEventListener("transitionend", fin);
+        return;
+      }
       over = true;
       clearTimeout(tm);
       m.clip.removeEventListener("transitionend", fin);
@@ -326,7 +351,78 @@
     m.clip.addEventListener("transitionend", fin);
     /* 保険の時計も、glide が決めた長さに合わせます（決め打ちの 420ms が
        残っていると、短い滑りのあとに長く待つことになります）。 */
-    const tm = setTimeout(fin, g.ms + 120);
+    const tm = setTimeout(fin, ms + 120);
+  }
+
+  /**
+   * 押して段を替えます（題を押す・面の札・月の段の日）。指を離したあとと同じ滑りで、いまの姿から
+   * 行き先まで。`write()` が行き先を書いて組み直します（その場で済むこと）。
+   *
+   * **先に書きます。** 押した札も紙の中身もその場で替わり、暦だけが元の姿から滑ります——あとで
+   * 書くと、滑り終えるまで札も中身も替わらず、押しても何も起きないように見えます。前は書くだけで、
+   * 暦が一拍で行き先へ跳んでいました（やることの「月」で 93px→506px、紙が 413px 跳ぶ）。
+   * 組み直した暦を測って元の姿を描き直し、そこから行き先へ滑らせます。
+   *
+   * **背の高い月から出るときは、組み直すあいだ今の姿を留めます**（`is-peek`。画面の組み直しは
+   * 引いているあいだマスの背に触らない）。留めないと組み直しが先にマスを縮め、縮んだところから
+   * 滑ることになります。背は k（1＝背の高い月、0＝ふつう）で、段は月のまま背だけが変わることもある。
+   * 背の高い月かどうかは書いたあと `o.tall()` に訊きます（留めているあいだ、印は前のままなので）。
+   *
+   * 動きを減らす設定、暦が見つからないとき、指が暦を持っているとき（引いている・収まる途中）は、書くだけ。
+   * `o` は `wire` と同じもの。`o.sheet` は書いたあとに読む（組み直すと紙が替わるので、取り出す口にしておく）。
+   */
+  function glide(o, write) {
+    const cal0 = o.cal();
+    if (!cal0 || KN.motion.still() || cal0.classList.contains("is-peek") || cal0.classList.contains("is-settling")) {
+      write();
+      return;
+    }
+    const a = { p: at(o), k: cal0.classList.contains("is-tall") ? 1 : 0 };
+    if (a.k) cal0.classList.add("is-peek");
+    try { write(); } catch (err) { cal0.classList.remove("is-peek"); throw err; }
+    if (a.k && o.cal() !== cal0) cal0.classList.remove("is-peek");
+    const cal = o.cal();
+    const b = { p: at(o), k: (o.tall ? o.tall() : !!cal && cal.classList.contains("is-tall")) ? 1 : 0 };
+    /* 姿が変わらないなら滑らせない（週どうし・暦なしどうしは背の違いが出ない）。留めていたなら放して、
+       組み直しが黙っていたぶん（背の高い月の背・輪・床）を画面に置き直させる。 */
+    const same = a.p === b.p && (a.k === b.k || a.p <= 0);
+    if (!cal || same) {
+      if (cal && cal.classList.contains("is-peek")) { end(o); o.commit({ shown: b.p >= 0, open: b.p > 0 }); }
+      return;
+    }
+    const m = begin(o, a.p, a.k);
+    if (!m) { o.commit({ shown: b.p >= 0, open: b.p > 0 }); return; }
+    m.from = a.p;
+    m.press = true;
+    m.dist = visibleH(m, b.p, b.k) - visibleH(m, a.p, a.k);
+    if (o.root && m.dist > 0) pin(o, m);
+    /* **滑り出すのは次の一拍から。** 組み直しの重い一拍（やることで約40ms）のうちに滑りを始めると、その時計は
+       描く前から進んでいて、最初に描かれる一コマで、もう半分近く開いていた（実測 44%）。元の姿を一コマ描いてから。 */
+    requestAnimationFrame(() => {
+      /* その一コマのうちに段がまた替わった（続けて押した）なら、滑らせずに放して、いまの段へ置き直させる。 */
+      if (at(o) !== b.p || o.cal() !== cal) { end(o); bare(o, m); o.commit({ shown: at(o) >= 0, open: at(o) > 0 }); return; }
+      settle(o, m, b.p, null, b.k);
+    });
+  }
+
+  /** 暦が伸びるあいだ、紙の送りを書いた所に留めます。元の姿（暦が低い）のあいだは紙が長く、送りの先が
+      足りないので、ブラウザが送りを縮めます——月の面で過ぎた日を隠した送りが 0 に戻り、伸びきってから
+      読む場所がずれていました。伸びるにつれて送れる先が増えるので、毎コマ書き直せば紙は書いた所へ寄っていく。
+      指が紙に触れたら、その指に譲ります。 */
+  function pin(o, m) {
+    const sc = KN.app.scrollerOf(o.root);
+    const want = m.scroll;
+    let on = true;
+    const stop = () => { on = false; };
+    const off = () => { sc.removeEventListener("pointerdown", stop); sc.removeEventListener("wheel", stop); };
+    sc.addEventListener("pointerdown", stop, { passive: true });
+    sc.addEventListener("wheel", stop, { passive: true });
+    const tick = () => {
+      if (!on || !m.cal.isConnected || !m.cal.classList.contains("is-peek")) { off(); return; }   // 収まった（done が外す）
+      if (Math.abs(sc.scrollTop - want) > 0.5) sc.scrollTop = want;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
   }
 
   /**
@@ -465,5 +561,5 @@
     }, { passive: false });
   }
 
-  KN.calPeek = { mount, wire };
+  KN.calPeek = { mount, wire, glide };
 })();

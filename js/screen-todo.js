@@ -182,7 +182,13 @@
     els.dayTitle.addEventListener("click", () => {
       if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       haptic();
-      store.setCalPref("todo", { open: !calOpen() });
+      /* 指で引いたときと同じ滑りで（cal-peek の glide）。月の面で押せば、暦を畳んで週の面へ。 */
+      KN.calPeek.glide(peekOpts, () => {
+        if (!monthFace()) { store.setCalPref("todo", { open: !calOpen() }); return; }
+        face = "week";
+        if (store.calPrefs("todo").open) store.setCalPref("todo", { open: false });
+        else render();
+      });
     });
     /* 題の右の「今日へ戻る」。一日ずつの紙なら日を入れ替え、一覧で見て
        いるときは今日の棚まで運びます（暦の送りと同じ二通り）。今日を見て
@@ -291,9 +297,12 @@
     followFrame = requestAnimationFrame(() => {
       followFrame = 0;
       if (!root || !els.cal || (KN.app.isGliding && KN.app.isGliding())) return;
+      // 暦が滑っているあいだの送り（cal-peek が紙を留め直している）は、人が送ったのではない。
+      if (els.cal.classList.contains("is-peek")) return;
       const sc = KN.app.scrollerOf(root);
       if (sc.scrollTop < 4) return;
-      const line = sc.getBoundingClientRect().top + 24;
+      // きわは貼りついた「今日｜週｜月」の帯の下（帯の裏に潜った前の日の行を拾わない）。
+      const line = sc.getBoundingClientRect().top + sc.clientTop + faceFloor() + 8;
       let at = null;
       for (const r of root.querySelectorAll(".mo-day")) {
         if (r.getBoundingClientRect().top <= line) at = r; else break;
@@ -371,9 +380,11 @@
 
   /* カレンダーを月ぜんぶ出すか、いまの週だけに畳むか。既定は週です
      （画面の36%＝306pxを、日付31個と点数個のために使っていました）。
-     畳んでもマスはぜんぶ組んであり、隠しているだけです。 */
-  const calOpen = () => store.calPrefs("todo").open;
-  const calShown = () => store.calPrefs("todo").shown;
+     畳んでもマスはぜんぶ組んであり、隠しているだけです。
+     **月の面の暦は月の面のもの**で、全タブの暦の札（`store.setCalPref`）には書きません。前は「月」で札を
+     開いていたので、そのまま daily・買うもの・ダイエットへ移ると、暦がいきなり月で出ていました（2026年10月25日、利用者）。 */
+  const calOpen = () => monthFace() || store.calPrefs("todo").open;
+  const calShown = () => monthFace() || store.calPrefs("todo").shown;
 
   /* 題の右にあった暦ボタン（出す／しまう）は外しました。**紙を引く手つきが
      同じことを言えます**——週から上へ押せば暦は消え、そこから下へ引けば
@@ -2840,7 +2851,6 @@
     if (oneDay()) {
       /* 一日ぶんの中身は、横に払える一枚（.day-slide）にまとめて入れます。
          払っているあいだ、隣の日の紙が指のぶんだけ入ってきます。 */
-      if (face === "month" && !calOpen()) face = "week";   // 暦を畳んだら月の面は終わり
       sheet.append(faceTabs());
       const car = node(html`<div class="day-car"><div class="day-track"></div></div>`);
       const track = car.querySelector(".day-track");
@@ -2968,43 +2978,49 @@
      期限（今週と過ぎたもの・赤くしない）→ 今週（今週の印。5行まで）→ 七日の行（予定とやることの時刻と名前。
      またがる予定は帯・毎日のくり返しは出さない・過ぎた日は予定だけ薄く）。見出しに数は出さない。 */
 
-  /** 面を替えて、その日（週の面ならその日の週）を出す。 */
+  /** 面を替えて、その日（週の面ならその日の週）を出す。暦は指で引いたときと同じ滑りで（cal-peek の glide。
+      書いて組み直すのが先で、暦だけが元の姿から滑る——前は一拍で跳んでいた）。 */
   function setFace(to, day) {
     haptic();
-    // 月の面を出たら暦は週へ畳む（組み直しは subscribe が）。
-    const fold = face === "month" && to !== "month" && calOpen();
-    face = to;
-    if (fold) store.setCalPref("todo", { open: false });
-    if (day && day !== shownDay()) { goDay(day); return; }
-    if (!fold) render();
-    keepAim++;
-    if (root) KN.app.scrollerOf(root).scrollTop = 0;
+    KN.calPeek.glide(peekOpts, () => {
+      // 月の面を出たら暦は週へ畳む。月の面の暦は札に書かないので、書くのは札が月を開いていたときだけ（組み直しは subscribe が）。
+      const fold = face === "month" && to !== "month" && store.calPrefs("todo").open;
+      face = to;
+      if (fold) store.setCalPref("todo", { open: false });
+      if (day && day !== shownDay()) { goDay(day); return; }
+      if (!fold) render();
+      keepAim++;
+      if (root) KN.app.scrollerOf(root).scrollTop = 0;
+      if (to === "week") hidePastDays();
+    });
     if (to === "today" && shownDay() === todayKey()) requestAnimationFrame(toNow);
-    if (to === "week") requestAnimationFrame(hidePastDays);
   }
 
-  /** 週・月の面で、過ぎた日を上へ隠す（今日以後の最初の日が頭に来る。上へ戻せば出る）。今週・今月のときだけ。 */
+  /** 週・月の面で、過ぎた日を上へ隠す（今日以後の最初の日が、貼りついた「今日｜週｜月」の帯のすぐ下に来る。上へ戻せば出る）。
+      今週・今月のときだけ。暦の背に関わらない（紙の中の位置だけで決める）ので、暦が滑る前に呼んでよい。
+      **基準は帯の下**——前は「最初の日の行があった所」へ寄せていて、その上の色の見方と週の幅（約116px）が隠れるだけで、
+      過ぎた日は帯の下に残っていた（2026年10月25日、利用者「見づらい」）。 */
   function hidePastDays() {
     if (!root || !(weekFace() || monthFace())) return;
     const wk = weekFace(), today = todayKey();
     const days = [...root.querySelectorAll(wk ? ".wk .wk-day" : ".mo .mo-day")];
-    const key = (e) => e.dataset.day;
-    const first = days[0], at = days.find((e) => key(e) >= today);
+    const first = days[0], at = days.find((e) => e.dataset.day >= today);
     if (!first || !at || first === at) return;
     const sc = KN.app.scrollerOf(root);
-    sc.scrollTop += at.getBoundingClientRect().top - first.getBoundingClientRect().top;
+    sc.scrollTop += at.getBoundingClientRect().top - sc.getBoundingClientRect().top - sc.clientTop - faceFloor();
   }
 
-  /** 月の面へ。暦を月の段に開く（書けば subscribe が組み直す）。 */
+  /** 月の面へ。暦は月の段へ、背を高くして開く（月の面の暦は札に書かない——calOpen）。 */
   function openMonth() {
     haptic();
-    face = "month";
-    hereDay = shownDay();
-    keepAim++;
-    if (!calOpen() || !calShown()) store.setCalPref("todo", { shown: true, open: true });
-    else render();
-    if (root) KN.app.scrollerOf(root).scrollTop = 0;
-    requestAnimationFrame(hidePastDays);
+    KN.calPeek.glide(peekOpts, () => {
+      face = "month";
+      hereDay = shownDay();
+      keepAim++;
+      render();
+      if (root) KN.app.scrollerOf(root).scrollTop = 0;
+      hidePastDays();
+    });
   }
 
   function faceTabs() {
@@ -3015,8 +3031,8 @@
           <button type="button" class="seg-btn" data-face="week" aria-pressed="${String(face === "week")}">週</button>
           <button type="button" class="seg-btn" data-face="month" aria-pressed="${String(face === "month")}">月</button>
         </div>
-        ${face !== "today" ? html`<button type="button" class="chip wk-work" aria-pressed="${String(workOnly)}"
-          style="--cat:var(--side-work)"><span class="chip-dot"></span>仕事だけ</button>` : ""}
+        ${/* 仕事の青（予定の点と同じ青）は、点にも押したときの地にも使わない——「青＝仕事」と読めてしまう（2026年10月25日） */""}
+        ${face !== "today" ? html`<button type="button" class="chip wk-work" aria-pressed="${String(workOnly)}">仕事だけ</button>` : ""}
       </div>
     `);
     el.addEventListener("click", (e) => {
@@ -3039,14 +3055,18 @@
   const KIND = (t) => (t.kind === "event" ? "var(--kind-event)" : "var(--kind-task)");
   const wkDot = (t, c) => html`<span class="chip-dot" style="--cat:${c || KIND(t)}"></span>`;
   const wkClock = (hm) => (KN.util.isTime(hm) ? hm.replace(/^0/, "") : "");
-  /** 「9:00 - 10:00」。長さの無いものは始まりだけ。 */
-  const wkSpanOf = (t) => {
-    const a = wkClock(t.time);
-    if (!a || !(t.minutes > 0)) return a;
+  /** 終わりの時刻（「10:00」）。時刻と長さのあるものだけ。 */
+  const wkEndOf = (t) => {
+    if (!wkClock(t.time) || !(t.minutes > 0)) return "";
     const [h, m] = t.time.split(":").map(Number);
     const e = (h * 60 + m + t.minutes) % 1440;
-    return `${a} - ${Math.floor(e / 60)}:${String(e % 60).padStart(2, "0")}`;
+    return `${Math.floor(e / 60)}:${String(e % 60).padStart(2, "0")}`;
   };
+  /* 週の面と月の面の一行は同じもの：点 → 時刻（そろえた列）→ 名前（細字）→ 終わりの時刻（薄く）→ くり返しの印。
+     前は週だけ「名前 9:00 - 10:00」で、時刻の左端が名前の長さで 143〜284px に散り、上から時刻で追えなかった
+     （2026年10月25日、利用者「月の面とそろえる」）。時刻の列には「締切」「〜10/28」も入る。 */
+  const wkLine = (t, time, c, cls, end) => html`
+    <button type="button" class="wk-ev js-open ${cls || ""}" data-id="${t.id}">${wkDot(t, c)}<span class="wk-t">${time}</span><span class="wk-n">${t.title}</span>${end ? html`<span class="wk-end">〜${end}</span>` : ""}${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`;
   const wkHours = (min) => (min >= 60 ? `${Math.floor(min / 60)}時間${min % 60 ? `${min % 60}分` : ""}` : `${min}分`);
 
   /** 色の見方（予定・作業時間・締切）。 */
@@ -3377,7 +3397,8 @@
   // 締切はその日にも（今日から先だけ。過ぎたものは週の面の期限に）。やる日と同じ日なら、やる日の行だけ。
   const duesAt = (k, open, today) => (k >= today ? open.filter((t) => t.kind !== "event" && t.deadline === k && !store.fallsOn(t, k)) : []);
 
-  /** 月の面：その月の予定・やること・締切を日ごとに（何も無い日は出さない）。またがる予定は始まりの日に「〜終わりの日」。 */
+  /** 月の面：その月の予定・やること・締切を日ごとに（何も無い日は出さない）。またがる予定は始まりの日に、名前のあとへ
+      「〜終わりの日」（時刻の列に入れると列からはみ出し、その日の名前だけ右へずれていた）。 */
   function monthSlide(day, openAll) {
     const U = KN.util;
     const today = todayKey();
@@ -3401,16 +3422,14 @@
       tally.min += rows.reduce((n, t) => n + (t.kind !== "event" && t.minutes > 0 ? t.minutes : 0), 0);
       tally.due += dues.length;
       const dd = U.dayDate(k);
-      const line = (t, time, c, cls) => html`
-        <button type="button" class="wk-ev js-open ${cls}" data-id="${t.id}">${wkDot(t, c)}<span class="wk-t">${time}</span><span class="wk-n">${t.title}</span>${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`;
       list.append(node(html`
         <div class="mo-day ${k === today ? "is-today" : ""}" data-day="${k}">
           <button type="button" class="mo-date js-day ${KN.holiday && KN.holiday.of(k) ? "is-holiday" : ""}" data-day="${k}" data-wd="${dd.getDay()}" aria-label="${mdJa(k)}">
             <span class="mo-dn">${dd.getDate()}</span><span class="mo-wd">${"日月火水木金土"[dd.getDay()]}</span></button>
           <div class="wk-evs mo-evs ${k < today ? "is-past" : ""}" data-day="${k}">
-            ${starts.map((t) => line(t, `〜${md(t.endDay)}`, null, "is-event"))}
-            ${rows.map((t) => line(t, wkClock(t.time), null, t.kind === "event" ? "is-event" : ""))}
-            ${dues.map((t) => line(t, "締切", "var(--kind-due)", "is-due"))}
+            ${starts.map((t) => wkLine(t, wkClock(t.time), null, "is-event", md(t.endDay)))}
+            ${rows.map((t) => wkLine(t, wkClock(t.time), null, t.kind === "event" ? "is-event" : "", wkEndOf(t)))}
+            ${dues.map((t) => wkLine(t, "締切", "var(--kind-due)", "is-due"))}
           </div>
         </div>`));
     }
@@ -3427,6 +3446,10 @@
     });
     return el;
   }
+
+  /* またがる帯の縦の字。括弧・長音・句読点は縦の形に（横の形のまま積むと、括弧が横を向いたまま並ぶ）。 */
+  const TATE = { "ー": "｜", "（": "︵", "）": "︶", "(": "︵", ")": "︶", "「": "﹁", "」": "﹂", "『": "﹃", "』": "﹄",
+    "【": "︻", "】": "︼", "、": "︑", "。": "︒", "…": "︙", "：": "︓" };
 
   function weekDays(w, open, all, today, tally = {}) {
     const U = KN.util;
@@ -3459,14 +3482,12 @@
                   aria-label="${mdJa(k)}"><span class="wk-dn">${U.dayDate(k).getMonth() + 1}/${U.dayDate(k).getDate()}</span><span class="wk-wd">${wd(k)}</span></button>
           ${[...Array(n)].map((_, l) => (covered(l, i) ? "" : html`<i class="wk-gap" style="grid-row:${i + 1};grid-column:${2 + l}"></i>`))}
           <div class="wk-evs ${k < today ? "is-past" : ""}" style="grid-row:${i + 1};grid-column:${col}" data-day="${k}">
-            ${rows[i].map((t) => html`
-              <button type="button" class="wk-ev js-open ${t.kind === "event" ? "is-event" : ""}" data-id="${t.id}">${wkDot(t)}<span class="wk-n">${t.title}</span><span class="wk-t">${wkSpanOf(t)}</span>${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`)}
-            ${duesOn(k).map((t) => html`
-              <button type="button" class="wk-ev js-open is-due" data-id="${t.id}">${wkDot(t, "var(--kind-due)")}<span class="wk-n">${t.title}</span><span class="wk-t">締切</span></button>`)}
+            ${rows[i].map((t) => wkLine(t, wkClock(t.time), null, t.kind === "event" ? "is-event" : "", wkEndOf(t)))}
+            ${duesOn(k).map((t) => wkLine(t, "締切", "var(--kind-due)", "is-due"))}
           </div>`)}
         ${placed.map((p) => html`
           <button type="button" class="wk-band js-open ${p.t.endDay < today ? "is-past" : ""}" data-id="${p.t.id}" aria-label="${p.t.title}"
-                  style="--cat:${KIND(p.t)};grid-column:${2 + p.l};grid-row:${p.a + 1} / ${p.z + 2}">${[...p.t.title].map((c) => html`<span>${c === "ー" ? "｜" : c}</span>`)}</button>`)}
+                  style="--cat:${KIND(p.t)};grid-column:${2 + p.l};grid-row:${p.a + 1} / ${p.z + 2}">${[...p.t.title].map((c) => html`<span>${TATE[c] || c}</span>`)}</button>`)}
       </div>
     `);
     return grid;
@@ -4593,10 +4614,12 @@
     });
   }
 
-  /** 月の段で押した日の週を出し、その日の行へ送る。 */
+  /** 月の段で押した日の週を出し、その日の行へ送る（暦は滑って週へ畳む）。 */
   function weekAt(day) {
-    store.setCalPref("todo", { open: false });
-    if (day !== shownDay()) goDay(day); else markDay(day, true);
+    KN.calPeek.glide(peekOpts, () => {
+      store.setCalPref("todo", { open: false });
+      if (day !== shownDay()) goDay(day); else markDay(day, true);
+    });
     requestAnimationFrame(() => {
       const r = root && root.querySelector(`.wk-day[data-day="${day}"]`);
       if (!r) return;
@@ -4723,15 +4746,48 @@
       busy: () => !!tlDrag || KN.calSwipe.isActive(),
       here: () => hereDay || todayKey(),
       tagOffWeek,
-      /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
-         ときだけ塗り直し——書けば store が組み直すので、二度手間になります。 */
-      commit: ({ shown, open }) => {
-        if (open !== calOpen() || shown !== calShown()) {
-          store.setCalPref("todo", { open, shown });
-        } else markWeek(els.cal, hereDay || todayKey());
-      },
+      commit: calCommit,
     });
   }
+
+  /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
+     ときだけ塗り直し——書けば store が組み直すので、二度手間になります。
+     **月の面の暦は札に書きません**（calOpen）。指で週へ畳んだら月の面は終わり、週の面へ。 */
+  function calCommit({ shown, open }) {
+    const p = store.calPrefs("todo");
+    if (monthFace()) {
+      if (open && shown) { calSettled(); return; }
+      face = "week";
+      if (open !== p.open || shown !== p.shown) store.setCalPref("todo", { open, shown });
+      else render();
+      return;
+    }
+    if (open !== p.open || shown !== p.shown) store.setCalPref("todo", { open, shown });
+    else calSettled();
+  }
+
+  /** 暦が収まった（段は札のまま・組み直さない）。引いているあいだ組み直しが黙っていたぶんを置き直す
+      ——週の印・背の高い月の背（`fitTall`）・輪（背が変わると px の置き場がずれる）・掴み手の床。 */
+  function calSettled() {
+    markWeek(els.cal, hereDay || todayKey());
+    fitTall(els.cal);
+    paintHere(true);
+    fitCalH();
+  }
+
+  /** 押して段を替えるとき（題・今日｜週｜月・月の段の日）に cal-peek の glide へ渡すもの。紙と根は組み直すと
+      替わるので、取り出す口にしておく。背の高い月かは、書いたあとの面で答える（留めているあいだ印は前のまま）。 */
+  const peekOpts = {
+    get sheet() { return els.body ? els.body.querySelector(".tl-sheet") : null; },
+    get root() { return root; },
+    cal: () => els.cal,
+    isOpen: () => calOpen(),
+    isShown: () => calShown(),
+    here: () => hereDay || todayKey(),
+    tagOffWeek: (sec, here) => tagOffWeek(sec, here),
+    tall: () => monthFace(),
+    commit: (st) => calCommit(st),
+  };
 
   /** 出す日を入れ替えます。 */
   function goDay(day, dir) {

@@ -1031,6 +1031,8 @@ a { color: var(--c-primary); }
   inset: 0;
   z-index: var(--z-stick);
   pointer-events: none;
+  /* 帯の外へは出さない。背の高い月から縮むとき（head.js の resizeCal）、下の段の印の写しが紙の上に浮いていた。 */
+  overflow: clip;
   animation: head-marks-out var(--m-marks) var(--ease-in) forwards;
 }
 .head-ghost .cal-dots { position: absolute; }
@@ -1061,6 +1063,10 @@ a { color: var(--c-primary); }
 .head-cal.is-cal-in { animation: cal-in var(--m-nav) var(--ease-out); }
 .panes.is-cal-out { animation: panes-rise var(--m-nav) var(--ease-out); }
 .panes.is-cal-in  { animation: panes-drop var(--m-nav) var(--ease-out); }
+/* 席を移るとき、暦の背が違えば置き場の背を滑らせる（head.js の resizeCal。やることの月の面 ⇄ ほかの席）。
+   はみ出す背の高い月は窓の中で切る（clip は送る器にならないので、貼りつく暦はそのまま）。 */
+.head-cal.is-cal-resize { overflow: clip; transition: height var(--m-nav) var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .head-cal.is-cal-resize { transition: none; } }
 @keyframes cal-out {
   from { translate: 0 0; opacity: 1; clip-path: inset(0 -50vw -50vh -50vw); }
   to   { translate: 0 calc(-1 * var(--cal-move, 0px)); opacity: 0;
@@ -1266,6 +1272,10 @@ a { color: var(--c-primary); }
 }
 /* やることの月の面（暦が画面の65%・`.cal.is-tall`）は正方形の写真では下が足りない。帯いっぱいに広げて余白を出さない。 */
 .head.has-tall-cal { --sky-size: cover; }
+/* その升目の下は濃い幕で写真をうっすらに（空のマス一つの中でも明るさが 0.51〜0.89 と揺れ、罫線が溶け、10px の名前が
+   写真のざらつきに負けていた。2026年10月25日、利用者「濃い幕でうっすら」）。題の段の写真はそのまま。開くあいだ幕も浮かぶ
+   （移り方は screens.css の .cal）。 */
+.head[data-sky-img] .cal.is-tall { background: color-mix(in srgb, var(--c-bg) 82%, transparent); }
 /* 引くと、空が近づく（docs/motion.md の「反応を足す」）。いちばん上で紙を下へ引くと
    （pull-refresh の give）、引いたぶんだけ空が上の端を軸に少しふくらむ——紙を引く指に、
    後ろの景色もついてくる。`--sky-pull`（0〜1）は pull-refresh.js が帯（#head）へ書く。
