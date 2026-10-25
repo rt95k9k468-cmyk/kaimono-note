@@ -6,7 +6,8 @@
    - 月の面を開くと、紙は今日の行が「今日｜週｜月」の帯のすぐ下（過ぎた日は上へ隠れる）。題と輪は今日のまま（滑るあいだに
      送りが縮んで、題が過ぎた日へ跳ばない）。
    - 月の面は全タブの暦の札を書かない：買うものへ移っても暦は週。移るあいだ暦の置き場の背も滑る。
-   - 週の面：今日の行は帯のすぐ下・時刻の列がそろう・今日の日付は塗り（日曜の赤い字と見分ける）・「仕事だけ」に青い点が無い。
+   - 週の面：頭から（今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初）・時刻の列と点の列がそろう・今日の日付は塗り
+     （日曜の赤い字と見分ける）・「仕事だけ」に青い点が無い。
    - 動きを減らす設定では滑らせない（一拍で行き先へ）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/cal-press-glide.js */
@@ -51,21 +52,26 @@ const { open, checker } = require("./lib");
   /** 一コマで動いた背のいちばん大きいもの。 */
   const leap = (w) => Math.max(0, ...w.slice(1).map((f, i) => Math.abs(f.h - w[i].h)));
 
-  // 週の面：今日の行は帯のすぐ下、時刻の列がそろう、今日の日付は塗り、「仕事だけ」に青い点が無い
+  // 週の面：頭から（今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初）、時刻の列と点の列がそろう、今日の日付は塗り、「仕事だけ」に青い点が無い
   await page.click('#screen-todo .wk-faces [data-face="week"]');
   await page.waitForTimeout(700);
   const wk = await page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
     const bar = scr.querySelector(".wk-faces").getBoundingClientRect().bottom;
-    const today = scr.querySelector('.wk-week .wk-day[data-day="2026-10-21"]').getBoundingClientRect().top;
+    const head = scr.querySelector(".wk > .wk-h");
+    const first = scr.querySelector(".wk-week .wk-day");
     const xs = [...scr.querySelectorAll(".wk-week .wk-ev .wk-t")].filter((t) => t.textContent.trim()).map((t) => Math.round(t.getBoundingClientRect().left));
+    const dots = [...scr.querySelectorAll(".wk-week .wk-ev .chip-dot")].map((t) => Math.round(t.getBoundingClientRect().left));
     const dn = (k) => getComputedStyle(scr.querySelector(`.wk-week .wk-day[data-day="${k}"] .wk-dn`));
     const work = scr.querySelector(".wk-work");
-    return { gap: Math.round(today - bar), xs: [...new Set(xs)], todayBg: dn("2026-10-21").backgroundColor, sunBg: dn("2026-10-25").backgroundColor,
+    return { gap: Math.round(head.getBoundingClientRect().top - bar), head: head.firstChild.textContent.trim(), first: first.dataset.day,
+      fold: (scr.querySelector(".wk-past") || {}).textContent || "", top: Math.round(KN.app.scrollerOf(scr).scrollTop),
+      xs: [...new Set(xs)], dots: [...new Set(dots)], todayBg: dn("2026-10-21").backgroundColor, sunBg: dn("2026-10-25").backgroundColor,
       dot: !!work.querySelector(".chip-dot"), cat: work.style.getPropertyValue("--cat") };
   });
-  c.check("週の面は今日の行が帯のすぐ下（過ぎた日は上へ隠れる）", Math.abs(wk.gap) <= 2, JSON.stringify(wk.gap));
-  c.check("週の面の時刻の列がそろう", wk.xs.length === 1, JSON.stringify(wk.xs));
+  c.check("週の面は頭から：今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初", Math.abs(wk.gap) <= 2 && wk.head === "今週"
+    && wk.first === "2026-10-21" && /過ぎた日/.test(wk.fold) && wk.top === 0, JSON.stringify(wk));
+  c.check("週の面の時刻の列と点の列がそろう", wk.xs.length === 1 && wk.dots.length === 1 && wk.dots[0] > wk.xs[0], JSON.stringify([wk.xs, wk.dots]));
   c.check("今日の日付は塗り・日曜は塗らない", !/rgba\(0, 0, 0, 0\)|transparent/.test(wk.todayBg) && /rgba\(0, 0, 0, 0\)|transparent/.test(wk.sunBg), JSON.stringify([wk.todayBg, wk.sunBg]));
   c.check("「仕事だけ」に青い点も色も無い", !wk.dot && !wk.cat, JSON.stringify([wk.dot, wk.cat]));
 

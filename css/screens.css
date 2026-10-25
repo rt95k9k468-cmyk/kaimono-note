@@ -5007,11 +5007,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 選んでいる面は `.seg` の白い持ち上げのまま（見方の切り替えは一つの形。2026年10月21日、総点検 Y2 の B。
    前は基調色の塗り）。 */
 .wk .chip-dot { width: 9px; height: 9px; }
+/* 大きな見出しは 今週・来週・これから（月の面は「◯月の予定」）だけ。期限・やること・待つ・いつかはその中の小見出し（.is-sub）。
+   前は全部が同じ大きさで、選んだやることの「今週」と時の「来週」が並んで見えた（2026年10月25日、利用者「週が本当に見づらい」）。 */
 .wk-h {
   display: flex; align-items: center; min-height: 44px;
-  margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-1);
-  font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text);
+  margin: 0; padding: var(--sp-5) var(--sp-4) var(--sp-1);
+  font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text);
 }
+.wk-h .wk-next { margin: -10px calc(-1 * var(--sp-3)) -10px auto; }
 .wk-list { margin: 0 var(--sp-4); }
 .wk-row { display: flex; align-items: center; gap: var(--sp-3); min-height: var(--row-h-compact); border-top: 1px solid var(--c-border); }
 .wk-name {
@@ -5026,13 +5029,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   display: block; width: 100%; min-height: 40px; border-top: 1px solid var(--c-border); text-align: left;
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
-.wk-range { margin-left: var(--sp-2); font-family: var(--font-num); font-size: var(--fs-xs); font-weight: var(--fw-regular); color: var(--c-text-2); }
-/* 今週の右の「選ぶ」。まだ選んでいない週は塗って促す。選ぶ紙は各行の下に 今週へ・今日へ・いつかへ。 */
+.wk-range { margin-left: var(--sp-2); font-family: var(--font-num); font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--c-text-2); }
+/* やること（今週の印）の右の「選ぶ」。まだ選んでいない週は淡く塗って促す（濃い塗りは今日の丸だけ。2026年10月25日）。
+   選ぶ紙は各行の下に 今週へ・今日へ・いつかへ。 */
 .wk-pick {
-  margin-left: auto; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-pill, 999px);
+  margin: -4px 0 -4px auto; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-pill, 999px);
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
 }
-.wk-pick.is-ask { background: var(--c-primary); color: #fff; }
+.wk-pick.is-ask { background: color-mix(in srgb, var(--c-primary) 14%, transparent); }
 .wk-pick:active { opacity: var(--press-fade); }
 .note-pop.is-choose { width: min(380px, calc(100vw - 16px)); padding: var(--sp-2) var(--sp-4) var(--sp-4); }
 .pk-h {
@@ -5050,52 +5054,60 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-later { margin-top: var(--sp-2); }
 .wk-later-h { width: 100%; text-align: left; }
 .wk-later-h:active { opacity: var(--press-fade); }
-.wk-twist { display: grid; margin-left: auto; color: var(--c-text-3); transition: rotate var(--m-press) var(--ease); }
+/* その場で開く・畳むもの（これから・過ぎた日）は下向き、開けば上向き。右向きの › は「次の週へ」だけ——同じ形が
+   縦に並ぶと、開くのか移るのか分からなかった（2026年10月25日）。 */
+.wk-twist { display: grid; margin-left: auto; color: var(--c-text-3); rotate: 90deg; transition: rotate var(--m-press) var(--ease); }
 .wk-twist svg { width: var(--ico-sm); height: var(--ico-sm); }
-.wk-later-h[aria-expanded="true"] .wk-twist { rotate: 90deg; }
-.wk-h.is-sub { min-height: 36px; padding-top: var(--sp-2); font-size: var(--fs-sm); color: var(--c-text-2); }
-/* 色の見方・週の幅・まとめ（見本の週の頭と足）。 */
-.wk-key { display: flex; gap: var(--sp-4); padding: var(--sp-2) var(--sp-4) 0; font-size: var(--fs-xs); color: var(--c-text-2); }
-.wk-key > span, .wk-sum-n > span { display: inline-flex; align-items: center; gap: 6px; }
-.wk-span {
-  display: flex; align-items: center; justify-content: space-between; padding: var(--sp-2) var(--sp-2) 0 var(--sp-4);
-  font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text);
-}
+.wk-later-h[aria-expanded="true"] .wk-twist { rotate: -90deg; }
+.wk-h.is-sub { min-height: 36px; padding-top: var(--sp-4); font-size: var(--fs-sm); color: var(--c-text-2); }
 .wk-next { display: grid; place-items: center; width: 44px; height: 44px; color: var(--c-text-2); }
 .wk-next svg { width: var(--ico-sm); height: var(--ico-sm); }
 .wk-next:active { opacity: var(--press-fade); }
-/* 基調色は いま・選んでいるもの だけ（2026年10月20日、利用者）。まとめは塗らず、行の下に置くだけ。 */
-.wk-sum { display: flex; align-items: flex-start; gap: var(--sp-3); margin: var(--sp-3) var(--sp-4) 0; padding: 0 var(--sp-1); }
-.wk-sum-i { display: grid; flex: none; color: var(--c-text-2); }
-.wk-sum-i svg { width: var(--ico); height: var(--ico); }
-.wk-sum-h { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text); }
-.wk-sum-n { display: flex; flex-wrap: wrap; gap: 2px var(--sp-4); margin-top: 4px; font-size: var(--fs-xs); color: var(--c-text-2); }
+/* まとめは見出しのすぐ下の一行で、色の見方を兼ねる（前は頭の色の見方と行の下の札の二か所）。基調色は いま・選んでいる
+   もの だけ（2026年10月20日、利用者）なので塗らない。 */
+.wk-sum { display: flex; flex-wrap: wrap; gap: 2px var(--sp-4); margin: 0 var(--sp-4); font-size: var(--fs-xs); color: var(--c-text-2); }
+.wk-sum > span { display: inline-flex; align-items: center; gap: 6px; }
+/* 今週の過ぎた日は畳む（送って隠すと、開いたときに見出しの無い行から始まった）。暦の週の段に名前は出ている。 */
+.wk-past {
+  display: flex; align-items: center; width: calc(100% - 2 * var(--sp-4)); min-height: 40px; margin: var(--sp-2) var(--sp-4) 0;
+  border-top: 1px solid var(--c-border); text-align: left; font-size: var(--fs-sm); color: var(--c-text-2);
+}
+.wk-past:active { opacity: var(--press-fade); }
+.wk-past[aria-expanded="true"] .wk-twist { rotate: -90deg; }
+.wk-past + .wk-week { margin-top: 0; }
 /* 七日の行（月の面と同じ罫線の行・2026年10月20日、利用者。影つきの札・日付の地・行ごとの › はやめた）。線は行の全部の
    列にまたがる .wk-card が引く。何日にもまたがる予定は、日の列と予定の列のあいだの筋を縦に通る帯。今日は日付の字だけ基調色。 */
 .wk-week { display: grid; margin: var(--sp-2) var(--sp-4) 0; }
 .wk-card { grid-column: 1 / -1; border-top: 1px solid var(--c-border); }
-.wk-week > .wk-card:nth-child(7) { border-bottom: 1px solid var(--c-border); }
+.wk-card.is-last { border-bottom: 1px solid var(--c-border); }
+/* 日付は数字と曜日を横に一行で、行の頭（最初の名前の高さ）に。縦に積んで行の真ん中に置くと、太い日付の塊が中身より先に
+   目に入り、何件もある日はどこからがその日か追いにくかった（2026年10月25日、利用者「週が本当に見づらい」）。 */
 .wk-day {
-  position: relative; grid-column: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  padding: 10px 0; line-height: 1; -webkit-tap-highlight-color: transparent;
+  position: relative; grid-column: 1; display: flex; align-items: baseline; gap: 4px;
+  padding: 13px 0 10px 2px; line-height: 1; -webkit-tap-highlight-color: transparent;
 }
 .wk-day:active { background: var(--press-sink); }
 .wk-wd { font-size: var(--fs-xs); color: var(--c-text-2); }
-.wk-dn { font-family: var(--font-num); font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text); }
+.wk-dn { font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
+/* 何も無い日は、日付を薄く細く・行を低く。 */
+.wk-day.is-empty { padding-block: 9px 8px; }
+.wk-day.is-empty .wk-dn { font-weight: var(--fw-regular); }
+.wk-day.is-empty:not(.is-today) :is(.wk-dn, .wk-wd) { opacity: .5; }
 .wk-day[data-wd="6"] :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
 .wk-day:is([data-wd="0"], .is-holiday) :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
 /* 今日は暦の今日と同じ塗りの丸（字の色だけだと、日曜・祝日の赤とほぼ同じ色で見分けられなかった。2026年10月25日、利用者
    「見づらい」）。日曜の規則と詳細度を取り合わないよう、一段上げる。 */
 .wk-week .wk-day.is-today .wk-dn, .mo-list .mo-day.is-today .mo-dn {
-  padding: 3px 6px; border-radius: var(--r-full); background: var(--c-primary); color: var(--c-bg);
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; margin-block: -5px; padding: 0 5px;
+  border-radius: var(--r-full); background: var(--c-primary); color: var(--c-bg);
 }
 .wk-week .wk-day.is-today .wk-wd, .mo-list .mo-day.is-today .mo-wd { color: var(--c-primary); font-weight: var(--fw-bold); }
 .wk-evs {
-  display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; min-height: 58px;
+  display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; min-width: 0; min-height: 44px;
   padding: 8px 0 8px var(--sp-3);
 }
-.wk-evs:not(:has(.wk-ev)) { min-height: 0; }   /* 空の日は低い行（日付の背丈まで） */
-/* 一行は週と月で同じ（js の wkLine）：点 → 時刻の列（3字ぶん・そろえる）→ 名前（細字）→ 終わりの時刻（薄く）。 */
+.wk-evs:not(:has(.wk-ev)) { min-height: 0; padding-block: 0; }   /* 空の日は低い行（日付の背丈まで） */
+/* 一行は週と月で同じ（js の wkLine）：時刻の列（3字ぶん・そろえる）→ 点 → 名前（細字）→ 終わりの時刻（薄く）。 */
 .wk-ev { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 26px; text-align: left; font-size: var(--fs-md); color: var(--c-text); }
 .wk-t {
   flex: none; min-width: 3em; font-family: var(--font-num); font-variant-numeric: tabular-nums;
@@ -5109,16 +5121,16 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .mo-list { margin: var(--sp-1) var(--sp-4) 0; }
 .mo-day { display: grid; grid-template-columns: 48px minmax(0, 1fr); border-top: 1px solid var(--c-border); }
 .mo-day:last-child { border-bottom: 1px solid var(--c-border); }
-.mo-date {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  padding: 10px 0; line-height: 1; -webkit-tap-highlight-color: transparent;
+.mo-date {   /* 週の行の日付と同じ（数字と曜日を横に一行・行の頭に） */
+  display: flex; align-items: baseline; gap: 4px;
+  padding: 13px 0 10px 2px; line-height: 1; -webkit-tap-highlight-color: transparent;
 }
 .mo-date:active { background: var(--press-sink); }
 .mo-dn { font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
 .mo-wd { font-size: var(--fs-xs); color: var(--c-text-2); }
 .mo-date[data-wd="6"] :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
 .mo-date:is([data-wd="0"], .is-holiday) :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
-.mo-evs { min-height: 56px; }
+.mo-evs { min-height: 44px; }
 /* やることの暦の印は名前（2026年10月20日、利用者。絵の丸はやめた）。日付の数字の真下に、月の面と同じ種類の色の札で
    二つまで（2026年10月25日、利用者「予定を二つ書けるように」。中央に積むと一つの名前の折り返しに見える）。
    左に寄せ、はみ出しは端を薄く消す（「…」は一字ぶん惜しく、切るだけだと字が欠ける）。 */

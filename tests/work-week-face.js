@@ -7,7 +7,9 @@
    席をもう一度押しても行き来。日を押せばその日の面。払えば次の週。頭の札（期限切れ）はどちらの面にも出さない。
    日の過ぎたまだのやることは、書き換えずに今週へ（七日の行の過ぎた日には出さない・決めごと1）。
    右下の＋は一行（キーボードは勝手に出さない・R4 の札。時刻があれば予定、日が今週なら今週の印、無ければこれから）。
-   七日は一日一枚の札（見本の週・10月19日）：色の見方・週の幅（› で次の週）・締切もその日の札に・下に予定の数と作業時間のまとめ。
+   七日は一日一枚の札（見本の週・10月19日）：週の幅（› で次の週）・締切もその日の札に・予定の数と作業時間のまとめ。
+   10月25日（利用者「週が本当に見づらい」）：大きな見出しは 今週・来週・これから だけ（期限・やること＝今週の印は今週の中の
+   小見出し）。まとめは見出しのすぐ下の一行（色の見方を兼ねる）。今週の過ぎた日は送って隠さず畳む（押せば開く）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-week-face.js */
 const { open, checker } = require("./lib");
@@ -57,7 +59,9 @@ const { open, checker } = require("./lib");
       evs: [...scr.querySelectorAll(".wk-evs")].map((e) => ({ day: e.dataset.day, past: e.classList.contains("is-past"),
         names: [...e.querySelectorAll(".wk-n")].map((n) => n.textContent) })),
       bands: [...scr.querySelectorAll(".wk-band")].map((b) => ({ t: b.getAttribute("aria-label"), row: b.style.gridRow })),
-      span: txt(".wk-span"), sum: txt(".wk-sum-n"), key: txt(".wk-key > span"),
+      big: [...scr.querySelectorAll(".wk .wk-h:not(.is-sub)")].map((e) => e.firstChild.textContent.trim()),
+      sum: txt(".wk-sum"), sumAt: !!scr.querySelector(".wk > .wk-h + .wk-sum"),
+      past: (scr.querySelector(".wk-past") || {}).textContent || "", pastOpen: (scr.querySelector(".wk-past") || { getAttribute: () => null }).getAttribute("aria-expanded"),
       dues: [...scr.querySelectorAll(".wk-ev.is-due")].map((e) => e.closest(".wk-evs").dataset.day + ":" + e.querySelector(".wk-n").textContent),
       road: !!scr.querySelector(".todo-day"),
       dayOf: (scr.querySelector(".todo-day") || {}).dataset ? scr.querySelector(".todo-day")?.dataset.day : null,
@@ -68,17 +72,23 @@ const { open, checker } = require("./lib");
 
   let a = await look();
   c.check("開いたときは週", a.pressed === "週" && !!a.week && !a.road, JSON.stringify(a));
-  c.check("見出しは 期限 → 今週 → 来週 → これから（数は出さない）",
-    JSON.stringify(a.heads.map((h) => h.replace(/\d.*$|選ぶ$/, ""))) === JSON.stringify(["期限", "今週", "来週", "これから"])
-    && /10月26日〜11月1日/.test(a.heads[2]), JSON.stringify(a.heads));
+  c.check("見出しは 今週 → 期限 → やること → 来週 → これから（数は出さない）",
+    JSON.stringify(a.heads.map((h) => h.replace(/\d.*$|選ぶ$/, ""))) === JSON.stringify(["今週", "期限", "やること", "来週", "これから"])
+    && /10月19日〜25日/.test(a.heads[0]) && /10月26日〜11月1日/.test(a.heads[3]), JSON.stringify(a.heads));
+  c.check("大きな見出しは 今週・来週・これから だけ（期限・やることは今週の中の小見出し）",
+    JSON.stringify(a.big) === JSON.stringify(["今週", "来週", "これから"]), JSON.stringify(a.big));
   c.check("期限は日まで（赤くしない）", a.rows[0] === "経費の精算" && /23日（金）まで/.test(a.facts[0]) && !a.red, JSON.stringify(a.facts));
-  c.check("今週は5行まで・ほかは畳む", a.rows.length === 6 && a.more[0] === "ほか 3", JSON.stringify([a.rows, a.more]));
-  c.check("七日の行と来週の七日", a.days === 14);
+  c.check("今週のやることは5行まで・ほかは畳む", a.rows.length === 6 && a.more[0] === "ほか 3", JSON.stringify([a.rows, a.more]));
+  c.check("今週の過ぎた日は畳む（今日からの五日と来週の七日・畳みに日付の幅）",
+    a.days === 12 && a.past === "過ぎた日19日〜20日" && a.pastOpen === "false" && !a.evs.some((e) => e.day < "2026-10-21"), JSON.stringify([a.days, a.past]));
+  c.check("まとめは見出しのすぐ下の一行（予定の数・締切の数。長さが無ければ作業時間は出さない。畳んだ日も数える）",
+    a.sumAt && a.sum[0] === "予定 3件締切 1件", JSON.stringify(a.sum));
+  await page.click(".wk-past");
+  await page.waitForTimeout(300);
+  a = await look();
+  c.check("過ぎた日を押すと開く（七日の行と来週の七日）", a.days === 14 && a.pastOpen === "true", JSON.stringify([a.days, a.pastOpen]));
   const ev = (k) => (a.evs.find((e) => e.day === k) || { names: [] });
   c.check("予定とやることが日の行に（時刻の順）", JSON.stringify(ev("2026-10-22").names) === JSON.stringify(["定例", "電球を替える"]), JSON.stringify(ev("2026-10-22")));
-  c.check("日の札：色の見方・週の幅・まとめ（予定の数・締切の数。長さが無ければ作業時間は出さない）",
-    a.key.join() === "予定,作業時間,締切" && a.span[0] === "10月19日（月）〜 25日（日）" && a.sum[0] === "予定 3件締切 1件",
-    JSON.stringify([a.key, a.span, a.sum]));
   c.check("締切はその日の札にも（橙・期限の欄にも残る）", a.dues.join() === "2026-10-23:経費の精算", JSON.stringify(a.dues));
   c.check("毎日のくり返しは出さない", !a.evs.some((e) => e.names.includes("朝の体操")));
   c.check("過ぎた日にまだのやることは出さない（今週へ戻る）", !a.evs.some((e) => e.names.includes("昨日の用事")), JSON.stringify(ev("2026-10-20")));
@@ -154,7 +164,8 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(900);
   a = await look();
   const next = await page.evaluate((f) => KN.util.shiftDay(f, 7), W.from);
-  c.check("払えば次の週（期限・今週は今週だけ）", a.week === next && a.heads.length === 0, JSON.stringify([a.week, next, a.heads]));
+  c.check("払えば次の週（見出しは来週だけ・期限・やることは今週だけ）", a.week === next
+    && JSON.stringify(a.heads) === JSON.stringify(["来週10月26日〜11月1日"]) && !a.past, JSON.stringify([a.week, next, a.heads]));
 
   // 済ませる
   await page.click('.tab[data-tab="todo"]');
@@ -184,16 +195,19 @@ const { open, checker } = require("./lib");
     JSON.stringify(got) === JSON.stringify(["2026-10-23/2026-10-23//", "2026-10-22//event/15:00", "///", "2026-10-21/2026-10-21//"]),
     JSON.stringify(got));
 
-  /* 今日の面から週へ移ると、過ぎた日（月・火）は上に隠れ、今日の札が頭に来る。 */
+  /* 今日の面から週へ移ると頭から：今週の見出しが見え、過ぎた日（月・火）は畳まれて今日の行が最初（開いていても畳み直す）。 */
+  await page.click(".wk-past"); await page.waitForTimeout(300);
   await page.click('#screen-todo .wk-faces [data-face="today"]'); await page.waitForTimeout(500);
   await page.click('#screen-todo .wk-faces [data-face="week"]'); await page.waitForTimeout(600);
   const hid = await page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
-    const sc = KN.app.scrollerOf(scr), days = [...scr.querySelectorAll(".wk .wk-week .wk-day")];
-    const now = scr.querySelector(".wk-day.is-today");
-    return { top: sc.scrollTop, dy: Math.round(now.getBoundingClientRect().top - days[0].getBoundingClientRect().top), mon: days[0].getBoundingClientRect().bottom <= sc.getBoundingClientRect().top + 200 };
+    const sc = KN.app.scrollerOf(scr), first = scr.querySelector(".wk .wk-week .wk-day");
+    const now = scr.querySelector(".wk-day.is-today"), bar = scr.querySelector(".wk-faces").getBoundingClientRect().bottom;
+    return { top: sc.scrollTop, first: first === now, fold: scr.querySelector(".wk-past").getAttribute("aria-expanded"),
+      head: Math.round(scr.querySelector(".wk > .wk-h").getBoundingClientRect().top - bar), seen: now.getBoundingClientRect().bottom <= sc.getBoundingClientRect().bottom };
   });
-  c.check("週の面は今日の札が頭・過ぎた日は上へ隠れる", hid.top > 0, JSON.stringify(hid));
+  c.check("週へ移ると頭から：今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初",
+    hid.top === 0 && hid.first && hid.fold === "false" && Math.abs(hid.head) <= 2 && hid.seen, JSON.stringify(hid));
 
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();

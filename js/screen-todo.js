@@ -2699,7 +2699,7 @@
   function sheetDigest(day) {
     const st = store.get();
     return JSON.stringify([
-      day, todayKey(), face, weekMore, workOnly, laterOpen,
+      day, todayKey(), face, weekMore, workOnly, laterOpen, pastOpen,
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? planNow() : "",
       st.settings,
@@ -2925,6 +2925,7 @@
   let face = (() => { try { return sessionStorage.getItem("kn-todo-face") === "week" ? "week" : "today"; } catch (_) { return "today"; } })();
   let weekMore = false;   // 今週の「ほか n」を開いているか
   let laterOpen = false;  // 週の面の「これから」を開いているか（保存しない）
+  let pastOpen = false;   // 今週の「過ぎた日」を開いているか（保存しない。週の面へ入るたびに畳む）
   // PC の写し（copyBlock）。読んだ写し・その「これから」を開いているか・命令を置いた行（"kind:id" → { at, due }）。
   let glanceCopyData = null, glanceAsked = false, copyLaterOpen = false;
   const copySent = new Map();
@@ -2986,24 +2987,25 @@
       // 月の面を出たら暦は週へ畳む。月の面の暦は札に書かないので、書くのは札が月を開いていたときだけ（組み直しは subscribe が）。
       const fold = face === "month" && to !== "month" && store.calPrefs("todo").open;
       face = to;
+      if (to === "week") pastOpen = false;
       if (fold) store.setCalPref("todo", { open: false });
       if (day && day !== shownDay()) { goDay(day); return; }
       if (!fold) render();
       keepAim++;
       if (root) KN.app.scrollerOf(root).scrollTop = 0;
-      if (to === "week") hidePastDays();
     });
     if (to === "today" && shownDay() === todayKey()) requestAnimationFrame(toNow);
   }
 
-  /** 週・月の面で、過ぎた日を上へ隠す（今日以後の最初の日が、貼りついた「今日｜週｜月」の帯のすぐ下に来る。上へ戻せば出る）。
-      今週・今月のときだけ。暦の背に関わらない（紙の中の位置だけで決める）ので、暦が滑る前に呼んでよい。
-      **基準は帯の下**——前は「最初の日の行があった所」へ寄せていて、その上の色の見方と週の幅（約116px）が隠れるだけで、
-      過ぎた日は帯の下に残っていた（2026年10月25日、利用者「見づらい」）。 */
+  /** 月の面で、過ぎた日を上へ隠す（今日以後の最初の日が、貼りついた「今日｜週｜月」の帯のすぐ下に来る。上へ戻せば出る）。
+      今月のときだけ。暦の背に関わらない（紙の中の位置だけで決める）ので、暦が滑る前に呼んでよい。
+      **基準は帯の下**——前は「最初の日の行があった所」へ寄せていて、その上の週の幅が隠れるだけで、
+      過ぎた日は帯の下に残っていた（2026年10月25日、利用者「見づらい」）。
+      週の面は送らずに畳む（weekSlide の「過ぎた日」。送ると見出しの無い今日の行から始まり、日曜は来週ばかりが見えた）。 */
   function hidePastDays() {
-    if (!root || !(weekFace() || monthFace())) return;
-    const wk = weekFace(), today = todayKey();
-    const days = [...root.querySelectorAll(wk ? ".wk .wk-day" : ".mo .mo-day")];
+    if (!root || !monthFace()) return;
+    const today = todayKey();
+    const days = [...root.querySelectorAll(".mo .mo-day")];
     const first = days[0], at = days.find((e) => e.dataset.day >= today);
     if (!first || !at || first === at) return;
     const sc = KN.app.scrollerOf(root);
@@ -3062,32 +3064,29 @@
     const e = (h * 60 + m + t.minutes) % 1440;
     return `${Math.floor(e / 60)}:${String(e % 60).padStart(2, "0")}`;
   };
-  /* 週の面と月の面の一行は同じもの：点 → 時刻（そろえた列）→ 名前（細字）→ 終わりの時刻（薄く）→ くり返しの印。
+  /* 週の面と月の面の一行は同じもの：時刻（そろえた列）→ 点 → 名前（細字）→ 終わりの時刻（薄く）→ くり返しの印。
      前は週だけ「名前 9:00 - 10:00」で、時刻の左端が名前の長さで 143〜284px に散り、上から時刻で追えなかった
-     （2026年10月25日、利用者「月の面とそろえる」）。時刻の列には「締切」「〜10/28」も入る。 */
+     （2026年10月25日、利用者「月の面とそろえる」）。点は名前の隣に——時刻の前に置くと、時刻の無い行で点だけが
+     名前から3字ぶん離れて浮いた（同日、利用者「週が本当に見づらい」）。時刻の列には「締切」「〜10/28」も入る。 */
   const wkLine = (t, time, c, cls, end) => html`
-    <button type="button" class="wk-ev js-open ${cls || ""}" data-id="${t.id}">${wkDot(t, c)}<span class="wk-t">${time}</span><span class="wk-n">${t.title}</span>${end ? html`<span class="wk-end">〜${end}</span>` : ""}${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`;
+    <button type="button" class="wk-ev js-open ${cls || ""}" data-id="${t.id}"><span class="wk-t">${time}</span>${wkDot(t, c)}<span class="wk-n">${t.title}</span>${end ? html`<span class="wk-end">〜${end}</span>` : ""}${t.repeat ? html`<span class="wk-rep">${icon("repeat")}</span>` : ""}</button>`;
   const wkHours = (min) => (min >= 60 ? `${Math.floor(min / 60)}時間${min % 60 ? `${min % 60}分` : ""}` : `${min}分`);
 
-  /** 色の見方（予定・作業時間・締切）。 */
-  function wkKey() {
-    return node(html`<div class="wk-key">${[["event", "予定"], ["task", "作業時間"], ["due", "締切"]].map(([k, n]) =>
-      html`<span>${wkDot(null, `var(--kind-${k})`)}${n}</span>`)}</div>`);
+  /** 週の見出し：今週・来週・先週（ほかの週は日付の幅が題）と日付の幅。› で次の週（払うのと同じ）。 */
+  function wkHead(w, next) {
+    const U = KN.util, a = U.dayDate(w.from), z = U.dayDate(w.to), now = U.weekOf(todayKey()).from;
+    const span = `${mdJa(w.from)}〜${a.getMonth() === z.getMonth() ? `${z.getDate()}日` : mdJa(w.to)}`;
+    const name = { [now]: "今週", [U.shiftDay(now, 7)]: "来週", [U.shiftDay(now, -7)]: "先週" }[w.from];
+    return node(html`<h2 class="wk-h">${name || span}${name ? html`<span class="wk-range">${span}</span>` : ""}${next
+      ? html`<button type="button" class="wk-next" data-day="${U.shiftDay(w.from, 7)}" aria-label="次の週">${icon("chevron")}</button>` : ""}</h2>`);
   }
-  /** 週の幅。› で次の週（払うのと同じ）。 */
-  function wkSpan(w) {
-    const U = KN.util, a = U.dayDate(w.from), z = U.dayDate(w.to);
-    const wd = (d) => "日月火水木金土"[d.getDay()];
-    return node(html`<div class="wk-span"><span>${a.getMonth() + 1}月${a.getDate()}日（${wd(a)}）〜 ${a.getMonth() === z.getMonth() ? "" : `${z.getMonth() + 1}月`}${z.getDate()}日（${wd(z)}）</span><button type="button" class="wk-next" data-day="${U.shiftDay(w.from, 7)}" aria-label="次の週">${icon("chevron")}</button></div>`);
-  }
-  /** 週のまとめ（予定の数・作業時間・締切の数）。済まなかった数は出さない（決めごと4）。何も無ければ出さない。 */
-  function wkSum(title, tally) {
+  /** まとめの一行（予定の数・作業時間・締切の数）。見出しのすぐ下で、色の見方も兼ねる（前は頭の色の見方と、行の下の札の
+      二か所だった）。済まなかった数は出さない（決めごと4）。何も無ければ出さない。 */
+  function wkSum(tally) {
     const parts = [tally.ev ? ["event", `予定 ${tally.ev}件`] : null, tally.min ? ["task", `作業時間 ${wkHours(tally.min)}`] : null,
       tally.due ? ["due", `締切 ${tally.due}件`] : null].filter(Boolean);
     if (!parts.length) return null;
-    return node(html`<div class="wk-sum"><span class="wk-sum-i">${icon("calendar")}</span><div>
-      <div class="wk-sum-h">${title}</div>
-      <div class="wk-sum-n">${parts.map(([k, s]) => html`<span>${wkDot(null, `var(--kind-${k})`)}${s}</span>`)}</div></div></div>`);
+    return node(html`<div class="wk-sum">${parts.map(([k, s]) => html`<span>${wkDot(null, `var(--kind-${k})`)}${s}</span>`)}</div>`);
   }
 
   function weekSlide(day, openAll) {
@@ -3121,29 +3120,40 @@
       const cp = copyBlock();
       if (cp) el.append(cp);
     }
-    // 色の見方 → 週の幅 → 七日の札 → まとめ（見本の頭。2026年10月19日、利用者）。その下に 期限 → 今週 → 来週 → これから。
-    el.append(wkKey());
-    el.append(wkSpan(w));
+    /* 今週（幅・›）→ まとめの一行 → 過ぎた日（畳む）→ 今日からの行 → 期限 → やること → 来週 → これから。
+       大きな見出しは 今週・来週・これから の三つだけ（期限・やることは今週の中の小見出し）。前は過ぎた日を送って上へ
+       隠していて、開くと見出しの無い今日の行から始まり、選んだやることの見出し「今週」が今日と来週の行のあいだに
+       来週と同じ大きさで浮いた——日曜は今週が一行だけで、来週の行が今週の続きに見えた（2026年10月25日、利用者
+       「週が本当に見づらい」）。 */
     const tally = { ev: 0, min: 0, due: tasks.filter((t) => t.deadline && t.deadline >= w.from && t.deadline <= w.to).length };
-    el.append(weekDays(w, open, all, today, tally));
-    const sum = wkSum(`${now ? "今週" : "この週"}の予定・作業時間`, tally);
+    const fold = now && today > w.from;   // 過ぎた日のある今週
+    const grid = weekDays(w, open, all, today, tally, fold && !pastOpen ? today : null);
+    el.append(wkHead(w, true));
+    const sum = wkSum(tally);
     if (sum) el.append(sum);
+    if (fold) {
+      const zk = U.shiftDay(today, -1), a = U.dayDate(w.from), z = U.dayDate(zk);
+      const span = w.from === zk ? `${a.getDate()}日`
+        : a.getMonth() === z.getMonth() ? `${a.getDate()}日〜${z.getDate()}日` : `${mdJa(w.from)}〜${mdJa(zk)}`;
+      el.append(node(html`<button type="button" class="wk-past" aria-expanded="${String(pastOpen)}">過ぎた日<span class="wk-range">${span}</span><span class="wk-twist">${icon("chevron")}</span></button>`));
+    }
+    el.append(grid);
     if (now) {
       dues = tasks.filter((t) => t.deadline && t.deadline <= w.to)
         .sort((a, b) => (a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0));
       if (dues.length) {
-        el.append(node(html`<h2 class="wk-h">期限</h2>`));
+        el.append(node(html`<h3 class="wk-h is-sub">期限</h3>`));
         el.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`, "var(--kind-due)"))));
       }
       /* 日の過ぎたまだのやることは、書き換えずに今週へ戻って見える（決めごと1「元の場所へ戻るだけ」）。
          七日の行の過ぎた日には出さない（同じものを二か所に置かない）。先週より前のものはこれから。 */
       const back = (t) => !t.repeat && t.due && t.due >= w.from && t.due < today;
       marked = tasks.filter((t) => (store.inWeek(t, today) || back(t)) && !dues.includes(t));
-      /* 今週の右に「選ぶ」。まだ何も選んでいない週で、選べるものがあれば塗って促す（開きはしない）。 */
+      /* 今週の中の「やること」（今週の印）の右に「選ぶ」。まだ何も選んでいない週で、選べるものがあれば塗って促す（開きはしない）。 */
       const picks = pickGroups(today).length > 0;
       const ask = picks && !tasks.some((t) => store.inWeek(t, today));
       if (marked.length || picks) {
-        const h = node(html`<h2 class="wk-h">今週<button type="button" class="wk-pick ${ask ? "is-ask" : ""}">選ぶ</button></h2>`);
+        const h = node(html`<h3 class="wk-h is-sub">やること<button type="button" class="wk-pick ${ask ? "is-ask" : ""}">選ぶ</button></h3>`);
         h.querySelector(".wk-pick").addEventListener("click", (e) => { haptic(); pickSheet(e.currentTarget); });
         el.append(h);
       }
@@ -3160,11 +3170,12 @@
     }
 
     if (now) {
-      // 来週の七日。見出しの右に日付の幅。
+      // 来週の七日。見出しは今週と同じ形（題と日付の幅）。
       const nx = U.weekOf(U.shiftDay(w.from, 7));
-      const a = U.dayDate(nx.from), z = U.dayDate(nx.to);
-      el.append(node(html`<h2 class="wk-h">来週<span class="wk-range">${mdJa(nx.from)}〜${a.getMonth() === z.getMonth() ? `${z.getDate()}日` : mdJa(nx.to)}</span></h2>`));
-      el.append(weekDays(nx, open, all, today));
+      el.append(wkHead(nx, false));
+      const after = weekDays(nx, open, all, today);
+      wkLanes(grid, after);
+      el.append(after);
       el.append(laterBlock(tasks, dues, marked, w.from, nx.to));
     }
     el.addEventListener("click", (e) => {
@@ -3172,6 +3183,7 @@
       if (n) { haptic(); openSheet(n.closest("[data-id]").dataset.id, null); return; }
       const nx = e.target.closest(".wk-next");
       if (nx) { haptic(); goDay(nx.dataset.day, 1); return; }
+      if (e.target.closest(".wk-past")) { haptic(); pastOpen = !pastOpen; render(); return; }
       // 日の行は、どこを押してもその日の面へ。
       const d = e.target.closest(".js-day, .wk-evs, .wk-card");
       if (d) setFace("today", d.dataset.day);
@@ -3408,7 +3420,8 @@
     const open = openAll.filter(mine);
     const all = store.get().todos.filter(mine);
     const el = node(html`<div class="day-slide wk mo" data-mo="${from}"></div>`);
-    el.append(node(html`<div class="wk-span"><span>${m + 1}月の予定</span><button type="button" class="wk-next" data-day="${monthStep(from, 1)}" aria-label="次の月">${icon("chevron")}</button></div>`));
+    // 見出しとまとめの一行は週の面と同じ形（2026年10月25日）。
+    el.append(node(html`<h2 class="wk-h">${m + 1}月の予定<button type="button" class="wk-next" data-day="${monthStep(from, 1)}" aria-label="次の月">${icon("chevron")}</button></h2>`));
     const live = (t) => !t.archived && (!t.done || t.kind === "event");
     const bands = all.filter((t) => t.endDay && t.due && live(t) && t.due <= to && t.endDay >= from);
     const tally = { ev: bands.length, min: 0, due: 0 };
@@ -3433,9 +3446,9 @@
           </div>
         </div>`));
     }
-    el.append(list);
-    const sum = wkSum(`${from <= today && today <= to ? "今月" : `${m + 1}月`}の予定・締切`, tally);
+    const sum = wkSum(tally);
     if (sum) el.append(sum);
+    el.append(list);
     el.addEventListener("click", (e) => {
       const n = e.target.closest(".js-open");
       if (n) { haptic(); openSheet(n.dataset.id, null); return; }
@@ -3451,37 +3464,51 @@
   const TATE = { "ー": "｜", "（": "︵", "）": "︶", "(": "︵", ")": "︶", "「": "﹁", "」": "﹂", "『": "﹃", "』": "﹄",
     "【": "︻", "】": "︼", "、": "︑", "。": "︒", "…": "︙", "：": "︓" };
 
-  function weekDays(w, open, all, today, tally = {}) {
+  /** 七日の行の列：日付・帯の筋（n）・名前。 */
+  const wkCols = (n) => `52px ${n ? `repeat(${n}, 26px) ` : ""}minmax(0, 1fr)`;
+  /** 今週と来週の七日の行で、帯の筋の数をそろえる（片方にだけ帯があると、時刻・点・名前の列が週の境で26pxずれた）。 */
+  function wkLanes(...grids) {
+    const n = Math.max(...grids.map((g) => +g.dataset.lanes || 0));
+    grids.forEach((g) => { if (+g.dataset.lanes !== n) g.style.gridTemplateColumns = wkCols(n); });
+  }
+
+  /** from を渡すと、その日より前の行は作らない（今週の過ぎた日を畳んでいるとき）。数える（tally）のは七日ぶん。 */
+  function weekDays(w, open, all, today, tally = {}, from = null) {
     const U = KN.util;
-    const ks = [...Array(7)].map((_, i) => U.shiftDay(w.from, i));
+    const week = [...Array(7)].map((_, i) => U.shiftDay(w.from, i));
+    const ks = from ? week.filter((k) => k >= from) : week;
     const live = (t) => !t.archived && (!t.done || t.kind === "event");
     const bands = all.filter((t) => t.endDay && t.due && live(t) && t.due <= w.to && t.endDay >= w.from)
       .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
-    // 帯の筋（重ならない帯は同じ筋に）。
+    // 帯の筋（重ならない帯は同じ筋に）。畳んだ日だけにかかる帯は置かない。
     const ends = [];
-    const placed = bands.map((t) => {
+    const placed = bands.filter((t) => t.endDay >= ks[0]).map((t) => {
       let l = ends.findIndex((e) => e < t.due);
       if (l < 0) { l = ends.length; ends.push(t.endDay); } else ends[l] = t.endDay;
-      const a = ks.indexOf(t.due), z = ks.indexOf(t.endDay);   // 週の外から来る・外へ出る帯は端まで
-      return { t, l, a: a < 0 ? 0 : a, z: z < 0 ? 6 : z };
+      const a = ks.indexOf(t.due), z = ks.indexOf(t.endDay);   // 週の外（畳んだ日）から来る・外へ出る帯は端まで
+      return { t, l, a: a < 0 ? 0 : a, z: z < 0 ? ks.length - 1 : z };
     });
     const n = ends.length;
-    const rows = ks.map((k) => itemsOn(k, open, all, today));
+    const each = week.map((k) => itemsOn(k, open, all, today));
+    const rows = ks.map((k) => each[week.indexOf(k)]);
     const duesOn = (k) => duesAt(k, open, today);
-    tally.ev = (tally.ev || 0) + placed.length + rows.flat().filter((t) => t.kind === "event").length;
-    tally.min = (tally.min || 0) + rows.flat().reduce((m, t) => m + (t.kind !== "event" && t.minutes > 0 ? t.minutes : 0), 0);
+    tally.ev = (tally.ev || 0) + bands.length + each.flat().filter((t) => t.kind === "event").length;
+    tally.min = (tally.min || 0) + each.flat().reduce((m, t) => m + (t.kind !== "event" && t.minutes > 0 ? t.minutes : 0), 0);
     const covered = (l, i) => placed.some((p) => p.l === l && p.a <= i && i <= p.z);
-    const col = 2 + n;
+    // 何も無い日は日付を薄く・行を低く（字の太い日付が七つ並ぶと、中身より日付が目に入った）。
+    const empty = (k, i) => !rows[i].length && !duesOn(k).length && !placed.some((p) => p.a <= i && i <= p.z);
     const wd = (k) => "日月火水木金土"[U.dayDate(k).getDay()];
-    /* 一日を一行に（月の面と同じ罫線の行。2026年10月20日、利用者）。行の線は全部の列にまたがる .wk-card が引き、帯は行をまたいで通る。 */
+    /* 一日を一行に（月の面と同じ罫線の行。2026年10月20日、利用者）。行の線は全部の列にまたがる .wk-card が引き、帯は行をまたいで通る。
+       日付は数字と曜日を横に一行、行の頭にそろえる（月は見出しの幅にあるので書かない。今日は暦と同じ塗りの丸）。
+       名前の列はいつも最後の列（-2）——帯の筋の数を今週と来週でそろえても（wkLanes）、置き直さずに済む。 */
     const grid = node(html`
-      <div class="wk-week" style="grid-template-columns: 52px ${n ? `repeat(${n}, 26px) ` : ""}minmax(0, 1fr)">
-        ${ks.map((k, i) => html`<i class="wk-card" style="grid-row:${i + 1}" data-day="${k}"></i>`)}
+      <div class="wk-week" data-lanes="${n}" style="grid-template-columns: ${wkCols(n)}">
+        ${ks.map((k, i) => html`<i class="wk-card ${i === ks.length - 1 ? "is-last" : ""}" style="grid-row:${i + 1}" data-day="${k}"></i>`)}
         ${ks.map((k, i) => html`
-          <button type="button" class="wk-day js-day ${k === today ? "is-today" : ""} ${KN.holiday && KN.holiday.of(k) ? "is-holiday" : ""}" style="grid-row:${i + 1}" data-day="${k}" data-wd="${U.dayDate(k).getDay()}"
-                  aria-label="${mdJa(k)}"><span class="wk-dn">${U.dayDate(k).getMonth() + 1}/${U.dayDate(k).getDate()}</span><span class="wk-wd">${wd(k)}</span></button>
+          <button type="button" class="wk-day js-day ${k === today ? "is-today" : ""} ${empty(k, i) ? "is-empty" : ""} ${KN.holiday && KN.holiday.of(k) ? "is-holiday" : ""}" style="grid-row:${i + 1}" data-day="${k}" data-wd="${U.dayDate(k).getDay()}"
+                  aria-label="${mdJa(k)}"><span class="wk-dn">${U.dayDate(k).getDate()}</span><span class="wk-wd">${wd(k)}</span></button>
           ${[...Array(n)].map((_, l) => (covered(l, i) ? "" : html`<i class="wk-gap" style="grid-row:${i + 1};grid-column:${2 + l}"></i>`))}
-          <div class="wk-evs ${k < today ? "is-past" : ""}" style="grid-row:${i + 1};grid-column:${col}" data-day="${k}">
+          <div class="wk-evs ${k < today ? "is-past" : ""}" style="grid-row:${i + 1};grid-column:-2" data-day="${k}">
             ${rows[i].map((t) => wkLine(t, wkClock(t.time), null, t.kind === "event" ? "is-event" : "", wkEndOf(t)))}
             ${duesOn(k).map((t) => wkLine(t, "締切", "var(--kind-due)", "is-due"))}
           </div>`)}
@@ -4616,9 +4643,13 @@
 
   /** 月の段で押した日の週を出し、その日の行へ送る（暦は滑って週へ畳む）。 */
   function weekAt(day) {
+    // 今週の過ぎた日なら、畳んだ「過ぎた日」を開いてから（行が無いと送れない）。
+    const today = todayKey(), unfold = !pastOpen && day < today && KN.util.weekOf(day).from === KN.util.weekOf(today).from;
+    if (unfold) pastOpen = true;
     KN.calPeek.glide(peekOpts, () => {
       store.setCalPref("todo", { open: false });
-      if (day !== shownDay()) goDay(day); else markDay(day, true);
+      if (day !== shownDay()) goDay(day);
+      else { markDay(day, true); if (unfold) render(); }
     });
     requestAnimationFrame(() => {
       const r = root && root.querySelector(`.wk-day[data-day="${day}"]`);
