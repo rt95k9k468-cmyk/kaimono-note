@@ -4084,15 +4084,10 @@
       const m = shownMonth();
       const d = new Date(m.year, m.month + delta, 1);
       setCalMonth(d.getFullYear(), d.getMonth(), true);
-      if (oneDay()) {
-        /* 一日ずつの紙も、その月へ運びます——暦と紙が同じ月を指すように。
-           いまの月なら今日、そうでなければその月の頭。 */
-        const now = KN.util.dayDate(todayKey());
-        const key = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
-          ? todayKey() : KN.util.dayKey(d);
-        goDay(key, delta);
-        return;
-      }
+      /* 紙も題も、その月へ運びます——いまの月なら今日、ほかの月なら1日。 */
+      const key = KN.calGrid.landing(d.getFullYear(), d.getMonth());
+      if (oneDay()) { goDay(key, delta); return; }
+      markDay(key, true);
       scrollToMonth(d.getFullYear(), d.getMonth());
     };
 

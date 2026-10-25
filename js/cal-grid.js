@@ -109,5 +109,14 @@
     };
   }
 
-  KN.calGrid = { fill, monthGridFor };
+  /** 月をめくって着く日。いまの月なら今日、ほかの月ならその1日
+      （題が月といっしょに動くように。全タブ同じ）。 */
+  function landing(year, month) {
+    const U = KN.util;
+    const now = U.dayDate(U.todayKey());
+    return (now.getFullYear() === year && now.getMonth() === month)
+      ? U.todayKey() : U.dayKey(new Date(year, month, 1));
+  }
+
+  KN.calGrid = { fill, monthGridFor, landing };
 })();

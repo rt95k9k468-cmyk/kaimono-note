@@ -715,8 +715,10 @@
       }
       const m = shownMonth();
       const d = new Date(m.year, m.month + delta, 1);
+      const key = KN.calGrid.landing(d.getFullYear(), d.getMonth());
+      viewDay = key === U.todayKey() ? null : key;
       calMonth = { year: d.getFullYear(), month: d.getMonth() };
-      fillCalendar(sec);
+      render();
     };
 
     /* 手つきは三画面で分け合う一つ（js/cal-swipe.js）です。週だけ出して

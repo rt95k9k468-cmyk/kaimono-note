@@ -587,10 +587,10 @@
           else {
             const m = shownMonth();
             const d = new Date(m.year, m.month + delta, 1);
-            sMonth = { year: d.getFullYear(), month: d.getMonth() };
+            setDay(KN.calGrid.landing(d.getFullYear(), d.getMonth()));
           }
           fill(sCal);
-          if (!calOpen()) dayMoved();
+          dayMoved();
         },
       });
     }
