@@ -4877,6 +4877,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   color: var(--c-text-3);
   white-space: nowrap;
 }
+/* 「いま」の線が空きの中を通るときは、字を線からよける（--fold-y は字のまん中の高さ。screen-todo.js の avoidNow）。 */
+.tl-fold[style*="--fold-y"] .tl-fold-text { align-self: flex-start; margin-top: calc(var(--fold-y) * 1px); translate: 0 -50%; }
 
 /* 列の上限を超えた札（＋n）。押すと一覧の紙。 */
 .tl-more {

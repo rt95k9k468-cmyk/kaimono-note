@@ -5093,6 +5093,21 @@
     markPass(list, passAt(list, nowMin), nowMin);
     growLate(list, nowMin);
     if (at != null) axis.append(nowMark(nowMin, at));
+    avoidNow(list, axis);
+  }
+
+  /** 畳んだ空きの字は、「いま」の線をまたがない：線が空きの中にあれば、広いほうの側のまん中へ寄せる。
+      （軸と一覧は座標が違うので、実際の位置で測る。） */
+  function avoidNow(list, axis) {
+    const mark = axis.querySelector(".tl-now");
+    const y = mark ? mark.getBoundingClientRect().top : null;
+    list.querySelectorAll(":scope > .tl-fold").forEach((f) => {
+      const r = f.getBoundingClientRect();
+      if (y != null && r.height && y > r.top && y < r.bottom) {
+        const above = y - r.top, below = r.bottom - y;
+        KN.util.setVar(f, "--fold-y", (above > below ? above / 2 : above + below / 2).toFixed(1));
+      } else f.style.removeProperty("--fold-y");
+    });
   }
 
   /** 過ぎてもまだの用事（長さを決めた・まだ・決めた終わりを過ぎた、今日だけ。道の `is-late` と同じ条件）。
