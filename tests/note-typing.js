@@ -238,12 +238,27 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   const side = await page.$eval(".sheet.is-note .note-view", (e) => e.hidden);
   await page.setViewportSize(vp);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.activeElement === document.querySelector(".sheet.is-note .js-text"), null, { timeout: 3000 }).catch(() => {});
   const turned = await page.evaluate(() => {
     const ta = document.querySelector(".sheet.is-note .js-text");
     return { focus: document.activeElement === ta, sel: ta.selectionStart };
   });
   t.check("書いている途中で横にして戻しても、書く姿とカーソルのまま", side && turned.focus && turned.sel === 7, JSON.stringify({ ...turned, side }));
+
+  /* 右下の薄い「一番下へ」：下に残っているときだけ出て、押すと底へ。書いているあいだは欄から出ない。 */
+  await page.$eval(".sheet.is-note .sheet-body", (b) => { b.scrollTop = 0; });
+  await page.waitForTimeout(200);
+  const endOn = await page.$eval(".sheet.is-note .note-to-end", (b) => b.classList.contains("is-on") && getComputedStyle(b).pointerEvents === "auto");
+  await page.click(".sheet.is-note .note-to-end");
+  await page.waitForTimeout(1600);
+  const endAt = await page.evaluate(() => {
+    const b = document.querySelector(".sheet.is-note .sheet-body");
+    return { rest: Math.round(b.scrollHeight - b.scrollTop - b.clientHeight),
+      on: document.querySelector(".sheet.is-note .note-to-end").classList.contains("is-on"),
+      focus: document.activeElement === document.querySelector(".sheet.is-note .js-text") };
+  });
+  t.check("「一番下へ」は下に残っているときだけ出て、押すと底へ（欄からは出ない）",
+    endOn && endAt.rest <= 1 && !endAt.on && endAt.focus, JSON.stringify({ endOn, ...endAt }));
 
   await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
   await page.keyboard.press("Escape");

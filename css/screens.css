@@ -6335,6 +6335,29 @@ textarea.note-title-in {
   box-shadow: var(--shadow-2);
 }
 .sheet.is-note.is-writing .note-tools { display: flex; }
+/* 右下の薄い「一番下へ」（screen-notes.js の toEnd）。書いているあいだは道具の帯の上。 */
+.note-to-end {
+  position: absolute;
+  right: var(--sp-3);
+  bottom: calc(var(--sp-3) + var(--note-safe));
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  color: var(--c-text-2);
+  background: color-mix(in srgb, var(--c-surface) 72%, transparent);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--m-state) var(--ease);
+}
+.note-to-end.is-on { opacity: .5; pointer-events: auto; }
+.note-to-end svg { width: 20px; height: 20px; }
+.sheet.is-note.is-writing .note-to-end { bottom: calc(var(--note-tools-h) + var(--sp-2) * 2 + var(--note-safe)); }
 .note-tool {
   flex: 1 1 0;
   min-width: 0;

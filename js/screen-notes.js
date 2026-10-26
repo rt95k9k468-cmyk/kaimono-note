@@ -954,6 +954,8 @@
        いた（打つたび・道具を押すたびに一番上へ飛び、iOS がカーソルを
        見えるぎりぎり＝キーボードの際へ送り直していた。2026年10月7日、iPhone）。 */
     const scroller = () => (h ? h.el.querySelector(".sheet-body") : null);
+    /* 「一番下へ」を出すか見直す（紙を組んだあとで中身が入る）。 */
+    let paintEnd = () => {};
     const keepScroll = (fn) => {
       const sc = scroller();
       const top = sc ? sc.scrollTop : 0;
@@ -1338,6 +1340,7 @@
       const ceil = s.top + 12;
       if (c.bottom > floor) sc.scrollTop += c.bottom - floor;
       else if (c.top < ceil) sc.scrollTop -= ceil - c.top;
+      paintEnd();
     };
     /* キーボードが出きるまで紙は縮み続けるので、何度か見直す（ui.js と同じ拍）。 */
     const afterKeyboard = (fn) => {
@@ -1361,22 +1364,27 @@
        そのまま持っておき、戻ったら欄へ戻す（読む姿へ替えると、隠した欄から焦点が消えて画面も動く）。 */
     let away = null;
     /* 横にしたときも（base.css の「portrait only」が隠す）。 */
-    const leaving = () => document.hidden || !document.hasFocus() || sideways.matches;
+    /* 縦へ戻した直後に、横のあいだの blur が遅れて届くことがある（重い拍）。それも離れた拍と読む。 */
+    let turnAt = -1e9;
+    const leaving = () => document.hidden || !document.hasFocus() || sideways.matches || performance.now() - turnAt < 800;
+    const hold = () => {
+      const sc = scroller();
+      away = { sel: selNow(), top: sc ? sc.scrollTop : null };
+      /* もう前に居る（戻った直後の遅れた blur）なら、すぐ欄へ。 */
+      if (!document.hidden && !sideways.matches) requestAnimationFrame(onBack);
+    };
     [textIn, liveEl].forEach((x) => x.addEventListener("focusout", () => {
-      if (writing && !closed && leaving()) {
-        const sc = scroller();
-        away = { sel: selNow(), top: sc ? sc.scrollTop : null };
-        return;
-      }
+      if (writing && !closed && leaving()) { hold(); return; }
       /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */
       setTimeout(() => {
         if (away || closed || !writing || inEd()) return;
-        if (leaving()) { const sc = scroller(); away = { sel: selNow(), top: sc ? sc.scrollTop : null }; return; }
+        if (leaving()) { hold(); return; }
         toView();
       }, 0);
     }));
+    const onTurn = () => { turnAt = performance.now(); onBack(); };
     const onBack = () => {
-      if (!away || document.hidden) return;
+      if (!away || document.hidden || sideways.matches || !document.hasFocus()) return;
       const a = away;
       away = null;
       if (closed || !writing || inEd()) return;
@@ -1388,7 +1396,7 @@
     document.addEventListener("visibilitychange", onBack);
     window.addEventListener("pageshow", onBack);
     window.addEventListener("focus", onBack);
-    sideways.addEventListener("change", onBack);
+    sideways.addEventListener("change", onTurn);
 
     /* ---- やり直し（道具の帯の ↶ ↷）。前の版とは別で、紙を開いているあいだだけ ---- */
     const hist = F.history(
@@ -1739,7 +1747,7 @@
       document.removeEventListener("visibilitychange", onBack);
       window.removeEventListener("pageshow", onBack);
       window.removeEventListener("focus", onBack);
-      sideways.removeEventListener("change", onBack);
+      sideways.removeEventListener("change", onTurn);
       document.removeEventListener("selectionchange", onSel);
       sync();
       offKids();
@@ -1961,6 +1969,35 @@
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
+    /* 右下の薄い「一番下へ」（2026年10月26日、利用者）。下にまだ半画面より多く残っているときだけ。
+       押しても欄から出ない（帯と同じ keep）。着き方は上へと同じ緩め（app.js の glideToTop）。 */
+    const toEnd = node(html`<button type="button" class="note-to-end" aria-label="一番下へ" tabindex="-1">${icon("chevron-down")}</button>`);
+    toEnd.addEventListener("pointerdown", keep);
+    toEnd.addEventListener("mousedown", keep);
+    toEnd.addEventListener("click", () => {
+      const sc = scroller();
+      if (!sc) return;
+      U.haptic();
+      const to = sc.scrollHeight - sc.clientHeight;
+      if (!KN.app.glideTo || (KN.motion && KN.motion.still())) { sc.scrollTop = to; return; }
+      const screens = (to - sc.scrollTop) / Math.max(1, sc.clientHeight);
+      const k = Math.min(1.6, Math.max(0.7, 0.7 + 0.35 * Math.log2(1 + screens)));
+      KN.app.glideTo(sc, to, { ms: (KN.motion ? KN.motion.ms("--m-to-top") : 750) * k, pow: 6 });
+    });
+    h.el.append(toEnd);
+    let endQ = false;
+    paintEnd = () => {
+      if (endQ) return;
+      endQ = true;
+      requestAnimationFrame(() => {
+        endQ = false;
+        const sc = scroller();
+        if (closed || !sc) return;
+        toEnd.classList.toggle("is-on", sc.scrollHeight - sc.scrollTop - sc.clientHeight > sc.clientHeight / 2);
+      });
+    };
+    h.el.querySelector(".sheet-body").addEventListener("scroll", paintEnd, { passive: true });
+    paintEnd();
     growTitle();
     requestAnimationFrame(() => { if (!closed) growTitle(); });
     /* 大きな題が上へ隠れたら、頭の行に題を小さく（.is-folded）。 */
