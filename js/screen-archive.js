@@ -828,7 +828,7 @@
             ${only && !unread && (d.isBlank || (!String(d.memo || "").trim() && !store.memoOut(d))) ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}
             ${/* 「数行」は**終わりの数行**（2026年10月6日、利用者）。日記は頭に決まった行が
                   並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
-            <span class="arc-log-memo ${S().logFull === false ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
+            <span class="arc-log-memo ${S().logFull === false && !shut ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
                   style="--tail-n: ${S().logLines === 3 ? 3 : 5}"
                   ><span>${shut ? (head.length ? html`${head.join("\n")}\n${SHUT}` : SHUT) : unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
