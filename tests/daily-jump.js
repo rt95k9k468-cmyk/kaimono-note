@@ -84,9 +84,9 @@ const { open, checker } = require("./lib");
   const s1 = await stampAt(2026, 3, 31);
   t.check("2026.03.31：育休の行は出ない", s1 !== null && !/育休/.test(s1), s1);
   const s2 = await stampAt(2026, 4, 1);
-  t.check("2026.04.01：出る（数え方は前のまま）", s2 !== null && /育休完了まであと366日/.test(s2), s2);
+  t.check("2026.04.01：あと365日", s2 !== null && /育休完了まであと365日/.test(s2), s2);
   const s3 = await stampAt(2027, 3, 31);
-  t.check("2027.03.31（先の日へも飛べる）：出る", s3 !== null && /育休完了まであと\d+日/.test(s3), s3);
+  t.check("2027.03.31（先の日へも飛べる）：あと1日", s3 !== null && /育休完了まであと1日/.test(s3), s3);
   const s4 = await stampAt(2027, 4, 1);
   t.check("2027.04.01：育休の行は出ない", s4 !== null && !/育休/.test(s4), s4);
 

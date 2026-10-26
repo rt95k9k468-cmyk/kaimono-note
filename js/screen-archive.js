@@ -995,7 +995,7 @@
 
   /* 育休の期間（2026.04.01〜2027.03.31）。ユーザーに確認済みの固定日付です——ここだけ
      直接書きます。「あと◯日」の行は、この期間の日にだけ出ます（前でも後でも出さない）。
-     数え方（END まで、その日も入れて）は前のまま。 */
+     最後の日（3/31）が「あと1日」（2026年10月26日・利用者の指定。前は+1して「あと2日」だった）。 */
   const LEAVE_FROM_DAY = "2026-04-01";
   const LEAVE_LAST_DAY = "2027-03-31";
   const LEAVE_END_DAY = "2027-04-01";
@@ -1008,7 +1008,7 @@
     const lines = [`${day.replace(/-/g, ".")}（${U.weekdayJa(day)}）`];
     /* U.daysUntil は「今日から」の日数なので、二回呼んで引き算すれば
        「day 基準」に直せます——「今日」が両方から消えるので。 */
-    const remain = U.daysUntil(LEAVE_END_DAY) - U.daysUntil(day) + 1;
+    const remain = U.daysUntil(LEAVE_END_DAY) - U.daysUntil(day);
     if (day >= LEAVE_FROM_DAY && day <= LEAVE_LAST_DAY) lines.push(`育休完了まであと${remain}日`);
     return `${lines.join("\n")}\n\n`;
   }
