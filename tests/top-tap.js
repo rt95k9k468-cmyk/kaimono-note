@@ -91,6 +91,25 @@ const { open, checker } = require("./lib");
   t.check("ノート：きわを押すと紙が上へ", before > 0 && after.sheet === 0, `${before} → ${JSON.stringify(after)}`);
   t.check("押したあとも、次の一押しのために 1px 待つ", after.parked);
 
+  /* 横にする：iOS は文書を 0 へ戻すが、それは押したのではない。読んでいたところのまま。 */
+  const vp = page.viewportSize();
+  await page.evaluate(() => { document.querySelector(".sheet.is-note .sheet-body").scrollTop = 1500; });
+  await page.waitForTimeout(100);
+  const turnBefore = await page.$eval(".sheet.is-note .sheet-body", (b) => b.scrollTop);
+  await page.setViewportSize({ width: vp.height, height: vp.width });
+  await tapBar();
+  await page.waitForTimeout(1600);
+  const turnAfter = await page.$eval(".sheet.is-note .sheet-body", (b) => b.scrollTop);
+  await page.setViewportSize(vp);
+  await tapBar();
+  await page.waitForTimeout(1600);
+  const turnBack = await page.$eval(".sheet.is-note .sheet-body", (b) => b.scrollTop);
+  t.check("ノート：横にしても（戻しても）頭へ送らない", turnBefore > 0 && turnAfter > 0 && turnBack > 0,
+    `${turnBefore} → ${turnAfter} → ${turnBack}`);
+  await tapBar();
+  await page.waitForTimeout(1600);
+  t.check("回したあとも、きわを押せば紙が上へ", (await page.$eval(".sheet.is-note .sheet-body", (b) => b.scrollTop)) === 0);
+
   /* 紙を閉じた拍に窓が 0 へ戻っても（iPhone はキーボードが下りるとき戻す）、後ろの一覧は送らない。 */
   const listY = await page.evaluate(() => {
     for (let i = 0; i < 40; i++) KN.notes.put({ ...KN.notes.draft(), id: `n-tt${i}`, title: `送り${i}`, body: "本文" });

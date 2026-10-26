@@ -2044,11 +2044,14 @@ a { color: var(--c-primary); }
 .rotate-note { display: none; }
 
 @media (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) {
-  .app, #sheet-root, .toast-root { display: none; }
+  /* display: none にしない——WebKit は消した器の送りを捨て、縦に戻すと紙も一覧も頭からだった
+     （2026年10月26日、利用者）。見えなくするだけにして、案内が上から覆う。 */
+  .app, #sheet-root, .toast-root { visibility: hidden; }
 
   .rotate-note {
     position: fixed;
     inset: 0;
+    z-index: var(--z-top);
     display: grid;
     place-content: center;
     justify-items: center;

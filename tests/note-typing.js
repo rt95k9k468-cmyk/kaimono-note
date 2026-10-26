@@ -229,6 +229,22 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(100);
   t.check("ふつうにキーボードを閉じれば整えた姿へ", await page.$eval(".sheet.is-note .note-view", (e) => !e.hidden));
 
+  /* 書いている途中で横にする（「縦にして」の案内が覆う）→ 戻す：書く姿・カーソルはそのまま。 */
+  await page.click(".sheet.is-note .note-view > *");
+  await page.waitForTimeout(200);
+  await page.$eval(".sheet.is-note .js-text", (ta) => ta.setSelectionRange(7, 7));
+  const vp = page.viewportSize();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(300);
+  const side = await page.$eval(".sheet.is-note .note-view", (e) => e.hidden);
+  await page.setViewportSize(vp);
+  await page.waitForTimeout(300);
+  const turned = await page.evaluate(() => {
+    const ta = document.querySelector(".sheet.is-note .js-text");
+    return { focus: document.activeElement === ta, sel: ta.selectionStart };
+  });
+  t.check("書いている途中で横にして戻しても、書く姿とカーソルのまま", side && turned.focus && turned.sel === 7, JSON.stringify({ ...turned, side }));
+
   await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
   await page.keyboard.press("Escape");
   await gone();

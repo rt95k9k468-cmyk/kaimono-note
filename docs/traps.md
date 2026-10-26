@@ -46,3 +46,6 @@
   `.head.is-cal-moving`・`.head.has-tall-cal`）。行の中の小さな `:has()` はよい。（motion）
 - **`position: sticky` の祖先に `overflow: hidden` を置かない。** hidden の箱は送る器になり、外の器を送っても
   留まらない。角を丸く切るだけなら `overflow: clip`（送る器にならない）。（notes-unify の「画面」）
+- **送る器を一時に隠すのに `display: none` を使わない。** WebKit は送りを捨て、戻すと頭から（電話を横にした案内
+  `base.css` の「portrait only」で起きた。`visibility: hidden` で隠す）。回した拍に文書が 0 へ戻るのも上のきわの
+  一押しと読まない（app.js `watchTopTap` の `turned`）。（2026年10月26日）

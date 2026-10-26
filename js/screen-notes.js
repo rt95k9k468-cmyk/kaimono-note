@@ -30,6 +30,8 @@
   const papers = [];
   /* 左の木を出す幅（段1b）。アプリの列（--maxw）の左に、木が入るだけの余白がある画面（iPad の横・パソコン）。 */
   const WIDE = "(min-width: 1080px)";
+  /* 電話を横にした（base.css の「portrait only」と同じ式）。 */
+  const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
   let treeEl = null;
   /* ホームの木の印：木から開いて閉じたノート（homeCur）か、道すじから戻ったノートブック（homeNb）。 */
@@ -1358,7 +1360,8 @@
     /* ほかのアプリへ移った拍の blur は、キーボードを閉じたのではない。書く姿・カーソル・送りを
        そのまま持っておき、戻ったら欄へ戻す（読む姿へ替えると、隠した欄から焦点が消えて画面も動く）。 */
     let away = null;
-    const leaving = () => document.hidden || !document.hasFocus();
+    /* 横にしたときも（base.css の「portrait only」が隠す）。 */
+    const leaving = () => document.hidden || !document.hasFocus() || sideways.matches;
     [textIn, liveEl].forEach((x) => x.addEventListener("focusout", () => {
       if (writing && !closed && leaving()) {
         const sc = scroller();
@@ -1385,6 +1388,7 @@
     document.addEventListener("visibilitychange", onBack);
     window.addEventListener("pageshow", onBack);
     window.addEventListener("focus", onBack);
+    sideways.addEventListener("change", onBack);
 
     /* ---- やり直し（道具の帯の ↶ ↷）。前の版とは別で、紙を開いているあいだだけ ---- */
     const hist = F.history(
@@ -1735,6 +1739,7 @@
       document.removeEventListener("visibilitychange", onBack);
       window.removeEventListener("pageshow", onBack);
       window.removeEventListener("focus", onBack);
+      sideways.removeEventListener("change", onBack);
       document.removeEventListener("selectionchange", onSel);
       sync();
       offKids();

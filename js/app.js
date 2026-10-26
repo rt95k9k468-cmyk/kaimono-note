@@ -1699,9 +1699,20 @@
     document.addEventListener("touchstart", down, { capture: true, passive: true });
     document.addEventListener("touchend", up, { capture: true, passive: true });
 
+    /* 回すと iOS は文書を 0 へ戻す——上のきわの一押しと読むと、読んでいた紙が頭へ送られた
+       （2026年10月26日、利用者「ノートで横にすると一番上へ」）。幅が変わった拍のあとは聞かない。
+       scroll が resize より先に来ることもあるので、ここでも幅を見る。 */
+    let seenW = window.innerWidth;
+    const turned = () => {
+      if (window.innerWidth === seenW) return false;
+      seenW = window.innerWidth;
+      KN.app.hushTopTap();
+      return true;
+    };
     window.addEventListener("scroll", () => {
       if (root.classList.contains("kb-open")) return;
       if (window.scrollY !== 0) return;
+      if (turned()) { setTimeout(park, 250); return; }
       const quiet = !touching && !isGliding() && performance.now() > topTapHushUntil && !(KN.reorder && KN.reorder.isActive());
       /* 紙が開いていれば、いちばん上の紙の本体を送る（長いノートなど。2026年10月4日）。 */
       const sheets = document.querySelectorAll(".sheet.is-open");
@@ -1712,8 +1723,8 @@
       if (el && el.scrollTop > 0) { glideToTop(el); haptic(); }
     }, { passive: true });
 
-    window.addEventListener("resize", park);
-    window.addEventListener("orientationchange", () => setTimeout(park, 250));
+    window.addEventListener("resize", () => { turned(); park(); });
+    window.addEventListener("orientationchange", () => { KN.app.hushTopTap(); setTimeout(park, 250); });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") setTimeout(park, 60);
     });
