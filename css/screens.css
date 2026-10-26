@@ -7291,15 +7291,45 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 .note-colors .accent-dot { padding: 6px 0; }
 
-/* ---- 月を選ぶ小窓（daily の題を押すと題からふくらむ。U15） ----
+/* ---- 日を選ぶ小窓（daily の題を押すと題からふくらむ。U15） ----
 
-   daily は月ぶんを出す画面なので、題（「2026年9月」）を押したときの
-   行き先は日ではなく**月**です。年を送る頭と、12個の升目だけ。 */
+   面は三つ（日・月・年。js の openDayPicker）。頭の字を押すと一段引き、升目を
+   押すと一段寄る。**面を替えても小窓の大きさは変えない**——`.mp-pane` の高さは
+   日の面の六段ぶんで一つ、月・年の 4×3 はそこへ伸ばして敷く。 */
 .note-pop.is-month { width: min(320px, calc(100vw - 16px)); padding: var(--sp-2) var(--sp-3) var(--sp-3); }
 .mp-head {
   display: flex; align-items: center; justify-content: center; gap: var(--sp-3);
 }
-.mp-year { font-size: var(--fs-lg); font-weight: var(--fw-bold); min-width: 5.5em; text-align: center; }
+.mp-year {
+  font-size: var(--fs-lg); font-weight: var(--fw-bold); min-width: 7em; text-align: center;
+  padding: 6px var(--sp-2); border: 0; border-radius: var(--r-md); background: none; color: var(--c-text);
+  cursor: pointer; transition: scale var(--m-press) var(--ease);
+}
+.mp-year:active { scale: var(--press-wide); }
+.mp-year[disabled] { cursor: default; scale: none; }
+/* 頭の字は押せる（一段引く）。字の横の小さな ⌄ だけで言う。 */
+.mp-up-i { width: 12px; height: 12px; margin-left: 4px; rotate: 90deg; color: var(--c-text-2); vertical-align: middle; }
+.mp-year[disabled] .mp-up-i { display: none; }
+.mp-pane { height: calc(24px + 6 * 40px + 6 * 2px); overflow: clip; }
+.mp-pane > * {
+  height: 100%;
+  transition: scale var(--m-state) var(--ease), opacity var(--m-state) var(--ease);
+}
+/* 寄ると奥から、引くと手前から（@starting-style は差し込んだ一枚目の値）。 */
+@starting-style {
+  .mp-pane > .is-in { scale: .9; opacity: 0; }
+  .mp-pane > .is-out { scale: 1.08; opacity: 0; }
+}
+.mp-pane > .mp-grid { grid-auto-rows: 1fr; }
+.mp-days { display: flex; flex-direction: column; gap: 2px; }
+.mp-grid.is-day { grid-template-columns: repeat(7, 1fr); gap: 2px; grid-auto-rows: 40px; }
+.mp-grid.mp-wds { grid-auto-rows: 24px; }
+.mp-wd {
+  display: grid; place-items: center;
+  font-size: var(--fs-xs); color: var(--c-text-2);
+}
+.mp-wd.is-sun { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
+.mp-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
 .mp-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2);
 }
@@ -7314,7 +7344,6 @@ button.note-when:active { opacity: var(--press-fade); }
   transition: scale var(--m-press) var(--ease);
 }
 .mp-cell:active { scale: var(--press-wide); }
-/* まだ来ていない月は選べません（書かれていないので）。 */
 .mp-cell[disabled] { opacity: var(--press-off); cursor: default; }
 /* 今日のいる月には輪だけ。いま見ている月は塗ります——「どこにいるか」と
    「今日はどこか」は別のことなので、別の見せ方にします。 */
@@ -7323,6 +7352,21 @@ button.note-when:active { opacity: var(--press-fade); }
   background: var(--c-primary-fill);
   border-color: var(--c-primary-fill);
   color: #fff;
+}
+/* 日の升は枠なしの丸。今日は字の色だけ、いま見ている日は塗る（暦と同じ言い方）。
+   書いた日には点（暦の log の点と同じ意味）。 */
+.mp-grid.is-day .mp-cell {
+  position: relative; padding: 0; border: 0; border-radius: var(--r-full); background: none;
+  font-size: calc(15px * var(--fs-k)); font-weight: var(--fw-regular); font-variant-numeric: tabular-nums;
+  color: var(--c-text-2);
+}
+.mp-grid.is-day .mp-cell.is-sun { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
+.mp-grid.is-day .mp-cell.is-sat { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
+.mp-grid.is-day .mp-cell.is-now { color: var(--c-primary); font-weight: var(--fw-bold); }
+.mp-grid.is-day .mp-cell.is-here { background: var(--c-primary-fill); color: #fff; font-weight: var(--fw-bold); }
+.mp-grid.is-day .mp-cell.is-log::after {
+  content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px;
+  border-radius: var(--r-full); background: currentColor; opacity: .55;
 }
 
 /* ---- 長期タスク（時間割の下） ----

@@ -337,67 +337,129 @@
     goDayTo(next);
   }
 
-  /* ---------------- 月を選ぶ ----------------
+  /* ---------------- 日へ飛ぶ ----------------
 
-     題を押したときに開きます。前はここで暦の開き具合（週／月）を切り替えて
-     いましたが、**それは紙を引く手つきがもう持っています**（cal-peek）。
-     同じことを二か所でやっていて、しかも題が言っているのは「2026年9月」
-     ——年と月なので、押したときに応えるべきなのは「ほかの月へ」です。
+     題を押したときに開きます（題からふくらむ小窓。U15）。題が言っているのは
+     「2026年9月8日(火)」なので、応えるのは**どの年月日へも**（2026年10月26日・
+     利用者「任意の年月日に飛べるように」）。前は月だけを選ばせ、日は暦の中で
+     選ぶ二段でした。
 
-     daily は月ぶんを出す画面なので、行き先は日ではなく月にします。日は、
-     月を出してから暦の中で選ぶ、という順です。 */
-  function openMonthPicker() {
-    const now = new Date();
-    const nowYm = ymOf(now);
-    const here = shownMonth();
-    let year = here.year;
+     面は三つ、**押すたびに一段ずつ寄る／引く**（日 → 月 → 年）。開いたときは
+     いま見ている日の月の日の面——近くへは一手、遠くへは頭を押して引く。
+     頭の字を押すと一段引き（月の一覧・年の一覧）、升目を押すと一段寄る。
+     日を押せば閉じてその日へ。面を替えても小窓の大きさは変えない（升目の
+     段が変わっても、帯の高さは一つ——CSS の `.mp-pane`）。先の日へも行けます
+     （払う・暦と同じ。2026年10月10日）。 */
+  function openDayPicker() {
+    const today = U.todayKey();
+    const here = focusDay();
+    const at = U.dayDate(here) || new Date();
+    let level = "day";
+    let year = at.getFullYear();
+    let month = at.getMonth();
 
     const body = node(html`
       <div class="stack gap-3">
         <div class="mp-head">
-          <button type="button" class="icon-btn js-py flip-x" aria-label="前の年">${icon("chevron")}</button>
-          <span class="mp-year js-y"></span>
-          <button type="button" class="icon-btn js-ny" aria-label="次の年">${icon("chevron")}</button>
+          <button type="button" class="icon-btn js-prev flip-x" aria-label="前へ">${icon("chevron")}</button>
+          <button type="button" class="mp-year js-up"><span class="js-up-t"></span>${icon("chevron", "mp-up-i")}</button>
+          <button type="button" class="icon-btn js-next" aria-label="次へ">${icon("chevron")}</button>
         </div>
-        <div class="mp-grid js-grid"></div>
+        <div class="mp-pane js-pane"></div>
       </div>
     `);
 
-    /* 一つを選ぶだけなので小窓（roadmap-unify の U15）。題からふくらみ、閉じれば題へ帰る。
-       帯の暦より上に出す（lift）。 */
-    const handle = KN.ui.popOver(els.dayTitle, { side: "left", label: "月を選ぶ", cls: "is-month", lift: true });
+    /* 一つを選ぶだけなので小窓。帯の暦より上に出す（lift）。 */
+    const handle = KN.ui.popOver(els.dayTitle, { side: "left", label: "日を選ぶ", cls: "is-month", lift: true });
     handle.el.append(body);
 
-    const grid = body.querySelector(".js-grid");
-    const yEl = body.querySelector(".js-y");
+    const pane = body.querySelector(".js-pane");
+    const up = body.querySelector(".js-up");
+    const yearsFrom = () => Math.floor(year / 12) * 12;
+    const pad = (n) => String(n).padStart(2, "0");
 
-    function paint() {
-      yEl.textContent = `${year}年`;
-      // 先の年へは行けません（まだ書かれていない月なので）。
-      body.querySelector(".js-ny").disabled = year >= now.getFullYear();
-      grid.innerHTML = "";
-      for (let m = 0; m < 12; m++) {
-        const ym = ymOf(new Date(year, m, 1));
-        const ahead = ym > nowYm;
-        const cell = node(html`
-          <button type="button" class="mp-cell ${ym === ymOf(new Date(here.year, here.month, 1)) ? "is-here" : ""}
-                  ${ym === nowYm ? "is-now" : ""}" ${ahead ? "disabled" : ""}>${m + 1}月</button>
-        `);
-        if (!ahead) {
-          cell.addEventListener("click", () => {
-            KN.motion.fire("select");
-            viewMonth = ym === nowYm ? null : ym;
-            viewDay = null;
-            handle.close();
-            render();
-          });
-        }
-        grid.append(cell);
-      }
+    function cell(label, cls, onPick) {
+      const c = node(html`<button type="button" class="mp-cell ${cls}">${label}</button>`);
+      c.addEventListener("click", () => { KN.motion.fire("select"); onPick(); });
+      return c;
     }
-    body.querySelector(".js-py").addEventListener("click", () => { year--; paint(); });
-    body.querySelector(".js-ny").addEventListener("click", () => {
-      if (year < now.getFullYear()) { year++; paint(); }
+
+    function dayGrid() {
+      const wrap = node(html`<div class="mp-days"></div>`);
+      const wds = node(html`<div class="mp-grid is-day mp-wds" aria-hidden="true"></div>`);
+      U.WEEKDAY_COLS.forEach((wd) => wds.append(node(html`
+        <span class="mp-wd ${wd === 0 ? "is-sun" : (wd === 6 ? "is-sat" : "")}">${U.WEEKDAYS[wd]}</span>`)));
+      const grid = node(html`<div class="mp-grid is-day"></div>`);
+      const ym = `${year}-${pad(month + 1)}`;
+      const logged = {};
+      store.daysOfMonth(ym).forEach((d) => { logged[d.date] = true; });
+      const lead = (new Date(year, month, 1).getDay() + 6) % 7;     // 月曜はじまり（暦と同じ）
+      const last = new Date(year, month + 1, 0).getDate();
+      for (let i = 0; i < lead; i++) grid.append(node(html`<span class="mp-blank"></span>`));
+      for (let n = 1; n <= last; n++) {
+        const key = `${ym}-${pad(n)}`;
+        const wd = (lead + n - 1) % 7;
+        const hol = KN.holiday ? KN.holiday.of(key) : null;
+        const c = cell(String(n), `${key === here ? "is-here" : ""} ${key === today ? "is-now" : ""}
+          ${hol || wd === 6 ? "is-sun" : (wd === 5 ? "is-sat" : "")} ${logged[key] ? "is-log" : ""}`, () => {
+          handle.close();
+          goDayTo(key);
+        });
+        c.setAttribute("aria-label", `${month + 1}月${n}日${key === today ? "（今日）" : ""}${logged[key] ? " log あり" : ""}`);
+        grid.append(c);
+      }
+      wrap.append(wds, grid);
+      return wrap;
+    }
+
+    function monthGrid() {
+      const grid = node(html`<div class="mp-grid"></div>`);
+      const hereYm = here.slice(0, 7), nowYm = today.slice(0, 7);
+      for (let m = 0; m < 12; m++) {
+        const ym = `${year}-${pad(m + 1)}`;
+        grid.append(cell(`${m + 1}月`, `${ym === hereYm ? "is-here" : ""} ${ym === nowYm ? "is-now" : ""}`,
+          () => { month = m; paint("day", 1); }));
+      }
+      return grid;
+    }
+
+    function yearGrid() {
+      const grid = node(html`<div class="mp-grid"></div>`);
+      const from = yearsFrom();
+      for (let y = from; y < from + 12; y++) {
+        grid.append(cell(`${y}`, `${y === at.getFullYear() ? "is-here" : ""} ${String(y) === today.slice(0, 4) ? "is-now" : ""}`,
+          () => { year = y; paint("month", 1); }));
+      }
+      return grid;
+    }
+
+    /** 面を描きます。dir … 1 寄った・-1 引いた・0 送った（字だけ入れ替える）。 */
+    function paint(next, dir) {
+      if (next) level = next;
+      const from = yearsFrom();
+      up.querySelector(".js-up-t").textContent = level === "day" ? `${year}年${month + 1}月` : level === "month" ? `${year}年` : `${from}–${from + 11}`;
+      up.disabled = level === "year";
+      up.setAttribute("aria-label", level === "day" ? `${year}年${month + 1}月（月を選ぶ）` : level === "month" ? `${year}年（年を選ぶ）` : `${from}年から${from + 11}年`);
+      const face = level === "day" ? dayGrid() : level === "month" ? monthGrid() : yearGrid();
+      if (dir) face.classList.add(dir > 0 ? "is-in" : "is-out");
+      pane.replaceChildren(face);
+    }
+
+    function step(d) {
+      KN.motion.fire("select");
+      if (level === "day") {
+        const t = new Date(year, month + d, 1);
+        year = t.getFullYear(); month = t.getMonth();
+      } else year += level === "month" ? d : d * 12;
+      paint(null, 0);
+    }
+
+    body.querySelector(".js-prev").addEventListener("click", () => step(-1));
+    body.querySelector(".js-next").addEventListener("click", () => step(1));
+    up.addEventListener("click", () => {
+      if (level === "year") return;
+      KN.motion.fire("select");
+      paint(level === "day" ? "month" : "year", -1);
     });
     paint();
     handle.place();
@@ -405,7 +467,7 @@
 
   /* ---------------- 左右に払って、日を送る ----------------
 
-     紙に出ているのは「その日」なので、払って動くのも日です（月は上の題を
+     紙に出ているのは「その日」なので、払って動くのも日です（遠くの日は上の題を
      押せば選べます）。先の日へは行きません——記録を見るところで、まだ
      来ていない日には記録がないので。
 
@@ -931,9 +993,11 @@
     `);
   }
 
-  /* 育休完了（終了予定）日。ユーザーに確認済みの固定日付です——ここだけ
-     直接書きます。終わったらこの節ぶん（呼び出し側の「あと◯日」の行）が
-     静かに出なくなります（下の remain >= 1 のガード）。 */
+  /* 育休の期間（2026.04.01〜2027.03.31）。ユーザーに確認済みの固定日付です——ここだけ
+     直接書きます。「あと◯日」の行は、この期間の日にだけ出ます（前でも後でも出さない）。
+     数え方（END まで、その日も入れて）は前のまま。 */
+  const LEAVE_FROM_DAY = "2026-04-01";
+  const LEAVE_LAST_DAY = "2027-03-31";
   const LEAVE_END_DAY = "2027-04-01";
 
   /** 空の日を開いたときだけ、本文の頭に日付とカウントダウンを下書きします。
@@ -945,7 +1009,7 @@
     /* U.daysUntil は「今日から」の日数なので、二回呼んで引き算すれば
        「day 基準」に直せます——「今日」が両方から消えるので。 */
     const remain = U.daysUntil(LEAVE_END_DAY) - U.daysUntil(day) + 1;
-    if (remain >= 1) lines.push(`育休完了まであと${remain}日`);
+    if (day >= LEAVE_FROM_DAY && day <= LEAVE_LAST_DAY) lines.push(`育休完了まであと${remain}日`);
     return `${lines.join("\n")}\n\n`;
   }
 
@@ -1630,13 +1694,13 @@
     /* 打った字は「ぜんぶをさがす」へ渡すだけ（この画面で絞っていた積み上げはやめた）。 */
     KN.ui.wireSearch(els, () => render(), () => {});
 
-    /* 題を押すと、暦が月ぜんぶに開きます（やることの「›」と同じ役目）。
+    /* 題を押すと、日を選ぶ小窓が開きます（`openDayPicker`）。
        題は上のバーにいるので、結ぶのは組み立てのとき一度きりです
        ——暦は描き直されますが、バーは残るので。 */
     els.dayTitle.addEventListener("click", () => {
       if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
-      openMonthPicker();
+      openDayPicker();
     });
 
     /* 題の右の「今日へ戻る」。今日を見ているあいだは `paintDayTitleInto` が

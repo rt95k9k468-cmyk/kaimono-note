@@ -1,7 +1,7 @@
 /* 物から生まれる紙の残り（roadmap-unify の U15）。
    - 買うものの行・価格の行を押すと、行の絵の写し（.sheet-morph）が紙の頭の絵へ伸び、
      閉じると行の絵へ帰る。着いたら行の絵は見えている
-   - daily の題を押すと、月を選ぶのは小窓（大きな紙ではない）。題からふくらみ、月を押せば閉じてその月へ
+   - daily の題を押すと、日を選ぶのは小窓（大きな紙ではない）。題からふくらみ、日を押せば閉じてその日へ
    - アイコンを選ぶは大きな紙のまま、押した絵の点から育つ
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/thing-sheets.js */
 const { open, checker } = require("./lib");
@@ -81,17 +81,17 @@ const { open, checker } = require("./lib");
     if (!p) return null;
     const r = p.getBoundingClientRect();
     const [ox, oy] = getComputedStyle(p).transformOrigin.split(" ").map(parseFloat);
-    return { sheet: !!document.querySelector(".sheet.is-open"), cells: p.querySelectorAll(".mp-cell").length,
+    return { sheet: !!document.querySelector(".sheet.is-open"), cells: p.querySelectorAll(".mp-grid.is-day .mp-cell").length,
       ox: r.left + ox - (title.left + title.width / 2), oy: r.top + oy - (title.top + title.height / 2),
       onTop: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2).closest(".note-pop") === p };
   });
-  t.check("月を選ぶ：大きな紙ではなく小窓", !!pop && !pop.sheet && pop.cells === 12, JSON.stringify(pop));
+  t.check("月を選ぶ：大きな紙ではなく小窓", !!pop && !pop.sheet && pop.cells >= 28, JSON.stringify(pop));
   t.check("月を選ぶ：題のまん中からふくらむ", !!pop && Math.abs(pop.ox) < 2 && Math.abs(pop.oy) < 2, JSON.stringify(pop));
   t.check("月を選ぶ：帯の暦より上に出る", !!pop && pop.onTop);
   const before = await page.evaluate(() => document.querySelector("#head .topbar-dayrow").dataset.dayKey);
-  await page.locator(".note-pop.is-month .mp-cell:not([disabled]):not(.is-here)").first().click();
+  await page.locator(".note-pop.is-month .mp-grid.is-day .mp-cell:not(.is-here)").first().click();
   await page.waitForTimeout(600);
-  t.check("月を選ぶ：月を押すと閉じて、その月へ", await page.evaluate((b) =>
+  t.check("日を選ぶ：日を押すと閉じて、その日へ", await page.evaluate((b) =>
     !document.querySelector(".note-pop.is-month")
     && document.querySelector("#head .topbar-dayrow").dataset.dayKey !== b, before));
 
