@@ -1180,7 +1180,7 @@
       clear: true,
       // 自動で保存しているので、閉じるときに引き止めません。
       guard: false,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
+      footer: histFoot(memo, node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`)),
       onClose: close,
     });
     /* 日記だけの鍵が閉じたら、この紙も閉じる（閉じれば残す）。 */
@@ -1488,6 +1488,54 @@
     return row;
   }
 
+  /* 日記の紙の ↶ ↷（2026年10月26日・利用者「貼ったのを戻したい」）。ノートの帯と同じ控え
+     （KN.noteFormat.history）で、紙を開いているあいだだけの記憶。貼ったのは一手。戻した字は
+     input を出して、打ったときと同じ保存の道を通す。押しても欄からカーソルを奪わない。 */
+  function histFoot(memo, ok) {
+    const foot = node(html`<div class="arc-foot"></div>`);
+    if (memo) {
+      foot.append(node(html`<button type="button" class="note-tool js-hist" data-k="undo" aria-label="取り消す" aria-disabled="true">${icon("undo")}</button>`));
+      foot.append(node(html`<button type="button" class="note-tool js-hist" data-k="redo" aria-label="やり直す" aria-disabled="true">${icon("redo")}</button>`));
+    }
+    foot.append(ok);
+    if (!memo) return foot;
+    const hist = KN.noteFormat.history(
+      () => ({ v: memo.value, s: memo.selectionStart, e: memo.selectionEnd }),
+      (st) => {
+        memo.value = st.v;
+        try { memo.setSelectionRange(st.s, st.e); } catch (_) { /* 欄が出ていない */ }
+        memo.dispatchEvent(new Event("input", { bubbles: true }));
+      },
+    );
+    const btns = [...foot.querySelectorAll(".js-hist")];
+    /* 字が変わるたびに呼ぶので、変わったときだけ書く（音声入力の邪魔をしない）。 */
+    const paint = () => {
+      const can = hist.can();
+      btns.forEach((b) => {
+        const off = String(!can[b.dataset.k]);
+        if (b.getAttribute("aria-disabled") !== off) b.setAttribute("aria-disabled", off);
+      });
+    };
+    memo.addEventListener("beforeinput", (e) => {
+      const t = e.inputType || "";
+      if (t === "historyUndo" || t === "historyRedo") return;
+      const paste = t === "insertFromPaste" || t === "insertFromDrop";
+      hist.note(paste ? "paste" : t.startsWith("delete") ? "del" : "type", paste);
+    });
+    memo.addEventListener("input", paint);
+    const keep = (e) => { if (e.target.closest(".js-hist")) e.preventDefault(); };
+    foot.addEventListener("pointerdown", keep);
+    foot.addEventListener("mousedown", keep);
+    foot.addEventListener("click", (e) => {
+      const b = e.target.closest(".js-hist");
+      if (!b || b.getAttribute("aria-disabled") === "true") return;
+      U.haptic();
+      hist[b.dataset.k]();
+      paint();
+    });
+    return foot;
+  }
+
   /**
    * 時刻ごとの一件を書く・直す紙。item が無ければ新しい一件（時刻は打ち始めた時）。
    * 足すのは本文の終わりに。直すのは、開いたときの字が同じ場所にまだあるときだけ
@@ -1610,7 +1658,7 @@
       clear: true,
       // 打った先から残しているので、閉じるときに引き止めません。
       guard: false,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "保存する" : "閉じる"}</button>`),
+      footer: histFoot(memo, node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "保存する" : "閉じる"}</button>`)),
       onClose: close,
     });
     /* 日記だけの鍵が閉じたら、この紙も閉じる（閉じれば残す）。 */

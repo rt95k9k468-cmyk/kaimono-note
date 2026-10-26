@@ -288,6 +288,13 @@ Daily Log のコピー（`dailyCopyText`）から「明日以降の予定」「�
 - 保存待ちのうちに `pagehide`／`visibilitychange`（hidden）が来たら、その場で保存して `store.flush()`
   （app.js の flush はこれより先に走るので、紙の側でもう一度）。聞き手は紙を閉じると外す。
 - 端末が確定前の音声の字（iOS の下線つき）は欄に入っていないので守れない。試験は `tests/diary-autosave.js`。
+- 打つ欄にいるあいだは効果音の口を閉じる（開いていると音声入力が切れる。docs/motion.md の手ざわりの表）。
+
+### 取り消す・やり直す（2026年10月26日）
+
+利用者「貼ったのを戻したい」。日記の二つの紙の底に ↶ ↷（`histFoot`）。控えはノートの帯と同じ
+`KN.noteFormat.history`（紙を開いているあいだだけ）。貼ったのは一手。戻した字は `input` を出して保存の道へ。
+試験は `tests/diary-undo.js`。
 
 ## Daily Log の「3行」「5行」は終わりの数行（2026年10月6日）
 

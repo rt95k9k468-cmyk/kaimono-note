@@ -6576,6 +6576,10 @@ button.note-when:active { opacity: var(--press-fade); }
 .sheet.is-card .arc-memo-field > .textarea { flex: 1 0 auto; min-height: 5lh; resize: none; }
 /* 日付は一行（字と欄を横に並べる）。縦に積むと、メモより先に場所を取っていた
    （2026年10月6日・利用者「日付で場所をとりすぎ」）。 */
+/* 日記の紙の底：↶ ↷ と閉じる（screen-archive.js の histFoot）。 */
+.arc-foot { display: flex; align-items: center; gap: var(--sp-1); width: 100%; }
+.arc-foot > .note-tool { flex: none; width: 44px; }
+.arc-foot > .btn-block { flex: 1 1 auto; width: auto; margin-inline-start: var(--sp-1); }
 .arc-date-field { flex-direction: row; align-items: center; gap: var(--sp-3); }
 .arc-date-field > .input { flex: 1 1 auto; min-width: 0; }
 .arc-date-field > .field-label { flex: none; white-space: nowrap; }
