@@ -6233,8 +6233,9 @@
           holdTimer = 0;
           subGestureAt.set(gestureKey, Date.now());
           KN.motion.fire("warn", btn);
-          store.toggleSubSkip(t.id, s.id, day);
+          const res = store.toggleSubSkip(t.id, s.id, day);
           paint();
+          if (res) sayDone(t, res);
         }
         function release(commit, e) {
           clearHold();
@@ -6275,7 +6276,9 @@
           } else {
             KN.motion.fire(cur.done ? "uncheck" : "check", btn);
             if (!cur.done) KN.ui.burst(btn);
-            store.toggleSub(t.id, s.id, day);
+            /* 手順がぜんぶ片づいて親が済んだら、親を押したときと同じく言って元に戻せるように。 */
+            const res = store.toggleSub(t.id, s.id, day);
+            if (res) sayDone(t, res);
           }
           paint();
         }

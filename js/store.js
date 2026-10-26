@@ -2159,6 +2159,7 @@
       繰り返す用事で day を渡すと、その日だけの上書きになります
       （subStatus の但し書きを見ること）。 */
   function toggleSub(id, subId, day) {
+    const keep = subsSnap(id);
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       const sub = t && (t.subs || []).find((x) => x.id === subId);
@@ -2171,12 +2172,13 @@
       sub.done = !sub.done;
       if (sub.done) sub.skipped = false;
     });
-    syncParentDone(id, day);
+    return syncParentDone(id, day, keep);
   }
 
   /** 手順ひとつを、できなかった／まだに切り替えます（長押し）。完了とは
       同時に立ちません。day の扱いは toggleSub と同じです。 */
   function toggleSubSkip(id, subId, day) {
+    const keep = subsSnap(id);
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       const sub = t && (t.subs || []).find((x) => x.id === subId);
@@ -2189,21 +2191,40 @@
       sub.skipped = !sub.skipped;
       if (sub.skipped) sub.done = false;
     });
-    syncParentDone(id, day);
+    return syncParentDone(id, day, keep);
   }
 
   /** 手順を触ったその拍で、親の済み方を合わせます。全部片づいた
       （できた／できなかった、どちらでも）ら親も完了、そうでなくなったら
       親も未完了へ——手順を触っていないとき（親の完了ボタンを直接押した
       とき）はここを通らないので、サブタスクが残っていても手動で完了に
-      できることは変わりません。 */
-  function syncParentDone(id, day) {
+      できることは変わりません。
+      親を済ませたときだけ toggleTodo の返り（元に戻すは、最後に押した手順ごと戻す）を、ほかは null を返す。 */
+  function syncParentDone(id, day, keep) {
     const t = getTodo(id);
-    if (!t) return;
+    if (!t) return null;
     const sc = subCount(t, day);
-    if (!sc.total) return;
-    if (sc.done === sc.total && !t.done) toggleTodo(id);
-    else if (sc.done < sc.total && t.done) toggleTodo(id);
+    if (!sc.total) return null;
+    if (sc.done === sc.total && !t.done) {
+      const res = toggleTodo(id);
+      return { ...res, undo: () => { res.undo(); restoreSubs(id, keep); } };
+    }
+    if (sc.done < sc.total && t.done) toggleTodo(id);
+    return null;
+  }
+  /* 手順を押す前の印の控え（くり返しを済ませると t.subs は空に戻るので、戻すときに要る）。 */
+  function subsSnap(id) {
+    const t = getTodo(id);
+    return t ? JSON.parse(JSON.stringify({ subs: t.subs || [], subState: t.subState || {} })) : null;
+  }
+  function restoreSubs(id, keep) {
+    if (!keep) return;
+    update((s) => {
+      const t = s.todos.find((x) => x.id === id);
+      if (!t) return;
+      t.subs = keep.subs;
+      t.subState = keep.subState;
+    });
   }
 
   /** 残りいくつか。{done, total}。手順が無ければ total は 0。
