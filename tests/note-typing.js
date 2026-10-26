@@ -195,6 +195,40 @@ const { open, checker } = require("./lib");
   /* 引いた指はキーボードを下ろすだけ（app.js の「下へ払ってキーボードを閉じる」）。 */
   t.check("書いているあいだは、一番上で引いても閉じない（キーボードが下りるだけ）", still.open && !still.writing, JSON.stringify({ ...still, top: pre }));
 
+  /* ほかのアプリへ移って戻る：書く姿・カーソル・送りはそのまま、欄へ戻る。 */
+  await page.click(".sheet.is-note .note-view > *");
+  await page.waitForTimeout(200);
+  await page.$eval(".sheet.is-note .js-text", (ta) => ta.setSelectionRange(5, 5));
+  await page.$eval(".sheet.is-note .sheet-body", (e) => { e.scrollTop = 120; });
+  await page.waitForTimeout(300);
+  const back = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const sc = document.querySelector(".sheet.is-note .sheet-body");
+    const top0 = sc.scrollTop;
+    const ed0 = document.activeElement;
+    const hasFocus = document.hasFocus;
+    document.hasFocus = () => false;
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    window.dispatchEvent(new Event("blur"));
+    ed0.blur();
+    document.dispatchEvent(new Event("visibilitychange"));
+    await wait(100);
+    const view = !document.querySelector(".sheet.is-note .note-view").hidden;
+    document.hasFocus = hasFocus;
+    delete document.hidden;
+    delete document.visibilityState;
+    document.dispatchEvent(new Event("visibilitychange"));
+    await wait(100);
+    const ta = document.querySelector(".sheet.is-note .js-text");
+    return { view, same: ed0 === ta && document.activeElement === ta, sel: ta.selectionStart, top0, top: sc.scrollTop };
+  });
+  t.check("ほかのアプリへ移っても書く姿のまま、戻ると欄へ（カーソルと送りもそのまま）",
+    !back.view && back.same && back.sel === 5 && back.top === back.top0, JSON.stringify(back));
+  await page.$eval(".sheet.is-note .js-text", (ta) => ta.blur());
+  await page.waitForTimeout(100);
+  t.check("ふつうにキーボードを閉じれば整えた姿へ", await page.$eval(".sheet.is-note .note-view", (e) => !e.hidden));
+
   await page.evaluate(() => { delete visualViewport.height; visualViewport.dispatchEvent(new Event("resize")); });
   await page.keyboard.press("Escape");
   await gone();

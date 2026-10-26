@@ -1355,12 +1355,36 @@
       showCaret();
     });
     if (vv) vv.addEventListener("resize", onViewport);
+    /* ほかのアプリへ移った拍の blur は、キーボードを閉じたのではない。書く姿・カーソル・送りを
+       そのまま持っておき、戻ったら欄へ戻す（読む姿へ替えると、隠した欄から焦点が消えて画面も動く）。 */
+    let away = null;
+    const leaving = () => document.hidden || !document.hasFocus();
     [textIn, liveEl].forEach((x) => x.addEventListener("focusout", () => {
+      if (writing && !closed && leaving()) {
+        const sc = scroller();
+        away = { sel: selNow(), top: sc ? sc.scrollTop : null };
+        return;
+      }
       /* 道具の帯を押した拍の blur は、帯が自分で欄へ戻します。 */
       setTimeout(() => {
-        if (writing && !inEd() && !closed) toView();
+        if (away || closed || !writing || inEd()) return;
+        if (leaving()) { const sc = scroller(); away = { sel: selNow(), top: sc ? sc.scrollTop : null }; return; }
+        toView();
       }, 0);
     }));
+    const onBack = () => {
+      if (!away || document.hidden) return;
+      const a = away;
+      away = null;
+      if (closed || !writing || inEd()) return;
+      const sc = scroller();
+      try { ed().focus({ preventScroll: true }); } catch (_) { ed().focus(); }
+      if (inEd()) setSel(a.sel[0], a.sel[1]);
+      if (sc && a.top != null) sc.scrollTop = a.top;
+    };
+    document.addEventListener("visibilitychange", onBack);
+    window.addEventListener("pageshow", onBack);
+    window.addEventListener("focus", onBack);
 
     /* ---- やり直し（道具の帯の ↶ ↷）。前の版とは別で、紙を開いているあいだだけ ---- */
     const hist = F.history(
@@ -1708,6 +1732,9 @@
       if (mirror) mirror.remove();
       if (live) live.destroy();
       if (vv) vv.removeEventListener("resize", onViewport);
+      document.removeEventListener("visibilitychange", onBack);
+      window.removeEventListener("pageshow", onBack);
+      window.removeEventListener("focus", onBack);
       document.removeEventListener("selectionchange", onSel);
       sync();
       offKids();
