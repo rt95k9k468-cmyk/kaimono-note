@@ -6,18 +6,25 @@
    `{ id, day, json }`。json は記憶の中の一件をそのまま JSON にした字（詰めない形）で、
    届いたかは字が `===` かで見ます。決めごとは docs/storage.md「R26 の案」。
 
-   **いまは段2a——写すだけ。元の形は変えません（誰も外さない）。**
+   段2a——写す（元の形は変えない）
      ・元を書くたびに、過去のやることの差分を棚へ（diffInto）。元が書けなかったときも。
      ・開くたびに、記憶と棚を全件読み比べる（reconcile）。違えば記憶を棚へ（記憶が正しい
-       ——まだ何も外していないので）。数は困ったときの記録へ（text）。画面には出しません。
+       ——外したあとも、開いて棚から戻したあとの記憶は全件を持つので）。数は困ったときの
+       記録へ（text）。画面には出しません。
      ・棚から消すのは、前に書いたとき記憶にあった id が、利用者の操作で消えたときだけ（罠a）。
        読み込み中・読めない日・開いたときの突き合わせでは消しません。棚にだけある行は数えるだけ。
 
-   印（state.todoOut。2b で元から外した行の id）
-     2a は印を作りませんが、読めます（2b の版から戻しても行が見えるように）。
+   印（state.todoOut。元から外した行の id）
      ・開いたとき、印の行が棚にあれば記録へ戻して印を外す（store.bringTodos）。
      ・印の id は棚から消さない。印が残るあいだ、控えは棚を待ち、Dropbox は送らない（罠b）。
-     ・棚に届いたと確かめた行を committed に覚える（delivered()。2b で外してよい行）。
+     ・棚に届いたと確かめた行を committed に覚える（delivered()）。
+
+   段2b——外す（利用者が設定で「準備する」→「書き出して外す」を済ませたときだけ）
+     ・外した記録は大きな保存場所の meta の `todoOut`（{ at, exportedAt }）。state にも元にも
+       書かない（控えを別の端末に戻すと儀式を飛ばして外れるので。日記の diaryOut と同じ）。
+     ・記憶は全件のまま。元へ書く形（forLive。store の liveShape）だけ、棚に `===` で届いた
+       行を抜いて、その id を印へ足す。新しく過去になった行は、棚に届いたあと書き直して外す。
+     ・大きく入れる復元は棚へ先に届けてから元へ（deliver。罠e）。戻すのは putBack。
    ========================================================= */
 (function () {
   "use strict";
@@ -27,6 +34,7 @@
 
   const BOX = "todoPast";
   const META = "todoPast";   // 突き合わせの記録（開いた回数・最後の数）
+  const OUT = "todoOut";     // 外した記録（段2b）。突き合わせの記録とは鍵を分ける
 
   let phase = "idle";        // idle → starting → on | off
   let known = null;          // Map id → json：棚に入っているはずのもの（null＝分からない）
@@ -45,6 +53,12 @@
   let readyP = new Promise((r) => { settle = r; });
   let retryable = false;
   let lastTry = 0;
+  let outInfo = null;        // 外した記録（meta の todoOut）。読めていない日は null
+  let idleWaiters = [];
+  /* 一つの書き込み（writeLive）の中で、forLive が作った字を直後の diffInto が一度だけ使う。
+     forLive が毎回作り直して置き、diffInto が取ったら捨てる。同期のあいだだけ（次の拍で捨てる）——
+     記憶は同じ配列のまま書き換わるので、ほかの時に使うと古い字で外してしまう。 */
+  let pastMemo = null;
   const listeners = new Set();
 
   const say = (err) => String((err && err.message) || err);
@@ -86,9 +100,11 @@
     return KN.idb.run([BOX, "meta"], "readonly", (t) => {
       const rows = t.objectStore(BOX).getAll();
       const meta = t.objectStore("meta").get(META);
+      const out = t.objectStore("meta").get(OUT);
       return () => ({
         rows: (rows.result || []).filter((r) => r && r.id && typeof r.json === "string"),
         meta: meta.result ? meta.result.v : null,
+        out: out.result && out.result.v && typeof out.result.v === "object" ? out.result.v : null,
       });
     });
   }
@@ -133,11 +149,12 @@
     }
   }
 
-  /* 開くたびの読み比べ。2a では**記憶が正しい**（何も外していないので）。
-     ただし印の行は記憶に無いので、棚から戻します。棚の行は一つも消しません。 */
+  /* 開くたびの読み比べ。**記憶が正しい**——ただし印の行は記憶に無いので、先に棚から
+     戻します（戻したあとの記憶は全件を持つ）。棚の行は一つも消しません。 */
   async function reconcile(got) {
     const inBox = new Map(got.rows.map((r) => [r.id, r]));
     committed = new Map(got.rows.map((r) => [r.id, r.json]));
+    outInfo = got.out;
 
     const marks = store.todoOut();
     const bring = [];
@@ -186,6 +203,8 @@
     committed = new Map(next);
     seen = ids;
     info = v;
+    // 外してあれば、戻した行・写し直した行を外した形で書き直す（届いたので）。
+    if (outInfo && (puts.length || back)) store.saveSoon();
   }
 
   /* ---------------- 書くたびに ---------------- */
@@ -207,9 +226,11 @@
     const s = store.get();
     const ids = idsOf(s);
     const marks = new Set(store.todoOut(s));
+    const past = pastMemo && pastMemo.todos === s.todos ? pastMemo.map : pastOf(s);
+    pastMemo = null;
     let puts = null;
     let dels = null;
-    pastOf(s).forEach((p, id) => {
+    past.forEach((p, id) => {
       if (known.get(id) !== p.json) (puts || (puts = [])).push(p);
     });
     /* 消すのは、前に書いたとき記録にあった行が、いま無いときだけ（利用者が消した・
@@ -242,6 +263,8 @@
         b.puts.forEach((p) => committed.set(p.id, p.json));
         b.dels.forEach((id) => committed.delete(id));
       }
+      // 外してあれば、届いた行を外した形で書き直す（新しく過去になった行・直した過去の行）。
+      if (outInfo && b.puts.size) store.saveSoon();
     }, (err) => {
       // 棚の中身が分からなくなった。次に書くときに読み直す（元は無事）。
       console.error("todo past write failed", err);
@@ -250,7 +273,20 @@
     }).then(() => {
       busy = false;
       drain();
+      wakeIdle();
     });
+  }
+
+  /* 棚への書き足しが済むまで待ちます（済んでいれば、すぐ）。 */
+  function idle() {
+    if (!busy && !batch) return Promise.resolve();
+    return new Promise((r) => idleWaiters.push(r));
+  }
+  function wakeIdle() {
+    if (busy || batch || !idleWaiters.length) return;
+    const w = idleWaiters;
+    idleWaiters = [];
+    w.forEach((r) => r());
   }
 
   function resync() {
@@ -284,6 +320,129 @@
     return true;
   }
 
+  /* ---------------- 外す（段2b） ---------------- */
+
+  /** 外してあるか（大きな保存場所の meta に記録がある）。読めていない日は false。 */
+  const isOut = () => !!outInfo;
+
+  /**
+   * 元（localStorage）へ書く形（store の liveShape が呼ぶ）。外したあとは、棚に `===` で
+   * 届いたと確かめた過去の行（committed）を抜き、その id を印（todoOut）へ足した浅い複製。
+   * 同じ id の二つ目以降は抜かない（棚は先の一つしか持たない）。まだ届いていない行・
+   * 直したばかりの行は、そのまま元にも書く。読み込み中・読めない日は、記憶に行が無く
+   * 印だけがあるので、そのまま書けば印を持ち越す（罠a）。
+   */
+  function forLive(s) {
+    pastMemo = null;
+    if (!outInfo || !committed) return s;
+    const todos = s && s.todos;
+    if (!Array.isArray(todos) || !todos.length) return s;
+    const past = pastOf(s);
+    pastMemo = { todos, map: past };
+    Promise.resolve().then(() => { pastMemo = null; });
+    const first = new Set();
+    const drop = [];
+    const keep = todos.filter((t) => {
+      if (!t || !t.id || first.has(t.id)) return true;
+      first.add(t.id);
+      const p = past.get(t.id);
+      if (!p || committed.get(t.id) !== p.json) return true;
+      drop.push(t.id);
+      return false;
+    });
+    if (!drop.length) return s;
+    return { ...s, todos: keep, todoOut: [...new Set([...store.todoOut(s), ...drop])] };
+  }
+
+  const notReady = () => new Error(phase === "off"
+    ? "過去のやることの棚を読めない日です" : "過去のやることを読み込んでいるところです");
+
+  /* 書きかけを出して、棚への書き足しが済むまで待つ。 */
+  async function settleWrites() {
+    if (phase !== "on") throw notReady();
+    store.flush();
+    do { await idle(); } while (busy || batch || resyncing);
+    if (phase !== "on" || !known || !committed) throw new Error("棚への書き足しが止まっています");
+  }
+
+  /**
+   * 1回目「準備する」。棚を読み直して、記憶の過去の行と**全件 `===`** で読み比べます。
+   * 一件でも違えば false（何も変えません）。合えば、読み直した行を committed に。
+   */
+  async function prepare() {
+    await settleWrites();
+    const got = await readAll();
+    const inBox = new Map(got.rows.map((r) => [r.id, r.json]));
+    let same = true;
+    pastOf(store.get()).forEach((p, id) => { if (inBox.get(id) !== p.json) same = false; });
+    if (!same) return false;
+    committed = inBox;
+    return true;
+  }
+
+  /**
+   * 2回目「書き出して外す」の、書き出しを保存できたあと。meta に外したと記録してから、
+   * その場で外した形で元を書き直します。元が書けたら true。
+   */
+  async function markOut(exportedAt) {
+    if (phase !== "on" || !committed) throw notReady();
+    const v = { at: new Date().toISOString(), exportedAt: exportedAt || null };
+    await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").put({ k: OUT, v }); });
+    outInfo = v;
+    return store.saveNow();
+  }
+
+  /**
+   * 戻す。**元に全件書けたときだけ**、外した記録を消します。書けなければ外したまま
+   * 書き直して false。記録を消せなかったときも、外したまま書き直して例外。
+   */
+  async function putBack() {
+    if (!outInfo) return true;
+    if (phase !== "on") throw notReady();
+    const was = outInfo;
+    outInfo = null;
+    if (!store.saveNow()) {
+      outInfo = was;
+      store.saveNow();
+      return false;
+    }
+    try {
+      await KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").delete(OUT); });
+    } catch (err) {
+      outInfo = was;
+      store.saveNow();
+      throw err;
+    }
+    return true;
+  }
+
+  /**
+   * 棚へ先に届けます（外したあとの復元。罠e）。`todos` は戻す記録のやること（reconcile
+   * した形）。取引が済んだら known と committed に入れるので、そのあと元へ書くと、届けた
+   * 行は外した形で書かれます。届けた件数。
+   */
+  async function deliver(todos) {
+    await settleWrites();
+    const list = [];
+    pastOf({ todos: Array.isArray(todos) ? todos : [] }).forEach((p) => {
+      if (known.get(p.id) !== p.json) list.push(p);
+    });
+    if (!list.length) return 0;
+    busy = true;
+    try {
+      await KN.idb.run([BOX], "readwrite", (t) => {
+        const box = t.objectStore(BOX);
+        list.forEach((p) => box.put(p));
+      });
+      list.forEach((p) => { known.set(p.id, p.json); committed.set(p.id, p.json); });
+    } finally {
+      busy = false;
+      drain();
+      wakeIdle();
+    }
+    return list.length;
+  }
+
   /* ---------------- 外から ---------------- */
 
   function ready() {
@@ -293,9 +452,9 @@
   const settled = () => phase === "on" || phase === "off";
   function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
   function status() {
-    return { ...info, phase, rows: known ? known.size : null, busy: busy || !!batch };
+    return { ...info, phase, rows: known ? known.size : null, busy: busy || !!batch, out: !!outInfo };
   }
-  /** その行のその字が、棚に届いたと確かめてあるか（2b で元から外してよい行。いまは誰も使わない）。 */
+  /** その行のその字が、棚に届いたと確かめてあるか（元から外してよい行）。 */
   function delivered(id, json) {
     return phase === "on" && !!committed && typeof json === "string" && committed.get(id) === json;
   }
@@ -305,9 +464,12 @@
     return "todoPast " + JSON.stringify({
       phase, opens: info.opens || 0, fixed: info.fixed || 0, rows: l.rows, same: l.same, fixedNow: l.fixed,
       added: l.added, orphan: l.orphan, missing: l.missing, back: l.back,
-      out: store.todoOut().length, error: info.error || null, reason: phase === "off" ? info.reason || null : null,
+      out: store.todoOut().length, isOut: !!outInfo, error: info.error || null, reason: phase === "off" ? info.reason || null : null,
     });
   }
 
-  KN.todoPast = { start, ready, settled, retry, onChange, status, delivered, afterWrite, reloaded, text };
+  KN.todoPast = {
+    start, ready, settled, retry, onChange, status, delivered, afterWrite, reloaded, text,
+    isOut, forLive, prepare, markOut, putBack, deliver,
+  };
 })();

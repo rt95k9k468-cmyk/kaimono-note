@@ -394,6 +394,16 @@
     Dropbox は送らず、Google の取り込み・取り消しは断る。罠d は `addTodo`・`importGoogle` が過去の行の `order` を
     ずらさない（片づけた一覧は閉じた日で並ぶ）。棚の作り直しは版を一つ上げる（古い版は版を指定せずに開くので困らない）。
     数は画面に出さず、困ったときの記録に一行（`todoPast.text()`）。「棚だけ消える」は `tests/todo-past.js` に置いた。
+  - **2b 済み**（2026年10月26日。**入れただけでは何も外れない**——設定 → バックアップ →「過去のやることを記録から
+    外す」を済ませたときだけ）：外した記録は idb の `meta` の `todoOut`（`{ at, exportedAt }`。統計の `todoPast` と
+    鍵を分ける）。記憶は全件のまま、`liveShape` の `todoPast.forLive` が committed と `===` の行だけ抜いて id を印へ。
+    直した・新しく過去になった行は届く前は元にも書き、届いたら `saveSoon` で外す。字の使い回しは forLive の直後の
+    diffInto の一度だけ（記憶は同じ配列のまま書き換わるので、ほかで使うと古い字で外す）。準備は全件 `===` →
+    控え「やることを外す前」（PINNED）、書き出せたら `markOut`。戻すのは `liveChars({ todosIn: true })` が
+    `DIARY_LIVE_LIMIT` 以下のときだけ。復元は `deliver` で棚へ先に（`inspectBackup().past` を枠の判定から引く）。
+    印が残る書き出しは紙「一部が入りません」・名前「一部なし」・前回に数えない（`pastBare`）。印が残れば設定の頭に一行。
+    Google の取り込みの上限は外したあとの `liveChars()` のまま（過去の行は届くまで元にも入るが、上限の内）。
+    試験 `tests/todo-out.js`（門）。「容量」の試験（`tests/break.js`）はまだ。
 
 ## 記録の写し（`js/live-idb.js`、2026年10月6日・二度目の消失のあと）
 

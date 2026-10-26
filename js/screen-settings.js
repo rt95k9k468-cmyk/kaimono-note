@@ -661,6 +661,13 @@
         value: stampOf(doubt.notes.at), onTap: () => mergeNotesFrom(doubt.notes.at),
       }) : null
     ));
+    /* 外した過去のやること（印）が、開いても棚から戻らない（棚を読めない・棚に無い。R26 の段2b）。
+       戻すのはバックアップ（Dropbox の控え・ファイル）から。 */
+    const P = KN.todoPast;
+    if (P && P.settled() && store.todoOut().length) L.body.append(card(navRow({
+      ico: "undo", tint: TINT.warn, alert: true, onTap: () => go("data"),
+      title: P.status().phase === "off" ? "過去のやることを読めません" : "過去のやることが見つかりませんでした",
+    })));
     const tab = TAB[fromTab] || TAB.archive;
     L.body.append(head(tab.label));
     put(tab.rows());

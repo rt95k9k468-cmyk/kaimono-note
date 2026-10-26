@@ -246,14 +246,22 @@
     /* 日記を元から外したあと、日記の保存場所を読めない日は、外した日の本文が
        記録に無い（docs/storage.md の案B の4）。先に紙で言い、その「書き出す」の
        **押した流れのまま**共有します。ファイル名に「本文なし」、前回の書き出しには数えません。 */
-    if (!o.bare && KN.diaryIdb && KN.diaryIdb.body() === "off" && bareNow()) {
-      confirmBare();
+    /* 過去のやることを外したあと、棚から戻る前・棚を読めない日は、外した行が記録に無い
+       （R26 の罠b）。戻る前は待たずに断り、読めない日は日記と同じ紙で言います。 */
+    if (KN.todoPast && store.todoOut().length && !KN.todoPast.settled()) {
+      KN.ui.toast("やることを読み込んでいるところです。少し待ってから、もう一度押してください");
+      return;
+    }
+    const lack = bareKinds();
+    if (!o.bare && (lack.diary || lack.todo)) {
+      confirmBare(lack);
       return;
     }
     const at = new Date().toISOString();
     const d = new Date(at);
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-    const name = `kaimono-note-${stamp}${o.bare ? "-本文なし" : ""}.json`;
+    const name = `kaimono-note-${stamp}${o.bare ? (lack.diary ? "-本文なし" : "-一部なし") : ""}.json`;
+    o.lack = lack;
     const text = store.exportJSON(at, KN.notes ? KN.notes.forExport() : null);
 
     const coarse = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
@@ -281,21 +289,31 @@
   async function saved(at, o) {
     if (!o.bare) KN.backup.markExported(at);
     if (o.onSaved) await o.onSaved(at);
-    else KN.ui.toast(o.bare ? "書き出しました（日記の本文なし）" : "バックアップを書き出しました");
+    else KN.ui.toast(!o.bare ? "バックアップを書き出しました"
+      : o.lack && o.lack.diary ? "書き出しました（日記の本文なし）" : "書き出しました（過去のやることの一部なし）");
     render();
   }
 
   /* 記録に、本文を外した行（memoOut）があるか。 */
   const bareNow = () => ((store.get().archive || {}).days || []).some(store.memoOut);
+  /* 書き出しに入らないもの：日記の保存場所を読めない日の外した本文・棚から戻らない過去のやること（印）。 */
+  const bareKinds = () => ({
+    diary: !!KN.diaryIdb && KN.diaryIdb.body() === "off" && bareNow(),
+    todo: store.todoOut().length > 0,
+  });
 
-  function confirmBare() {
-    const body = node(html`<div class="stack gap-2"><p class="sheet-text">日記の保存場所を読めない日なので、外した日記の本文は入りません。</p></div>`);
+  function confirmBare(lack) {
+    const say = [
+      lack.diary ? "日記の保存場所を読めない日なので、外した日記の本文は入りません。" : "",
+      lack.todo ? "過去のやることの一部が入りません。" : "",
+    ].join("");
+    const body = node(html`<div class="stack gap-2"><p class="sheet-text">${say}</p></div>`);
     const foot = node(html`
       <div class="btn-row">
         <button class="btn btn-soft js-cancel grow">やめる</button>
         <button class="btn btn-primary js-ok grow">書き出す</button>
       </div>`);
-    const h = KN.ui.sheet({ title: "日記の本文は入りません", content: body, footer: foot, guard: false, as: "dialog" });
+    const h = KN.ui.sheet({ title: lack.diary ? "日記の本文は入りません" : "一部が入りません", content: body, footer: foot, guard: false, as: "dialog" });
     foot.querySelector(".js-cancel").addEventListener("click", () => h.close());
     // 押した流れのまま共有する（手前で await しない）。
     foot.querySelector(".js-ok").addEventListener("click", () => { saveBackup({ bare: true }); h.close(); });
@@ -360,8 +378,11 @@
        日記の本文を外してあれば、本文は大きな保存場所へ先に届けるので入ります
        （store.importBackup）。 */
     const D = KN.diaryIdb;
+    const P = KN.todoPast;
     const outOk = !!(D && D.isOut && D.isOut() && D.body() === "ok");
-    if (r.size > IPHONE_CHARS && !outOk) {
+    // 過去のやることを外してあれば、その分は棚へ先に届けるので元には書かない（R26 の罠e）。
+    const pastOk = !!(P && P.isOut && P.isOut() && P.status().phase === "on");
+    if (r.size - (pastOk ? r.past || 0 : 0) > IPHONE_CHARS && !outOk) {
       await KN.ui.confirm({
         title: "入りきりません",
         message: D && D.isOut && D.isOut()
@@ -377,7 +398,7 @@
     try { book = JSON.parse(text).noteBook || null; } catch (err) { book = null; }
     const ok = await KN.ui.confirm({
       title: "復元しますか？",
-      message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}${r.bare ? "日記の本文が無い日があります（いま持っている本文を当てます）。" : ""}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
+      message: `このファイル（${when}）：${countText(r.counts)}。いまの記録：${countText(store.countsOf())}。${auditText(auditOfText(text))}${r.bare ? "日記の本文が無い日があります（いま持っている本文を当てます）。" : ""}${r.pastBare ? "入っていない過去のやることがあります（いま持っているものを当てます）。" : ""}いまのデータはすべて置き換わります${book ? "（ノートは消さずに合わせます）" : ""}。直前の状態は自動バックアップに残ります。`,
       okLabel: "復元する",
       danger: true,
     });
@@ -433,7 +454,8 @@
         : "このあと増減した記録があります。新しく書き出しておくと安心です。";
       // 本文の無い書き出しは、前回の書き出しに数えません（docs/storage.md の案B の4）。
       if (r.bare) verdict += "日記の本文が無い日があります。";
-      else if (r.exportedAt) KN.backup.markExported(r.exportedAt);
+      if (r.pastBare) verdict += "入っていない過去のやることがあります。";
+      if (!r.bare && !r.pastBare && r.exportedAt) KN.backup.markExported(r.exportedAt);
     }
     const body = node(html`
       <div class="stack gap-3">
@@ -876,6 +898,104 @@
     render();
   }
 
+  /* ---------------- 過去のやることを記録から外す（R26 の段2b。docs/storage.md「R26 の案」） ----------------
+     日記と同じ二回：「準備する」（棚と記憶を全件読み比べ → 控え「やることを外す前」）→
+     「書き出して外す」（保存できたときだけ todoPast.markOut）。戻すのは、全件を元へ書いても
+     枠に入るときだけ。 */
+  let pastReady = 0;
+  const pastReadyNow = () => !!pastReady && Date.now() - pastReady < READY_MS
+    && !!KN.todoPast && !KN.todoPast.isOut() && KN.todoPast.status().phase === "on";
+  const pastFits = () => store.liveChars({ todosIn: true }) <= DIARY_LIVE_LIMIT;
+
+  function todoOutRows() {
+    const P = KN.todoPast;
+    if (!P || !P.isOut || P.status().phase !== "on") return [];
+    if (P.isOut()) {
+      if (!pastFits()) return [];
+      return [navRow({ ico: "undo", tint: TINT.sub, title: "過去のやることを記録に戻す", act: true, onTap: putBackTodos })];
+    }
+    if (pastReadyNow()) return [navRow({ ico: "download", tint: TINT.data, title: "書き出して外す", act: true, onTap: exportAndOutTodos })];
+    return [navRow({ ico: "check", tint: TINT.sub, title: "過去のやることを記録から外す", act: true, onTap: prepareTodoOut })];
+  }
+
+  async function prepareTodoOut() {
+    const P = KN.todoPast;
+    // 外したあと、過去は大きな保存場所とファイルにしか無い（罠f）。押した流れのまま頼みなおす。
+    let persisted = null;
+    try {
+      if (navigator.storage && navigator.storage.persist) persisted = await navigator.storage.persist();
+    } catch (err) { persisted = null; }
+    const ok = await KN.ui.confirm({
+      title: "過去のやることを記録から外しますか？",
+      message: `30日より前に済ませたものを、大きな保存場所だけに置きます。${persisted === false ? "この端末は保存場所を消さない約束をしていないので、書き出しはこまめに。" : ""}`,
+      okLabel: "準備する",
+    });
+    if (!ok) return;
+    let same = false;
+    try {
+      same = await P.prepare();
+    } catch (err) {
+      KN.ui.toast(`準備できませんでした（${String((err && err.message) || err)}）`, { long: true });
+      return;
+    }
+    if (!same) {
+      KN.ui.toast("棚と食い違う行があったので、外しません（何も変えていません）", { long: true });
+      return;
+    }
+    if ((await KN.backup.take("やることを外す前", { force: true })) === "failed") {
+      KN.ui.toast("控えを取れなかったので、外しません（何も変えていません）", { long: true });
+      return;
+    }
+    pastReady = Date.now();
+    KN.ui.toast("準備できました");
+    render();
+  }
+
+  /* 押した流れのまま共有シートへ（saveBackup の手前で await しない）。 */
+  function exportAndOutTodos() {
+    if (!pastReadyNow()) {
+      pastReady = 0;
+      KN.ui.toast("もう一度「過去のやることを記録から外す」から");
+      render();
+      return;
+    }
+    saveBackup({
+      onSaved: async (at) => {
+        pastReady = 0;
+        try {
+          await KN.todoPast.markOut(at);
+          KN.motion.fire("success");
+          KN.ui.toast("過去のやることを記録から外しました");
+        } catch (err) {
+          console.error(err);
+          KN.ui.toast("書き出しましたが、外せませんでした（何も変えていません）", { long: true });
+        }
+      },
+    });
+  }
+
+  async function putBackTodos() {
+    const ok = await KN.ui.confirm({
+      title: "過去のやることを記録に戻しますか？",
+      message: "記録にも書き戻します。",
+      okLabel: "戻す",
+    });
+    if (!ok) return;
+    if (!pastFits()) {
+      KN.ui.toast("記録の置き場に入りきらないので、戻せません（何も変えていません）", { long: true });
+      return;
+    }
+    try {
+      KN.ui.toast(await KN.todoPast.putBack()
+        ? "過去のやることを記録に戻しました"
+        : "記録の置き場に入りきらないので、戻せませんでした（外したままです）", { long: true });
+    } catch (err) {
+      console.error(err);
+      KN.ui.toast("戻しきれませんでした（外したままです）", { long: true });
+    }
+    render();
+  }
+
   function dataRows() {
     const file = importInput();
     const verify = verifyInput();
@@ -918,6 +1038,7 @@
       card(
         navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", act: true, onTap: () => diaryFile.click() }),
         diaryOutRows(),
+        todoOutRows(),
         navRow({ ico: "thought", tint: TINT.sub, title: "問いの元を取り込む", act: true,
           value: KN.store.get().asks.length ? `${KN.store.get().asks.length}問` : "なし", onTap: () => asksFile.click() })
       ),

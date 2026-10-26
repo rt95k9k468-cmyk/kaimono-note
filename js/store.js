@@ -1392,13 +1392,18 @@
      写しに届いた本文を外した複製（js/diary-idb.js の forLive）。記憶の中の
      state は本文つきのまま。作れなければ、本文つきのまま書きます（あふれれば
      保存が落ちて知らせるだけで、何も失いません）。 */
-  function liveShape() {
+  /* 過去のやることを外したあと（R26 の段2b）は、棚に届いた行も抜く（js/todo-past.js の forLive）。
+     `o.todosIn`：抜かない形（「記録に戻す」を出せるか量るとき）。作れなければ抜かずに書きます。 */
+  function liveShape(o) {
     let s = state;
     try {
       s = KN.diaryIdb && KN.diaryIdb.forLive ? KN.diaryIdb.forLive(state) : state;
     } catch (err) {
       console.error("live shape", err);
       s = state;
+    }
+    if (!(o && o.todosIn) && KN.todoPast && KN.todoPast.forLive) {
+      try { s = KN.todoPast.forLive(s); } catch (err) { console.error("live past", err); }
     }
     try { s = slimTodos(s); } catch (err) { console.error("live slim", err); }
     return s;
@@ -4991,7 +4996,14 @@
       /* bare：本文を外した行（memoOut）がある——日記の保存場所を読めない日に
          書き出したもの。件数は言いません。size：戻したときの記録の大きさ。 */
       const bare = ((next.archive && next.archive.days) || []).some(memoOut);
-      return { ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next), bare, size: JSON.stringify(next).length };
+      /* pastBare：入っていない過去のやること（印 todoOut）がある。past：過去のやることの字数
+         （外してあれば、戻しても元には書かない分。R26 の段2b）。 */
+      const cut = pastCutoff();
+      const past = next.todos.reduce((n, t) => n + (isPastTodo(t, cut) ? JSON.stringify(t).length + 1 : 0), 0);
+      return {
+        ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next), bare,
+        pastBare: todoOut(next).length > 0, past, size: JSON.stringify(next).length,
+      };
     } catch (err) {
       return { ok: false, reason: String((err && err.message) || err) };
     }
@@ -5044,6 +5056,12 @@
     if (D && D.isOut && D.isOut() && D.body() === "ok") {
       fillMemoOut(next, state);
       await D.deliver(bodiesOf(next));
+    }
+    // 過去のやることを外してあれば、同じく棚へ先に（R26 の罠e）。
+    const P = KN.todoPast;
+    if (P && P.isOut && P.isOut() && P.status().phase === "on") {
+      fillTodoOut(next, state);
+      await P.deliver(next.todos);
     }
     applyBackup(next);
   }
@@ -5148,7 +5166,7 @@
     rawLive, adoptRaw, totalOf, isBlank, shrinks,
     get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
     // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
-    liveChars: () => JSON.stringify(liveShape()).length,
+    liveChars: (o) => JSON.stringify(liveShape(o)).length,
     slimKeys: () => Object.keys(slimDefaults()),
     saveError: () => saveError,
     getProduct, getStore, getCategory,
