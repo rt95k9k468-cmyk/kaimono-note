@@ -1316,10 +1316,20 @@
              保存していない手順は、紙の中の控えに印を付けて、保存で一緒に入る。 */
           const saved = editing && store.getTodo(todoId);
           if (saved && (saved.subs || []).some((x) => x.id === s.id)) {
-            store.toggleSub(todoId, s.id, subDay);
+            const res = store.toggleSub(todoId, s.id, subDay);
             const now = store.getTodo(todoId);
             const cur = (now.subs || []).find((x) => x.id === s.id);
             if (!now.repeat && cur) { s.done = cur.done; s.skipped = cur.skipped; }
+            /* ぜんぶ片づいて親が済んだら、時間割の小窓と同じく言う。元に戻したら紙の控えも記録に合わせる。 */
+            if (res) sayDone(saved, { ...res, undo: () => {
+              res.undo();
+              const back = store.getTodo(todoId);
+              if (back && !back.repeat) subs.forEach((x) => {
+                const y = (back.subs || []).find((z) => z.id === x.id);
+                if (y) { x.done = y.done; x.skipped = y.skipped; }
+              });
+              paintSubs();
+            } });
           } else {
             s.done = !s.done;
           }

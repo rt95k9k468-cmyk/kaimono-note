@@ -1,5 +1,6 @@
 /* 手順の小窓で手順をぜんぶ済ませて親（くり返し）が済んだら、親を押したときと同じトーストを出し、
    「元に戻す」で親も最後に押した手順も押す前へ戻る（2026年10月26日、利用者「元に戻すのトーストが出ない」）。
+   詳細の紙の中で済ませたときも同じ。元に戻すと紙の印も記録に合わせて戻る。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/subs-done-undo.js */
 const { open, checker } = require("./lib");
 
@@ -44,6 +45,28 @@ const DAY = "2026-10-20";
   }, [id, DAY]);
   c.check("元に戻すと親はその日・未完了、跡も消える", back.due === DAY && !back.done && back.traces === 0, JSON.stringify(back));
   c.check("最後に押した手順だけ戻り、先に押した手順は済んだまま", back.st[0] === true && back.st[1] === false, JSON.stringify(back.st));
+
+  /* 詳細の紙の中で済ませたときも同じ。元に戻すと紙の印も戻る。 */
+  await page.evaluate(() => document.querySelectorAll(".toast").forEach((x) => x.remove()));
+  await page.evaluate((id) => KN.screens.todo.open(id), id);
+  await page.waitForSelector(".sheet.is-open .js-sub-check", { timeout: 5000 });
+  await page.waitForTimeout(400);
+  await page.click(".sheet.is-open .sub-line:nth-child(2) .js-sub-check");
+  await page.waitForTimeout(200);
+  const sheetToast = await page.evaluate(() => {
+    const el = document.querySelector(".toast");
+    return el && [...el.querySelectorAll(".toast-action")].map((b) => b.textContent);
+  });
+  const sDue = await page.evaluate((id) => KN.store.getTodo(id).due, id);
+  c.check("紙の中で済ませても親は次の日へ・元に戻すつきのトースト", sDue === "2026-10-21" && sheetToast && sheetToast.includes("元に戻す"),
+    JSON.stringify({ sDue, sheetToast }));
+  await page.evaluate(() => [...document.querySelectorAll(".toast-action")].find((b) => b.textContent === "元に戻す").click());
+  await page.waitForTimeout(300);
+  const sBack = await page.evaluate((id) => ({
+    due: KN.store.getTodo(id).due,
+    on: [...document.querySelectorAll(".sheet.is-open .js-sub-check")].map((b) => b.getAttribute("aria-checked")),
+  }), id);
+  c.check("元に戻すと親はその日へ・紙の印も最後の一つだけ外れる", sBack.due === DAY && sBack.on.join() === "true,false", JSON.stringify(sBack));
 
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
