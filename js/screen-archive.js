@@ -1325,6 +1325,8 @@
       KN.app.showScreen("notes");
       KN.screens.notes.asks();
     });
+    /* 今日の問いは今日だけ（利用者の頼み）。前の日・先の日は三枚の札だけ。 */
+    if (day !== U.todayKey()) { el.querySelector(".think-today").remove(); return el; }
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
     /* 開くたびに（読み込み・しばらく離れて戻る・日が替わる）でたらめに引き直す。同じ画面の組み直しでは替えない。 */
@@ -1340,8 +1342,8 @@
       ctx.hidden = !cur.from && !cur.hint;
     };
     paint();
-    if (fresh && day === U.todayKey()) askSaw(cur.text);
-    if (day === U.todayKey()) askRepaint = () => { if (!el.isConnected) return; askTurns.set(day, askPick(day, past, cur.text)); paint(); askSaw(cur.text); };
+    if (fresh) askSaw(cur.text);
+    askRepaint = () => { if (!el.isConnected) return; askTurns.set(day, askPick(day, past, cur.text)); paint(); askSaw(cur.text); };
     /* 問いの元が無い端末（取り込む前・ほかの人）で、自分の問いも無いときは、札ごと出さない。 */
     if (!cur.text) el.querySelector(".think-today").remove();
     else el.querySelector(".js-think-other").addEventListener("click", () => {

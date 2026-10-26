@@ -313,6 +313,11 @@ const { open, checker, ASKS } = require("./lib");
   const after = await page.evaluate((y) => ({ memo: (KN.store.get().archive.days.find((x) => x.date === y) || {}).memo,
     screen: document.querySelector(".screen.is-active").dataset.screen }), yest);
   t.check("自分の問いは写さず、書いた日へ", after.screen === "archive" && after.memo === memoBefore, after.screen);
+  const past = await page.evaluate(() => {
+    const s = [...document.querySelectorAll("#screen-archive .day-slide")].find((x) => { const r = x.getBoundingClientRect(); return r.width && Math.abs(r.left) < 5; });
+    return s ? { home: !!s.querySelector(".think-home"), ask: !!s.querySelector(".think-today") } : null;
+  });
+  t.check("前の日は三枚の札だけ（今日の問いは今日だけ）", !!past && past.home && !past.ask, JSON.stringify(past));
 
   /* ---- 設定 → バックアップ →「問いの元を取り込む」：違うファイルは何も変えない・入れ替える前に聞く ---- */
   await page.evaluate(() => KN.app.showScreen("settings"));
