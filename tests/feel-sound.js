@@ -33,11 +33,13 @@ function fakeAudio() {
    touchstart・pointerdown では開かない）。アプリの見張りより先に、ここで「離した」を覚える。 */
 function iosAudio() {
   window.__snd = [];
+  window.__ctx = { made: 0, closed: 0, resumed: 0 };
   let lifting = false;
   document.addEventListener("touchend", () => { lifting = true; setTimeout(() => { lifting = false; }, 0); }, true);
   class FakeCtx {
-    constructor() { this.state = "suspended"; this.sampleRate = 1000; this.destination = {}; }
-    resume() { if (lifting) this.state = "running"; return Promise.resolve(); }
+    constructor() { this.state = "suspended"; this.sampleRate = 1000; this.destination = {}; window.__ctx.made++; }
+    resume() { window.__ctx.resumed++; if (lifting) this.state = "running"; return Promise.resolve(); }
+    close() { window.__ctx.closed++; this.state = "closed"; return Promise.resolve(); }
     createBuffer(c, len) { const d = new Float32Array(len); return { len, getChannelData: () => d }; }
     createGain() { return { gain: {}, connect: (x) => x }; }
     createBufferSource() {
@@ -174,6 +176,25 @@ function iosAudio() {
     await p2.evaluate(() => { window.__snd.length = 0; });
     const second = await liftOnce();
     c.check("iPhone：一度指を離したあとは、持ち上がると「ぽっ」", JSON.stringify(second) === '["lift"]', JSON.stringify(second));
+    /* 打つ欄に入ったら口を閉じ、打っているあいだは作らない・開け直さない（音声入力がマイクを取られて切れる）。 */
+    const ctx = await p2.evaluate(async () => {
+      const ta = document.createElement("textarea");
+      ta.id = "t-ta";
+      document.body.append(ta);
+      ta.focus();
+      const at = { ...window.__ctx };
+      document.dispatchEvent(new Event("touchend", { bubbles: true }));
+      KN.motion.wakeSound();
+      const typing = { ...window.__ctx };
+      ta.blur();
+      KN.motion.wakeSound();
+      ta.remove();
+      return { at, typing, after: { ...window.__ctx } };
+    });
+    c.check("打つ欄に入ると音の口を閉じる", ctx.at.closed === 1, JSON.stringify(ctx));
+    c.check("打っているあいだは口を作らない・開け直さない",
+      ctx.typing.made === ctx.at.made && ctx.typing.resumed === ctx.at.resumed, JSON.stringify(ctx));
+    c.check("欄を出たら、次に触れたときに作り直す", ctx.after.made === ctx.at.made + 1, JSON.stringify(ctx));
     c.check("iPhone のふりでもエラーなし", e2.length === 0, e2.join(" | "));
     await b2.close();
   }

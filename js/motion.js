@@ -264,7 +264,18 @@
   let actx = null;
   const bufs = {};
   const playedAt = {};
+  /* 字を打つ欄にカーソルがあるあいだは、音の口を持たない（2026年10月26日・利用者「日記を音声入力
+     していると、すぐ切れる」）。iPhone の音声入力はマイクを使うので、ページの音の口が開いている・
+     開け直すと、そちらに場を取られて入力が止まる。打つ欄に入ったら口を閉じ、次に触れたときに作り直す。 */
+  function typing() {
+    const a = typeof document !== "undefined" && document.activeElement;
+    if (!a) return false;
+    if (a.tagName === "TEXTAREA" || a.isContentEditable) return true;
+    return a.tagName === "INPUT"
+      && !["checkbox", "radio", "button", "submit", "reset", "file", "range", "color", "hidden"].includes(a.type);
+  }
   function wakeSound() {
+    if (typing()) return;
     try {
       if (!actx) {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -293,12 +304,21 @@
      開け直す。作っていなければ何もしない（音を使わない人に口を作らない）。 */
   if (typeof document !== "undefined" && document.addEventListener) {
     document.addEventListener("touchend", () => {
-      if (!actx || actx.state === "running") return;
+      if (!actx || actx.state === "running" || typing()) return;
       try {
         const p = actx.resume();
         if (p && p.catch) p.catch(() => {});
       } catch (_) {}
     }, { capture: true, passive: true });
+    document.addEventListener("focusin", () => {
+      if (!actx || !typing()) return;
+      const c = actx;
+      actx = null;
+      try {
+        const p = c.close();
+        if (p && p.catch) p.catch(() => {});
+      } catch (_) {}
+    }, true);
   }
   function sound(name) {
     const b = bufs[name];
