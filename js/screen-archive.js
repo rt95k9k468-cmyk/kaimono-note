@@ -51,13 +51,16 @@
 
   /** 本文に触る操作の前に。できないときは理由を言って true を返します。 */
   /* 頭の「日付」「育休完了まであと◯日」の行は、鍵が閉じていても出す（定型の字で、秘密が無い）。 */
-  const STAMP_LINE = /^(\d{4}\.\d{1,2}\.\d{1,2}（[日月火水木金土]）|育休完了まであと\d+日)$/;
+  /* 育休の行は二つの形：「あと◯日」と、前の数え方を括弧に残した「あと◯日（04.01を含めるとあと◯日）」（recountLeave）。 */
+  const LEAVE_LINE = /^育休完了まであと\d+日(（04\.01を含めるとあと\d+日）)?$/;
+  const STAMP_LINE = /^(\d{4}\.\d{1,2}\.\d{1,2}（[日月火水木金土]）)$/;
+  const isStampLine = (l) => STAMP_LINE.test(l) || LEAVE_LINE.test(l);
   function stampHead(memo) {
     const out = [];
     for (const l of String(memo || "").split("\n")) {
       const t = l.trim();
       if (!t) continue;
-      if (STAMP_LINE.test(t)) out.push(t); else break;
+      if (isStampLine(t)) out.push(t); else break;
     }
     return out;
   }
@@ -787,7 +790,7 @@
     const shutNow = diaryShut();
     days.forEach((d) => {
       const head = shutNow ? stampHead(d.memo) : [];
-      const stampJust = head.length && String(d.memo || "").split("\n").every((l) => !l.trim() || STAMP_LINE.test(l.trim())) && !store.memoOut(d);
+      const stampJust = head.length && String(d.memo || "").split("\n").every((l) => !l.trim() || isStampLine(l.trim())) && !store.memoOut(d);
       const shut = shutNow && !d.isBlank && !unread && !stampJust && !!(String(d.memo || "").trim() || store.memoOut(d));
       /* 時刻ごと（既定）：書いた日は一件ずつ。空の日・読めない日・本文を外した日は下の一行のまま
          （押せば書く紙。言うことも色も一枚のときと同じ）。 */
@@ -1008,9 +1011,47 @@
     const lines = [`${day.replace(/-/g, ".")}（${U.weekdayJa(day)}）`];
     /* U.daysUntil は「今日から」の日数なので、二回呼んで引き算すれば
        「day 基準」に直せます——「今日」が両方から消えるので。 */
-    const remain = U.daysUntil(LEAVE_END_DAY) - U.daysUntil(day);
-    if (day >= LEAVE_FROM_DAY && day <= LEAVE_LAST_DAY) lines.push(`育休完了まであと${remain}日`);
+    if (inLeave(day)) lines.push(`育休完了まであと${leaveRemain(day)}日`);
     return `${lines.join("\n")}\n\n`;
+  }
+
+  const inLeave = (day) => day >= LEAVE_FROM_DAY && day <= LEAVE_LAST_DAY;
+  const leaveRemain = (day) => U.daysUntil(LEAVE_END_DAY) - U.daysUntil(day);
+
+  /* ---------------- 前の数え方の育休の行を、今の数え方へ（2026年10月26日・利用者の指定） ----------------
+
+     10月26日までの下書きは一日多く数えていた（4/1 も入れて、3/31 が「あと2日」）。期間の日の本文の頭
+     （三行まで）にある「育休完了まであとN日」のうち、**N が前の数え方とぴったり同じ行だけ**を
+     「あと(N-1)日（04.01を含めるとあとN日）」に置き換える。開いたら走る。置き換えた行・今の数え方の行は
+     もう当たらないので、何度走っても一度きりと同じ（印を持たない——控えから戻した古い記録も同じ形になる）。
+     当たる行があるときだけ、先に控えを一本取る（間引かない名前）。取れなければ何もしない。
+     本文がまだ読めない（大きな保存場所の突き合わせ前・読めない日）ときも何もしない。 */
+  async function recountLeave() {
+    if (KN.diaryIdb) {
+      try { await KN.diaryIdb.ready(); } catch (_) { return 0; }
+      if (KN.diaryIdb.body() !== "ok") return 0;
+    }
+    const plan = () => {
+      const seen = new Set(), out = [];
+      (store.get().archive.days || []).forEach((d) => {
+        if (seen.has(d.date)) return;               // 同じ日付の二つ目は見ない（写しと同じ）
+        seen.add(d.date);
+        if (!inLeave(d.date) || store.memoOut(d) || !d.memo) return;
+        const old = leaveRemain(d.date) + 1;
+        const lines = String(d.memo).split("\n");
+        const i = lines.slice(0, 3).findIndex((l) => l.trim() === `育休完了まであと${old}日`);
+        if (i < 0) return;
+        lines[i] = `育休完了まであと${old - 1}日（04.01を含めるとあと${old}日）`;
+        out.push({ date: d.date, from: d.memo, to: lines.join("\n") });
+      });
+      return out;
+    };
+    if (!plan().length) return 0;
+    if (KN.backup) {
+      const r = await KN.backup.take("育休の数え直し前", { force: true });
+      if (r !== "taken" && r !== "same") return 0;
+    }
+    return store.swapMemos(plan());
   }
 
   function openLogSheet(day) {
@@ -1355,7 +1396,7 @@
   }
   /* 頭が日付と育休の行だけ（日記の下書きの字）なら、直す・コピーのボタンは出さない（直す要が無い）。 */
   const stampOnly = (text) => String(text).split("\n").every((l) => !l.trim()
-    || /^\d{4}\.\d{1,2}\.\d{1,2}（[日月火水木金土]）$/.test(l.trim()) || /^育休完了まであと\d+日$/.test(l.trim()));
+    || isStampLine(l.trim()));
 
   /** 「更新」を出すか。同じ分のうちに直しただけなら、作成と同じ字が二つ並ぶだけなので出さない。 */
   function edits(d) {
@@ -1990,5 +2031,10 @@
   });
 
   KN.screens.archive = { mount, render, dockButton, prepare, onEnter, day: () => focusDay(),
-    goDay: (d) => goDayTo(d) };
+    goDay: (d) => goDayTo(d), recountLeave };
+
+  /* 開いたら一度、落ち着いてから（立ち上がりの一拍を重くしない）。 */
+  window.addEventListener("load", () => setTimeout(() => {
+    recountLeave().catch((err) => console.error("recountLeave failed", err));
+  }, 1500));
 })();

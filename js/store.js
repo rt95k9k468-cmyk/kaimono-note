@@ -4554,6 +4554,27 @@
    * 溜まると、月を眺めたときに「何も書いていない日」と「空の行がある日」が
    * 見分けられなくなります（setDayMemo と同じ考え方）。
    */
+  /**
+   * 本文を、書いてあるものが `from` と同じ日だけ `to` に置き換えます（まとめて一度に書く）。
+   * 並び・時刻・作成・更新・書き手の印には触れません（人が書き直したわけではないので）。
+   * 本文を外した行（memoOut）・同じ日付の二つ目は見ません。置き換えた数を返します。
+   * @param {{date: string, from: string, to: string}[]} list
+   */
+  function swapMemos(list) {
+    let n = 0;
+    const want = (list || []).filter((c) => c && c.date && typeof c.from === "string" && typeof c.to === "string" && c.to);
+    if (!want.length) return 0;
+    update((s) => {
+      want.forEach((c) => {
+        const cur = s.archive.days.find((d) => d.date === c.date);
+        if (!cur || memoOut(cur) || cur.memo !== c.from) return;
+        cur.memo = c.to;
+        n++;
+      });
+    });
+    return n;
+  }
+
   function setDayLog(day, patch, opts) {
     /* 誰が書いたか。人が打ったものは "manual"、ヘルスケアからの取り込みは
        "health"。**取り込みは手で打った時刻を上書きしません**——毎朝の便が
@@ -5163,7 +5184,7 @@
     stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
-    dayLog, memoOut, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
+    dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
     setAsks,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };
