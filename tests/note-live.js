@@ -394,6 +394,15 @@ const BODY = [
   t.check("Tab で段を下げ・Shift+Tab で上げる・Ctrl+B で太字", tab && untab && (await md()).includes("**おわりです**"), JSON.stringify((await md()).slice(0, 400)));
   await page.keyboard.press("Control+z");
   t.check("Ctrl+Z は自前の取り消す", (await md()).includes("\nおわりです"));
+  /* 書くあいだの空の行は一行ぶん（読む姿は .7em。底で改行しても少しずつしか下がらなかった）。 */
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  const blankH = await page.$eval(".sheet.is-note .js-live", (l) => {
+    const b = [...l.querySelectorAll(".nv-blank")].pop();
+    return { h: b && b.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(l).lineHeight) };
+  });
+  t.check("書くあいだの空の行は一行ぶんの高さ", blankH.h >= blankH.lh - 1, JSON.stringify(blankH));
   await page.evaluate(() => document.activeElement.blur());
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });

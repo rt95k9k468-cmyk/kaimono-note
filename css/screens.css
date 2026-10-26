@@ -6171,7 +6171,8 @@ textarea.note-title-in {
 .nv-h2 { font-size: 1.25em; }
 .nv-h3 { font-size: 1.1em; }
 .note-view > .nv-h:first-child { margin-top: 0; }
-.nv-blank { height: .7em; }
+/* 空の行は一行ぶん（読む姿も書く姿も。.7em だと底で改行しても少しずつしか下がらず、行も選びにくかった。2026年10月26日、利用者）。 */
+.nv-blank { height: 1lh; }
 /* 表（note-format.js の tablesOf）。はみ出せば表だけ横に送る。 */
 .note-view > .nv-table { white-space: normal; overflow-x: auto; touch-action: pan-x pan-y; margin: .4em 0; text-align: left; }
 .nv-table table { border-collapse: collapse; font-size: var(--fs-md); line-height: var(--lh-tight); }
