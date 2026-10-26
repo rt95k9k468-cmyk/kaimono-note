@@ -795,7 +795,7 @@
       /* 時刻ごと（既定）：書いた日は一件ずつ。空の日・読めない日・本文を外した日は下の一行のまま
          （押せば書く紙。言うことも色も一枚のときと同じ）。 */
       if (chatView() && !d.isBlank && !unread && !outText(d) && !shut) {
-        body.append(chatRow(d));
+        body.append(chatRow(d, !!only));
         const feed = feedRows(d.date);
         if (feed) body.append(feed);
         return;
@@ -825,7 +825,7 @@
                   まま、責める色は当てません（daily は評価しない）。 */""}
             ${/* 一日ぶんで、まだ何も書いていない日も、頭の日付と育休の行は出す（書いた日と同じ顔。
                   `.arc-log-memo` の字は変えない）。月ぜんぶを並べるときは出さない。 */""}
-            ${only && d.isBlank && !unread ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}
+            ${only && !unread && (d.isBlank || (!String(d.memo || "").trim() && !store.memoOut(d))) ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}
             ${/* 「数行」は**終わりの数行**（2026年10月6日、利用者）。日記は頭に決まった行が
                   並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
             <span class="arc-log-memo ${S().logFull === false ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
@@ -1404,8 +1404,9 @@
       && U.formatStamp(d.updatedAt) !== U.formatStamp(d.createdAt));
   }
 
-  /** 時刻ごとの日記の行。本文の字は足し引きせず、切って並べるだけ。 */
-  function chatRow(d) {
+  /** 時刻ごとの日記の行。本文の字は足し引きせず、切って並べるだけ。
+      本文がまだ無い日（起床・就寝だけ入った日）も、一日ぶんなら頭の日付と育休の行を出す（空の日と同じ顔）。 */
+  function chatRow(d, one) {
     const dt = U.dayDate(d.date);
     const edited = edits(d);
     const items = KN.diaryPosts.parse(d.memo || "");
@@ -1425,7 +1426,7 @@
                 }<span class="arc-post-text">${x.text}</span
                 ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="全文を読む">${icon("chevron-down")}<span>全文を読む</span></button
                 ><span class="arc-post-tail" aria-hidden="true">${x.text}</span></span></span>`)
-            : html`<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
+            : html`${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
           ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
               S().showDayTimes === false ? "" : html`
             <span class="arc-log-times js-times" role="button" tabindex="0">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}

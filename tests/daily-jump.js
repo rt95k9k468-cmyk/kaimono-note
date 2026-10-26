@@ -90,6 +90,20 @@ const { open, checker } = require("./lib");
   const s4 = await stampAt(2027, 4, 1);
   t.check("2027.04.01：育休の行は出ない", s4 !== null && !/育休/.test(s4), s4);
 
+  /* 起床だけ入った今日（本文は空）も、頭の日付と育休の行を出す（時刻ごと・一枚の両方）。 */
+  await page.evaluate(() => { KN.store.setDayLog("2026-10-26", { wake: "07:58" }); KN.screens.archive.goDay("2026-10-26"); });
+  await page.waitForTimeout(500);
+  const todayStamp = () => page.evaluate(() => {
+    const s = document.querySelector('.screen.is-active .arc-log-row[data-day="2026-10-26"] .arc-log-stamp');
+    return s ? s.textContent : null;
+  });
+  const ts1 = await todayStamp();
+  t.check("起床だけの今日にも頭の行（時刻ごと）", ts1 !== null && /2026\.10\.26（月）/.test(ts1) && /育休完了まであと157日/.test(ts1), String(ts1));
+  await page.evaluate(() => { KN.store.update((s) => { s.settings.diaryView = "page"; }); });
+  await page.waitForTimeout(500);
+  const ts2 = await todayStamp();
+  t.check("起床だけの今日にも頭の行（一枚）", ts2 !== null && /育休完了まであと157日/.test(ts2), String(ts2));
+
   t.check("エラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
   t.done();
