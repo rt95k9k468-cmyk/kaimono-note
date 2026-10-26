@@ -6356,7 +6356,7 @@ textarea.note-title-in {
   transition: opacity var(--m-state) var(--ease);
 }
 .note-to-end.is-on { opacity: .5; pointer-events: auto; }
-.note-to-end svg { width: 20px; height: 20px; }
+.note-to-end svg { width: var(--ico); height: var(--ico); }
 .sheet.is-note.is-writing .note-to-end { bottom: calc(var(--note-tools-h) + var(--sp-2) * 2 + var(--note-safe)); }
 .note-tool {
   flex: 1 1 0;

@@ -3,6 +3,7 @@
      NODE_PATH=/opt/node22/lib/node_modules node tests/run-all.js
      … tests/run-all.js day-road carry     名前で絞る（.js は要らない）
      … tests/run-all.js --gate             門（GATE）に入れたものだけ（R22）
+     … tests/run-all.js --quick            門のうち画面を開かないものだけ（1秒ほど。main への push の前）
      … tests/run-all.js -j 4               並べる数（既定 3）
      … tests/run-all.js --verbose          通った台本の出力も出す
 
@@ -47,6 +48,10 @@ const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "to
   "xss-probe",                     // 画面の中の守り（セキュリティ S2）：記録の字が要素にならない（docs/dev.md）
   "relay-worker"];                 // 外との口の守り（セキュリティ S3）：中継所のふるまいと埋めた写し（docs/dev.md）
 
+/* --quick：門のうち画面を開かないもの（決まりの見張り。全部で1秒ほど）。main への push の前に
+   .claude/hooks/push-gate.js が回す。10月9〜26日に門で落ちた21回のうち19回は、これだけで落ちていた（docs/dev.md）。 */
+const opensPage = (name) => /\bopen\(|chromium|launch\(|newContext/.test(fs.readFileSync(path.join(DIR, `${name}.js`), "utf8"));
+
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
    測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */
 const SLOW = { passed: 60, "head-still": 55, "road-walk": 50, "diary-idb": 45, "day-road": 40,
@@ -54,10 +59,11 @@ const SLOW = { passed: 60, "head-still": 55, "road-walk": 50, "diary-idb": 45, "
   "update-path": 60 };
 
 function parseArgs(argv) {
-  const o = { jobs: 3, gate: false, verbose: false, names: [] };
+  const o = { jobs: 3, gate: false, quick: false, verbose: false, names: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--gate") o.gate = true;
+    else if (a === "--quick") o.quick = true;
     else if (a === "--verbose" || a === "-v") o.verbose = true;
     else if (a === "-j") o.jobs = Math.max(1, Number(argv[++i]) || 3);
     else o.names.push(a.replace(/\.js$/, "").replace(/^tests\//, ""));
@@ -70,6 +76,7 @@ function listScripts(o) {
     .map((f) => f.slice(0, -3));
   let pick = all;
   if (o.gate) pick = GATE;
+  if (o.quick) pick = GATE.filter((n) => !opensPage(n));
   if (o.names.length) pick = o.names;
   const missing = pick.filter((n) => !all.includes(n));
   if (missing.length) throw new Error(`台本が無い：${missing.join(", ")}`);
@@ -116,7 +123,7 @@ async function main() {
   const o = parseArgs(process.argv.slice(2));
   if (o.verbose) process.env.KN_VERBOSE = "1";  // 台本の ok の行も出す（lib.js の checker）
   const names = listScripts(o);
-  await ensureServer();
+  if (!o.quick) await ensureServer();
   const t0 = Date.now();
   const queue = names.slice();
   const results = [];

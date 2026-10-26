@@ -51,5 +51,15 @@
     "anthropic-skills:pptx": "user-invocable-only",
     "anthropic-skills:skill-creator": "user-invocable-only",
     "anthropic-skills:xlsx": "user-invocable-only"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/push-gate.js\"", "timeout": 60 }
+        ]
+      }
+    ]
   }
 }
