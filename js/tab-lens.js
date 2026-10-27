@@ -60,12 +60,21 @@
      `offsetLeft` / `offsetWidth` は**組み上がりの箱**で、transform を
      見ません。席の親は `.tabbar`（position:absolute）なので、返るのは
      そのまま帯の中の座標です。 */
+  /* 席は**帯ごと一度に測って覚えます**。席を移る一拍は、組んだばかりの画面で配置が
+     汚れているので、読むたびに画面ぜんぶの様式と配置を強いていた（daily に入るとき
+     21ms・2026年10月27日）。忘れるのは帯か席の大きさが変わったとき（下の ro）と mount。 */
+  let seats = null;
+  const measure = (tab) => ({
+    x: tab.offsetLeft + INSET_X,
+    w: tab.offsetWidth - INSET_X * 2,
+    cy: tab.offsetTop + tab.offsetHeight / 2,
+  });
   function seatBox(tab) {
-    return {
-      x: tab.offsetLeft + INSET_X,
-      w: tab.offsetWidth - INSET_X * 2,
-      cy: tab.offsetTop + tab.offsetHeight / 2,
-    };
+    if (seats && seats.has(tab)) return seats.get(tab);
+    seats = new Map();
+    bar.querySelectorAll(".tab").forEach((t) => seats.set(t, measure(t)));
+    seats.span = bar.offsetWidth;   // 帯の幅（滑る長さの割合に。to）
+    return seats.get(tab) || measure(tab);
   }
 
   /**
@@ -109,7 +118,7 @@
        ありませんが（タップにはそれが無い）、glide はそのとき**道のりの
        割合**で答えます——隣の席へは短く、端から端へは長く。決め打ちの
        一つの数で送ると、その二つが同じ時間になります。 */
-    const g = M.glide(dist, 0, { span: bar.offsetWidth, base: M.ms("--m-nav") });
+    const g = M.glide(dist, 0, { span: seats.span, base: M.ms("--m-nav") });
     place(dst, g.ms, g.ease);
     /* 滑り終わったら 0ms へ戻します——戻さないと、次に幅が変わったとき
        （回転・キーボード）置きなおしまで滑って見えます。 */
@@ -118,6 +127,7 @@
 
   /** 席の大きさが変わった（回転・キーボード）ときに置きなおす。 */
   function sync() {
+    seats = null;
     if (!lens || !at || !at.isConnected || timer) return;
     place(seatBox(at));
   }
@@ -153,13 +163,15 @@
     else bar.prepend(lens);
     at = null;
     held = false;
+    seats = null;
     if (timer) { clearTimeout(timer); timer = 0; }
     /* 帯の幅が変わったら置きなおします。回転・キーボードは window の
        resize が知らせますが、**＋が出入りして帯が伸び縮みする**ときは
        何も鳴りません——設定を開くと＋が消えて席が広がるのに、印だけが
        もとの座標に取り残され、席と席のあいだに浮いていました。 */
     if (!ro && typeof ResizeObserver === "function") ro = new ResizeObserver(() => sync());
-    if (ro) { ro.disconnect(); ro.observe(bar); }
+    /* 席も見張ります（覚えた席の箱を忘れるため。数が出て席が太るときなど）。 */
+    if (ro) { ro.disconnect(); ro.observe(bar); bar.querySelectorAll(".tab").forEach((t) => ro.observe(t)); }
   }
 
   /** いま居る席が無い（設定のような、席を持たない画面）ときは印を伏せる。

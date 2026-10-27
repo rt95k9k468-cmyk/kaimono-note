@@ -224,8 +224,10 @@
        230ms ぶん占領して、そこへ飛んできた指を待たせることになります。 */
     let ready = null, idle = 0;
 
+    /* iPhone の Safari には requestIdleCallback が無い。代わりの道は、120ms 待ってから
+       **一枚描き終えた直後**に組む（次の絵までの間がいちばん長いところ）。 */
     const ric = window.requestIdleCallback
-      || ((fn) => setTimeout(() => fn({ timeRemaining: () => 8 }), 120));
+      || ((fn) => setTimeout(() => requestAnimationFrame(() => setTimeout(() => fn({ timeRemaining: () => 8 }), 0)), 120));
     const cic = window.cancelIdleCallback || clearTimeout;
 
     function drop() {
@@ -243,7 +245,10 @@
         idle = 0;
         /* 指が乗っているあいだ・運んでいる最中は組みません。組んでいる
            数十msは何があっても止められないので、待つほうが安全です。 */
-        if (id !== null || peeks || (o.busy && o.busy())) return;
+        if (id !== null || peeks || (o.busy && o.busy()) || !track.isConnected) return;
+        /* 席を移っている最中（出ていく画面がまだ居る）も組みません。流れの上で数十ms
+           占領すると、入ってくる画面が止まって見える（2026年10月27日・inspection.md）。 */
+        if (document.querySelector(".screen.is-leaving")) { setTimeout(warm, 120); return; }
         const now = o.day();
         if (!ready || ready.day !== now) ready = { day: now };
         if (ready.back === undefined) ready.back = slideFor(o.step(now, -1));

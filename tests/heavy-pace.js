@@ -1,9 +1,10 @@
 /* 大きな記録での重さ（2026年10月8日の総点検。docs/log/inspection.md）。
    1年ぶんの記録（約183万字。いまの約3.5倍）を作って、保存一回・開く（CPU 4倍遅）・タブを替える・
-   daily に初めて入るときの様式の計算・じっと5秒（昼の各タブと、夜の tasks。夜は寝ている人の z Z が
+   daily に初めて入るときの様式の計算・じっと5秒（人が歩き終わってから。昼の各タブと、夜の tasks。夜は寝ている人の z Z が
    出る。三回で止んだあとも）を測る。
    **門にも run-all にも入れない**（frame-pace.js と同じ。数字は機械で揺れる目安）。直す前と後で手で
-   回し、数を inspection.md に書く。落とすのはエラーが出たときだけ。試験のブラウザ（Chromium）の
+   回し、数を inspection.md に書く。**前の点検の数と比べるときは、前の版も同じ機械で回す**（機械が違うと
+   2倍以上ずれる。10月27日）。落とすのはエラーが出たときだけ。試験のブラウザ（Chromium）の
    数字で、iPhone の Safari とは違う。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/heavy-pace.js（約2分） */
 const { open, checker } = require("./lib");
@@ -117,7 +118,11 @@ function fill() {
   console.log(`  daily に初めて入る（CPU 1倍）：仕事 ${diff(m0, m1, "TaskDuration")}ms・様式の計算 ${ult.length}回（延べ ${els}要素・${diff(m0, m1, "RecalcStyleDuration")}ms）`);
 
   // じっと5秒（CPU 1倍）：昼の各タブ、夜の tasks（inspection.md の 2）
+  /* 測りはじめるのは、人が歩き終わってから（tasks を開くと「いま」まで約1.5秒歩く。day-road.js の walk）。
+     決め打ちの待ちだと歩きの尾を拾い、じっとしていない数になった（2026年10月27日）。 */
   const still = async () => {
+    await page.waitForFunction(() => ![...document.querySelectorAll(".day-road .road-me")].some((m) => m.__walk),
+      null, { timeout: 10000 });
     const a = await metrics();
     await page.waitForTimeout(5000);
     const b = await metrics();

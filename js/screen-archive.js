@@ -80,6 +80,7 @@
   let root = null;
   /* 暦の厚みを測り直す。mount が中身を入れます（render から呼びます）。 */
   let fitCalH = () => {};
+  let calLater = () => {};
   let els = {};
 
   /* 見ている月。null は「今月」。 */
@@ -1826,11 +1827,24 @@
       const h = c && !c.classList.contains("is-hidden")
         ? Math.round(c.getBoundingClientRect().height) : 0;
       if (h !== calH) { calH = h; root.style.setProperty("--cal-h", h + "px"); }
-      if (c !== calSeen && window.ResizeObserver) {
-        if (calRO) calRO.disconnect();
-        calSeen = c;
-        if (c) { calRO = new ResizeObserver(() => fitCalH()); calRO.observe(c); }
-      }
+      watchCal(c);
+    };
+    /* 見張りは、つながる前から付けておきます（下の calLater が使うので）。 */
+    const watchCal = (c) => {
+      if (c === calSeen || !window.ResizeObserver) return;
+      if (calRO) calRO.disconnect();
+      calSeen = c;
+      if (c) { calRO = new ResizeObserver(() => fitCalH()); calRO.observe(c); }
+    };
+    /* 組み直したあとは**その場で測りません**。組んだばかりの紙ごと配置を強いて、1年ぶんの記録で
+       daily に入る一拍が 99ms 重かった（2026年10月27日・inspection.md）。見張りを付け直すと、
+       次の配置のあと・描く前に一度だけ鳴る（ResizeObserver の決まり）ので、最初の絵から床は合う。 */
+    calLater = () => {
+      const c = els.cal;
+      if (!window.ResizeObserver || !c) { fitCalH(); return; }
+      watchCal(c);
+      calRO.unobserve(c);
+      calRO.observe(c);
     };
     fitCalH();
     window.addEventListener("resize", () => fitCalH());
@@ -1979,8 +1993,8 @@
     laidDay = day;
     rendering = false;
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
-       （掴み手はそのぶん下に貼りつくので）。 */
-    fitCalH();
+       （掴み手はそのぶん下に貼りつくので）。測るのは配置のあと（calLater）。 */
+    calLater();
     // 位置を戻したあとで測ります（戻す前だと、行がスクロールぶんだけ
     // 余計に動いたことになって、画面の外から飛んできます）。
     settle();
