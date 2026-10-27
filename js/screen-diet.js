@@ -1772,8 +1772,8 @@
 
   /* 入口。からだの輪のすぐ下——飲酒の輪と同じ一日の、同じ面の話なので。
 
-     結果がまだの一件は、上に「あとで記入」として並べます。今日の紙には
-     前の晩のぶんも（夜の一件を書き足すのは、たいてい翌朝なので）。**急かし
+     結果がまだの一件は、上に「あとで記入」として並べます。**その日の紙だけ**
+     ——翌日へは持ち越しません（昨日の分は昨日の紙で書けます）。**急かし
      ません**——警告色を使わず、書けば消えるだけ。書かないままでもかまいません。
      日の紙に出すのは回数だけ：「うち◯回は飲まなかった」は並べた瞬間に
      達成率になります。 */
@@ -1781,11 +1781,10 @@
     const rows = card.urges || [];
     const today = U.todayKey();
     const canAdd = card.day <= today;
-    const prev = card.day === today ? store.urgesOfDay(U.shiftDay(today, -1)) : [];
     /* 書き足しが一つでもあれば（あとの強さだけでも）並べません。前の版で
        あとの強さまで書いた一件が、結果が空なだけで残り続けていました。 */
     const isLater = (u) => !urgeOutcome(u) && u.after == null;
-    const later = prev.concat(rows).filter(isLater);
+    const later = rows.filter(isLater);
     const done = rows.filter((u) => !isLater(u));
     if (!canAdd && !rows.length) return;
 
@@ -1805,7 +1804,7 @@
     const row = (u, onTap) => {
       const el = node(html`
         <button class="urge-row" type="button">
-          <span class="urge-row-time mono-num">${u.day !== card.day ? "昨日 " : ""}${urgeTime(u)}</span>
+          <span class="urge-row-time mono-num">${urgeTime(u)}</span>
           ${/* 矢は絵なので raw で通します——`html` は補間した値を escape します。 */""}
           <span class="urge-row-lv mono-num">${u.before}${
             KN.util.raw(u.after != null ? `<i>→</i>${KN.util.escapeHtml(u.after)}` : "")}</span>
