@@ -119,7 +119,8 @@ function fill() {
 
   // じっと5秒（CPU 1倍）：昼の各タブ、夜の tasks（inspection.md の 2）
   /* 測りはじめるのは、人が歩き終わってから（tasks を開くと「いま」まで約1.5秒歩く。day-road.js の walk）。
-     決め打ちの待ちだと歩きの尾を拾い、じっとしていない数になった（2026年10月27日）。 */
+     決め打ちの待ちだと歩きの尾を拾い、じっとしていない数になった（2026年10月27日）。
+     list・diet でときどき出る 200〜500ms はブラウザの GC（前の組み直しのゴミ）で、アプリの仕事ではない。 */
   const still = async () => {
     await page.waitForFunction(() => ![...document.querySelectorAll(".day-road .road-me")].some((m) => m.__walk),
       null, { timeout: 10000 });
