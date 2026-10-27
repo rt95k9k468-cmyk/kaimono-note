@@ -35,7 +35,12 @@ const t = checker("smooth");
 }
 
 (async () => {
-  const { browser, page, errors } = await open({ viewport: { width: 390, height: 700 } });
+  /* 頁の時計は今日の昼（12:34）から流す。途中で日付が変わると「今日の行」の数えと買うものの紙が崩れる
+     （2026年10月27日、KN_CLOCK=23:59:56 で落ちた）。コマを数えるので止めずに流す（tests/README.md の試験の罠）。 */
+  const midday = new Date();
+  midday.setHours(12, 34, 0, 0);
+  const { browser, page, errors } = await open({ viewport: { width: 390, height: 700 },
+    before: (c, p) => p.clock.install({ time: midday }) });
   const raw = () => page.evaluate(() => localStorage.getItem("kaimono-note-v2") || "");
   const today = await page.evaluate(() => KN.util.todayKey());
   const yesterday = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 1); return KN.util.dayKey(d); });

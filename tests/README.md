@@ -97,7 +97,7 @@
   昼の半ば（毎時0分台は避ける）に止め、台本の側の日付も同じ時刻から作る。壁の時計のままだと 0:00 の前後で落ち、
   門は UTC で回るので日本時間の朝9時の push が止まりうる（`backup-budget`・`shop-day`・`due-sheet`・`offdevice-watch`・
   `diary-idb`。2026年10月10日、N10）。Date.now で進む待ち（「5秒は読み直さない」）があるなら、止めずに
-  `p.clock.install({ time })` で昼から進める（`diary-idb`）。
+  `p.clock.install({ time })` で昼から進める（`diary-idb`。コマを数える `smooth` も）。
 - **時計を止めた台本で、フレームを数えて待たないこと。** `page.clock` は requestAnimationFrame も作り物にし、重い
   機械では遅れたタイマーの時刻へ刻みが巻き戻って、後で頼んだフレームが先に走る。アプリが一フレーム後に塗るもの
   （`head.js` の点）は、記録に追いつくまで `waitForFunction` で待つ（`offdevice-watch` の `dot()`。毎日の全部回しの
