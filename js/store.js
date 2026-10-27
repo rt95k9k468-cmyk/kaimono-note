@@ -478,7 +478,7 @@
   }
 
   /** AIの推計。何も無ければ null（「まだ聞いていない」と「0だった」は別）。 */
-  function cleanMealAI(a) {
+  function cleanMealAI(a, keep) {
     if (!a || typeof a !== "object") return null;
     const raw = typeof a.raw === "string" ? a.raw.slice(0, 4000) : "";
     const out = {
@@ -515,12 +515,21 @@
       if (cost.usd != null || cost.inputTokens != null) out.cost = cost;
     }
     const anyNum = ["kcal", "p", "f", "c", "fiber", "low", "high"].some((k) => out[k] != null);
-    return anyNum || hasSlot || raw || analysis ? out : null;
+    if (!(anyNum || hasSlot || raw || analysis)) return null;
+    if (keep) {
+      if (out.slots && a.slots && typeof a.slots === "object") keepUnknown(a.slots, out.slots);
+      if (out.cost) keepUnknown(a.cost, out.cost);
+      keepUnknown(a, out, ["analysis", "slots", "cost"]);   // 読めない値は欄ごと落とすもの
+    }
+    return out;
   }
 
-  function cleanMeal(m, i) {
-    const items = (Array.isArray(m.items) ? m.items : []).map(cleanMealItem).filter(Boolean);
-    const ai = cleanMealAI(m.ai);
+  /* keep：保存された記録を読むとき（reconcile）だけ、明細と AI の欄の知らない欄を残す（keepUnknown）。
+     足す・直すときの明細は画面から来るので残さない。 */
+  function cleanMeal(m, i, keep) {
+    const items = (Array.isArray(m.items) ? m.items : [])
+      .map((it) => (keep ? keepUnknown(it, cleanMealItem(it)) : cleanMealItem(it))).filter(Boolean);
+    const ai = cleanMealAI(m.ai, keep);
     if (!items.length && !ai && !String(m.memo || "").trim()) return null;
     return {
       id: m.id || uid("m"),
@@ -594,20 +603,23 @@
 
   function reconcileDiet(d) {
     const base = emptyDiet();
-    const src = (d && typeof d === "object") ? d : {};
+    const src = (d && typeof d === "object" && !Array.isArray(d)) ? d : {};
+    /* 知らない欄は残す（keepUnknown。箱も一件も）。食事は明細と AI の欄まで（cleanMeal の keep）。 */
+    const list = (a, clean) => (Array.isArray(a) ? a : []).map((x, i) => keepUnknown(x, clean(x, i))).filter(Boolean);
     const out = {
-      weights: (Array.isArray(src.weights) ? src.weights : []).map(cleanWeight).filter(Boolean),
-      meals: (Array.isArray(src.meals) ? src.meals : []).map(cleanMeal).filter(Boolean),
-      foods: (Array.isArray(src.foods) ? src.foods : []).map(cleanUserFood).filter(Boolean),
-      health: (Array.isArray(src.health) ? src.health : []).map(cleanHealth).filter(Boolean),
+      ...src,
+      weights: list(src.weights, cleanWeight),
+      meals: (Array.isArray(src.meals) ? src.meals : []).map((m, i) => keepUnknown(m, cleanMeal(m, i, true))).filter(Boolean),
+      foods: list(src.foods, cleanUserFood),
+      health: list(src.health, cleanHealth),
       /* 前からある記録には drinks がありません。空で足すだけなので、
          入れ直しても既存のデータは何も動きません。 */
-      drinks: (Array.isArray(src.drinks) ? src.drinks : []).map(cleanDrink).filter(Boolean),
+      drinks: list(src.drinks, cleanDrink),
       /* urges も同じく、前からある記録には入っていません。空で足すだけです。
          `diet` の中に置いてあるので、書き出し・復元（`importJSON` は
          `s.diet = next.diet` で丸ごと入れ替える）と自動バックアップには、
          何も足さずに乗ります。 */
-      urges: (Array.isArray(src.urges) ? src.urges : []).map(cleanUrge).filter(Boolean),
+      urges: list(src.urges, cleanUrge),
       goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
       sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },
     };
@@ -765,7 +777,7 @@
        つながるように。 */
     out.sets = Array.isArray(s.sets)
       ? s.sets.filter((g) => g && typeof g === "object" && g.id && typeof g.name === "string" && g.name.trim())
-        .map((g) => ({
+        .map((g) => keepUnknown(g, {
           id: String(g.id),
           name: g.name.trim(),
           productIds: Array.isArray(g.productIds)
@@ -775,16 +787,17 @@
         }))
       : [];
     out.todos    = Array.isArray(s.todos)    ? s.todos    : [];
-    out.asks     = cleanAsks(s.asks);
+    out.asks     = cleanAsks(s.asks, true);
     out.learned  =(s.learned && typeof s.learned === "object" && !Array.isArray(s.learned)) ? s.learned : {};
     out.iconOverrides = (s.iconOverrides && typeof s.iconOverrides === "object" && !Array.isArray(s.iconOverrides)) ? s.iconOverrides : {};
     out.iconReports = Array.isArray(s.iconReports)
-      ? s.iconReports.filter((r) => r && r.id && r.text).map(cleanIconReport)
+      ? s.iconReports.filter((r) => r && r.id && r.text).map((r) => keepUnknown(r, cleanIconReport(r)))
       : [];
 
     /* daily。この機能より前に保存された人には、空の箱を渡します。 */
-    const arc = (s.archive && typeof s.archive === "object") ? s.archive : {};
+    const arc = (s.archive && typeof s.archive === "object" && !Array.isArray(s.archive)) ? s.archive : {};
     out.archive = {
+      ...arc,   // 知らない欄は残す（keepUnknown と同じ）
       entries: Array.isArray(arc.entries) ? arc.entries : [],
       days:    Array.isArray(arc.days)    ? arc.days    : [],
       /* 出さない日（R9）。「あの日」「同じ日の年々」に出さない日付の並び。
@@ -880,7 +893,8 @@
        due date is either a 「YYYY-MM-DD」 day or nothing at all — anything
        else (an old ISO timestamp, a typo) is dropped rather than shown as
        「Invalid Date」. */
-    out.todos = out.todos.filter((t) => t && typeof t === "object").map((t, i) => ({
+    /* 知らない欄は元の一件から残す（keepUnknown）。下の …Field が読めない値を欄ごと落とす欄は、足し戻さない。 */
+    out.todos = out.todos.filter((t) => t && typeof t === "object").map((t, i) => keepUnknown(t, {
       id: t.id || uid("t"),
       title: String(t.title || "").trim(),
       due: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? t.due : null,
@@ -919,7 +933,7 @@
       ...carriedField(t.carried),
       /* 3.0 の受け皿（docs/roadmap-3.0.md の T0）。書く画面より先に、読んで残すだけ。
          ここに無い欄は保存のたびに消えるので。どれも持っていない記録は既定に落ちます。 */
-      ...actField(t.act),
+      ...actField(t.act, true),
       ...planField({ ...t, repeat: cleanRepeat(t.repeat) }),
       ...googleField(t),
       shelf: /^\d{4}-\d{2}-\d{2}$/.test(t.due) ? null : cleanShelf(t.shelf),   // 日のあるものは待つ・いつかに居ない
@@ -956,7 +970,7 @@
          繰り返しと合わせると、そのままルーティンになります——毎朝の一件が、
          中に同じ手順を持って毎日戻ってくる。だから「ルーティン」という
          別の種類は作りません。同じものに名前を二つ付けることになるので。 */
-      subs: cleanSubs(t.subs),
+      subs: cleanSubs(t.subs, t.subs),
       /* 手順の、今日と翌日以降を分ける薄い上書き。持っていない古い記録は
          {} に落ちるので、これまでどおり読めます（新しく増えた欄なので、
          reconcile の既定値フォールバックで足りています——データの
@@ -971,7 +985,8 @@
       icon: cleanIcon(t.icon),
       createdAt: t.createdAt || today(),
       order: typeof t.order === "number" ? t.order : i,
-    })).filter((t) => t.title).map(fixBookend);
+    }, ["carried", "act", "kind", "side", "endDay", "repeatWeeks", "weekMark", "gid", "gbatch"]))
+      .filter((t) => t.title).map(fixBookend);
     /* 元から外した過去のやることの id（印。R26 の段2・js/todo-past.js）。棚から戻るまで持ち越す。
        いま記録にある id は落とす（戻った・前の版が書き戻した）。無ければ欄ごと持たない。 */
     {
@@ -1033,18 +1048,31 @@
 
   /* 運んだ印 `carried: { on: 日, time: 時刻|null }`。日の読めないものは印ごと
      落とし（無ければ「運んでいない」）、時刻だけ崩れていれば null に。 */
+  /* 知らない欄を残す（docs/storage.md「知らない欄」）。正した一件 out に、元の src にあって out に無い欄を
+     足し戻す。drop は知っていてわざと消す欄（読めない値は欄ごと落とすもの）。新しい版の欄を、古い版が
+     開いて保存しても落とさないため。**元が保存された記録のときだけ**使う（画面から来た物の余計な欄は残さない）。
+     load の道から呼ぶので function 宣言。 */
+  function keepUnknown(src, out, drop) {
+    if (!src || typeof src !== "object" || Array.isArray(src) || !out || typeof out !== "object") return out;
+    for (const k of Object.keys(src)) {
+      if (!(k in out) && !(drop && drop.includes(k))) out[k] = src[k];
+    }
+    return out;
+  }
+
   function carriedField(c) {
     if (!c || typeof c !== "object" || !/^\d{4}-\d{2}-\d{2}$/.test(c.on)) return {};
-    return { carried: { on: c.on, time: KN.util.isTime(c.time) ? c.time : null } };
+    return { carried: keepUnknown(c, { on: c.on, time: KN.util.isTime(c.time) ? c.time : null }) };
   }
 
   /* 3.0 の受け皿（T0）。**function 宣言**で、数も中に置きます（上の TDZ）。 */
   /* 活動 `act: { type, entry, note }`。種類の読めないものは欄ごと落とします。 */
-  function actField(a) {
+  function actField(a, keep) {
     const TYPES = ["reading", "study", "seed", "done", "change"];
     if (!a || typeof a !== "object" || !TYPES.includes(a.type)) return {};
     const id = (v) => (typeof v === "string" && v ? v : null);
-    return { act: { type: a.type, entry: id(a.entry), note: id(a.note) } };
+    const act = { type: a.type, entry: id(a.entry), note: id(a.note) };
+    return { act: keep ? keepUnknown(a, act) : act };
   }
   /* 仕事の予定とやること（docs/todo-items.md「仕事の予定とやること」の足す欄）。**既定の値は持たせず、
      持っているものだけ返します**——欠けた記録に null を足すと、開いただけで全件の形が変わる（既存の記録は
@@ -1089,7 +1117,7 @@
     const day = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null);
     if (!Array.isArray(v)) return [];
     return v.filter((x) => x && typeof x === "object" && day(x.on) && HOW.includes(x.how))
-      .map((x) => ({ on: x.on, from: day(x.from), time: KN.util.isTime(x.time) ? x.time : null, how: x.how }))
+      .map((x) => keepUnknown(x, { on: x.on, from: day(x.from), time: KN.util.isTime(x.time) ? x.time : null, how: x.how }))
       .slice(-MAX);
   }
 
@@ -1104,10 +1132,12 @@
      ——読み込みは load() がこの下より前で走るので、const にすると
      読めない箱になり、読み込みごと落ちます（一度やりました）。
      数え上げの上限は、中に置いてあります。 */
-  function cleanSubs(v) {
+  /* was：保存されている手順の並び。同じ id の手順から知らない欄を引き継ぐ（画面から来た欄は残さない）。 */
+  function cleanSubs(v, was) {
     const MAX = 50;
     if (!Array.isArray(v)) return [];
-    return v.map((s, i) => ({
+    const prev = new Map((Array.isArray(was) ? was : []).filter((s) => s && s.id).map((s) => [s.id, s]));
+    return v.map((s, i) => keepUnknown(s && s.id ? prev.get(s.id) : null, {
       id: (s && s.id) || ("s" + i + "-" + Math.random().toString(36).slice(2, 8)),
       title: String((s && s.title) || "").trim(),
       done: !!(s && s.done),
@@ -2114,7 +2144,7 @@
     update((s) => {
       const t = s.todos.find((x) => x.id === id);
       if (!t) return;
-      t.subs = cleanSubs(subs);
+      t.subs = cleanSubs(subs, t.subs);
       if (t.subState && Object.keys(t.subState).length) {
         const ids = new Set(t.subs.map((x) => x.id));
         const next = {};
@@ -3184,7 +3214,7 @@
       const t = s.todos.find((x) => x.id === id);
       if (!t) return;
       const subs = (o.subs || []).map((x) => String(x || "").trim()).filter(Boolean);
-      if (subs.length) t.subs = cleanSubs((t.subs || []).concat(subs.map((title) => ({ title }))));
+      if (subs.length) t.subs = cleanSubs((t.subs || []).concat(subs.map((title) => ({ title }))), t.subs);
       const memo = String(o.memo || "").trim();
       if (memo) t.memo = t.memo && t.memo.trim() ? `${t.memo.replace(/\s+$/, "")}\n\n${memo}` : memo;
       t.editedAt = stamp();
@@ -3761,7 +3791,8 @@
     update((s) => {
       const m = s.diet.meals.find((x) => x.id === id);
       if (!m) return;
-      const next = cleanMeal({ ...m, ...patch }, 0);
+      // 明細・AI の欄を渡されていなければ保存されたままなので、その知らない欄も残す（keepUnknown）。
+      const next = cleanMeal({ ...m, ...patch }, 0, !(patch && ("items" in patch || "ai" in patch)));
       if (next) Object.assign(m, next, { id: m.id });
     });
   }
@@ -4003,7 +4034,7 @@
     update((st) => {
       const i = st.diet.drinks.findIndex((x) => x.id === id);
       if (i < 0) return;
-      const merged = cleanDrink({ ...st.diet.drinks[i], ...patch, id });
+      const merged = keepUnknown(st.diet.drinks[i], cleanDrink({ ...st.diet.drinks[i], ...patch, id }));
       if (merged) { st.diet.drinks[i] = merged; out = merged; }
     });
     return out;
@@ -4042,7 +4073,7 @@
       const i = st.diet.urges.findIndex((x) => x.id === id);
       if (i < 0) return;
       const was = st.diet.urges[i];
-      const merged = cleanUrge({ ...was, ...patch, id });
+      const merged = keepUnknown(was, cleanUrge({ ...was, ...patch, id }));
       if (!merged) return;
       /* 「どうなったか」を書いた時刻。あとから「何分で決まったか」を
          数えるために持ちます——書いた本人にしか分からない数なので、
@@ -4838,18 +4869,21 @@
     return false;
   }
   /* 問いの元。本文（q）の無いもの・同じ本文の二つ目は落とす。function 宣言なのは reconcile（load の途中）から呼ぶため。 */
-  function cleanAsks(list) {
+  function cleanAsks(list, keep) {
     if (!Array.isArray(list)) return [];
     const seen = new Set();
     return list.filter((a) => a && typeof a === "object" && typeof a.q === "string" && a.q.trim())
       .filter((a) => !seen.has(a.q.trim()) && seen.add(a.q.trim()))
-      .map((a) => ({
-        g: typeof a.g === "string" ? a.g : "",
-        w: [1, 2, 3].includes(a.w) ? a.w : 2,
-        from: typeof a.from === "string" ? a.from : "",
-        hint: typeof a.hint === "string" ? a.hint : "",
-        q: a.q.trim(),
-      }));
+      .map((a) => {
+        const rec = {
+          g: typeof a.g === "string" ? a.g : "",
+          w: [1, 2, 3].includes(a.w) ? a.w : 2,
+          from: typeof a.from === "string" ? a.from : "",
+          hint: typeof a.hint === "string" ? a.hint : "",
+          q: a.q.trim(),
+        };
+        return keep ? keepUnknown(a, rec) : rec;   // 保存された記録（reconcile）だけ残す
+      });
   }
 
   /** 問いの元を入れ替える（取り込み）。入れた数を返す。答えたかは本文で照らすので、同じ本文なら答えは残る。 */
@@ -5111,6 +5145,14 @@
       // 外した過去のやることの印（R26 の段2）は emptyState() に無い欄なので、ここで。
       if (next.todoOut) s.todoOut = next.todoOut;
       else delete s.todoOut;
+      /* emptyState() に無い一番上の鍵（新しい版の棚）も戻す（docs/storage.md「知らない欄」）。
+         書き出しの付けたしは戻さない：exportedAt・app と、名前が …Book で終わるもの（noteBook は
+         ノート丸ごと。元へ入れると枠があふれる）。付けたしを足すときは …Book で終わる名前に。 */
+      const known = emptyState();
+      Object.keys(next).forEach((k) => {
+        if (k in known || ["exportedAt", "app", "lsSeq", "todoOut"].includes(k) || /Book$/.test(k)) return;
+        s[k] = next[k];
+      });
       s.schema = SCHEMA;
     });
   }
