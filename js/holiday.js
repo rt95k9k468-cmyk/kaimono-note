@@ -3,7 +3,7 @@
  * 暦のマスを日曜と同じ色にし、daily の季節のひとことに名前を一行出すための部品です。
  *
  * **ここは純粋な部品です。** DOM も store も触らず、通信もしません。日（`dayKey`
- * の "YYYY-MM-DD"、端末の暦）を受け取って、その日の祝日の名前を返すだけ（無ければ null）。
+ * の "YYYY-MM-DD"。日本の暦の日として読む）を受け取って、その日の祝日の名前を返すだけ（無ければ null）。
  *
  * - 祝日の表を取りに行かず、**国民の祝日に関する法律の決まりから計算**します。春分の日・
  *   秋分の日は、太陽の黄経が0度・180度を越える日（暦要項と同じ定め方。js/season.js の
@@ -19,15 +19,17 @@
   const KN = (window.KN = window.KN || {});
 
   const pad = (n) => String(n).padStart(2, "0");
-  /* その年月日の "YYYY-MM-DD"（日があふれたら次の月へ繰り上がる）。 */
+  /* その年月日の "YYYY-MM-DD"（日があふれたら次の月へ繰り上がる）。
+     日付の足し引きと曜日は UTC の暦で（端末の時間帯・夏時間にゆれない。太陽の位置は
+     js/season.js が日本時間で見る。総点検 2026-10-27 の P2-5）。 */
   const keyOf = (y, m, d) => {
-    const t = new Date(y, m - 1, d);
-    return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+    const t = new Date(Date.UTC(y, m - 1, d));
+    return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
   };
-  const dateOf = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
-  const next = (k) => { const d = dateOf(k); return keyOf(d.getFullYear(), d.getMonth() + 1, d.getDate() + 1); };
+  const dateOf = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+  const next = (k) => { const d = dateOf(k); return keyOf(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate() + 1); };
   /** その月の第 n 月曜の日（m は 1〜12）。 */
-  const nthMonday = (y, m, n) => 1 + ((8 - new Date(y, m - 1, 1).getDay()) % 7) + 7 * (n - 1);
+  const nthMonday = (y, m, n) => 1 + ((8 - new Date(Date.UTC(y, m - 1, 1)).getUTCDay()) % 7) + 7 * (n - 1);
 
   /* その年だけの祝日（特例法）。 */
   const EXTRA = {
@@ -84,7 +86,7 @@
     const days = [...law.keys()].sort();
     /* 振替休日：祝日が日曜なら、そのあとの最初の祝日でない日（2006年までは翌日だけ）。 */
     days.forEach((k) => {
-      if (dateOf(k).getDay() !== 0) return;
+      if (dateOf(k).getUTCDay() !== 0) return;
       let n = next(k);
       if (y >= 2007) while (law.has(n)) n = next(n);
       if (!all.has(n)) all.set(n, "振替休日");
@@ -93,7 +95,7 @@
     days.forEach((k) => {
       const mid = next(k);
       if (law.has(mid) || !law.has(next(mid)) || all.has(mid)) return;
-      if (y < 2007 && dateOf(mid).getDay() === 0) return;
+      if (y < 2007 && dateOf(mid).getUTCDay() === 0) return;
       all.set(mid, "国民の休日");
     });
 

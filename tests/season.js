@@ -7,7 +7,7 @@
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/season.js
    （表の日付は日本の暦。TZ を Asia/Tokyo にして測る） */
-process.env.TZ = "Asia/Tokyo";
+process.env.TZ = process.env.TZ || "Asia/Tokyo";   // 西の時間帯でも確かめる（tests-daily.yml の west 列）
 const path = require("path");
 const { open, checker } = require("./lib");
 

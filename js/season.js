@@ -98,15 +98,25 @@
     return wrap(L0 + C - 0.00569 - 0.00478 * Math.sin(om));
   }
 
-  /* その日の終わり（翌日の0時、端末の時刻）。 */
+  /* 日本の暦は日本時間（UTC+9）で決まる。端末の時間帯は使わない——西の時間帯では
+     秋分の日が一日ずれていた（総点検 2026-10-27 の P2-5）。日の鍵（dayKey）はローカルのまま、
+     その "YYYY-MM-DD" を日本の暦の日として読む。日付の足し引きも UTC の暦で（夏時間に揺れない）。 */
+  const JST = 9 * 3600000;
+  const DAY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const keyOfUTC = (t) => {
+    const d = new Date(t);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  };
+
+  /* その日の終わり（翌日の0時、日本時間）。 */
   function endOf(day) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+    const m = DAY_RE.exec(String(day || ""));
     if (!m) return null;
-    return new Date(+m[1], +m[2] - 1, +m[3] + 1).getTime();
+    return Date.UTC(+m[1], +m[2] - 1, +m[3] + 1) - JST;
   }
 
   /**
-   * その日の節気と候。@param {string} day "YYYY-MM-DD"（端末の暦）
+   * その日の節気と候。@param {string} day "YYYY-MM-DD"（日本の暦の日として読む）
    * @returns {{sekki, sekkiYomi, kou, kouYomi, part, first}|null}
    *   part は 0〜2（初候・次候・末候）、first はその日が候の初日か。
    */
@@ -132,17 +142,13 @@
      （"YYYY-MM-DD"）。境目の判定は of() と同じ（日の終わりの黄経）ので、
      画面の「その日」と食い違わない。前後どちらへも最長 20 日まで探す。 */
   function span(day, unit) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
-    if (!m) return null;
-    const idx = (d) => Math.floor(Math.floor(longitude(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime()) / 5) % 72 / unit);
-    const base = new Date(+m[1], +m[2] - 1, +m[3]);
-    const at = (n) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
-    const want = idx(base);
+    if (endOf(day) == null) return null;
+    const idx = (n) => Math.floor(Math.floor(longitude(endOf(shift(day, n))) / 5) % 72 / unit);
+    const want = idx(0);
     let a = 0, b = 0;
-    while (a > -20 && idx(at(a - 1)) === want) a--;
-    while (b < 20 && idx(at(b + 1)) === want) b++;
-    const f = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    return { from: f(at(a)), to: f(at(b)), days: b - a + 1 };
+    while (a > -20 && idx(a - 1) === want) a--;
+    while (b < 20 && idx(b + 1) === want) b++;
+    return { from: shift(day, a), to: shift(day, b), days: b - a + 1 };
   }
 
   /* 「9/23-10/7」（利用者の選んだ書き方、2026年9月29日）。年をまたいでも
@@ -154,7 +160,7 @@
   }
 
   /** その日のうちに、太陽の黄経が deg 度を越えるか（越えた日が、その節目の日）。
-      境目の決め方は of() と同じ——日の始まりと終わり（端末の時刻）の黄経で見る。
+      境目の決め方は of() と同じ——日の始まりと終わり（日本時間）の黄経で見る。
       js/holiday.js の春分の日・秋分の日もこれで決める。 */
   function crosses(day, deg) {
     const end = endOf(day);
@@ -162,12 +168,11 @@
     return wrap(longitude(end - 86400000) - deg) > wrap(longitude(end) - deg);
   }
 
-  /* その日から n 日ずらした日（"YYYY-MM-DD"、端末の暦）。 */
+  /* その日から n 日ずらした日（"YYYY-MM-DD"）。 */
   function shift(day, n) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+    const m = DAY_RE.exec(String(day || ""));
     if (!m) return null;
-    const d = new Date(+m[1], +m[2] - 1, +m[3] + n);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return keyOfUTC(Date.UTC(+m[1], +m[2] - 1, +m[3] + n));
   }
 
   /** その日か、それより後で最初の節気の初日（"YYYY-MM-DD"）。境目は span() と同じ。

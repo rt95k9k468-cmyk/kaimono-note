@@ -88,3 +88,32 @@ jobs:
           KN_TZ: Asia/Tokyo
           KN_BROWSER: webkit
         run: node tests/run-all.js scroll-anchor fit-fields typeface text-size top-tap feel-3
+
+  # 西の時間帯の列（総点検 2026-10-27 の P2-5）：日付の台本だけを America/Los_Angeles で。知らせるだけ——門にも配るのにも入れない。
+  # 日本の祝日・節気・雑節は日本時間で決まり、端末の時間帯で変わってはいけない（js/season.js・js/holiday.js）。
+  west:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run date tests (America/Los_Angeles)
+        env:
+          TZ: America/Los_Angeles
+          KN_TZ: America/Los_Angeles
+        run: node tests/run-all.js holiday season season-art season-beat when-dict when-fields yearbook due-sheet sky
