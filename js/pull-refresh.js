@@ -42,7 +42,6 @@
   let armed = false;     // the touch started somewhere an end could give
   let engaged = false;   // it turned out to be a pull rather than a scroll
   let loop = 0;
-  let bare = false;      // a band with no chip on it — the fling below
   let out = false;       // the fling is still on its way out, not yet coming back
 
   /* A flick that runs out of list stops against the boundary as if it had hit
@@ -95,7 +94,7 @@
   function drop() {
     if (loop) { cancelAnimationFrame(loop); loop = 0; }
     target = shown = 0;
-    out = bare = false;
+    out = false;
     if (screenEl) {
       screenEl.style.transform = "";
       screenEl.style.willChange = "";
@@ -187,7 +186,6 @@
       engaged = true;
       // A finger arriving over a flick's band takes it over from here.
       out = false;
-      bare = false;
       begin();
     }
 
@@ -246,7 +244,6 @@
     const dist = Math.min(FLING_MAX, Math.abs(v) * FLING_GAIN);
     if (dist < 4) return;
     screenEl = el;
-    bare = true;              // 帯だけ。跳ね返りが更新に化けないように。
     out = true;
     shown = 0;
     target = v > 0 ? -dist : dist;
@@ -285,7 +282,6 @@
   }
 
   function rest() {
-    bare = false;
     if (screenEl) {
       screenEl.style.willChange = "";
       if (shown === 0) screenEl.style.transform = "";

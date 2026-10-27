@@ -47,7 +47,6 @@
      見つかった日を並べます（下の renderFound）。 */
   let query = "";
   const curDay = () => viewDay || U.todayKey();
-  const isViewToday = () => curDay() === U.todayKey();
   /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
   const writeDay = () => (curDay() > U.todayKey() ? U.todayKey() : curDay());
   /** 見出しに出す日の呼び名。今日なら「今日」、ほかの日は「8月17日」。
@@ -202,7 +201,6 @@
   let kbScrollBase = null;   // ずらす前の位置。キーボードが閉じたら、ここへ戻します。
   let kbTarget = null;       // 直前に動かした先（同じ先には、もう一度動かしません）。
   let kbField = null;        // いま追っている欄。
-  let kbMoved = false;       // **こちらが**動かしたか。ブラウザが動かしたぶんは戻しません。
 
   const KB_MARGIN = 10;      // 欄の下端と、可視領域の下端のあいだに残す、最小限のすきま。
 
@@ -234,7 +232,6 @@
     if (Math.abs(target - sc.scrollTop) < 3) return;
     if (kbTarget != null && Math.abs(target - kbTarget) < 3) return;   // ほぼ同じ先へは、動かし直さない
     kbTarget = target;
-    kbMoved = true;
     KN.app.glideTo(sc, target);
   }
 
@@ -308,7 +305,7 @@
            ように、縮んだぶんは紙の底に余白として残してあります（kbRoom）。 */
         const slotEdit = kbField && kbField.closest && kbField.closest(".diet-slot-edit");
         if (!slotEdit && Math.abs(sheetEl().scrollTop - kbScrollBase) > 2) KN.app.glideTo(sheetEl(), kbScrollBase);
-        kbScrollBase = null; kbTarget = null; kbField = null; kbMoved = false;
+        kbScrollBase = null; kbTarget = null; kbField = null;
       }, 80);
     });
     /* キーボードの出入りは、可視領域（visualViewport）をその**過程で
@@ -456,7 +453,6 @@
     const win = range === 0 ? 4000 : Math.max(range, 30);
     // 上の枠はその日の話、下の「目標」はいまの話。
     const sum = D.weightSummary(win, day);
-    const now = isViewToday() ? sum : D.weightSummary(win);
 
     /* 日付は暦と、その日の紙の見出しが持っています。題の下でもう一度
        言う必要はありません（「さがす」の結果だけは、ここに出します）。 */

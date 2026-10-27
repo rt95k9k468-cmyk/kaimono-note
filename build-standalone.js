@@ -56,7 +56,6 @@ const JS = [
   "js/icons-goods.js",
   "js/empty-art.js",
   "js/diary-crypto.js",
-  "js/diary.js",
   "js/idb.js",
   "js/drinks.js",
   "js/store.js",

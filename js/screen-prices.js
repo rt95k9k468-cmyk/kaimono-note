@@ -154,7 +154,6 @@
        kana together, in a stable order: nothing here knows how 「牛乳」 is
        read, and guessing would be worse than being consistent. */
     const order = new Map(store.sortedCategories().map((c, i) => [c.id, i]));
-    const rank = (p) => (order.has(p.categoryId) ? order.get(p.categoryId) : order.size);
     /* カテゴリの中は、手で並べていればその順、まだなら五十音——ただし
        同じ絵のものは束ねます（「牛乳」と「低脂肪牛乳」が棚の端と端に
        離れない）。束ね方はカテゴリ単位なので、まずカテゴリで割ってから

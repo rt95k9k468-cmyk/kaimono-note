@@ -849,7 +849,7 @@ js/                     読み込み順は index.html のとおり
   diary-idb.js          日記の本文の写し
   todo-past.js          過去のやることの棚
   dropbox.js            Dropbox へ自動で送る
-  diary.js / diary-crypto.js  日記を暗号にして置く仕組み（まだ使っていない）
+  diary-crypto.js       日記を暗号にして書き出す
   画面の動き
   day-swipe.js          紙を左右に払って日を移す
   cal-swipe.js / cal-grid.js / cal-peek.js  暦を払う／暦の盤／紙を引いて暦を開く

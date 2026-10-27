@@ -36,7 +36,7 @@
   const KN = (window.KN = window.KN || {});
   /* 形の部品は「こと」の絵から借ります（`icons-todo.js` が先に読まれること）。
      角丸の作り方が二通りあると、片方だけ直した日に一族が割れるので。 */
-  const { rr, cir, ell, svg: S, F: geomF, P } = KN.iconsTodo.geom;
+  const { svg: S, F: geomF, P } = KN.iconsTodo.geom;
 
   /* よそのセットの絵を、うちの器にかぶせる。
      `icons-todo.js` の F() が取るのは **path の d だけ** ですが、ここには

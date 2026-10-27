@@ -70,7 +70,7 @@
 
   /* 形の部品と器は「こと」の絵から借ります（`icons-todo.js` が先に読まれること）。
      `icons-food.js` と同じ借り方です。 */
-  const { rr, cir, svg: S } = KN.iconsTodo.geom;
+  const { rr, svg: S } = KN.iconsTodo.geom;
 
   /* よそのセットの絵を、うちの器にかぶせる。
      `icons-todo.js` の F() は単一の path を取りますが、こちらは body ごと

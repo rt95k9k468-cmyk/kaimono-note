@@ -4515,9 +4515,6 @@
   /* 並びは **最後に触った順**。書いた順ではありません——去年の本に一行
      足したなら、いまのあなたはその本のことを考えているので、上に来ます。 */
   const byRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
-  const byFavoriteThenRecent = (a, b) =>
-    (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0) || byRecent(a, b);
-  const byDateThenRecent = (a, b) => String(b.date).localeCompare(String(a.date)) || byRecent(a, b);
 
   const entriesOfMonth = (ym) =>
     archive().entries.filter((e) => String(e.date).slice(0, 7) === ym).slice().sort(byRecent);

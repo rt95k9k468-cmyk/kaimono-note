@@ -19,8 +19,8 @@ const BELOW = ["listeners", "version", "saveError", "isBlank", "saveTimer", "sav
   "handAt", "ON_COMPOSITOR", "META_KEYS", "get", "getProduct", "getStore", "getCategory", "CATEGORY_HINTS", "DIET_RANGES",
   "actLabel", "USUAL_MIN", "usualIx", "usualKey", "PART_ORDER", "NO_PART_ORDER", "todoPart", "openTodos", "REVIEW_DEFAULT",
   "SHELF_KEYS", "PARTS", "LENS_D1", "closedTodos", "todoClosedAt", "occurrenceOf", "kanaOrder", "diet", "dietIndexVersion",
-  "dietIndex", "dayKeyOf", "archive", "stamp", "PLACES", "GONE_KEY", "entriesOfNote", "byRecent", "byFavoriteThenRecent",
-  "byDateThenRecent", "entriesOfMonth", "entriesOfDay", "openSeeds", "dayLog", "daysOfMonth", "NOT_BACKUP"];
+  "dietIndex", "dayKeyOf", "archive", "stamp", "PLACES", "GONE_KEY", "entriesOfNote", "byRecent",
+  "entriesOfMonth", "entriesOfDay", "openSeeds", "dayLog", "daysOfMonth", "NOT_BACKUP"];
 
 const store = fs.readFileSync(path.join(ROOT, "js/store.js"), "utf8").split("\n");
 const at = store.findIndex((l) => /^\s*let state = load\(\);/.test(l));

@@ -68,7 +68,6 @@
 
   /** その席が、いまの画面を受け持っているか。 */
   const holdsId = (t, id) => t.id === id || (t.holds && t.holds.indexOf(id) >= 0);
-  const tabOf = (id) => TABS.find((t) => holdsId(t, id));
 
   /* 引き出し（価格・設定）を、どこから開けたか。**一つの変数ではなく積み木**
      です——買うもの → 価格 → 設定 と潜れるようになったので、「戻る」は

@@ -95,7 +95,6 @@
   function markdown(year) {
     const b = build(year);
     const out = [`# くらしノート ${b.year}年`, "", `書き出した日：${fullDay(b.madeOn)}`];
-    const indent = (t) => t.split("\n").map((l) => `  ${l}`).join("\n");
 
     if (b.firsts.length) {
       out.push("", "## 初めて買ったもの", "");
