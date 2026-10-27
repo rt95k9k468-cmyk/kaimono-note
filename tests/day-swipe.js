@@ -12,7 +12,9 @@
      textContent は新しい日・終われば素の字）。席を移っても転がらない
    - 動きを減らす設定では転がらない
    - 週をまたぐと、週の帯が送った向きから滑り込む（Web Animations が一つ走る）
-   - 滑っている途中の覗き見の紙を押しても、押したことにならない */
+   - 滑っている途中の覗き見の紙を押しても、押したことにならない
+   払いのあとは決め打ちの ms ではなく `settled()`（止まった印）を待つ。払いの検査は `at()` で始めの日を
+   置き直してから——一つ落ちても、あとの検査が前の日を引き継いで連鎖して落ちない。 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -29,24 +31,44 @@ const { open, checker } = require("./lib");
     for (let i = 0; i < 3; i++) S.addTodo({ title: `長期 ${i}` });
     S.setCalPref(null, { shown: true, open: false });
   });
-  await page.waitForTimeout(300);
+  /** 止まるまで待つ：その席が前に出ていて、紙が一枚・位置が素・指が離れている・題の字が転がっていない、
+      そのうえで画面の位置と送りの位置が三度続けて同じ（惰性が残っていない）。上限は4秒。 */
+  const settled = async (id = "todo") => {
+    let last = null, same = 0;
+    for (const t0 = Date.now(); Date.now() - t0 < 4000;) {
+      const sig = await page.evaluate((sid) => {
+        const sc = document.getElementById(`screen-${sid}`);
+        const tr = sc && sc.querySelector(".day-track");
+        const sh = sc && sc.querySelector(".tl-sheet");
+        if (!tr || !sh || KN.app.activeScreen() !== sid) return null;
+        if (tr.children.length !== 1 || tr.style.transform || tr.classList.contains("is-dragging")) return null;
+        if (document.querySelector("#head .topbar-title .roll")) return null;
+        return `${sc.getBoundingClientRect().left}|${sh.scrollTop}`;
+      }, id);
+      same = sig !== null && sig === last ? same + 1 : 0;
+      if (same >= 2) return;
+      last = sig;
+      await page.waitForTimeout(50);
+    }
+  };
   const go = async (id) => {
     await page.evaluate((i) => KN.app.showScreen(i), id);
-    await page.waitForTimeout(900);
+    await settled(id);
   };
   const title = () => page.evaluate(() =>
     document.querySelector("#head .js-day-title").textContent.replace(/\s+/g, ""));
   const cdp = await ctx.newCDPSession(page);
   const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
   /** 本物のタッチで、点の列をなぞる。 [[dx, dy], ...] は始点からの位置。 */
-  const trace = async (p, path, gap = 16, settle = 800) => {
+  const trace = async (p, path, gap = 16, settle = true) => {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(p.x, p.y) });
     for (const [dx, dy] of path) {
       await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(p.x + dx, p.y + dy) });
       await page.waitForTimeout(gap);
     }
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    if (settle) await page.waitForTimeout(settle);
+    if (settle === true) await settled();
+    else if (settle) await page.waitForTimeout(settle);
   };
   const line = (dx, dy, n = 12) => Array.from({ length: n }, (_, i) => [dx * (i + 1) / n, dy * (i + 1) / n]);
   /** 紙の中で、器（.day-car）の外にある空白の一点。見つからなければ下まで送ってから探す。 */
@@ -69,7 +91,18 @@ const { open, checker } = require("./lib");
     sh.scrollTop = 0;
     const r = document.querySelector(`#screen-${sid} .day-car`).getBoundingClientRect();
     return { x: r.left + r.width / 2, y: Math.max(r.top + 60, 0) + 60 };
-  }, id);
+  }, id).then(async (pt) => { await settled(id); return pt; });
+  /** やることの日を置き直す（動きなし）。隣の二枚は暇な拍に一枚ずつ組まれる（day-swipe.js の warm）ので、
+      暇な拍が三度来るまで待つ——組んでいない紙を払いの最中に組むと、その間が指の速さに入る。 */
+  const at = async (day) => {
+    await page.evaluate((d) => KN.screens.todo.goDay(d), day);
+    await settled();
+    await page.evaluate(() => new Promise((ok) => {
+      let n = 0;
+      const next = () => (++n > 3 ? ok() : requestIdleCallback(next, { timeout: 1000 }));
+      next();
+    }));
+  };
 
   await go("todo");
   const b = await blankIn("todo");
@@ -81,24 +114,27 @@ const { open, checker } = require("./lib");
     c.check("やること：左へ払うと次の日（15日）", (await title()).includes("9月15日"), await title());
   }
 
+  await at("2026-09-15");
   let p = await onCar("todo");
   /* 着地で親指が縦に 5px 転がってから、横へ。 */
   await trace(p, [[1, 3], [2, 5], ...line(180, 8).map(([x, y]) => [x + 2, y + 5])]);
   c.check("縦に少し転がってから横へ払っても取る", (await title()).includes("9月14日"), await title());
   /* 斜め（水平から40°ほど）。 */
+  await at("2026-09-14");
   await trace(p, line(-170, -140));
   c.check("斜めの払いも取る（15日へ）", (await title()).includes("9月15日"), await title());
   /* 縦の送り。送ったぶんは戻しておく（惰性が残っていると、次の指がそれを止める
      だけの指になる）。 */
+  await at("2026-09-15");
   await trace(p, line(30, -260));
-  await page.waitForTimeout(600);
   p = await onCar("todo");
-  await page.waitForTimeout(200);
   c.check("縦の送りは日を動かさない", (await title()).includes("9月15日"), await title());
 
   /* 短く速く弾く：置いて 40ms 留まってから、24px を続けざまの二回で。CDP の
      往復は一回ごとに数十msかかるので、二つの動きは待たずに続けて送る
-     （待つと、試験の中だけ指が遅く読まれる）。 */
+     （待つと、試験の中だけ指が遅く読まれる）。時計を止めた頁では e.timeStamp が
+     配った時刻になるので、隣の紙を組む間（混むと60ms）が速さに入らないよう、先に組ませておく（`at`）。 */
+  await at("2026-09-15");
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(p.x, p.y) });
   await page.waitForTimeout(40);
   await Promise.all([
@@ -106,15 +142,17 @@ const { open, checker } = require("./lib");
     cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(p.x + 24, p.y) }),
     cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }),
   ]);
-  await page.waitForTimeout(800);
+  await settled();
   c.check("短く速く弾けば行く", (await title()).includes("9月14日"), await title());
   /* 引いてから逆へ弾き返す：右へ 120px 引いて、最後に左へ速く戻す。 */
+  await at("2026-09-14");
   await trace(p, [...line(120, 0, 8), [100, 0], [70, 0], [40, 0]], 16);
   c.check("引いてから逆へ弾き返すと戻る（14日のまま）", (await title()).includes("9月14日"), await title());
 
-  /* 滑っている最中に、続けてもう一度払う → 二日。 */
+  /* 滑っている最中に、続けてもう一度払う → 二日。一度めのあとの 60ms は「滑っている最中」を作る間（待ちではない）。 */
+  await at("2026-09-14");
   await trace(p, line(160, 0, 6), 16, 60);
-  await trace(p, line(160, 0, 6), 16, 900);
+  await trace(p, line(160, 0, 6));
   c.check("続けて二度払うと二日戻る（12日）", (await title()).includes("9月12日"), await title());
   const tidy = await page.evaluate(() => {
     const tr = document.querySelector("#screen-todo .day-track");
@@ -129,7 +167,7 @@ const { open, checker } = require("./lib");
 
   /* 題の字が転がる。 */
   await page.evaluate(() => document.querySelector("#head .js-go-today").click());
-  await page.waitForTimeout(700);
+  await settled();
   await trace(p, line(200, 0), 16, 0);
   const mid = await page.evaluate(() => new Promise((ok) => {
     const t0 = performance.now();
@@ -148,7 +186,7 @@ const { open, checker } = require("./lib");
     mid.roll && mid.old === "5" && mid.txt === "14", JSON.stringify(mid));
   c.check("題：曜日の字も転がり、textContent は新しい日のまま", mid.postRoll && mid.post === "日(月)",
     JSON.stringify(mid));
-  await page.waitForTimeout(900);
+  await page.waitForFunction(() => !document.querySelector("#head .topbar-title .roll"), null, { timeout: 3000 }).catch(() => {});
   c.check("題：転がり終わると素の字に戻る", await page.evaluate(() =>
     !document.querySelector("#head .topbar-title .roll")
     && document.querySelector("#head .day-d").textContent === "14"));
@@ -170,7 +208,7 @@ const { open, checker } = require("./lib");
     return null;
   });
   await page.evaluate((d) => document.querySelector(`#head .cal-day[data-day="${d}"]`).click(), pair[0]);
-  await page.waitForTimeout(600);
+  await settled();
   p = await onCar("todo");
   await page.evaluate(() => {
     window.__slid = 0;
@@ -178,14 +216,13 @@ const { open, checker } = require("./lib");
     const orig = g.animate.bind(g);
     g.animate = (...a) => { window.__slid++; return orig(...a); };
   });
-  await trace(p, line(200, 0), 16, 900);
+  await trace(p, line(200, 0));
   const wk = await page.evaluate(() => ({
     anims: window.__slid,
     here: (document.querySelector("#head .cal .cal-day.is-here") || {}).dataset,
   }));
   c.check("週をまたぐと、週の帯が滑り込む", wk.anims >= 1 && wk.here && wk.here.day === pair[1],
     JSON.stringify(wk));
-  await page.waitForTimeout(600);
 
   /* 滑っている途中の覗き見の紙を押しても、押したことにならない。 */
   const tapped = await page.evaluate(() => new Promise((ok) => {
@@ -214,7 +251,8 @@ const { open, checker } = require("./lib");
       bar: document.getElementById("tabbar").getBoundingClientRect().top });
   }));
   if (bd) {
-    await trace(bd, line(200, 0));
+    await trace(bd, line(200, 0), 16, false);
+    await settled("archive");
     const want = await page.evaluate((d) => {
       const x = KN.util.dayDate(KN.util.shiftDay(d, -1));
       return `${x.getMonth() + 1}月${x.getDate()}日`;
@@ -226,12 +264,14 @@ const { open, checker } = require("./lib");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await go("todo");
   p = await onCar("todo");
+  const before = await title();
   await trace(p, line(-200, 0), 16, 0);
-  await page.waitForTimeout(50);
+  await page.waitForFunction((b) => document.querySelector("#head .js-day-title").textContent.replace(/\s+/g, "") !== b,
+    before, { timeout: 3000 }).catch(() => {});
   c.check("動きを減らす設定では題が転がらない", await page.evaluate(() =>
     !document.querySelector("#head .topbar-title .roll")));
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.waitForTimeout(800);
+  await settled();
 
   c.check("ページのエラーが無い", !errors.length, errors.join("\n"));
   c.done();

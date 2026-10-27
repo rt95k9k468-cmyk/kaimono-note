@@ -33,6 +33,17 @@
 - **採点はしません。** 目標・連続記録・達成率・先月との比較・書かなかった日の
   警告は、どこにも出ません
 
+### ノート（notes）
+
+帯の二つめの席です。あとで読み返すものを書いておく場所で、暦は出ません。
+
+- **ノートブック・タグ**で分けて、上のチップで絞り込みます
+- 見出し・太字・箇条書きなどの**装飾**、**画像**と **PDF などのファイル**も置けます
+- ノートの木は長押しして**手で組み替え**られます
+- 書き直す前の**版**が残り、さがす（右上）からノートも引けます
+- **Evernote（.enex）・Notion（zip）から取り込み**、**Dropbox で端末どうし同期**できます
+- daily と同じく**鍵**をかけられます
+
 ### やること（tasks）
 
 一日ぶんの**時間割**です。上に日付と暦、その下に紙が一枚。紙には、その日の用事が
@@ -698,8 +709,8 @@ POST <窓口のURL>   Content-Type: application/json
 
 ### 下のタブ
 
-**daily │ やること │ 買うもの │ ダイエット** の四つです（帯の字は daily・tasks・
-shopping・health）。
+**daily │ ノート │ やること │ 買うもの │ ダイエット** の五つです（帯の字は daily・notes・
+tasks・shopping・health）。
 
 - **価格は席を持ちません。** 買うものの紙の後ろに敷いてある一枚で、掴み手を
   下げて行きます。価格を見ているあいだも、帯は「買うもの」のまま。帯の
@@ -820,36 +831,81 @@ css/
   base.css              デザイントークン、リセット、アプリ全体のレイアウト
   components.css        ボタン・入力欄・シート・トーストなど共通部品
   screens.css           各画面固有のスタイル
-js/
-  util.js               HTMLテンプレート、金額・日付の整形、1個あたりの計算、アイコン
+js/                     読み込み順は index.html のとおり
+  土台
+  util.js               HTMLテンプレート、金額・日付の整形、アイコン
   store.js              データの保存・読み込み・移行、検索用のセレクタ
-  ui.js                 ボトムシート、トースト、確認ダイアログ、各種ピッカー
+  ui.js                 紙、トースト、確認ダイアログ、各種ピッカー・小窓
+  app.js                画面の移り変わり・下の帯・紙（KN.app）
+  head.js / sky.js      全タブ共通の上の帯と暦／帯の空
+  tab-lens.js           下の帯の印（席から席へ滑る）
+  motion.js             動きと震え
+  frame-guard.js        よその頁の枠の中では見せない
+  errlog.js / audit.js  困ったときの記録／記録の点検（読むだけ）
+  lock.js               daily とノートの鍵
+  保存
   backup.js             自動バックアップ（世代管理・復元・書き出しの催促）
-  insights.js           値段の記録から「気づいたこと」を組み立てる
-  notify.js             やることの時刻のお知らせ（開いているあいだ／開いたとき）
-  product-sheet.js      商品の詳細画面（数量・カテゴリ・内容量・価格・履歴）／お店ごとの値段の詳細
-  app.js                画面の移り変わり・下の帯・紙（KN.app）。ほかの画面はこれが呼ぶ
-  screen-archive.js     daily 画面（日記・その日の記録・月のまとめ）
-  screen-todo.js        やること画面（時間割・長期タスク・くりかえし）
-  plan.js               やることの時間割の組み立て
-  when-parse.js         打った字から「いつ」を読む
-  day-swipe.js          紙を左右に払って日を移す（やること・daily・ダイエット）
-  cal-swipe.js          暦を左右に払う
-  screen-list.js        買い物リスト画面（リストを送る・買い物中は画面を消さない）
-  screen-prices.js      商品と価格の一覧（買うものの紙の後ろ）
+  idb.js / live-idb.js  大きな保存場所（IndexedDB）／記録の写し
+  diary-idb.js          日記の本文の写し
+  todo-past.js          過去のやることの棚
+  dropbox.js            Dropbox へ自動で送る
+  diary.js / diary-crypto.js  日記を暗号にして置く仕組み（まだ使っていない）
+  画面の動き
+  day-swipe.js          紙を左右に払って日を移す
+  cal-swipe.js / cal-grid.js / cal-peek.js  暦を払う／暦の盤／紙を引いて暦を開く
+  edge-back.js          左端から引いて一段戻る
+  pull-refresh.js       送る器の端（上の引き）
   reorder.js            長押しして並べ替え
+  keypad.js             数字の盤
+  search-all.js         ぜんぶをさがす
+  daily
+  screen-archive.js     daily 画面（日記・その日の記録・月のまとめ）
+  diary-posts.js        日記を時刻ごとに
+  activity.js / entries-note.js  活動／積み上げを一冊のノートへ
+  yearbook.js           年の本
+  season.js / season-art.js / holiday.js / shun.js  季節のひとこと／季節の絵／祝日／旬の表
+  ノート
+  screen-notes.js       ノート画面（一覧・書く紙）
+  notes-idb.js          ノートの入れ物（IndexedDB）
+  note-live.js / note-format.js  見たままの書く欄／装飾
+  note-img.js / note-file.js     画像／ファイル（PDF など）
+  note-drag.js          ノートの木を手で組み替える
+  notes-sync.js         ノートの同期（Dropbox）
+  note-import.js / note-notion.js / note-organize.js  Evernote・Notion からの取り込みと整理
+  google-import.js      Google からの取り込み
+  やること
+  screen-todo.js        やること画面（時間割・長期タスク・くりかえし）
+  plan.js / tl-layout.js / day-road.js  一日の組み立て／今日の面の物差し／一日の道
+  when-parse.js         打った字から「いつ」を読む
+  capture.js / split-items.js  ＋から行き先を言い直す／一行を分けて入れる
+  upcoming.js           これからの二週間
+  notify.js / bell.js / due-sheet.js  時刻のお知らせ／閉じていても鳴る通知／通知から用事を開く
+  ics.js                予定を端末のカレンダーへ
+  unfold.js             AI とほどく
+  買うもの
+  screen-list.js        買い物リスト画面
+  screen-prices.js      商品と価格の一覧（買うものの紙の後ろ）
+  product-sheet.js      商品の詳細画面／お店ごとの値段の詳細
+  insights.js           値段の記録から「気づいたこと」を組み立てる
+  ダイエット
   screen-diet.js        ダイエット画面（体重・グラフ・食事・分析・目標）
   diet.js               ダイエットの計算（移動平均・傾き・合計・統合分析）
-  food-data.js          食品成分（八訂ベースの概数）と、書いた一行の読み取り
+  food-data.js          食品成分と、書いた一行の読み取り
+  drinks.js             お酒
+  sleep-stages.js       睡眠のステージ
   health-sync.js        ヘルスケアの取り込み（ショートカットのテキスト／JSON）
-  drinks.js             お酒（自然文の読み取り・純アルコール量・カロリー）
-  health-relay.js       中継所ごしの取り込み（読み方は health-sync.js のまま）
-  relay-code.js         中継所のコードの写し（アプリからコピーさせるため・自動生成）
+  health-relay.js       中継所ごしの取り込み
+  relay-code.js         中継所のコードの写し（自動生成）
   diet-ai.js            AIの窓口（鍵は持たず、URLだけ）
+  設定
   screen-settings.js    設定画面の土台（紙の重なり・行の部品・PAGES）
-  settings-*.js         設定の中身（look・todo・list・daily・diet・relay・backup）
-  diary.js              日記を IndexedDB へ暗号にして置く仕組み（まだ使っていない）
-  （ほかに、絵：icons-*.js・product-icons.js、動き：motion.js など）
+  settings-*.js         設定の中身（look・todo・list・daily・notes・diet・relay・backup）
+  絵
+  icons.js / icons-phosphor.js  UIアイコン
+  icon-system.js / icons-v2-keys.js / product-icons.js  商品の絵の語彙・言葉・引き方
+  icons-goods.js / icons-food.js  単色シルエット（道具など／食材）
+  icons-todo.js         「こと」の絵
+  empty-art.js          空の画面の絵
 relay/                  ← GitHubからそのまま配置できる形にしてあります
   wrangler.jsonc        設計図（KVは id を書かない＝Cloudflareに作らせる）
   worker.js             中継所の本体

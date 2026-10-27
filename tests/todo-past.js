@@ -53,11 +53,12 @@ const NOW = new Date(2026, 9, 15, 12, 30);   // 過去の線は 2026-09-15
   await page.evaluate(() => {
     const S = KN.store;
     S.reset();
+    const noon = (y, m, d) => new Date(y, m - 1, d, 12).toISOString();   // その地の正午＝どの時間帯でも同じ日
     const base = (id, o) => ({ id, title: "試験 " + id, createdAt: "2026-06-01T00:00:00.000Z", ...o });
     S.update((s) => {
       s.todos = [
-        base("p1", { done: true, doneAt: "2026-08-01T03:00:00.000Z", order: 5, memo: "一" }),
-        base("p2", { archived: true, archivedAt: "2026-07-01T03:00:00.000Z", order: 6 }),
+        base("p1", { done: true, doneAt: noon(2026, 8, 1), order: 5, memo: "一" }),
+        base("p2", { archived: true, archivedAt: noon(2026, 7, 1), order: 6 }),
         base("tr", { done: true, doneAt: "2026-08-15T03:00:00.000Z", due: "2026-08-15", trace: true, order: 7 }),
         base("rp", { repeat: "daily", due: "2026-10-15", done: true, doneAt: "2026-08-01T03:00:00.000Z", order: 1 }),
         base("op", { due: "2026-08-01", order: 2 }),

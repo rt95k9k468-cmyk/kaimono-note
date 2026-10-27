@@ -4998,7 +4998,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    色は種類で分ける（予定・時間を取ったやること・締切。2026年10月19日、利用者）。仕事の色は「仕事だけ」の札だけ。
    暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
 /* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
-#screen-todo, #head { --side-work: #5b9bd5; --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
+#screen-todo, #head { --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); }
 /* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。少し透かして下の字を見せる。 */
 .wk-faces { position: sticky; top: 0; z-index: var(--z-stick);
@@ -7367,7 +7367,7 @@ button.note-when:active { opacity: var(--press-fade); }
   border: 1px solid var(--c-border);
   background: var(--c-surface);
   color: var(--c-text);
-  font-size: var(--fs-base); font-weight: var(--fw-bold);
+  font-size: var(--fs-md); font-weight: var(--fw-bold);
   cursor: pointer;
   transition: scale var(--m-press) var(--ease);
 }

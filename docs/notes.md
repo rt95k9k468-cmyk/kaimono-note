@@ -700,7 +700,7 @@ theme-color とページの地は変えない・押したカードの箱から�
   いない日は何も出さない。引く口は `KN.screens.notes.find`・選ぶ紙は `.pick`。
 - ノートの「⋯」の「種をまく」は外した（2026年10月12日。種はタグ。docs/thinking.md）。`seedFromNote` の口は残す。
   日時の行の芽の札 → 小窓に記録の行。空のまま閉じた新しいノートも、つながった記録があれば `drop` しない。
-- 試験は `tests/bridge.js`。
+- 試験は `tests/bridge.js` だった（外すときに消した）。
 
 ## 段5：画像（2026年10月11日。設計と壊れないことの確かめは docs/image-design.md）
 

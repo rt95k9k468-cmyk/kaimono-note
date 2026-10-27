@@ -1,7 +1,7 @@
 {
   "name": "くらしノート",
   "short_name": "くらし",
-  "description": "daily・やること・買うもの・からだを一冊に。日記、時間割のTodo、買い物リストと店ごとの値段くらべ、体重と食事の記録。",
+  "description": "daily・ノート・やること・買うもの・からだを一冊に。日記、読み返すノート、時間割のTodo、買い物リストと店ごとの値段くらべ、体重と食事の記録。",
   "lang": "ja",
   "dir": "ltr",
   "start_url": "./",
@@ -43,6 +43,11 @@
       "name": "daily",
       "short_name": "daily",
       "url": "./#archive"
+    },
+    {
+      "name": "ノート",
+      "short_name": "ノート",
+      "url": "./#notes"
     },
     {
       "name": "やること",

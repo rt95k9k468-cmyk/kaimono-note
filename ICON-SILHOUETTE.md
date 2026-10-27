@@ -46,9 +46,9 @@
 core 中央値 0.508。
 
 **繋ぎました（2026年9月5日）。** `store.js` の `markOf()` が
-**道具など（`iconsGoods`）→ 食材（`iconsFood`）→ 色つき（`icons-v2.js`）**の順に引きます。
+**道具など（`iconsGoods`）→ 食材（`iconsFood`）**の順に引きます（当時は最後に色つきの `icons-v2.js`。9月28日に消した）。
 `index.html` / `sw.js` / `build-standalone.js` の3箇所にも登録済み。
-**色つきに戻すのは、`markOf()` の中の2行を消すだけ**です（`icons-v2.js` は消していません）。
+当時は「`markOf()` の2行を消せば色つきに戻る」としていたが、`icons-v2.js` は9月28日に消した（戻すなら git の履歴から）。
 
 並べ替えも直しました。`iconKeyOf()` は**キーではなく型**（`artKeyOf()`）で答えます
 ——単色では「こぴー用紙」も「契約書」も同じ紙の絵なので、キーで寄せると
@@ -255,8 +255,8 @@ npm pack @iconify-json/{ph,material-symbols,tabler,ri,bi,fluent,mingcute,ion,bxs
   のがそこに掛かっています（`.cal-mark .p-icon.is-todo`）
 - **キーは一文字も変えない。** 保存済みの `t.icon` はキー文字列なので、変えると
   利用者の絵が外れます。変えるのは「どの絵を出すか」だけ
-- **色つきの708枚（`icons-v2.js`）は消さない。** `icons-legacy.js` /
-  `icons-todo-hand.js` と同じ扱いで、一行で戻せるように残す
+- **色つきの708枚（`icons-v2.js`）は残す**としていたが、9月28日に `icons-legacy.js` /
+  `icons-todo-hand.js` とともに消した（要るときは git の履歴から）
 - 差し替えるのは `store.productMark()` が最初に引く `KN.productIcons.byKey`。
   **食材は素通しにすること**（`icons-goods.js` に食材のキーを入れない）
 - 新しい `.js` を足したら**3箇所**に登録（`index.html` / `sw.js` /
@@ -733,7 +733,7 @@ SDかーど、体温計と 0.135 のねくたい）で入れ替わっていま�
    すべて単色シルエットで正しく出て崩れも欠けも無し。ダイエットの食事欄は
    サンプルに食事の記録が無く未確認のまま（同じ`markOf()`を通るので絵は
    同じはずだが、実際に品目を入れて見てはいない）
-3. 色つきの708枚（`icons-v2.js`）は消さない——`markOf()` の2行で戻せます
+3. 色つきの708枚（`icons-v2.js`）は残す、としていた（9月28日に消した）
 
 ### 撮り比べは畳みました
 

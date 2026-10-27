@@ -238,7 +238,7 @@ CLAUDE.md の実測は「副題と左の時刻は #636363」なので、`--c-tex
 | 値札・注意 | `--c-accent` `--c-accent-soft` `--c-accent-ink` `--c-cool-soft` `--c-cool-ink` `--c-danger` `--c-danger-soft` `--c-warn` | | 変わる |
 | からだの色 | `--c-m-steps` `--c-m-steps-lit` `--c-m-burn` `--c-m-burn-lit` `--c-m-sleep` `--c-m-sleep-lit` `--c-m-drink` `--c-m-drink-lit` | | 変わる |
 | 食事の時 | `--c-slot-b` `--c-slot-l` `--c-slot-d` `--c-slot-s` `--c-slot-b-soft` `--c-slot-l-soft` `--c-slot-d-soft` `--c-slot-s-soft` | 朝・昼・夜・間食 | 変わる |
-| 影 | `--shadow-1` `--shadow-2` `--shadow-3` `--shadow-up` | 薄い順 | 変わる（黒の濃い影） |
+| 影 | `--shadow-1` `--shadow-2` `--shadow-3` | 薄い順 | 変わる（黒の濃い影） |
 | 角 | `--r-sm` `--r-md` `--r-lg` `--r-xl` `--r-full` | 8 / 12 / 16 / 22 / 999px | 同じ |
 | 余白 | `--sp-1` `--sp-2` `--sp-3` `--sp-4` `--sp-5` `--sp-6` `--sp-8` `--sp-10` | 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40px | 同じ |
 | 字の大きさ | `--fs-k` `--fs-xs` `--fs-sm` `--fs-md` `--fs-lg` `--fs-xl` `--fs-2xl` | 倍率 / 11 / 12.5 / 14 / 16 / 19 / 24px（×倍率） | 同じ |
