@@ -4962,8 +4962,14 @@
   /** `extra` は記録の外のもの（ノートの `noteBook`。docs/notes.md）を、呼ぶ側から
       一番上の鍵として足すための口。記録の鍵とぶつかったら記録が勝ちます。 */
   function exportJSON(at, extra) {
-    return JSON.stringify({ ...(extra || {}), ...state, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
+    const settings = { ...(state.settings || {}) };
+    keyUrls().forEach((k) => delete settings[k]);
+    return JSON.stringify({ ...(extra || {}), ...state, settings, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
   }
+
+  /* 中継所・AI の窓口の URL は資格情報。端末の外へ出る控え（書き出し・Dropbox）には
+     載せず、戻すときは控えに無ければ今の値を残す。端末の中の自動の控えには載る。 */
+  function keyUrls() { return ["healthRelayUrl", "dietAiUrl"]; }
 
   /** 記録の数。復元の前後・自動の控え・書き出しの確かめで、同じ物差しを
       使うためのものです。daily の日は、中身のある日だけを数えます。 */
@@ -5092,6 +5098,9 @@
     update((s) => {
       fillMemoOut(next, s);
       fillTodoOut(next, s);
+      keyUrls().forEach((k) => {
+        if (next.settings && !(k in next.settings) && s.settings && s.settings[k]) next.settings[k] = s.settings[k];
+      });
       /* 戻す欄は **emptyState() の鍵ぜんぶ**。前は一つずつ列挙していて、
          おぼえた振り分け（learned）と daily を足し忘れて直したあとも、
          `iconOverrides`（食事メモの絵の言い換え）と `iconReports` が

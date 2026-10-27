@@ -76,6 +76,7 @@ const { open, checker } = require("./lib");
     return json(route, 404, { error_summary: "unknown" });
   });
 
+  await page.route(/https:\/\/(relay|ai)-test\.example\/.*/, (route) => route.fulfill({ status: 404, headers: cors, body: "" }));
   const uploads = () => calls.filter((c) => c.path === "/2/files/upload");
 
   // 1. つなぐ前は何も送らない・紙に三行
@@ -105,6 +106,9 @@ const { open, checker } = require("./lib");
   t.check("記録が空ならつないでも送らない", r0 === "empty" && uploads().length === 0, r0);
   // 中身ができたら、最初の控えを送る
   await page.evaluate(() => KN.store.addTodo({ title: "Dropbox の試験のやること" }));
+  // 中継所・AI の窓口の URL は資格情報——外へ出る控えに乗せない（総点検 2026-10-27 の P1）
+  const URLS = { healthRelayUrl: "https://relay-test.example/k-relay", dietAiUrl: "https://ai-test.example/k-ai" };
+  await page.evaluate((u) => KN.store.update((s) => Object.assign(s.settings, u)), URLS);
   const r1 = await page.evaluate(() => KN.dropbox.sync());
   const tb = tokenBodies[0] || {};
   const want = crypto.createHash("sha256").update(tb.code_verifier || "").digest("base64url");
@@ -123,6 +127,10 @@ const { open, checker } = require("./lib");
     return live.includes("ref-1") || KN.store.exportJSON().includes("ref-1");
   });
   t.check("鍵は記録にも書き出しにも乗らない", !leak && !files.get("/kurashi-latest.json").includes("ref-1"));
+  const urlOut = await page.evaluate(() => KN.store.exportJSON());
+  t.check("中継所・AI の URL は Dropbox にも書き出しにも乗らない",
+    uploads().every((u) => !u.body.includes("k-relay") && !u.body.includes("k-ai"))
+      && !urlOut.includes("k-relay") && !urlOut.includes("k-ai"));
   t.check("日付の名前はローカルの今日", uploads()[1].arg.path.includes(await page.evaluate(() => KN.util.todayKey())));
 
   // 4. 変わっていなければ送らない
@@ -304,6 +312,23 @@ const { open, checker } = require("./lib");
   t.check("ほかの端末が最新を置いていたら、上書きせずに送る役を降りる",
     r14 === "other" && files.get("/kurashi-latest.json").includes("\"other\":1")
       && (await page.evaluate(() => KN.dropbox.status().sender)) === false, r14);
+
+  // 15. 戻すとき：控えに URL の欄が無ければ、今の端末の値を残す（空で上書きしない）
+  const urlKept = await page.evaluate(async () => {
+    const S = KN.store;
+    const f = JSON.parse(S.exportJSON());
+    delete f.settings.healthRelayUrl; delete f.settings.dietAiUrl;   // 前の版の書き出しでも同じに
+    const file = JSON.stringify(f);
+    S.importJSON(file);
+    const a = { ...S.get().settings };
+    await S.importBackup(file);
+    const b = { ...S.get().settings };
+    return [a.healthRelayUrl, a.dietAiUrl, b.healthRelayUrl, b.dietAiUrl];
+  });
+  t.check("URL の無い控えを戻しても、端末の URL は消えない（importJSON・importBackup）",
+    JSON.stringify(urlKept) === JSON.stringify([URLS.healthRelayUrl, URLS.dietAiUrl, URLS.healthRelayUrl, URLS.dietAiUrl]), JSON.stringify(urlKept));
+  const auto = await page.evaluate(() => JSON.stringify(KN.store.get()).includes("k-relay"));
+  t.check("端末の中の記録（自動の控えの元）には URL が残る", auto);
 
   t.check("ページのエラーが無い", errors.length === 0, errors.join("\n"));
   await browser.close();
