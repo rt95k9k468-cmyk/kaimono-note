@@ -368,18 +368,22 @@
   }
 
   /* 置き直しの控え（3.0 の D1。docs/todo-timeline.md の「崩れ方の事実」）。この4週間の数を並べるだけ。
-     多い・少ない・原因は言わない。値の行は押せない（字だけ）。 */
+     多い・少ない・原因は言わない。値の行は押せない（字だけ）。0 の行は出さない（区切りは 11月24日ごろに見直す）。 */
   function slipRows() {
     const f = store.slipFacts(28);
     const row = (title, value) => node(html`
       <div class="set-row is-fact"><span class="set-title">${title}</span><span class="set-val">${value}</span></div>`);
     if (!f.todos) return [card(row("この4週間に置き直したもの", "0件"))];
+    const rows = (pairs, unit) => card(pairs.filter(([, n]) => n > 0).map(([k, n]) => row(k, `${n}${unit}`)));
+    const three = Object.entries(f.fine.per).reduce((a, [k, n]) => a + (Number(k) >= 3 ? n : 0), 0);   // 「3回目」の札と同じ境目
     return [
-      card(row("この4週間に置き直したもの", `${f.todos}件（${f.slips}回）`)),
+      card([row("この4週間に置き直したもの", `${f.todos}件（${f.slips}回）`)].concat(three ? [row("3回以上", `${three}件`)] : [])),
+      head("置き直し方"),
+      rows(Object.keys(SLIP_HOW).map((k) => [SLIP_HOW[k], f.fine.hows[k] || 0]), "回"),
       head("置いていた時刻"),
-      card(Object.entries(f.parts).map(([k, n]) => row(k, `${n}回`))),
+      rows(Object.entries(f.parts), "回"),
       head("決めていた長さ"),
-      card(Object.entries(f.lens).map(([k, n]) => row(k, `${n}件`))),
+      rows(Object.entries(f.lens), "件"),
       card(navRow({ ico: "clock", tint: TINT.data, title: "細かく", onTap: () => go("slipsFine") })),
     ];
   }

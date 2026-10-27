@@ -100,6 +100,9 @@ const YEST = "2026-10-05";
   c.check("設定の奥に「置き直しの控え」：件数・置いていた時刻・決めていた長さ",
     /この4週間に置き直したもの/.test(facts) && /置いていた時刻/.test(facts) && /決めていた長さ/.test(facts) && /朝/.test(facts), facts.slice(0, 200));
   c.check("並べるだけ（多い・少ない・原因・平均を言わない）", !/多い|少ない|原因|平均|傾向|改善|!|！/.test(facts), facts);
+  c.check("表：3回以上・置き直し方・0 の行は出さない（昼・夕・15分まで は 0）",
+    /3回以上\s*\d+件/.test(facts) && /置き直し方/.test(facts) && /前の日から運んだ/.test(facts) && /自分で日を後ろへ/.test(facts)
+    && !/昼|夕/.test(facts) && !/15分まで/.test(facts), facts);
 
   /* 分け方を見直す材料（D1 の見直し・10月27日）：区切らない生の数。足すと全体に合う。 */
   const x = f.all.fine, sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
