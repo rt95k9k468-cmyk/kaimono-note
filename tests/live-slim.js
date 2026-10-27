@@ -24,7 +24,14 @@ const SLIM_LINE = `    try { s = slimTodos(s); } catch (err) { console.error("li
 
 (async () => {
   const t = checker("元へ書く形を詰める（R26 の段1）");
-  const { browser, page, errors } = await open({ before: (c) => c.route(/dropbox(api)?\.com/, (r) => r.abort()) });
+  /* 頁の時計は今日の昼（12:34）から流す。開いたときの処理と控えから戻すのは日付で変わるので、途中で日付が
+     変わると比べられない（2026年10月27日、門が UTC の0時をまたいで落ちた。KN_CLOCK より台本の時計が勝つ）。 */
+  const midday = new Date();
+  midday.setHours(12, 34, 0, 0);
+  const { browser, page, errors } = await open({ before: async (c, p) => {
+    await p.clock.install({ time: midday });
+    await c.route(/dropbox(api)?\.com/, (r) => r.abort());
+  } });
   const ready = async (p) => {
     await p.waitForFunction(() => window.KN && KN.store && KN.app && KN.liveIdb);
     await p.waitForTimeout(300);
@@ -236,12 +243,13 @@ const SLIM_LINE = `    try { s = slimTodos(s); } catch (err) { console.error("li
   const raws = await page.evaluate(() => {
     KN.store.flush();
     const slim = localStorage.getItem("kaimono-note-v2");
-    return { slim, full: JSON.stringify(Object.assign({}, KN.store.get(), { lsSeq: JSON.parse(slim).lsSeq })) };
+    return { slim, full: JSON.stringify(Object.assign({}, KN.store.get(), { lsSeq: JSON.parse(slim).lsSeq })), at: Date.now() };
   });
-  /* 新しい頁で元を置いて開く（開いたときの処理で記憶は動くので、同じ開き方どうしで比べる）。 */
+  /* 新しい頁で元を置いて開く（開いたときの処理で記憶は動くので、同じ開き方どうしで比べる）。時計は元を取った時刻から。 */
   const openWith = async (raw, body) => {
     const o = await open({
-      before: async (c) => {
+      before: async (c, p) => {
+        await p.clock.install({ time: raws.at });
         await c.route(/dropbox(api)?\.com/, (r) => r.abort());
         if (body) await c.route(/\/js\/store\.js(\?.*)?$/, (r) => r.fulfill({ status: 200, contentType: "application/javascript", body }));
         await c.addInitScript((raw) => {
