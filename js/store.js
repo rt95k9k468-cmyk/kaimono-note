@@ -3148,7 +3148,10 @@
   const LENS_D1 = [["15分まで", 0, 15], ["30分まで", 16, 30], ["1時間まで", 31, 60], ["1時間より長い", 61, 1e9]];
   function slipFacts(days = 28) {
     const from = KN.util.shiftDay(KN.util.todayKey(), -(days - 1));
-    const out = { todos: 0, slips: 0, parts: {}, lens: {} };
+    /* fine は分け方を見直す材料（D1 の見直し・2026年10月27日）。区切らない生の数：時（0–23）・曜日（0=日。
+       前に置いていた日、無ければ書いた日）・置き直し方・長さ（分。0＝決めていない）・用事ごとの回数。 */
+    const out = { todos: 0, slips: 0, parts: {}, lens: {}, fine: { hours: {}, noTime: 0, dows: [0, 0, 0, 0, 0, 0, 0], hows: {}, mins: {}, per: {} } };
+    const fine = out.fine;
     PARTS.forEach(([k]) => { out.parts[k] = 0; });
     out.parts["時刻なし"] = 0;
     LENS_D1.forEach(([k]) => { out.lens[k] = 0; });
@@ -3159,14 +3162,21 @@
       if (!recent.length) return;
       out.todos++;
       out.slips += recent.length;
+      fine.per[recent.length] = (fine.per[recent.length] || 0) + 1;
       recent.forEach((x) => {
         const m = KN.util.isTime(x.time) ? Number(x.time.slice(0, 2)) * 60 + Number(x.time.slice(3, 5)) : null;
         const hit = m == null ? null : PARTS.find(([, a, b]) => (m >= a && m < b) || (m + 24 * 60 >= a && m + 24 * 60 < b));
         out.parts[hit ? hit[0] : "時刻なし"]++;
+        if (m == null) fine.noTime++;
+        else fine.hours[Math.floor(m / 60)] = (fine.hours[Math.floor(m / 60)] || 0) + 1;
+        const [y, mo, d] = (x.from || x.on).split("-").map(Number);
+        fine.dows[new Date(y, mo - 1, d).getDay()]++;
+        fine.hows[x.how] = (fine.hows[x.how] || 0) + 1;
       });
       const len = Number(t.minutes) > 0 ? Number(t.minutes) : 0;
       const lh = len ? LENS_D1.find(([, a, b]) => len >= a && len <= b) : null;
       out.lens[lh ? lh[0] : "決めていない"]++;
+      fine.mins[len] = (fine.mins[len] || 0) + 1;
     });
     return out;
   }

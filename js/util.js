@@ -894,7 +894,6 @@
   const FOLDED = new Set([
     "monthExport",   // 設定 daily → 書き出し →「月ぶんを書き出す」（「期間を選んで書き出す」と重なる）
     "googleImport",  // 設定 tasks →「Google から取り込む」「誕生日のショートカット」「取り込みを取り消す」
-    "slips",         // 設定 tasks →「置き直しの控え」
     "reviewFacts",   // 見直しの紙の頭の「◯日から · ◯回置き直し · 前は ◯」（期限・待つは出す）
     "calShortcut",   // 設定 tasks →「カレンダー」（オンのあいだは出す）
     "sekki",         // 見直す →「節気の初日に揃える」（オンのあいだは出す）

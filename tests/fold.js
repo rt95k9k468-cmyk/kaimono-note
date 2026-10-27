@@ -6,6 +6,7 @@
    二度め（2026年10月24日）：戻すスイッチは置かない（js/util.js の FOLDED）。月ぶんを書き出す・Google から取り込む・
    置き直しの控え・見直しの紙の頭の控え・行き先の札（買うもの）・読んだところ。スイッチのある四つ（カレンダー・
    節気・並べ方・探す窓）は、既定のままなら畳み、変えていれば出す。
+   置き直しの控え（設定の奥）は 10月27日、D1 の見直しのため利用者が戻した（見直しの紙の頭は畳んだまま）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fold.js */
 const { open, checker } = require("./lib");
@@ -106,8 +107,8 @@ const t = checker("fold");
     return S[f]().flat().filter(Boolean).map((r) => r.textContent).join(" ");
   }, fn);
   const T = await textOf("todoRows");
-  t.check("tasks に Google・誕生日・置き直しの控え・カレンダーが出ない（他は出る）",
-    !/Google から取り込む|誕生日のショートカット|置き直しの控え|カレンダー/.test(T) && T.includes("通知"), T.slice(0, 200));
+  t.check("tasks に Google・誕生日・カレンダーが出ない（他は出る。置き直しの控えは D1 の見直しで戻した）",
+    !/Google から取り込む|誕生日のショートカット|カレンダー/.test(T) && T.includes("通知") && T.includes("置き直しの控え"), T.slice(0, 200));
   const R = await textOf("reviewRows");
   t.check("見直すに「節気の初日に揃える」が出ない", !R.includes("節気") && R.includes("いつか"), R.slice(0, 120));
   const O = await textOf("dailyOutRows");

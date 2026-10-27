@@ -380,8 +380,34 @@
       card(Object.entries(f.parts).map(([k, n]) => row(k, `${n}回`))),
       head("決めていた長さ"),
       card(Object.entries(f.lens).map(([k, n]) => row(k, `${n}件`))),
+      card(navRow({ ico: "clock", tint: TINT.data, title: "細かく", onTap: () => go("slipsFine") })),
     ];
   }
 
-  Object.assign(S, { todoRows, reviewRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows });
+  /* 分け方を見直す材料（D1 の見直し・2026年10月27日）。区切らずに並べるだけ。0 の時・長さは出さない。 */
+  const SLIP_HOW = { carry: "前の日から運んだ", passed: "時刻を過ぎて動かした", hand: "自分で日を後ろへ" };
+  function slipFineRows() {
+    const f = store.slipFacts(28);
+    const row = (title, value) => node(html`
+      <div class="set-row is-fact"><span class="set-title">${title}</span><span class="set-val">${value}</span></div>`);
+    if (!f.todos) return [card(row("この4週間に置き直したもの", "0件"))];
+    const x = f.fine;
+    const hours = Object.keys(x.hours).map(Number).sort((a, b) => ((a + 19) % 24) - ((b + 19) % 24));   // 5時から
+    const mins = Object.keys(x.mins).map(Number).sort((a, b) => (a || 1e9) - (b || 1e9));               // 決めていないは後ろ
+    const per = Object.keys(x.per).map(Number).sort((a, b) => a - b);
+    return [
+      head("置いていた時刻"),
+      card(hours.map((h) => row(`${h}時台`, `${x.hours[h]}回`)).concat(row("時刻なし", `${x.noTime}回`))),
+      head("前に置いていた曜日"),
+      card([1, 2, 3, 4, 5, 6, 0].map((d) => row("日月火水木金土"[d], `${x.dows[d]}回`))),
+      head("置き直し方"),
+      card(Object.keys(SLIP_HOW).map((k) => row(SLIP_HOW[k], `${x.hows[k] || 0}回`))),
+      head("決めていた長さ"),
+      card(mins.map((m) => row(m ? `${m}分` : "決めていない", `${x.mins[m]}件`))),
+      head("1件あたりの回数"),
+      card(per.map((n) => row(`${n}回`, `${x.per[n]}件`))),
+    ];
+  }
+
+  Object.assign(S, { todoRows, reviewRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows, slipFineRows });
 })();

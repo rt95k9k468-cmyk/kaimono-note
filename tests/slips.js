@@ -100,6 +100,20 @@ const YEST = "2026-10-05";
   c.check("設定の奥に「置き直しの控え」：件数・置いていた時刻・決めていた長さ",
     /この4週間に置き直したもの/.test(facts) && /置いていた時刻/.test(facts) && /決めていた長さ/.test(facts) && /朝/.test(facts), facts.slice(0, 200));
   c.check("並べるだけ（多い・少ない・原因・平均を言わない）", !/多い|少ない|原因|平均|傾向|改善|!|！/.test(facts), facts);
+
+  /* 分け方を見直す材料（D1 の見直し・10月27日）：区切らない生の数。足すと全体に合う。 */
+  const x = f.all.fine, sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+  c.check("細かい数：時（7時台・21時台）・時刻なし・長さ 90分・足すと回と件に合う",
+    x.hours[7] >= 1 && x.hours[21] >= 1 && x.noTime >= 1 && x.mins[90] === 1
+    && sum(x.hours) + x.noTime === f.all.slips && sum(x.dows) === f.all.slips && sum(x.hows) === f.all.slips
+    && sum(x.mins) === f.all.todos && sum(x.per) === f.all.todos && x.per[3] >= 1, JSON.stringify(x));
+  await page.locator(".set-layer:last-child .set-row", { hasText: "細かく" }).first().click();
+  await wait(600);
+  const fine = await page.locator(".set-layer:last-child").innerText();
+  c.check("「細かく」：時台・曜日・置き直し方・長さ・1件あたりの回数",
+    /7時台/.test(fine) && /21時台/.test(fine) && /前に置いていた曜日/.test(fine) && /前の日から運んだ/.test(fine)
+    && /90分/.test(fine) && /1件あたりの回数/.test(fine), fine.slice(0, 300));
+  c.check("「細かく」も並べるだけ", !/多い|少ない|原因|平均|傾向|改善|!|！/.test(fine), fine);
   await page.evaluate(() => KN.app.showScreen("archive"));
   await wait(500);
   c.check("daily には出さない", await page.evaluate(() => !/置き直/.test(document.querySelector("#screen-archive").textContent)));

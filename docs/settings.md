@@ -454,7 +454,7 @@ iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in
 |---|---|
 | 設定 daily → 書き出し →「月ぶんを書き出す」（期間を選ぶのと重なる） | `monthExport` |
 | 設定 tasks →「Google から取り込む」「誕生日のショートカット」「取り込みを取り消す」（一度きり） | `googleImport` |
-| 設定 tasks →「置き直しの控え」／見直しの紙の頭の「◯日から · ◯回置き直し · 前は ◯」（期限・待つは出す） | `slips`／`reviewFacts` |
+| 見直しの紙の頭の「◯日から · ◯回置き直し · 前は ◯」（期限・待つは出す）。設定 tasks →「置き直しの控え」（`slips`）は10月27日に D1 の見直しで戻した | `reviewFacts` |
 | 買うものの足す紙の行き先の札（やることの紙の札は出す）／ノートの「⋯」の「読んだところ」 | `listDest`／`readMark` |
 | 「カレンダー」・「節気の初日に揃える」・外観の「並べ方」「探す窓をいつも出す」 | `calShortcut`・`sekki`・`layout`・`searchBar` |
 

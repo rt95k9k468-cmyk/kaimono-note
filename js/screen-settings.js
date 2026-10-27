@@ -556,6 +556,7 @@
     notify:    { title: "通知",     build: () => S.notifyRows() },
     cal:       { title: "カレンダー", build: () => S.calRows() },
     slips:     { title: "置き直しの控え", build: () => S.slipRows() },
+    slipsFine: { title: "細かく",   build: () => S.slipFineRows() },
     review:    { title: "見直す日", build: () => S.reviewRows() },
     dailyView: { title: "表示",     build: () => S.dailyViewRows() },
     dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
