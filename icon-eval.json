@@ -204,6 +204,7 @@
     { "screen": "meal", "text": "一本満足バープロテインブラック", "want": ["cerealBar"], "note": "バーなのでシリアルバー（「一本満足」）。ぷろていん は粉の容器。以前は ぶ｜らっく で棚になっていた" },
     { "screen": "shop", "text": "プロテインバー", "want": ["cerealBar"] },
     { "screen": "shop", "text": "ザバス", "want": ["protein"], "note": "ばす がバスにならない" },
+    { "screen": "shop", "text": "ホットドック", "want": ["hotdog"], "note": "ク で書く人が多い。外れるとカテゴリの絵（カレー）になっていた" },
     { "screen": "meal", "text": "食パン8枚切り2枚(チーズとポテサラとジャム)", "want": ["bread"], "note": "括弧の中は付け合わせの注記。主役は括弧の外（findKey の順位の一段目）" },
     { "screen": "meal", "text": "食パン(ジャム)", "want": ["bread"], "note": "同じ決めごとの、いちばん短い形" },
     { "screen": "shop", "text": "レトルト", "want": ["tin"], "note": "単独なら競争相手がいないので、そのまま缶詰" },
