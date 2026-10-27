@@ -205,7 +205,12 @@ self.addEventListener("fetch", (event) => {
       let done = false;
       const give = (r, from) => { if (r && !done) { done = true; openedAs(event.resultingClientId, from); resolve(r); } };
       const timer = setTimeout(() => kept().then((r) => give(r, "kept")), SHELL_WAIT);
-      net.then((res) => { clearTimeout(timer); give(res, "net"); },
+      /* 404/5xx の返事は出さず控えの入口へ（控えが無ければその返事のまま）。 */
+      net.then((res) => {
+        clearTimeout(timer);
+        if (res && res.ok) give(res, "net");
+        else kept().then((r) => give(r || res, r ? "kept" : "net"));
+      },
         () => { clearTimeout(timer); kept().then((r) => give(r || Response.error(), r ? "kept" : "net")); });
     }));
     return;
