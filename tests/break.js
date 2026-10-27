@@ -9,6 +9,7 @@
    6. 二つの画面                  → 互いの書いたものが残り、消えても最後の一件まで戻る
    7. 書く途中で閉じる            → 元に入ったものは残り、写しが追いつく
    8. 両方消える（新しい端末と同じ）→ 空で始まり、訊かない・Dropbox に空を送らない
+   9. 容量・過去のやることを外したあと（R26）→ 元に書けない日も失わず外したまま・戻すのは書けて枠に入るときだけ
    Dropbox への通信は全部止めてある。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/break.js */
@@ -235,6 +236,128 @@ const AWAY = URL.replace("index.html", "manifest.webmanifest");
   }));
   t.check("8 両方消える：空で始まる・訊かない・点検の行なし", s8.blank && s8.lost === null && s8.doubt === null, JSON.stringify(s8));
   t.check("8 Dropbox に空を送らない", s8.sent === "empty" && dbxCalls === before8, `${s8.sent} calls=${dbxCalls - before8}`);
+
+  /* 9. 容量・過去のやることを外したあと（R26 の段2b） */
+  const p9 = page3;
+  const idle9 = () => p9.waitForFunction(() => !KN.todoPast.status().busy);
+  const raw9 = () => p9.evaluate((K) => JSON.parse(localStorage.getItem(K) || "null"), KEY);
+  const full = (K) => {
+    window.__set9 = window.__set9 || Storage.prototype.setItem;
+    const set = window.__set9;
+    Storage.prototype.setItem = function (k, val) {
+      if (k === K) throw new DOMException("試験：いっぱい", "QuotaExceededError");
+      return set.call(this, k, val);
+    };
+  };
+  const unfull = () => { Storage.prototype.setItem = window.__set9; };
+  const backupRows = async () => {
+    await p9.evaluate(() => KN.app.showScreen("settings"));
+    await p9.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
+    await p9.waitForTimeout(250);
+    await p9.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+    await p9.waitForTimeout(400);
+    const rows = await p9.locator(".set-layer:last-child .set-row").allTextContents();
+    await p9.evaluate(() => KN.app.showScreen("todo"));
+    await p9.waitForTimeout(200);
+    return rows;
+  };
+  const reopen9 = async () => {
+    await p9.evaluate(() => Promise.all([KN.store.flush(), KN.liveIdb.flush()]));
+    await p9.goto(AWAY);
+    await p9.goto(URL);
+    await ready(p9);
+    await p9.evaluate(() => KN.todoPast.ready());
+    await idle9();
+  };
+  await p9.evaluate(() => {
+    localStorage.removeItem("kaimono-note-dropbox");
+    const base = (id, o) => ({ id, title: "9 " + id, createdAt: "2026-01-01T00:00:00.000Z", ...o });
+    KN.store.update((s) => {
+      s.todos = [
+        base("o1", { done: true, doneAt: "2026-02-01T03:00:00.000Z", order: 1 }),
+        base("o2", { done: true, doneAt: "2026-02-02T03:00:00.000Z", order: 2 }),
+        base("o3", { archived: true, archivedAt: "2026-02-03T03:00:00.000Z", order: 3 }),
+        base("n1", { order: 4 }),
+      ];
+    });
+    KN.store.saveNow();
+  });
+  await p9.evaluate(() => KN.todoPast.ready());
+  await idle9();
+  const out9 = await p9.evaluate(async () => (await KN.todoPast.prepare()) && (await KN.todoPast.markOut(null)));
+  {
+    const lv = await raw9();
+    t.check("9 外す：元は n1 だけ・o1〜o3 は印", out9 && lv.todos.map((x) => x.id).join() === "n1" && ["o1", "o2", "o3"].every((id) => (lv.todoOut || []).includes(id)), JSON.stringify(lv && lv.todoOut));
+  }
+
+  /* 9a. 元に書けない日に、過去の行を直し、一件足す */
+  await p9.evaluate((K) => {
+    eval("(" + K.full + ")")(K.key);
+    KN.store.updateTodo("o1", { memo: "9 元に書けない日に直した" });
+    KN.store.addTodo({ title: "9 元に書けなかったやること" });
+  }, { key: KEY, full: full.toString() });
+  await p9.waitForTimeout(400);
+  await idle9();
+  t.check("9a 保存の失敗を知っている", await p9.evaluate(() => !!KN.store.saveError()));
+  t.check("9a 足した一件は写しに届く", await p9.evaluate(() => KN.liveIdb.flush().then(() => KN.idb.run(["meta"], "readonly", (x) => {
+    const r = x.objectStore("meta").get("live");
+    return () => !!r.result && r.result.v.json.includes("9 元に書けなかったやること");
+  }))));
+  await reopen9();
+  {
+    const st = await p9.evaluate(() => ({
+      added: KN.store.get().todos.some((x) => x.title === "9 元に書けなかったやること"),
+      memo: (KN.store.getTodo("o1") || {}).memo,
+      past: ["o1", "o2", "o3"].every((id) => !!KN.store.getTodo(id)),
+      out: KN.todoPast.isOut(),
+    }));
+    t.check("9a 開き直すと、足した一件も直した過去の行も残る", st.added && st.memo === "9 元に書けない日に直した" && st.past && st.out, JSON.stringify(st));
+    await p9.evaluate(() => KN.store.saveNow());
+    await idle9();
+    await p9.waitForTimeout(300);
+    const lv = await raw9();
+    t.check("9a 元は外したまま（書けるようになっても過去の行を書き戻さない）",
+      !lv.todos.some((x) => /^o/.test(x.id)) && ["o1", "o2", "o3"].every((id) => (lv.todoOut || []).includes(id)), lv.todos.map((x) => x.id).join());
+  }
+
+  /* 9b. 元に書けない日に戻す → 外したまま */
+  {
+    const r = await p9.evaluate(async (K) => {
+      eval("(" + K.full + ")")(K.key);
+      const back = await KN.todoPast.putBack();
+      const out = KN.todoPast.isOut();
+      eval("(" + K.unfull + ")")();
+      return { back, out };
+    }, { key: KEY, full: full.toString(), unfull: unfull.toString() });
+    t.check("9b 元に書けないと戻さない・外したまま", r.back === false && r.out === true, JSON.stringify(r));
+    const meta = await p9.evaluate(() => KN.idb.run(["meta"], "readonly", (x) => {
+      const o = x.objectStore("meta").get("todoOut");
+      return () => !!o.result;
+    }));
+    t.check("9b 外した記録も残る", meta);
+    t.check("9b 戻せる大きさなら「記録に戻す」が出る", (await backupRows()).some((x) => x.includes("過去のやることを記録に戻す")));
+  }
+
+  /* 9c. 外したあとに大きな過去を戻す（復元）→ 全部を元へ書くと枠を超えるので、戻すを出さない */
+  {
+    const text = await p9.evaluate(() => {
+      const s = JSON.parse(KN.store.exportJSON());
+      for (let i = 0; i < 2100; i++) {
+        s.todos.push({ id: `b${i}`, title: `9 大きな過去 ${i}`, createdAt: "2026-01-01T00:00:00.000Z", done: true, doneAt: "2026-02-10T03:00:00.000Z", order: 100 + i, memo: "z".repeat(1000) });
+      }
+      return JSON.stringify(s);
+    });
+    await p9.evaluate((x) => KN.store.importBackup(x), text);
+    await idle9();
+    await p9.waitForTimeout(400);
+    const c = await p9.evaluate(() => ({ all: KN.store.liveChars({ todosIn: true }), live: KN.store.liveChars() }));
+    t.check("9c 全部なら枠（200万字）を超え、外した形なら入る", c.all > 2000000 && c.live < 2000000, JSON.stringify(c));
+    t.check("9c 元には大きな過去を書かない", ((await p9.evaluate((K) => localStorage.getItem(K), KEY)) || "").length < 200000);
+    t.check("9c 枠を超えるなら「記録に戻す」を出さない", !(await backupRows()).some((x) => x.includes("過去のやることを記録に戻す")));
+    await reopen9();
+    const st = await p9.evaluate(() => ({ b: !!KN.store.getTodo("b2099"), o1: (KN.store.getTodo("o1") || {}).memo, out: KN.todoPast.isOut() }));
+    t.check("9c 開き直すと棚から全部戻る・外したまま", st.b && st.o1 === "9 元に書けない日に直した" && st.out, JSON.stringify(st));
+  }
 
   t.check("ページのエラーが無い", errors.length === 0, errors.join("\n"));
   await browser.close();

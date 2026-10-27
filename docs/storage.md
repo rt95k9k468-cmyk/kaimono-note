@@ -408,7 +408,7 @@
     `DIARY_LIVE_LIMIT` 以下のときだけ。復元は `deliver` で棚へ先に（`inspectBackup().past` を枠の判定から引く）。
     印が残る書き出しは紙「一部が入りません」・名前「一部なし」・前回に数えない（`pastBare`）。印が残れば設定の頭に一行。
     Google の取り込みの上限は外したあとの `liveChars()` のまま（過去の行は届くまで元にも入るが、上限の内）。
-    試験 `tests/todo-out.js`（門）。「容量」の試験（`tests/break.js`）はまだ。
+    試験 `tests/todo-out.js`（門）。「容量」は `tests/break.js` の9（書けない日・戻す・200万字を超える過去）。
 
 ## 記録の写し（`js/live-idb.js`、2026年10月6日・二度目の消失のあと）
 
