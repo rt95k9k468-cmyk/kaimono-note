@@ -1,4 +1,4 @@
-/* main へ push する前に、門のうち画面を開かない検査（tests/run-all.js --quick、1秒ほど）を回す。
+/* main へ push する前に、門のうち画面を開かない検査（tests/run-all.js --quick、数秒）を回す。
    落ちたら push を止め、NG の行を返す（Claude Code の PreToolUse。.claude/settings.json）。
    門の失敗のほとんどは、押す前に回していなかったこの検査だった（docs/dev.md「テストの回し方」）。
    作業ブランチへの push と、ほかのコマンドは素通し。この台本が壊れても止めない（止めるのは検査が落ちたときだけ）。 */

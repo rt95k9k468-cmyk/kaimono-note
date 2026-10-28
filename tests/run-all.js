@@ -3,7 +3,7 @@
      NODE_PATH=/opt/node22/lib/node_modules node tests/run-all.js
      … tests/run-all.js day-road carry     名前で絞る（.js は要らない）
      … tests/run-all.js --gate             門（GATE）に入れたものだけ（R22）
-     … tests/run-all.js --quick            門のうち画面を開かないものだけ（1秒ほど。main への push の前）
+     … tests/run-all.js --quick            門のうち画面を開かないものだけ（数秒。main への push の前）
      … tests/run-all.js -j 4               並べる数（既定 3）
      … tests/run-all.js --verbose          通った台本の出力も出す
 
@@ -48,7 +48,7 @@ const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "to
   "xss-probe",                     // 画面の中の守り（セキュリティ S2）：記録の字が要素にならない（docs/dev.md）
   "relay-worker"];                 // 外との口の守り（セキュリティ S3）：中継所のふるまいと埋めた写し（docs/dev.md）
 
-/* --quick：門のうち画面を開かないもの（決まりの見張り。全部で1秒ほど）。main への push の前に
+/* --quick：門のうち画面を開かないもの（決まりの見張り。全部で数秒）。main への push の前に
    .claude/hooks/push-gate.js が回す。10月9〜26日に門で落ちた21回のうち19回は、これだけで落ちていた（docs/dev.md）。 */
 const opensPage = (name) => /\bopen\(|chromium|launch\(|newContext/.test(fs.readFileSync(path.join(DIR, `${name}.js`), "utf8"));
 

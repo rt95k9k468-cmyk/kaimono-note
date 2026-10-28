@@ -28,7 +28,7 @@
 ## コードの罠
 
 - 名前空間 `KN.*`、読み込み順は `index.html`。**新しい `.js` は3箇所に登録**：`index.html`・`sw.js` の `ASSETS`・`build-standalone.js` の `JS`。
-- store は localStorage `kaimono-note-v2`。`let state = load()` はモジュールの途中で走る——下に足す const/let は `tests/traps.js` が止める（TDZ＝消失事故の原因）。
+- store は localStorage `kaimono-note-v2`。`let state = load()` はモジュールの途中で走る——起動の道がまだ無い const/let に触れたら `tests/traps.js` が止める（TDZ＝消失事故の原因）。
 - `KN.util.today()` は UTC、`dayKey()`/`todayKey()` はローカル。日をまたぐ集計は `dayKey()` 系で。
 - `node(html\`…\`)` は最初のルート要素だけ返す。Daily Log は「写さず引く」——記録用の入れ物を増やさない。
 - **画面（CSS/JS）を触る前に `docs/traps.md`（横断の罠）を読む**（送る器 `scrollerOf()`・`:root` に毎フレーム

@@ -126,6 +126,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   はモジュール評価の途中（いまは600行目あたり）で走る**ので、load パスが触れる
   ものは、それより上に書くか、巻き上げられる `function` 宣言にすること
   （`const` で下に書くと TDZ で落ちる——過去のデータ消失事故の原因）。
+  `tests/traps.js` が js/ の全部で、読み込みで走る道（即時関数・すぐ呼ぶ関数・同期メソッドの
+  引数・Promise の executor）を推移的にたどって見張る。オブジェクト越しの呼び出し（`api.f()`）はたどらない。
 - `KN.util.today()` は **UTC ISO**（`toISOString()`）、`dayKey()` /
   `todayKey()` は**ローカル**。混ぜると JST で9時間・1日のズレが起きる。
   日をまたぐ集計は必ず `dayKey()` 系で揃える。
@@ -157,7 +159,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   で回す**——前で待てる上限（10分）を超える。終われば知らせが来る。
 - **main へ push すると GitHub が門（`run-all.js --gate`）を回し、落ちたら配られない。**
   流したあとは `actions_list` で結論を一度見る（門の決めごとは `tests/README.md`）。
-- **main への push の前に、門のうち画面を開かないもの（`run-all.js --quick`、約1秒）を `.claude/hooks/push-gate.js`
+- **main への push の前に、門のうち画面を開かないもの（`run-all.js --quick`、数秒）を `.claude/hooks/push-gate.js`
   が回し、落ちれば push を止める**（2026年10月27日）。10月9〜26日に門で落ちた21回のうち19回は、この決まりの見張り
   （`chip-icon-size`・`words`・`inline-style` ほか）だけで落ちていた——押す前に回していなかった。見るのは手元の木なので、コミットしてから押す。
 - **門の外も含めた全部は、GitHub が毎日一度回す**（`.github/workflows/tests-daily.yml`、日本の朝3時。
