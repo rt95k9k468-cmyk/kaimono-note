@@ -3493,11 +3493,6 @@ button.section-note:active { opacity: var(--press-fade); }
 .diet-finding b { font-size: var(--fs-sm); display: block; margin-bottom: 2px; }
 .diet-finding p { margin: 0; font-size: var(--fs-xs); color: var(--c-text-2); line-height: var(--lh-body); }
 
-.diet-ai-out {
-  padding: var(--sp-3); background: var(--c-surface-2); border-radius: var(--r-md);
-  font-size: var(--fs-sm); line-height: var(--lh-body); white-space: pre-wrap;
-}
-
 /* ---- 取り込みの説明 ---- */
 
 /* base.css は ol の印を消しています（アプリの中の箇条書きは、たいてい

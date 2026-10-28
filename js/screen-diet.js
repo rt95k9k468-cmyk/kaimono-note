@@ -2699,7 +2699,7 @@
               <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
             </span>
             ${ai && ai.ai ? html`
-              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${KN.dietAI.costLabel(ai.ai.cost)}` : ""}</span>` : ""}
+              <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${costLabel(ai.ai.cost)}` : ""}</span>` : ""}
           </button>
           ${/* AIの評価の文も、この枠の中に（10月5日）。お酒を足した合計・PFC の数は出さない
                 （細かい数と根拠はAIの返事の原文に残っている）。 */""}
@@ -3024,8 +3024,20 @@
        「AI結果を読み取る」    … 返ってきた7行から数だけを拾います。
 
      アプリからAIへ直接つなぎません。**鍵を持たないため**です。ここに
-     APIキーを置けば、このページを開いた誰でもそれを読めます（設定の
-     「AIの窓口」は、鍵を自分の中継所に置く人のための別の道です）。 */
+     APIキーを置けば、このページを開いた誰でもそれを読めます（前にあった
+     「AIの窓口」は2026年10月28日に外した）。 */
+
+  /* 窓口で推計した日の記録には ai.cost（一回ぶんの料金の目安）が残っている。
+     窓口を外したあとも帯に出す（1ドル150円で換算）。 */
+  function costLabel(c) {
+    if (!c) return "";
+    const s = c.searches ? `・検索${c.searches}回` : "";
+    if (c.usd == null) {
+      return `入力${(c.inputTokens || 0).toLocaleString()}・出力${(c.outputTokens || 0).toLocaleString()}トークン${s}`;
+    }
+    const yen = c.usd * 150;
+    return `約$${c.usd < 0.01 ? c.usd.toFixed(4) : c.usd.toFixed(3)}（約${yen < 1 ? "1円未満" : Math.round(yen) + "円"}）${s}`;
+  }
 
   /* 聞き方は、こちらで決めて渡します。毎回ちがう聞き方をすると、
      返ってくる形もちがって、読み取れなくなるので。
@@ -3806,7 +3818,6 @@
   function renderInsight(host) {
     const found = D.analyze(analysisWindow);
     const cov = D.coverage(analysisWindow);
-    const aiOn = KN.dietAI.configured();
 
     const sec = node(html`
       <div class="stack">
@@ -3831,9 +3842,6 @@
         ${/* 「これは関連であって因果ではありません」の但し書きは外しました。
               毎回同じ文が下に付くと、読み飛ばす癖のほうが先に付きます。
               言い方そのものを、断定しない形にしてあります（diet.js）。 */""}
-        ${aiOn ? html`
-          <button class="btn btn-soft btn-block js-ai">${icon("sparkles")}AIに相談する</button>
-        ` : ""}
       </div>
     `);
 
@@ -3841,58 +3849,7 @@
       [{ id: 14, label: "14日" }, { id: 30, label: "30日" }, { id: 90, label: "90日" }],
       { activeId: analysisWindow, onPick: (id) => { analysisWindow = Number(id); render(); } });
 
-    const ai = sec.querySelector(".js-ai");
-    if (ai) ai.addEventListener("click", () => askAI());
     host.append(sec);
-  }
-
-  /* 相談の紙。「今日の食事の中身も」を選ぶと、合計だけでは見えない
-     「何を食べたか」（書いた文・品名・量）も送ります。送るのはダイエットの
-     記録だけです。 */
-  function askAI() {
-    const day = U.todayKey();
-    let withMeals = false;
-    const name = dayName(day);
-    const body = node(html`
-      <div class="stack">
-        <label class="field">
-          <span class="field-label">聞きたいこと</span>
-          <input class="input js-q" value="ここ2週間の傾向と、来週やるといいことを教えて">
-        </label>
-        <div class="js-meals-pick"></div>
-        <p class="diet-note js-what"></p>
-        <div class="js-out"></div>
-      </div>
-    `);
-    const what = body.querySelector(".js-what");
-    const sayWhat = () => {
-      what.textContent = "直近30日の体重・食事の合計・歩数・睡眠"
-        + (withMeals ? `・${name}の食事の中身` : "")
-        + "を送ります。買い物リスト・やること・日記は送りません。";
-    };
-    KN.ui.chipRow(body.querySelector(".js-meals-pick"),
-      [{ id: "sum", label: "合計だけ" }, { id: "meals", label: `${name}の食事の中身も` }],
-      { activeId: withMeals ? "meals" : "sum",
-        onPick: (id) => { withMeals = id === "meals"; sayWhat(); } });
-    sayWhat();
-    const foot = node(html`<button class="btn btn-primary btn-block js-go">相談する</button>`);
-    KN.ui.sheet({ title: "AIに相談", content: body, footer: foot });
-    // foot はボタンそのもの（querySelector は自分を探さないので、前は null で落ちていた）
-    foot.addEventListener("click", () => {
-      const out = body.querySelector(".js-out");
-      out.innerHTML = "";
-      out.append(node(html`<p class="diet-note is-thinking">考えています…</p>`));
-      KN.dietAI.coach(body.querySelector(".js-q").value, 30, withMeals ? { mealDay: day } : null)
-        .then((r) => {
-          out.innerHTML = "";
-          out.append(node(html`<div class="diet-ai-out">${r.text}</div>`));
-          if (r.cost) out.append(node(html`<p class="diet-note js-cost">この相談：${KN.dietAI.costLabel(r.cost)}</p>`));
-        })
-        .catch((err) => {
-          out.innerHTML = "";
-          out.append(node(html`<p class="diet-note is-warn">うまくいきませんでした：${err.message}</p>`));
-        });
-    });
   }
 
   /* ---------------- 体重を書く ---------------- */
@@ -4107,10 +4064,6 @@
         <div class="js-items"></div>
         <div class="js-total"></div>
 
-        ${KN.dietAI.configured() ? html`
-          <button class="btn btn-soft btn-block js-photo">${icon("camera")}写真から推定する</button>
-        ` : ""}
-
         <label class="field">
           <span class="field-label">メモ</span>
           <input class="input js-memo" placeholder="任意" value="${meal ? meal.memo : ""}">
@@ -4298,13 +4251,6 @@
       sugEl.append(row);
     });
 
-    const photo = body.querySelector(".js-photo");
-    if (photo) photo.addEventListener("click", () => pickPhoto((res) => {
-      res.items.forEach((it) => items.push(it));
-      paint();
-      if (res.note) KN.ui.toast(res.note);
-    }));
-
     foot.querySelector(".js-save").addEventListener("click", () => {
       const memo = body.querySelector(".js-memo").value.trim();
       if (!items.length && !memo) { KN.ui.toast("食べたものを入れてください"); return; }
@@ -4322,27 +4268,6 @@
     });
 
     paint();
-  }
-
-  /** 写真を選んで、窓口に投げて、推定を受け取る。 */
-  function pickPhoto(onDone) {
-    const input = node(html`<input type="file" accept="image/*" capture="environment" hidden>`);
-    document.body.append(input);
-    input.addEventListener("change", () => {
-      const file = input.files && input.files[0];
-      input.remove();
-      if (!file) return;
-      const t = KN.ui.toast("写真を見ています…", { until: true });
-      KN.dietAI.shrink(file)
-        .then((dataUrl) => KN.dietAI.analyzePhoto(dataUrl))
-        .then((res) => {
-          t.dismiss();
-          if (!res.items.length) { KN.ui.toast("何も読み取れませんでした"); return; }
-          onDone(res);
-        })
-        .catch((err) => { t.dismiss(); KN.ui.toast(`うまくいきませんでした：${err.message}`); });
-    });
-    input.click();
   }
 
   /* ---------------- 目標を決める ---------------- */

@@ -45,7 +45,7 @@ let browser;
   });
   t.check("data: の絵（写真）が読める", used.data);
   t.check("blob: の絵が読める", used.blob);
-  t.check("https への fetch（中継所・AI の窓口・Dropbox）が通る", used.net);
+  t.check("https への fetch（中継所・Dropbox）が通る", used.net);
 
   /* 漏れた字が作るスクリプトは動かない（ここは違反が出てよい） */
   const before = violations.length;

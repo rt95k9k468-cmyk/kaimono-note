@@ -161,10 +161,10 @@ const { open, checker } = require("./lib");
   const H0 = await page.locator(top).innerText();
   t.check("health の根っこに「記録を書き出す」（説明は置かない）・「取り込み ›」",
     H0.includes("記録を書き出す") && !H0.includes("日ごとの表") && H0.includes("取り込み")
-      && !H0.includes("ヘルスケアから取り込む") && !H0.includes("AIの窓口"), H0.slice(0, 300));
+      && !H0.includes("ヘルスケアから取り込む"), H0.slice(0, 300));
   const H1 = await into("取り込み");
-  t.check("取り込みの先にヘルスケア・中継所・AIの窓口",
-    H1.includes("ヘルスケアから取り込む") && H1.includes("中継所") && H1.includes("AIの窓口"), H1.slice(0, 200));
+  t.check("取り込みの先にヘルスケア・中継所（AIの窓口は外した）",
+    H1.includes("ヘルスケアから取り込む") && H1.includes("中継所") && !H1.includes("AIの窓口"), H1.slice(0, 200));
   await back();
   const B0 = await into("バックアップ");
   t.check("「バックアップ」の一枚から、移した三つが消えている",

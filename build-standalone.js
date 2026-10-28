@@ -92,7 +92,6 @@ const JS = [
   "js/ics.js",
   "js/food-data.js",
   "js/diet.js",
-  "js/diet-ai.js",
   "js/sleep-stages.js",
   "js/health-sync.js",
   "js/relay-code.js",

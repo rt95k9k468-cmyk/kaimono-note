@@ -5008,7 +5008,7 @@
     return JSON.stringify({ ...(extra || {}), ...state, settings, exportedAt: at || today(), app: "kaimono-note" }, null, 2);
   }
 
-  /* 中継所・AI の窓口の URL は資格情報。端末の外へ出る控え（書き出し・Dropbox）には
+  /* 中継所・AI の窓口（外したが、前の版で入れた値が残る）の URL は資格情報。端末の外へ出る控え（書き出し・Dropbox）には
      載せず、戻すときは控えに無ければ今の値を残す。端末の中の自動の控えには載る。 */
   function keyUrls() { return ["healthRelayUrl", "dietAiUrl"]; }
 

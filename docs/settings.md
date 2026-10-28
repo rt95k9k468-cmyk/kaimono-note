@@ -50,7 +50,7 @@ general があと（`renderRoot`）はそのまま——**全タブの目次は�
 | tasks | カレンダー（`cal`） | カレンダーはショートカットで入れる・ショートカットの組み方 ›（`calHow`、三段目）。ショートカット App のある端末だけ |
 | daily | 表示（`dailyView`） | 出す範囲・見せ方・積み上げのメモ・上に出すもの・起床/就寝・作成/更新・季節のひとこと・月のまとめ・まとめの位置（ノートの並びは notes へ移した） |
 | daily | 書き出し（`dailyOut`） | 月ぶんを書き出す・**年の本**（← バックアップから） |
-| health | 取り込み（`intake`） | ヘルスケアから取り込む・中継所 ›（三段目。建てかたは四段目）・AIの窓口 |
+| health | 取り込み（`intake`） | ヘルスケアから取り込む・中継所 ›（三段目。建てかたは四段目） |
 | notes | ノートブック（`notesBooks`）・タグ（`notesTags`） → 一つ（`noteLabel`） | 名前の付け替え・まとめる・色・外す（docs/notes.md の「設定」） |
 | notes | 書き出し（紙 → 設定の中では一枚） | 1件ずつ（zip）・1つにまとめる（md） |
 
@@ -222,7 +222,7 @@ SETTINGS SCREEN に表がある。
 - **二つ目の鍵（CSP）**（R29、2026年9月29日）：`index.html` の meta。`script-src 'self'`
   （直書きのスクリプトは無い）・`object-src 'none'`・`base-uri 'self'`・`img-src 'self' data:
   blob:`・`style-src 'self' 'unsafe-inline'`（style 属性）・`connect-src 'self' https:`（中継所・
-  AI の窓口・Dropbox は利用者が決める URL）。**`connect-src` に data: は無い**——data: の
+  Dropbox は利用者が決める URL）。**`connect-src` に data: は無い**——data: の
   URL を fetch すると止まる（写真は FileReader → Image なので当たらない）。単体版
   （build-standalone.js）は自分の頭を組むので、この meta は写らない（写ると直書きの
   スクリプトが止まる）。`tools/diary-import.html` は別の頁で、まだ入れていない。
@@ -406,7 +406,7 @@ iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in
 | `settings-daily.js` | daily（表示・書き出し・年の本） |
 | `settings-notes.js` | notes（並び・ノートブック・タグ・書き出し。2026年10月1日） |
 | `settings-diet.js` | health（記録を書き出す・取り込み・AIに分析） |
-| `settings-relay.js` | 中継所・建てかた・AIの窓口 |
+| `settings-relay.js` | 中継所・建てかた |
 | `settings-backup.js` | バックアップ（保存・確かめる・復元・自動バックアップ・点検・使用量・日記を取り込む・Dropbox・データを消す） |
 
 - **部品は `KN.settingsParts`（中では `S`）で渡す。** 土台が作って部品を置き、中身の

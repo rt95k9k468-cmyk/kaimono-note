@@ -14,7 +14,7 @@ const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 const { open, checker, ROOT } = require("./lib");
 
-/* index.html の CSP。connect-src の https: は中継所・AI の窓口（利用者が URL を入れる）と Dropbox のため。 */
+/* index.html の CSP。connect-src の https: は中継所（利用者が URL を入れる）と Dropbox のため。 */
 const INDEX_CSP = {
   "default-src": ["'self'"],
   "script-src": ["'self'"],

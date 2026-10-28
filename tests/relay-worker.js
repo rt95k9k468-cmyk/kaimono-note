@@ -1,8 +1,7 @@
 /* 外との口の守り（セキュリティ S3、2026年10月23日。docs/dev.md「外との口の守り」）。門に入れる。ブラウザは使わない。
 
    relay/worker.test.mjs（中継所のふるまい・押し先を押しの窓口に限る・大きさを読む前に断る・nosniff・
-   アプリに埋めた写し js/relay-code.js が worker.js とずれていない）を門から回す。
-   ai/worker.test.mjs は SDK を入れないと動かないので、ここでは回さない（tests-daily.yml が毎日回す）。 */
+   アプリに埋めた写し js/relay-code.js が worker.js とずれていない）を門から回す。 */
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { checker } = require("./lib");
