@@ -4876,8 +4876,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-fold[style*="--fold-y"] .tl-fold-text { align-self: flex-start; margin-top: calc(var(--fold-y) * 1px); translate: 0 -50%; }
 
 /* 今日の済ませたもの（物差しの上の一覧。js の doneList・2026年10月28日、利用者）。一行ずつ、灰に取り消し線。札にはしない
-   ——まだのもの（札）と形で分かれる。時刻は目盛りの列（44px）、✓は札の左端の列（--tl-gut の 48px）から。 */
-.tl-done { list-style: none; margin: 0; padding: var(--sp-2) var(--sp-4) var(--sp-1) 0; }
+   ——まだのもの（札）と形で分かれる。時刻は目盛りの列（44px）、✓は札の左端の列（--tl-gut の 48px）から。
+   紙のいちばん上に居て、開くと帯の裏へ送ってある（js の doneRest は最後の行を帯の下のきわへ）。下の余白は帯の溶かし
+   （.wk-faces::after）と同じ高さ（--faces-edge）——溶かしは一覧の余白にかかり、物差しの頭の字にかからない。 */
+.tl-done { list-style: none; margin: 0; padding: var(--sp-2) var(--sp-4) var(--faces-edge) 0; }
 .tl-done-row { display: flex; align-items: center; min-height: 34px; }
 .tl-done-row > .tl-doneat {
   flex: none; width: 44px; box-sizing: border-box; justify-content: flex-end;
@@ -5031,8 +5033,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    から 1px 重ねる）。前は top:0 で掴み手に重なり、送ると掴み手が消えていた。地は紙と同じ一色——透かしてぼかすと、
    下を流れる字や丸がにじんで帯だけ色が違って見えた（2026年10月28日、利用者）。下のきわは掴み手と同じく溶かす。 */
 .wk-faces { position: sticky; top: 28px; z-index: var(--z-stick); background: var(--c-sheet); }
+/* 溶かしの高さ。今日の済ませたものの一覧（.tl-done）の下の余白も同じ値——帯の裏へ送ったとき、溶かしが余白にかかる。 */
+#screen-todo { --faces-edge: var(--sp-4); }
 .wk-faces::after {
-  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: var(--sp-4);
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: var(--faces-edge);
   background: linear-gradient(var(--c-sheet), transparent); pointer-events: none; opacity: 0;
 }
 @supports (animation-timeline: scroll()) {

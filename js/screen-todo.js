@@ -2729,6 +2729,10 @@
        スクロールは0へ落ちるので、組み直したあとに返します——一件
        片づけるたびにいちばん上へ飛ぶのは、片づけの邪魔でしかない。 */
     const keepTop = root ? KN.app.scrollerOf(root).scrollTop : 0;
+    /* 今日の済ませたものの一覧を帯の裏へ送ってあった（物差しを見ていた）なら、済ませて一覧が伸びたぶんだけ送る
+       ——物差しは動かず、一覧は伸びても帯の裏のまま（doneRest）。一覧を見ていた（上へ戻していた）ときは送らない。
+       組み直す前に測る（書く前に、まとめて）。 */
+    const restWas = root ? doneRest(KN.app.scrollerOf(root)) : 0;
 
     /* 組み直す前に、いまどの行がどこに居るかを測ります。組み終わってから
        `settle()` を呼ぶと、動いた行が**もといた場所から**滑ってきます
@@ -2881,7 +2885,8 @@
       /* 次の組み直しで使い回せるように、いまの姿を控えます。 */
       sheetNode = sheet;
       sheetSig = sheetDigest(shownDay());
-      restoreTop(keepTop);
+      const rest = doneRest(KN.app.scrollerOf(root));
+      restoreTop(keepTop >= restWas - 2 ? Math.max(0, keepTop + rest - restWas) : keepTop);
       settle();
       return;
     }
@@ -2969,9 +2974,13 @@
       隣の日のものと入れ替わります。 */
   function daySlide(day, open) {
     const el = node(html`<div class="day-slide"></div>`);
+    const sec = daySection(day, open);
+    /* 今日の済ませたもの（doneList）は紙のいちばん上——前の日から・道・物差しより上。開くと帯の裏へ送ってある
+       （doneRest。2026年10月28日、利用者「タスクが多い日には圧迫する」）。上へ戻せば出る。 */
+    if (sec.__done) el.append(sec.__done);
     const prev = day === todayKey() ? prevSection(open) : null;
     if (prev) el.append(prev);
-    el.append(daySection(day, open));
+    el.append(sec);
     // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
     el.append(somedaySection(open));
     return el;
@@ -3551,7 +3560,11 @@
         <p class="todo-today-empty">${day === todayKey()
           ? "今日のぶんはありません" : "この日のやることはありません"}</p>
       `));
-    } else sec.append(timeline(rows, { id: "day", day }));
+    } else {
+      const tl = timeline(rows, { id: "day", day });
+      sec.__done = tl.__done;   // 済ませたものの一覧は daySlide が紙の頭へ
+      sec.append(tl);
+    }
     if (road && below) sec.append(road);
     return sec;
   }
@@ -4944,7 +4957,8 @@
       </div>
     `);
     const list = sec.querySelector(".js-tl");
-    if (doneItems.length) sec.insertBefore(doneList(doneItems), list);
+    /* 一覧は物差しの中に置かず、daySlide が紙のいちばん上へ（前の日から・道より上。開くと帯の裏へ送る）。 */
+    sec.__done = doneItems.length ? doneList(doneItems) : null;
     const rf = sec.querySelector(".js-refit");
     if (rf) rf.addEventListener("click", () => { haptic(); refitSheet(); });
 
@@ -6604,14 +6618,32 @@
      すぐ上に見えたまま、先のほうが広く見えます。 */
   const AIM = 0.38;   // 画面の高さの、どのあたりに置くか（0＝上、0.5＝まん中）
 
+  /** 今日の済ませたもの（紙の頭の一覧）を帯の裏へ送った送り位置——一覧の最後の行の下のきわが「今日｜週｜月」の
+      帯の下のきわに来る（一覧の下の余白は帯の溶かしの下に残る。css の .tl-done）。一覧が無ければ 0。物差しの頭は、
+      いつもこの下（2026年10月28日、利用者「タスクが多い日には圧迫する」「ただ畳むというのもな」）。畳まない——
+      上へ戻せば出る（月の面の過ぎた日と同じ。hidePastDays）。 */
+  function doneRest(sc) {
+    const done = root && root.querySelector(".day-slide:not(.is-peek) > .tl-done");
+    if (!done || !sc) return 0;
+    /* 測るのは一覧の箱（下の余白を引く）。行は開いた一拍に下から滑ってくる（translate）ので、行を測ると数px ずれる。 */
+    const pad = parseFloat(getComputedStyle(done).paddingBottom) || 0;
+    return Math.max(0, Math.round(sc.scrollTop + done.getBoundingClientRect().bottom - pad
+      - sc.getBoundingClientRect().top - sc.clientTop - faceFloor()));
+  }
+
   function toNow() {
     if (!root) return;
     keepAim++;
-    /* 一日の道が出ていれば、「いま」は紙のいちばん上（道の上の人）にいます。
-       時間割の「いま」まで送ると、道が画面の外へ出ていくので、頭へ戻すだけ。 */
-    if (root.querySelector(".day-road")) {
-      const sc = KN.app.scrollerOf(root);
-      if (sc.scrollTop > 0) sc.scrollTop = 0;
+    /* 一日の道が上に出ていれば、「いま」は紙の頭（道の上の人）にいます。時間割の「いま」まで送ると、道が画面の外へ
+       出ていくので、頭へ戻すだけ。済ませたものの一覧があれば、それを帯の裏へ送ったところが頭（doneRest）——
+       前の日から・道・物差しが帯のすぐ下から。道が下（`todoRoadAt: "below"`）なら道は数えない（前は道が下でも頭へ
+       戻していて、一覧が物差しを押し下げたまま開いた）。 */
+    const sc = KN.app.scrollerOf(root);
+    const rest = doneRest(sc);
+    const roadUp = store.get().settings.todoRoadAt !== "below" && root.querySelector(".day-slide:not(.is-peek) .day-road");
+    if (rest > 0 || roadUp) {
+      const to = Math.min(rest, Math.max(0, sc.scrollHeight - sc.clientHeight));
+      if (Math.abs(to - sc.scrollTop) >= 1) sc.scrollTop = to;
       return;
     }
     const mark = root.querySelector(".tl-now")
