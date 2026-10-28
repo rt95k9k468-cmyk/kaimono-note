@@ -1347,6 +1347,7 @@
     buildTabs();
     watchGlass();
     watchFabAway();
+    watchWriting();
     /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
        同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
        ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
@@ -1752,6 +1753,41 @@
     if (tag !== "INPUT") return false;
     return !["checkbox", "radio", "button", "submit", "reset", "file", "range", "color"]
       .includes(el.type);
+  }
+
+  /* 書いているあいだは画面を消さない（Screen Wake Lock。docs/thinking.md の「書いているあいだ」）。
+     音声入力は画面に触れないので、話している途中で iPhone の自動ロックが暗くして消し、
+     日記の鍵が閉じて書く紙も閉じていた。持つのは欄にいて、最後に字が増えてから5分のあいだだけ
+     （置いたままの画面は点けっぱなしにしない）。隠れるとブラウザが手放すので、戻ったら持ち直す。
+     買うものの awake（screen-list.js）とは別に持つ——どちらかが持っていれば消えない。 */
+  function watchWriting() {
+    if (!navigator.wakeLock) return;
+    const IDLE_MS = 5 * 60 * 1000;
+    let lock = null, asking = false, idleT = 0;
+    const wanted = () => document.visibilityState === "visible" && isTyping();
+    function release() {
+      clearTimeout(idleT);
+      const l = lock;
+      lock = null;
+      if (l) l.release().catch(() => {});
+    }
+    function hold() {
+      if (!wanted()) { release(); return; }
+      clearTimeout(idleT);
+      idleT = setTimeout(release, IDLE_MS);
+      if (lock || asking) return;
+      asking = true;
+      navigator.wakeLock.request("screen").then((l) => {
+        asking = false;
+        if (!wanted()) { l.release().catch(() => {}); return; }
+        lock = l;
+        l.addEventListener("release", () => { if (lock === l) lock = null; });
+      }, () => { asking = false; });
+    }
+    ["focusin", "input", "keydown"].forEach((t) => document.addEventListener(t, hold, true));
+    /* 欄を出た：次の欄へ移っただけなら持ったまま。 */
+    document.addEventListener("focusout", () => setTimeout(() => { if (!wanted()) release(); }, 0), true);
+    document.addEventListener("visibilitychange", hold);
   }
 
   /* 「キーボードでは起こり得ない縮み方」の境目。道具棚は高々100pxほど、
