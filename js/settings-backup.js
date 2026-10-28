@@ -24,7 +24,7 @@
 
   /** 記録の数を一行で。控えの一覧・復元の確認・書き出しの確かめで使います。 */
   function countText(c) {
-    return `商品 ${c.products}・やること ${c.todos}・daily ${c.days}日・積み上げ ${c.entries}・ダイエット ${c.diet}`;
+    return `商品 ${c.products}・やること ${c.todos}・daily ${c.days}日・積み上げ ${c.entries}・からだ ${c.diet}`;
   }
 
   /* 記録の点検（R28、js/audit.js）。数えるだけで、記録は変えません。
@@ -433,7 +433,7 @@
     const now = store.countsOf();
     const kinds = [
       ["商品", "products"], ["やること", "todos"], ["daily（日）", "days"],
-      ["積み上げ", "entries"], ["ダイエット", "diet"],
+      ["積み上げ", "entries"], ["からだ", "diet"],
     ];
     let lead = `「${name}」は、戻せるバックアップではありません。${r.reason || ""}。`;
     let verdict = "";
