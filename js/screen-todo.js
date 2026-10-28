@@ -6612,6 +6612,7 @@
 
      寄せる先は「いまの線」。無ければ（今日でない日を見ているときなど）
      まだ済んでいない最初の一件。どちらも無ければ、動かしません。
+     **今日の面は寄せない**——まだのものの頭から（下の toNow。2026年10月28日から物差しは いまの時 から始まる）。
 
      まん中より**少し上**に置きます。まん中ちょうどだと、これからやること
      ——下側——に使える高さが半分しか残りません。少し上げれば、過ぎたぶんは
@@ -6634,15 +6635,16 @@
   function toNow() {
     if (!root) return;
     keepAim++;
-    /* 一日の道が上に出ていれば、「いま」は紙の頭（道の上の人）にいます。時間割の「いま」まで送ると、道が画面の外へ
-       出ていくので、頭へ戻すだけ。済ませたものの一覧があれば、それを帯の裏へ送ったところが頭（doneRest）——
-       前の日から・道・物差しが帯のすぐ下から。道が下（`todoRoadAt: "below"`）なら道は数えない（前は道が下でも頭へ
-       戻していて、一覧が物差しを押し下げたまま開いた）。 */
+    /* **今日の面は、まだのものの頭から**——前の日から・道（上のとき）・はみ出しの一行・物差しが帯のすぐ下。済ませた
+       ものの一覧があれば、それを帯の裏へ送ったところ（doneRest。無ければ紙の頭）。物差しは いまの時 から始まり、
+       その上に居るのはどれも これからのこと（過ぎてもまだの用事も）なので、「いま」を画面の4割（AIM）へ寄せると
+       前の日からの頭まで帯の裏へ送ってしまう（2026年10月28日）。前は道があれば頭へ戻すだけで、道が下でもそうだった
+       ——一覧が物差しを押し下げたまま開いた。ほかの日は、道が上なら頭、でなければ AIM。 */
     const sc = KN.app.scrollerOf(root);
-    const rest = doneRest(sc);
+    const today = oneDay() && face === "today" && shownDay() === todayKey();
     const roadUp = store.get().settings.todoRoadAt !== "below" && root.querySelector(".day-slide:not(.is-peek) .day-road");
-    if (rest > 0 || roadUp) {
-      const to = Math.min(rest, Math.max(0, sc.scrollHeight - sc.clientHeight));
+    if (today || roadUp) {
+      const to = Math.min(doneRest(sc), Math.max(0, sc.scrollHeight - sc.clientHeight));
       if (Math.abs(to - sc.scrollTop) >= 1) sc.scrollTop = to;
       return;
     }

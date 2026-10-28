@@ -7,6 +7,7 @@
    - 上へ戻すと一覧の頭から見える。そこで ✓ を外しても、上の行は動かない（送らない）
    - 帯で 週 → 今日 と戻ると、帯の裏へ
    - 道が上なら、道が帯のすぐ下。「前の日から」があれば、それが帯のすぐ下（一覧より下にある）
+   - 済ませたものが無い朝は紙の頭から（前は「いま」を画面の4割へ寄せて、前の日からの頭を帯の裏へ送りえた）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/timeline-done-rest.js */
 const { open, checker } = require("./lib");
@@ -130,6 +131,16 @@ const DAY = "2026-10-28";
   c.check("「前の日から」は一覧の下で、入ると帯のすぐ下（一覧は帯の裏）",
     r.order.startsWith("tl-done>tl-prev-sec") && tucked(r) && under(r, r.prev.top),
     JSON.stringify(r));
+
+  /* ---- 済ませたものが無い朝：紙の頭から（「いま」を画面の4割へ寄せて、前の日からの頭を帯の裏へ送らない） ---- */
+  await page.evaluate((day) => {
+    KN.store.update((st) => st.todos.forEach((x) => { if (x.due === day && x.done) { x.done = false; x.doneAt = null; } }));
+    ["申し込み", "電話をかける", "返事を書く"].forEach((t, i) => KN.store.addTodo({ title: t, due: `2026-10-2${4 + i}`, minutes: 20 }));
+  }, DAY);
+  await enter();
+  r = await read();
+  c.check("済ませたものが無ければ、今日の面は紙の頭から（前の日からが帯のすぐ下）",
+    !r.done && r.top === 0 && r.max > 0 && !!r.prev && r.prev.top >= r.band - 1 && r.prev.top - r.band < 24, JSON.stringify(r));
 
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
