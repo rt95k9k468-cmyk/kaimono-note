@@ -1,12 +1,12 @@
 /* 時間割の背骨と札の色（2026年9月27日、物差しに合わせて書き直し 2026年10月20日。
    docs/timeline-scale-design.md）。
    - 背骨の色の境目は「いま」の一か所だけ：背骨の区間（.tl-seg）と畳んだ空き（.tl-fold）は、
-     いまより前が色、あとが灰色、いまを含む一本だけがその割合。済ませた札の色が線へ漏れない。
-   - 長さを決めた用事の時間の中で済ませた用事は、列で隣に並ぶ（is-clash・白い抜きは無い）。
-     札の色（--pass）はそれぞれ自分の時間の進み具合。うすい地（いま）は続いている用事に残る。
-   - 長さを決めていない用事どうし（仮の30分）も、描いた高さで重なれば列に分ける。札どうしは重ならない。
+     いまより前が色、あとが灰色、いまを含む一本だけがその割合。済ませたものの色が線へ漏れない。
+   - 今日の済ませたものは物差しに居ない：上の一覧（.tl-done）に一行ずつ、済ませた順・済ませた時刻（2026年10月28日）。
+     物差しはいまの時（正時）か、まだの用事の頭の早いほうから。
+   - 札の色（--pass）は自分の時間の進み具合。うすい地（いま）は続いている用事に残る。
    - 「いま」の札は y(いま) の高さ（行の中を測らない）。
-   - 時刻を決めた用事を始まりより前に済ませたら、札は済ませた時刻（2026年10月21日）。
+   済ませた札どうしの列は、ほかの日の物差しの話（tests/tl-layout.js が表で見る）。
    `SHOTS=<置き場>` で時間割を撮る。 */
 const { open, checker } = require("./lib");
 
@@ -65,18 +65,19 @@ const PX_MIN = 1.2;
   });
   let r = await read();
   const find = (w) => r.rows.find((x) => x.title.includes(w)) || {};
-  const baby = find("朝のBaby"), bday = find("誕生日");
+  const baby = find("朝のBaby");
 
-  /* 夜の用事は 8:50 に済ませたので、札は 8:50 に来る（始まりより前に済ませたら済ませた時刻。2026年10月21日）。
-     ルーティンの途中に済ませた二つが、ルーティンの隣に一列ずつ。 */
-  const night = find("夜のルーティン");
-  c.check("ルーティンの途中で済ませた用事は、ルーティンの隣の列（3列）",
-    [baby, bday, night].every((x) => x.lanes === 3) && baby.lane === 0 && bday.lane > 0 && night.lane > 0
-      && bday.lane !== night.lane, JSON.stringify({ baby, bday, night }));
+  /* 今日の済ませたものは物差しに居ない：上の一覧に一行ずつ、済ませた順（2026年10月28日、利用者）。
+     夜の用事は 8:50 に済ませたので、その時刻の行。 */
+  const doneRows = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .tl-done-row")].map((li) =>
+    `${li.querySelector(".tl-doneat").textContent.trim()} ${li.querySelector(".item-name").textContent.trim()}`));
+  c.check("済ませた四件は上の一覧に、済ませた順（時刻は済ませた時刻）",
+    doneRows.join("/") === "7:10 洗濯/7:15 皿洗い/8:50 夜のルーティン/9:03 誕生日の準備", JSON.stringify(doneRows));
+  c.check("物差しにはまだのものだけ（ルーティンは一列）",
+    r.rows.length === 2 && baby.lanes === 1 && !!find("燃えるゴミ").title, JSON.stringify(r.rows.map((x) => x.title)));
   c.check("ルーティンの色は自分の時間の進み具合（64分/240分）",
     Math.abs(baby.pass - (NOW - 480) / 240) < 0.002, JSON.stringify(baby));
   c.check("ルーティンはまだ続いているので、うすい地（いま）は残る", baby.live, JSON.stringify(baby));
-  c.check("済ませた用事の札は色", bday.pass === 1 && !bday.live, JSON.stringify(bday));
   c.check("ぶつかりの印（is-clash・白い抜き・「前と重なっています」）は無い", r.clash === 0, String(r.clash));
 
   c.check("「いま」の札は y(9:04) の高さ（ルーティンの頭から 64分ぶん）",
@@ -89,29 +90,9 @@ const PX_MIN = 1.2;
       && r.line.filter((s) => s.pass > 0 && s.pass < 1).length === 1,
     JSON.stringify(r.line));
   const eve = r.line.find((s) => s.at <= 21 * 60 && s.until >= 21 * 60 + 30) || {};
-  c.check("夕方の用事を朝に済ませた：札は済ませた時刻（8:50）に色で、夕方の背骨は灰色",
-    night.at === 8 * 60 + 50 && night.pass === 1 && eve.pass === 0, JSON.stringify({ night, eve }));
-  c.check("いまより前に済ませた用事の時間の背骨は色",
-    r.line.filter((s) => s.until <= find("洗濯").at).every((s) => s.pass === 1)
-      && r.line.some((s) => s.until <= NOW && s.pass === 1), JSON.stringify(r.line));
-
-  /* 済んだ札はいつも出ている（「済み n件」の畳みは2026年10月20日にやめた）。並びを見る。 */
-  await page.waitForFunction(() => {
-    const li = [...document.querySelectorAll("#screen-todo .tl-row.is-done")];
-    return li.length && li.every((x) => x.getBoundingClientRect().height > 0);
-  }, null, { timeout: 5000 });
-  r = await read();
-  const wash = find("洗濯"), dish = find("皿洗い");
-  c.check("長さを決めていない用事を続けて済ませると、描いた高さで重なるので2列",
-    wash.lanes === 2 && dish.lanes === 2 && wash.lane !== dish.lane, JSON.stringify([wash, dish]));
-  const shown = r.rows.filter((x) => x.shown);
-  const hit = [];
-  shown.forEach((a, i) => shown.slice(i + 1).forEach((b) => {
-    if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) hit.push([a.title, b.title]);
-  }));
-  c.check("札どうしは重ならない（列が言う）", shown.length === 6 && !hit.length, JSON.stringify({ n: shown.length, hit }));
-  c.check("済んだ札をひらいても、背骨の色は変わらない",
-    r.line.every((s) => Math.abs(s.pass - want(s)) < 0.002), JSON.stringify(r.line));
+  c.check("夕方の用事を朝に済ませても、夕方の背骨は灰色（済ませたものの色が線へ漏れない）", eve.pass === 0, JSON.stringify(eve));
+  c.check("物差しは、いまの時（9:00）か、まだの用事の頭（8:00）の早いほうから",
+    r.line.length && r.line[0].at === 8 * 60, JSON.stringify(r.line[0]));
 
   if (process.env.SHOTS) {
     const el = await page.$("#screen-todo .tl");

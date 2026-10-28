@@ -3,10 +3,10 @@
    - 5:00〜5:20 の水やりと 6:00〜7:00 の朝のルーティンがまだ。棒は札の高さのまま、線（.tl-late-line）は
      いちばん早く終わるはずだった水やりの下端から y(いま) まで一本（色は変えない。橙は道だけ）。押すと一覧の紙
    - 手順の小窓：済ませてもその場に残り、小窓は動かない。開き直すと「済み n」に畳む。ぜんぶ済むと閉じる
-   - 済ませると、その一件ぶん線が縮む／全部済ませると消える
+   - 済ませると物差しを出て上の一覧へ（2026年10月28日）、その一件ぶん線が縮む／全部済ませると消える
    - 時刻は1時間ごとに振る。用事の時刻・「いま」と同じ高さの字は出さない
    - 手順は小窓に出す（札は伸びない・2026年10月21日）
-   - 始まりより前に済ませた用事（9:00 のしたく）は、済ませた時刻（7:33）の札になる（2026年10月21日） */
+   - 始まりより前に済ませた用事（9:00 のしたく）は、一覧の行が済ませた時刻（7:33）。記録はそのまま */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-09-30";
@@ -37,6 +37,7 @@ const PX_MIN = 1.2;
     const o = scr.querySelector(".tl-list").getBoundingClientRect().top;
     const row = (id) => scr.querySelector(`.tl-row[data-todo-id="${id}"]`);
     const box = (id) => {
+      if (!row(id)) return null;   // 済ませたものは物差しに居ない（上の一覧）
       const li = row(id), nd = li.querySelector(".tl-node"), r = nd.getBoundingClientRect();
       const card = li.getBoundingClientRect();
       return { top: r.top - o, bottom: r.bottom - o, h: r.height, cardTop: card.top - o, cardH: card.height,
@@ -45,7 +46,7 @@ const PX_MIN = 1.2;
     };
     const now = scr.querySelector(".tl-now");
     const nr = now ? now.getBoundingClientRect() : null;
-    const subs = row(ids.prep).querySelector(".tl-sub-list");
+    const subs = row(ids.prep) && row(ids.prep).querySelector(".tl-sub-list");
     const sr = subs ? subs.getBoundingClientRect() : { bottom: 0 };   // 小窓が開いているあいだは札に居ない
     const ln = scr.querySelector(".tl-list > .tl-late-line");
     const lr = ln ? ln.getBoundingClientRect() : null;
@@ -54,6 +55,7 @@ const PX_MIN = 1.2;
     return { line: lr ? { top: lr.top - o, bottom: lr.bottom - o, w: lr.width } : null, hours,
       water: box(ids.water), routine: box(ids.routine), mail: box(ids.mail), prep: box(ids.prep),
       now: nr ? nr.top - o : null, subsBottom: sr.bottom - o, subsHidden: subs ? subs.hidden : true,
+      doneRows: [...scr.querySelectorAll(".tl-done-row .item-name")].map((x) => x.textContent.trim()),
       text: scr.querySelector(".tl").textContent };
   }, ids);
 
@@ -136,13 +138,11 @@ const PX_MIN = 1.2;
     .then(() => true, () => false);
   c.check("手順がぜんぶ済んだら、小窓は自分で閉じる", shutSelf);
 
-  /* 済ませると、その一件ぶん線が縮み、全部済ませると消える。 */
+  /* 済ませると、物差しを出て上の一覧へ（2026年10月28日）。その一件ぶん線が縮み、全部済ませると消える。 */
   const done = async (id) => {
     await page.click(`#screen-todo .tl-row[data-todo-id="${id}"] button.check`);
-    await page.waitForFunction((id) => {
-      const li = document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"]`);
-      return li && li.classList.contains("is-done");
-    }, id, { timeout: 5000 });
+    await page.waitForFunction((id) => !!document.querySelector(`#screen-todo .tl-done-row[data-todo-id="${id}"]`)
+      && !document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"]`), id, { timeout: 5000 });
     return read();
   };
   await done(ids.water);
@@ -154,22 +154,21 @@ const PX_MIN = 1.2;
     return ln && nd && Math.abs(ln.getBoundingClientRect().top - nd.getBoundingClientRect().bottom) < 2;
   }, ids.routine, { timeout: 3000 }).catch(() => {});
   r = await read();
-  c.check("水やりを済ませると、線はルーティンの下端から",
-    !r.water.late && r.line && Math.abs(r.line.top - r.routine.bottom) < 2, JSON.stringify([r.line, r.routine]));
+  c.check("水やりを済ませると、物差しを出て、線はルーティンの下端から",
+    !r.water && r.line && Math.abs(r.line.top - r.routine.bottom) < 2, JSON.stringify([r.line, r.routine]));
   r = await done(ids.routine);
-  c.check("全部済ませると線が消える（札は 72px のまま）",
-    !r.routine.late && !r.line && Math.abs(r.routine.dataH - 60 * PX_MIN) < 1, JSON.stringify([r.line, r.routine]));
+  /* したくは手順をぜんぶ済ませたときに済んでいる（親も済む）。三件とも 7:33 なので、並びは予定の順。 */
+  c.check("全部済ませると線が消える（済ませたものは上の一覧）",
+    !r.routine && !r.line && r.doneRows.join() === "水やり,朝のルーティン,したく", JSON.stringify([r.line, r.doneRows]));
 
-  /* 9:00 のしたくを 7:33 に済ませる → 札は済ませた時刻へ、長さは付けない。記録は書き換えない。 */
-  await done(ids.prep);
+  /* 9:00 のしたくは 7:33 に済んだ（始まりより前）→ 上の一覧の行は済ませた時刻。記録は書き換えない。 */
   const early = await page.evaluate((id) => {
-    const li = document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"]`);
+    const li = document.querySelector(`#screen-todo .tl-done-row[data-todo-id="${id}"]`);
     const t = KN.store.get().todos.find((x) => x.id === id);
-    return { at: Number(li.dataset.at), until: Number(li.dataset.until), time: li.querySelector(".tl-time").textContent.trim(),
-      rec: t.time + "/" + t.minutes };
+    return { time: li.querySelector(".tl-doneat").textContent.trim(), rec: t.time + "/" + t.minutes };
   }, ids.prep);
-  c.check("始まりより前に済ませたら、札は済ませた時刻に（長さは付けない・記録はそのまま）",
-    early.at === 7 * 60 + 33 && early.until === early.at + 1 && early.rec === "09:00/45", JSON.stringify(early));
+  c.check("始まりより前に済ませたら、一覧の行は済ませた時刻（記録はそのまま）",
+    early.time === "7:33" && early.rec === "09:00/45", JSON.stringify(early));
 
   c.check("評価の言葉を出さない", !/遅れ|予定通り|達成|未達|超過/.test(r.text), r.text);
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));

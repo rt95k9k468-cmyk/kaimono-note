@@ -4875,6 +4875,35 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 「いま」の線が空きの中を通るときは、字を線からよける（--fold-y は字のまん中の高さ。screen-todo.js の avoidNow）。 */
 .tl-fold[style*="--fold-y"] .tl-fold-text { align-self: flex-start; margin-top: calc(var(--fold-y) * 1px); translate: 0 -50%; }
 
+/* 今日の済ませたもの（物差しの上の一覧。js の doneList・2026年10月28日、利用者）。一行ずつ、灰に取り消し線。札にはしない
+   ——まだのもの（札）と形で分かれる。時刻は目盛りの列（44px）、✓は札の左端の列（--tl-gut の 48px）から。 */
+.tl-done { list-style: none; margin: 0; padding: var(--sp-2) var(--sp-4) var(--sp-1) 0; }
+.tl-done-row { display: flex; align-items: center; min-height: 34px; }
+.tl-done-row > .tl-doneat {
+  flex: none; width: 44px; box-sizing: border-box; justify-content: flex-end;
+  margin: 0 4px 0 0; padding: 0 3px 0 0;
+  font-size: var(--fs-sm); color: var(--c-text-3);
+}
+.tl-done-row > .check { width: 20px; height: 20px; border-width: 1.5px; }
+.tl-done-row > .check::after { width: 34px; height: 34px; }
+.tl-done-row > .check[aria-checked="true"], .tl-done-row > .check.is-trace {
+  --done-dot: color-mix(in srgb, var(--c-text-3) 55%, var(--c-sheet));
+  background: var(--done-dot); border-color: var(--done-dot);
+}
+.tl-done-row > .check svg { width: calc(var(--ico-sm) * .8); height: calc(var(--ico-sm) * .8); }   /* 輪が 20px なので一回り小さく */
+/* 行の背いっぱいが題の的なので、札の題の上下 12px の的（.tl-open::after）は要らない——広げると上の行の題を取る。 */
+.tl-done-row > .tl-open {
+  flex: 1; min-width: 0; min-height: 34px;
+  display: flex; align-items: center;
+  padding: 0 0 0 var(--sp-3); border: 0; background: none; font: inherit; text-align: left; color: inherit;
+}
+.tl-done-row > .tl-open::after { inset: 0; }
+.tl-done-row .item-name {
+  display: block; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--c-text-3);
+  text-decoration: line-through; text-decoration-color: var(--c-text-3);
+}
+
 /* 列の上限を超えた札（＋n）。押すと一覧の紙。 */
 .tl-more {
   position: absolute;

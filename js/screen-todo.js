@@ -2741,7 +2741,7 @@
 
        日を丸ごと替えたときは、向こうが自分で見送ります（新顔が半分を
        超えたら「編集ではなく行き先の変更」と見なして何もしない）。 */
-    const settle = KN.ui.flipRows(els.body, ".tl-row");
+    const settle = KN.ui.flipRows(els.body, ".tl-row, .tl-done-row");   // 済ませた札は上の一覧の行へ滑る
     const tiles = KN.ui.isTiles();
     groups = buildGroups();
     const all = store.sortedTodos();
@@ -4908,26 +4908,20 @@
     /* 今日を見ているときだけ「いま」を渡します。渡すと、まだ済んでいない
        時刻なしのものが**いまから先**に並びます——15時に開いて残りの用事が
        7時に並んでいても、配り直す役には立たないので。 */
-    /* 済ませたものも線の上に残します。**今日それをした**ことが見えるのは、
-       残りが何かと同じくらい大事なので（消すと、朝からの半日が空白に
-       なります）。組み立て側は、済んだものが「これからの時間」を食べない
-       ようにしています（plan.js の doneOf）。 */
+    /* 済ませたものも出します。**今日それをした**ことが見えるのは、残りが何かと同じくらい大事なので。
+       今日は物差しの上の一覧へ、ほかの日は線の上に（下の doneItems）。組み立て側は、済んだものが
+       「これからの時間」を食べないようにしています（plan.js の doneOf）。 */
     const day = shelf && shelf.day ? shelf.day : todayKey();
     const done = store.get().todos.filter((t) => (t.done || t.archived) && t.due === day);
     const plan = P.buildDay(day, rows.concat(done), {
       start: s.dayStart, end: s.dayEnd, now: isToday ? planNow() : null,
     });
-    /* 今日、時刻を決めた用事を始まりより前に済ませたら、札は**済ませた時刻**に置く（道と同じ。
-       2026年10月21日・利用者の声）。いつ始めたかは記録に無いので長さは付けない。記録は書き換えない。 */
-    if (isToday) {
-      plan.items = plan.items.map((it) => {
-        const t = it.todo, d = it.fixed && (t.done || t.archived) && t.doneAt ? new Date(t.doneAt) : null;
-        if (!d || isNaN(d.getTime()) || KN.util.dayKey(d) !== day) return it;
-        const m = d.getHours() * 60 + d.getMinutes();
-        return m < it.atMin ? { ...it, atMin: m, untilMin: m + 1, at: P.toTime(m), until: P.toTime(m + 1) } : it;
-      }).sort((a, b) => a.atMin - b.atMin);
-    }
-    /* 済んだものはいつも出す（畳む「済み n件」は2026年10月20日にやめた、利用者。札は灰へ寄せて抑える）。 */
+    /* **今日の面では、済ませたものは物差しから外す**（2026年10月28日、利用者「終わったことなのに視界に出てきて邪魔」
+       「一日が一目でわからない」）。上の一覧（doneList）に一行ずつ、済ませた順。物差しに残るのはまだのものだけで、
+       過ぎた時間は空きとして畳まれる。ほかの日は今までどおり物差しの上に（その日の記録として）。 */
+    const closedIt = (it) => it.todo.done || it.todo.archived;
+    const doneItems = isToday ? plan.items.filter(closedIt) : [];
+    if (isToday) plan.items = plan.items.filter((it) => !closedIt(it));
     /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。 */
     const sec = node(html`
       <div class="tl">
@@ -4950,6 +4944,7 @@
       </div>
     `);
     const list = sec.querySelector(".js-tl");
+    if (doneItems.length) sec.insertBefore(doneList(doneItems), list);
     const rf = sec.querySelector(".js-refit");
     if (rf) rf.addEventListener("click", () => { haptic(); refitSheet(); });
 
@@ -4959,7 +4954,10 @@
     list.__in = plan.items.map((it, k) => ({
       id: k, atMin: it.atMin, untilMin: it.untilMin, known: !!Number(it.todo.minutes),
     }));
-    list.__opt = { start: plan.startMin, end: plan.endMin };
+    /* 今日の物差しは、いまの時（正時に切り捨て）から——過ぎた時間は上の一覧が受け持つ（2026年10月28日）。過ぎても
+       まだの用事があれば、layout がその札の頭まで広げる。正時にそろえるのは、組み直すたびに頭が分ごとにずれないため。 */
+    const nowHour = Math.floor(KN.plan.toMin(KN.util.nowTime()) / 60) * 60;
+    list.__opt = { start: isToday ? Math.min(nowHour, plan.endMin) : plan.startMin, end: plan.endMin };
     list.__keys = plan.items.map((it) => subsKeyOf(it.todo, day));
     list.__items = plan.items;
     const L = tlRelayout(list);
@@ -5086,7 +5084,7 @@
       一日の範囲の外なら端に寄せる。 */
   function nowY(sec, list, nowMin) {
     const L = list.__tl;
-    if (!L || !L.cards.length) return null;
+    if (!L || (!L.cards.length && !L.folds.length)) return null;
     const m = Math.min(L.to, Math.max(L.from, nowMin));
     return list.offsetTop + list.clientTop + listPad(list) + L.y(m);
   }
@@ -5990,7 +5988,8 @@
         style="--top:${y.toFixed(1)}"><span class="tl-hour">${tlClock(KN.plan.toTime(h))}</span></li>`));
     }
     // 背骨は最初の札の頭から最後の札の下端まで（その先に線があると「まだ続く」と読める）。
-    if (!L.cards.length) return out;
+    // 札が無い（今日の用事をみな済ませた）ときは、畳んだ空きだけ。
+    if (!L.cards.length) { L.folds.forEach((f) => out.push(foldRow(f))); return out; }
     const top = Math.min(...L.cards.map((c) => c.top));
     const bot = Math.max(...L.cards.map((c) => c.top + c.height));
     const minAt = L.minAt;
@@ -6040,6 +6039,47 @@
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "";
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  /** 今日の済ませたもの（物差しの上の一覧。2026年10月28日、利用者）。一行ずつ、済ませた順。札にはしない——
+      まだのもの（物差しの札）と、置き場所と形で分かれる。 */
+  function doneList(items) {
+    const at = (it) => {
+      const d = doneClock(it.todo.doneAt) ? new Date(it.todo.doneAt) : null;
+      return d ? d.getHours() * 60 + d.getMinutes() : it.atMin;
+    };
+    const ol = node(html`<ol class="tl-done" aria-label="済ませたこと"></ol>`);
+    items.slice().sort((a, b) => at(a) - at(b)).forEach((it) => ol.append(doneRow(it)));
+    return ol;
+  }
+
+  /** 済ませたものの一行：済ませた時刻（押すと直す）・✓（押すと元に戻す）・題（押すと詳細）。札と同じ口を使う。
+      済ませた時刻を持たない古い記録は、予定の時刻を薄く。 */
+  function doneRow(it) {
+    const t = it.todo;
+    const c = doneClock(t.doneAt);
+    const li = node(html`
+      <li class="tl-done-row" data-todo-id="${t.id}" data-flip="${t.id}" style="--cat:${tlColorOf(t, it.atMin)}">
+        ${c
+          ? html`<button type="button" class="tl-doneat" aria-label="${t.title} の済ませた時刻 ${c} を直す"><i>${c}</i></button>`
+          : html`<span class="tl-doneat">${it.at ? tlClock(it.at) : ""}</span>`}
+        ${t.trace
+          ? html`<button class="check is-trace" role="checkbox" aria-checked="true"
+                  aria-label="${t.title} を、済ませていないことにする">${icon("check")}</button>`
+          : html`<button class="check" role="checkbox" aria-checked="${String(!!t.done)}"
+                  aria-label="${t.title} を終わりにする">${icon("check")}</button>`}
+        <button class="tl-open" type="button"><span class="item-name">${t.title}</span></button>
+      </li>
+    `);
+    li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id, null));
+    const at = li.querySelector("button.tl-doneat");
+    if (at) at.addEventListener("click", (e) => { e.stopPropagation(); editDoneAt(t.id, at); });
+    li.querySelector("button.check").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (t.trace) { untrace(t); return; }
+      tick(t.id, e.currentTarget);
+    });
+    return li;
   }
 
   /** 一つの用事の札。c は tl-layout の札（top・height・lane・lanes。px）、quiet は時刻の字を
