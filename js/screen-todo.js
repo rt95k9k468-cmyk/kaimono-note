@@ -272,7 +272,6 @@
      ‹ › が効かなくなります。留めは、その人がじっさいにスクロールした
      ときに外れます。 */
   let calPinned = false;
-  let restoring = false;
 
   /* 留めを外すのは、**その人がリストに触ったとき**です。
 
@@ -2945,7 +2944,6 @@
   const weekFace = () => oneDay() && face === "week";
   /* 月の面（2026年10月19日、利用者）。押せば暦が月の段に開き、下はその月の予定・締切を日ごとに。暦を畳めば週の面へ。 */
   const monthFace = () => oneDay() && face === "month";
-  const dayFace = () => oneDay() && face !== "week";
   /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
   const titleDay = () => (oneDay() && face !== "month" ? shownDay() : (hereDay || todayKey()));
 
@@ -3841,11 +3839,8 @@
     followScroll();
     if (!root || !top) return;
     const sc = KN.app.scrollerOf(root);
-    restoring = true;
     const to = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
     sc.scrollTop = to;
-    // 戻したことが「その人が動いた」と読まれないよう、ひと呼吸だけ伏せます。
-    setTimeout(() => { restoring = false; }, 60);
     /* **一拍あとに、効いたか見直します**（2026年10月7日・利用者の声「時刻が変わる
        タイミングで、一日の道へパッと上がる」）。紙（.tl-sheet）は送る器そのもので、
        分が変わったあとの組み直しでは新しい要素に替わります。iPhone（WebKit）は
@@ -3857,9 +3852,7 @@
       if (mine !== keepAim || !sc.isConnected || sc.scrollTop > 1) return;
       const again = Math.min(top, Math.max(0, sc.scrollHeight - sc.clientHeight));
       if (again <= 1) return;
-      restoring = true;
       sc.scrollTop = again;
-      setTimeout(() => { restoring = false; }, 60);
     });
   }
 
@@ -4053,7 +4046,6 @@
   }
 
   function buildCalendar(open) {
-    const U = KN.util;
     const sec = node(html`
       <section class="cal">
         ${/* 見出しの行は、まるごと上のバーへ移しました（日付の題と「›」）。
@@ -4885,7 +4877,6 @@
   function timeline(rows, shelf) {
     const P = KN.plan;
     const s = store.get().settings;
-    const nowMin = P.toMin(KN.util.nowTime());
     const isToday = !shelf || !shelf.day || shelf.day === todayKey();
     /* 今日を見ているときだけ「いま」を渡します。渡すと、まだ済んでいない
        時刻なしのものが**いまから先**に並びます——15時に開いて残りの用事が
@@ -6553,11 +6544,7 @@
        時間割の「いま」まで送ると、道が画面の外へ出ていくので、頭へ戻すだけ。 */
     if (root.querySelector(".day-road")) {
       const sc = KN.app.scrollerOf(root);
-      if (sc.scrollTop > 0) {
-        restoring = true;
-        sc.scrollTop = 0;
-        setTimeout(() => { restoring = false; }, 60);
-      }
+      if (sc.scrollTop > 0) sc.scrollTop = 0;
       return;
     }
     const mark = root.querySelector(".tl-now")
@@ -6573,11 +6560,7 @@
     const max = Math.max(0, root2.scrollHeight - root2.clientHeight);
     const to = Math.round(Math.min(max, Math.max(0, want)));
     if (Math.abs(to - root2.scrollTop) < 4) return;
-    /* 送ったことが「その人が動かした」と読まれないよう、ひと呼吸伏せます
-       （restoreTop と同じ約束。見ている日の印が動いてしまうので）。 */
-    restoring = true;
     root2.scrollTop = to;
-    setTimeout(() => { restoring = false; }, 60);
   }
 
   /* tasks の席をもう一度押したら、今日｜週 を行き来（2026年10月18日、利用者。前の「時間割 ⇄ 一日の道」の

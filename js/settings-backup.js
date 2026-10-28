@@ -24,7 +24,7 @@
 
   /** 記録の数を一行で。控えの一覧・復元の確認・書き出しの確かめで使います。 */
   function countText(c) {
-    return `商品 ${c.products}・やること ${c.todos}・daily ${c.days}日・積み上げ ${c.entries}・ダイエット ${c.diet}`;
+    return `商品 ${c.products}・やること ${c.todos}・daily ${c.days}日・積み上げ ${c.entries}・からだ ${c.diet}`;
   }
 
   /* 記録の点検（R28、js/audit.js）。数えるだけで、記録は変えません。
@@ -71,16 +71,6 @@
     const hh = String(d.getHours()).padStart(2, "0");
     const mm = String(d.getMinutes()).padStart(2, "0");
     return `${formatDate(iso)} ${hh}:${mm}`;
-  }
-
-  function snapshotSub() {
-    const snaps = KN.backup.list();
-    if (!snaps.length) return "アプリ内に自動保存された控えはまだありません";
-    /* どこまで戻せるかを言います。件数だけでは「いつまで遡れるか」が
-       分からず、いざというときに開いてみるまで分かりません。 */
-    const oldest = snaps[snaps.length - 1];
-    return `${snaps.length}件・最新 ${snapStamp(snaps[0].at)}`
-      + (snaps.length > 1 ? `（${snapStamp(oldest.at)} まで戻せます）` : "");
   }
 
   /** Pick one of the app's own rolling snapshots and roll back to it. */
@@ -443,7 +433,7 @@
     const now = store.countsOf();
     const kinds = [
       ["商品", "products"], ["やること", "todos"], ["daily（日）", "days"],
-      ["積み上げ", "entries"], ["ダイエット", "diet"],
+      ["積み上げ", "entries"], ["からだ", "diet"],
     ];
     let lead = `「${name}」は、戻せるバックアップではありません。${r.reason || ""}。`;
     let verdict = "";

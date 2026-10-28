@@ -2000,28 +2000,6 @@
     settle();
   }
 
-  /**
-   * その月ぶんを JSON で書き出します。将来、この月がどんな時間だったかを
-   * 言葉にしてもらうときに、そのまま渡せる形にしてあります。
-   */
-  function exportThisMonth() {
-    if (diaryShut()) { askDiary().then((ok) => { if (ok) exportThisMonth(); }); return; }
-    if (bodyBlocked()) return;   // 月の書き出しには日記の本文が入るので
-    const ym = curYm();
-    const data = store.exportMonth(ym);
-    const text = JSON.stringify(data, null, 2);
-    const blob = new Blob([text], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `daily-${ym}.json`;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    KN.motion.fire("select");
-    KN.ui.toast(`${ym} を書き出しました`);
-  }
-
   /* ＋ は、まず**記録の紙**を開きます（2026年9月28日）。前は押すと「Daily Log／
      記録」の二択が出て、どちらかを選ぶ一手が毎回はさまっていた。＋で書きたく
      なるのはたいてい記録のほうなので、そちらを先に開き、日記は紙の頭の札
