@@ -5,7 +5,7 @@
      ルーティンだけ次に当たる日へ（時刻は持ったまま）。何も動かさないときは書かない。
    - 前の版が付けた印 `carried` は消さない。settleCarried は印の付いた記録をいままでどおり選び直せる。
    - 数（todosDue＝バッジ）は過ぎた日のものを数えない。
-   - 画面：頭に札を出さない。昨日の用事は道に立たない。今日の面の頭に「前の日から」（七日前まで・記録はそのまま。10月21日）。週の面では、今週の過ぎた日のものは今週に、
+   - 画面：頭に札を出さない。昨日の用事は道に立たない。今日の面の頭に「前の日から」（七日前まで・記録はそのまま。10月21日）。行の右に行き先の札（もとの日。押すと 今日・明日・日を選ぶ・今週・これから・やめる、`store.movePrev`・元に戻すつき。10月28日）。週の面では、今週の過ぎた日のものは今週に、
      先週より前のものはこれからに。七日の行の過ぎた日にはやることを出さない。過ぎた買い物の一件はどこにも出さない。
    - 形の崩れた印は読み直しで落とす。印の無い記録に欄を足さない。
 
@@ -77,6 +77,41 @@ const { open, checker } = require("./lib");
   t.check("今週：長期タスク・期限は週の終わり", se.week.due == null && se.week.deadline === se.wk.day && !se.week.carried);
   t.check("元に戻す：今週", se.weekBack.due === se.day && se.weekBack.carried && !se.weekBack.deadline);
 
+  /* ---- 行き先の札（store.movePrev・10月28日、利用者）：選んだときだけ書く。元に戻す一回で全部戻る ---- */
+  const mv = await page.evaluate(() => {
+    const S = KN.store, U = KN.util;
+    const today = U.todayKey(), y = U.shiftDay(today, -1);
+    S.update((s) => { s.todos = []; });
+    const ids = {};
+    ["today", "tomorrow", "day", "past", "week", "later", "stop"].forEach((k) => { ids[k] = S.addTodo({ title: k, due: y }).id; });
+    ids.timed = S.addTodo({ title: "timed", due: y, time: "13:00", lead: 30 }).id;
+    const flat = (id) => JSON.stringify(Object.entries(S.getTodo(id)).sort());
+    const before = {};
+    Object.keys(ids).forEach((k) => { before[k] = flat(ids[k]); });
+    const undo = [
+      S.movePrev(ids.today, "today"), S.movePrev(ids.tomorrow, "tomorrow"),
+      S.movePrev(ids.day, "day", U.shiftDay(today, 3)), S.movePrev(ids.past, "day", U.shiftDay(today, -2)),
+      S.movePrev(ids.week, "week"), S.movePrev(ids.later, "later"), S.movePrev(ids.stop, "stop"), S.movePrev(ids.timed, "tomorrow"),
+    ];
+    const out = { d: today, y, d1: U.shiftDay(today, 1), d3: U.shiftDay(today, 3), review: U.shiftDay(U.weekOf(today).to, 1), rec: {} };
+    Object.keys(ids).forEach((k) => { out.rec[k] = { ...S.getTodo(ids[k]) }; });
+    undo.reverse().forEach((u) => u());
+    out.back = Object.keys(ids).filter((k) => flat(ids[k]) !== before[k]);
+    return out;
+  });
+  const r = mv.rec, slip = (x) => (x.slips || []).slice(-1)[0] || {};
+  t.check("今日：やる日が今日・今週の印・控えは前の日から運んだ",
+    r.today.due === mv.d && r.today.weekMark === mv.d && slip(r.today).how === "carry" && slip(r.today).from === mv.y, JSON.stringify(r.today));
+  t.check("明日：やる日が明日", r.tomorrow.due === mv.d1 && slip(r.tomorrow).how === "carry", JSON.stringify(r.tomorrow));
+  t.check("日を選ぶ：その日", r.day.due === mv.d3 && slip(r.day).how === "carry", JSON.stringify(r.day));
+  t.check("過ぎた日へは動かさない（何も書かない）", r.past.due === mv.y && !(r.past.slips || []).length, JSON.stringify(r.past));
+  t.check("今週：日を外して今週の印・見直すのは来週から",
+    r.week.due == null && r.week.weekMark === mv.d && r.week.review === mv.review && slip(r.week).how === "carry", JSON.stringify(r.week));
+  t.check("これから：日を外す・印も控えも書かない", r.later.due == null && !("weekMark" in r.later) && !(r.later.slips || []).length, JSON.stringify(r.later));
+  t.check("時刻は外す（前の時刻は控えに残る）", r.timed.due === mv.d1 && !r.timed.time && !r.timed.lead && slip(r.timed).time === "13:00", JSON.stringify(r.timed));
+  t.check("やめる：アーカイブ（消さない）", r.stop.archived === true && r.stop.due === mv.y, JSON.stringify(r.stop));
+  t.check("元に戻すと、どれも元のまま", !mv.back.length, JSON.stringify(mv.back));
+
   /* ---- 画面 ---- */
   const scr = await page.evaluate(() => {
     const S = KN.store, U = KN.util;
@@ -131,6 +166,56 @@ const { open, checker } = require("./lib");
   t.check("七日より前・予定・買い物の一件は出さない",
     !day.prev.some((n) => /古い用事|昨日の会議|買い物へ行く/.test(n)), JSON.stringify(day.prev));
   t.check("記録は書き換えない（昨日のまま）", day.due === scr.y, day.due);
+
+  /* 行き先の札：行の右にもとの日。押すと小窓、選べばその場で動き、トーストで戻せる。 */
+  const pill = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .tl-prev-sec .tl-move")].map((b) => b.textContent.trim()));
+  t.check("前の日からの行の右に、もとの日の札", pill.includes("昨日"), JSON.stringify(pill));
+  const openPill = async () => {
+    await page.evaluate(() => {
+      const li = [...document.querySelectorAll("#screen-todo .tl-prev-sec .tl-row")].find((x) => /病院/.test(x.textContent));
+      li.querySelector(".tl-move").click();
+    });
+    await page.waitForTimeout(300);
+  };
+  await openPill();
+  const menu = await page.evaluate(() => ({
+    items: [...document.querySelectorAll('.note-pop[role="menu"] .note-pop-item')].map((b) => b.textContent.trim()),
+    week: KN.util.weekOf(KN.util.todayKey()).to > KN.util.todayKey(),
+  }));
+  const want = ["今日", "明日", "日を選ぶ", ...(menu.week ? ["今週"] : []), "これから", "やめる"];
+  t.check("札を押すと 今日・明日・日を選ぶ・今週（週の終わりの日は出さない）・これから・やめる",
+    JSON.stringify(menu.items) === JSON.stringify(want), JSON.stringify(menu));
+  const pick = (label) => page.evaluate((l) => [...document.querySelectorAll('.note-pop[role="menu"] .note-pop-item')]
+    .find((b) => b.textContent.trim() === l).click(), label);
+  const look = () => page.evaluate(() => {
+    const x = KN.store.get().todos.find((o) => o.title === "病院");
+    return { due: x.due, weekMark: x.weekMark || null, today: KN.util.todayKey(), d1: KN.util.shiftDay(KN.util.todayKey(), 1),
+      prev: [...document.querySelectorAll("#screen-todo .tl-prev-sec .item-name")].map((e) => e.textContent.trim()),
+      toast: [...document.querySelectorAll(".toast")].map((e) => e.textContent.trim()).pop() || "" };
+  });
+  await pick("明日");
+  await page.waitForTimeout(400);
+  const m1 = await look();
+  t.check("明日を選ぶと、やる日が明日・前の日からから外れる", m1.due === m1.d1 && !m1.prev.includes("病院"), JSON.stringify(m1));
+  t.check("トーストで言い、元に戻せる", /「病院」を明日へ/.test(m1.toast) && /元に戻す/.test(m1.toast), m1.toast);
+  await page.evaluate(() => [...document.querySelectorAll(".toast .toast-action")].pop().click());
+  await page.waitForTimeout(400);
+  const m2 = await look();
+  t.check("元に戻すと、昨日のまま前の日からに戻る", m2.due === scr.y && m2.prev.includes("病院"), JSON.stringify(m2));
+  await openPill();
+  await pick("日を選ぶ");
+  await page.waitForTimeout(300);
+  const cal = await page.evaluate(() => {
+    const today = KN.util.todayKey();
+    const past = document.querySelector(`.pop-cal-day[data-day="${KN.util.shiftDay(today, -1)}"]`);
+    const b = document.querySelector(`.pop-cal-day[data-day="${today}"]`);
+    if (b) b.click();
+    return { open: !!b, pastOff: !past || past.disabled };
+  });
+  await page.waitForTimeout(400);
+  const m3 = await look();
+  t.check("日を選ぶ：暦が開き、過ぎた日は押せない", cal.open && cal.pastOff, JSON.stringify(cal));
+  t.check("暦で今日を押すと、今日へ（今週の印も）", m3.due === m3.today && m3.weekMark === m3.today && !m3.prev.includes("病院"), JSON.stringify(m3));
 
   /* 形の崩れた印は落とす。印の無い記録に欄を足さない（既存の記録は書き換えない）。 */
   await page.evaluate(() => {

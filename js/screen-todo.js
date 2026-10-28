@@ -3739,8 +3739,10 @@
   }
 
   /* 「前の日から」（2026年10月21日、利用者：昨日を見に行かないと気付かなかった）。日の過ぎたまだのやることを、
-     今日の面の頭に七日前まで。記録は書き換えない（決めごと1）——済ませる・道へ運ぶ・紙で直すは手で。
-     数は出さない・赤くしない。予定・買い物の一件・くり返し・待つ／いつかは除く。 */
+     今日の面の頭に七日前まで。記録は書き換えない（決めごと1）——済ませる・道へ運ぶ・紙で直す・行き先の札は手で。
+     数は出さない・赤くしない。予定・買い物の一件・くり返し・待つ／いつかは除く。
+     行き先の札（10月28日、利用者「置いてあるだけでは何もしづらい」）：行の右にもとの日。押すとその場で
+     今日・明日・日を選ぶ・今週・これから・やめる（`prevMenu`）。一件ずつ・まとめて動かさない・開いたときに割り込まない。 */
   function prevSection(open) {
     const today = todayKey(), from = KN.util.shiftDay(today, -7);
     const rows = open.filter((t) => t.due && t.due < today && t.due >= from && !t.trace
@@ -3756,15 +3758,38 @@
     rows.slice().sort((a, b) => (a.due === b.due ? (a.order || 0) - (b.order || 0) : a.due < b.due ? 1 : -1))
       .forEach((t) => {
         const li = somedayRow(t);
-        const body = li.querySelector(".tl-body");
-        let facts = li.querySelector(".tl-facts");
-        if (!facts && body) { facts = node(html`<span class="tl-facts"></span>`); body.append(facts); }
-        if (facts) facts.prepend(node(html`<span class="tl-due">${formatDay(t.due)}</span>`));
+        const item = li.querySelector(".tl-item");
+        const move = node(html`<button type="button" class="tl-move" aria-haspopup="menu"
+          aria-label="${formatDay(t.due)}・行き先を選ぶ">${formatDay(t.due)}${icon("chevron")}</button>`);
+        move.addEventListener("click", (e) => { e.stopPropagation(); haptic(); prevMenu(t, move); });
+        if (item) item.append(move);
         list.append(li);
       });
     sec.append(list);
     wireDrag(list, null);
     return sec;
+  }
+
+  /** 行き先の札の小窓。どれも その場で書いて「元に戻す」（`store.movePrev`）。今週は週の終わりの日には出さない。 */
+  function prevMenu(t, anchor) {
+    const today = todayKey();
+    const go = (where, day) => {
+      const undo = store.movePrev(t.id, where, day);
+      haptic();
+      KN.motion.fire("save");
+      const to = { today: "今日", tomorrow: "明日", week: "今週", later: "これから" }[where] || formatDay(day);
+      KN.ui.toast(where === "stop" ? `「${t.title}」をアーカイブしました` : `「${t.title}」を${to}へ`,
+        { action: { label: "元に戻す", onClick: undo } });
+    };
+    const items = [
+      { label: "今日", onPick: () => go("today") },
+      { label: "明日", onPick: () => go("tomorrow") },
+      { label: "日を選ぶ", onPick: () => KN.ui.popCalendar(anchor, { min: today,
+        onPick: (d) => go(d === today ? "today" : "day", d) }) },
+    ];
+    if (KN.util.weekOf(today).to > today) items.push({ label: "今週", onPick: () => go("week") });
+    items.push({ label: "これから", onPick: () => go("later") }, { label: "やめる", onPick: () => go("stop") });
+    KN.ui.popMenu(anchor, items);
   }
 
   /** 一行を入れる（受け箱の取り込み・dropbox.js）。時刻があれば予定。日が今週なら今週の印、日が無ければこれから。 */
@@ -5408,7 +5433,7 @@
          したが、行の本文（題や事実の乗っているところ）自体が button なので、
          行を掴む道がどこにも無くなっていました。掴んで欲しくないのは、
          押したら別のことが起きる小さな丸——それだけ。 */
-      if (e.target.closest(".check, .fav, .tl-subs-chip, .tl-doneat, .tl-more")) return;
+      if (e.target.closest(".check, .fav, .tl-subs-chip, .tl-doneat, .tl-more, .tl-move")) return;
       const row = e.target.closest(".tl-row");
       /* 済ませたあとでも持てます——開始時刻がわかってから、事後的に
          リスケすることがあるので。止めていたのはここ一行だけでした。 */

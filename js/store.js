@@ -3279,6 +3279,28 @@
     archiveTodo(id, true);
     return undo;
   }
+  /**
+   * 「前の日から」の一件を置き直す（今日の面の頭の行き先の札・2026年10月28日、利用者）。where は
+   * "today" | "tomorrow" | "day"（day の日へ）| "week"（日を外して今週の印）| "later"（日を外す＝これから）| "stop"（やめる）。
+   * 日を後ろへ動かしたぶんは控えの「前の日から運んだ」（`carry`）。時刻は外す（昨日の約束を別の日の停留所にしない。
+   * 前の時刻は控えに残る）。元に戻す一回で全部戻る。
+   */
+  function movePrev(id, where, day) {
+    const t0 = getTodo(id);
+    if (!t0) return () => {};
+    if (where === "stop") return stopTodo(id);
+    const U = KN.util, today = U.todayKey();
+    const undo = keepFields(id);
+    if (where === "today") updateTodo(id, { due: today, time: null, weekMark: today }, { slip: "carry" });
+    else if (where === "tomorrow") updateTodo(id, { due: U.shiftDay(today, 1), time: null }, { slip: "carry" });
+    else if (where === "day" && day && day >= today) updateTodo(id, { due: day, time: null }, { slip: "carry" });
+    else if (where === "week") {
+      // 選ぶ紙の「今週へ」と同じく、見直すのは来週から。
+      updateTodo(id, { due: null, weekMark: today }, { slip: "carry" });
+      update((s) => { const t = s.todos.find((x) => x.id === id); if (t && !t.due) t.review = U.shiftDay(U.weekOf(today).to, 1); });
+    } else if (where === "later") updateTodo(id, { due: null, weekMark: null }, { slip: false });
+    return undo;
+  }
 
   /** Done or put away — the drawer at the bottom. */
   const closedTodos = () => get().todos.filter((t) => t.done || t.archived);
@@ -5278,7 +5300,7 @@
     addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite, setEntryNote,
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, replan, applyRefit, importUnfold, slipFacts,
+    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, replan, applyRefit, importUnfold, slipFacts,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,

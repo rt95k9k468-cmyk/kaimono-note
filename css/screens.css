@@ -7446,6 +7446,15 @@ button.note-when:active { opacity: var(--press-fade); }
 .tl-prev-sec { margin: var(--sp-3) var(--sp-4) 0; }
 .tl-prev-sec > .todo-head { padding: var(--sp-2) var(--sp-1); font-size: var(--fs-sm); color: var(--c-text-2); }
 .tl-prev { padding: 0 var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+/* 行き先の札（もとの日。押すとその場で小窓なので印は下向き。10月28日、利用者）。淡い地に灰の字。 */
+.tl-move {
+  flex: none; display: inline-flex; align-items: center; gap: 2px;
+  min-height: 36px; margin-left: var(--sp-2); padding: 0 var(--sp-2) 0 var(--sp-3);
+  border-radius: var(--r-full); background: var(--c-surface-2);
+  font-size: var(--fs-sm); color: var(--c-text-2); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.tl-move svg { width: var(--ico-sm); height: var(--ico-sm); rotate: 90deg; color: var(--c-text-3); }
+.tl-move:active { opacity: var(--press-fade); }
 
 /* 背骨（縦の線）は引きません。時刻が無いので、つなぐ時間がありません。
    丸だけが残ります。 */
