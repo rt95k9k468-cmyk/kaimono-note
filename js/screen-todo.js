@@ -4935,9 +4935,16 @@
     const closedIt = (it) => it.todo.done || it.todo.archived;
     const doneItems = isToday ? plan.items.filter(closedIt) : [];
     if (isToday) plan.items = plan.items.filter((it) => !closedIt(it));
+    /* 今日の用事をみな済ませたら、物差しは消さずに、いまの時から一日の終わりまでを一枚の札に（restRow。2026年10月28日、
+       利用者「全部終わらせても何もないのも寂しい」「時間の帯も無くなって」）。前は物差しが空になり、「いま」も出なかった。 */
+    const nowMin = KN.plan.toMin(KN.util.nowTime());
+    const rest = isToday && !plan.items.length && doneItems.some((it) => it.todo.done || it.todo.trace)
+      ? restOf(nowMin, plan.endMin) : null;
+    if (rest && restLeft > 0) rest.fresh = true;   // いま最後の一件を済ませた（開いただけなら咲くのは arrive）
+    if (isToday) restLeft = plan.items.length;
     /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。 */
     const sec = node(html`
-      <div class="tl">
+      <div class="tl${rest ? " is-rest" : ""}">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
               並びと帯の隙間で同じことを言っています。文で重ねて言うのは
               説明のしすぎです。
@@ -4970,12 +4977,17 @@
     }));
     /* 今日の物差しは、いまの時（正時に切り捨て）から——過ぎた時間は上の一覧が受け持つ（2026年10月28日）。過ぎても
        まだの用事があれば、layout がその札の頭まで広げる。正時にそろえるのは、組み直すたびに頭が分ごとにずれないため。 */
-    const nowHour = Math.floor(KN.plan.toMin(KN.util.nowTime()) / 60) * 60;
+    const nowHour = Math.floor(nowMin / 60) * 60;
     list.__opt = { start: isToday ? Math.min(nowHour, plan.endMin) : plan.startMin, end: plan.endMin };
+    /* みな済ませた日は、いまの時から一日の終わりまでを一つの空きとして畳む（高さは札の REST_H。畳んだ空きと同じく
+       区間へ比例で割るので、「いま」はその中を下り、長期タスクを運んで落とせばその時刻に入る）。一日の終わりを
+       過ぎていれば、いままで（棒は塗りきって、「いま」は札の下のきわ）。 */
+    if (rest) Object.assign(list.__opt, { end: Math.max(plan.endMin, nowMin + 1), foldMin: 0, foldH: REST_H });
     list.__keys = plan.items.map((it) => subsKeyOf(it.todo, day));
     list.__items = plan.items;
+    list.__rest = rest;
     const L = tlRelayout(list);
-    tlScale(L, plan.items).forEach((el) => list.append(el));
+    tlScale(L, plan.items, rest).forEach((el) => list.append(el));
     const heads = [];
     const B = clockBox();
     L.cards.forEach((c) => {
@@ -5026,7 +5038,7 @@
     KN.util.setVar(list, "--tl-total", L.height.toFixed(1));
     if (!was) return L;
     const byK = new Map(L.cards.map((c) => [c.id, c]));
-    const scale = tlScale(L, list.__items);
+    const scale = tlScale(L, list.__items, list.__rest);
     const old = [...list.children].filter((el) => !el.classList.contains("tl-row") && !el.classList.contains("tl-late-line"));
     const same = old.length === scale.length && old.every((el, i) => el.className === scale[i].className);
     for (const li of list.children) {
@@ -5255,7 +5267,8 @@
     if (x >= 1) { sweep = null; return nowMin; }
     let from = null;
     for (const li of list.children) {
-      if (!li.classList || !li.classList.contains("tl-row")) continue;
+      // みな済ませた日は、いまから一日の終わりまでの札（.tl-rest）の頭から。
+      if (!li.classList || !(li.classList.contains("tl-row") || li.classList.contains("tl-rest"))) continue;
       const a = Number(li.dataset.at);
       if (isFinite(a)) { from = a; break; }
     }
@@ -5300,11 +5313,11 @@
      30秒ごとに置き直します（軸と同じ拍）。組み直しはしません。 */
   /** liveMin は「いま進んでいる一件」を決める本当の時刻（流れているあいだも動かさない）。 */
   function markPass(list, nowMin, liveMin = nowMin) {
-    /* 背骨の区間（.tl-seg）と畳んだ空き（.tl-fold）も同じ数で塗る——札と線で境目が割れない。 */
+    /* 背骨の区間（.tl-seg）と畳んだ空き（.tl-fold）、みな済ませた日の札（.tl-rest）も同じ数で塗る——札と線で境目が割れない。 */
     for (const li of list.children) {
       if (!li.classList) continue;
       const row = li.classList.contains("tl-row");
-      if (!row && !li.classList.contains("tl-seg") && !li.classList.contains("tl-fold")) continue;
+      if (!row && !li.classList.contains("tl-seg") && !li.classList.contains("tl-fold") && !li.classList.contains("tl-rest")) continue;
       const a = Number(li.dataset.at), end = Number(li.dataset.until);
       const known = isFinite(a) && isFinite(end) && end > a;
       let pass;
@@ -5987,7 +6000,7 @@
      1時間ごとの薄い目盛り、札の裏を通る背骨（区間ごと。畳んだところで切れる）、
      長い空きを畳んだ一行。どれも tl-layout の y から置くだけで、測りません。
      背骨と畳みは札と同じ --pass で塗ります（markPass）。 */
-  function tlScale(L, items) {
+  function tlScale(L, items, rest) {
     const out = [];
     const inFold = (m) => L.folds.some((f) => m > f.fromMin && m < f.untilMin);
     const B = clockBox();
@@ -6002,8 +6015,8 @@
         style="--top:${y.toFixed(1)}"><span class="tl-hour">${tlClock(KN.plan.toTime(h))}</span></li>`));
     }
     // 背骨は最初の札の頭から最後の札の下端まで（その先に線があると「まだ続く」と読める）。
-    // 札が無い（今日の用事をみな済ませた）ときは、畳んだ空きだけ。
-    if (!L.cards.length) { L.folds.forEach((f) => out.push(foldRow(f))); return out; }
+    // 札が無い（今日の用事をみな済ませた）ときは、畳んだ空きだけ——今日なら、いまから一日の終わりまでの札（restRow）。
+    if (!L.cards.length) { L.folds.forEach((f) => out.push(rest ? restRow(f, rest) : foldRow(f))); return out; }
     const top = Math.min(...L.cards.map((c) => c.top));
     const bot = Math.max(...L.cards.map((c) => c.top + c.height));
     const minAt = L.minAt;
@@ -6031,6 +6044,40 @@
         <span class="tl-fold-text">〜 ${tlClock(KN.plan.toTime(f.untilMin))} まで予定なし 〜</span>
       </li>
     `);
+  }
+
+  /* ---------------- 今日の用事をみな済ませた（2026年10月28日、利用者） ----------------
+
+     いまの時から一日の終わりまでを一枚の札にする（物差しを空にしない）。棒は札と同じ --pass で塗るので、時計と
+     ともに上から色が下りる。中は時間帯の絵とひとこと。数・割合・続いた日は出さない（評価しない）。いま最後の
+     一件を済ませたときだけ絵が咲いて輪が一度広がる（開いたときは arrive の咲き）。 */
+  const REST_H = 176;   // 札の高さ（時間ではない。絵 64px・題・ひとこと・上下の余白）
+  let restLeft = 0;     // 前に描いた今日の、まだのものの数（あって 0 になったら咲く）
+
+  /** 時間帯の絵とひとこと。夜は21時から、または17時を過ぎて一日の終わりまで1時間を切ったら。 */
+  function restOf(nowMin, endMin) {
+    if (nowMin >= 21 * 60 || nowMin < 4 * 60 || (nowMin >= 17 * 60 && nowMin >= endMin - 60)) return { art: "moon", say: "おやすみなさい" };
+    if (nowMin >= 17 * 60) return { art: "sunrise", say: "おつかれさまでした" };
+    return { art: "sun", say: "あとは、ごゆっくり" };
+  }
+
+  function restRow(f, rest) {
+    const li = node(html`
+      <li class="tl-rest${rest.fresh ? " is-fresh" : ""}" data-at="${String(f.fromMin)}" data-until="${String(f.untilMin)}"
+          style="--top:${f.top.toFixed(1)};--h:${f.height.toFixed(1)}">
+        <span class="tl-rest-bar" aria-hidden="true"></span>
+        <div class="tl-rest-card">
+          <span class="tl-rest-art" aria-hidden="true">${icon(rest.art)}</span>
+          <p class="tl-rest-title">ぜんぶ済みました</p>
+          <p class="tl-rest-say">${rest.say}</p>
+        </div>
+      </li>
+    `);
+    /* 輪は済ませた丸と同じもの（ui.js の burst）を、絵が跳ねるところで。組み直しで作って捨てた札では出さない。 */
+    if (rest.fresh && !KN.motion.still()) {
+      setTimeout(() => { if (li.isConnected) KN.ui.burst(li.querySelector(".tl-rest-art")); }, KN.motion.ms("--m-fill") * 0.4);
+    }
+    return li;
   }
 
   /** ＋n（列の上限を超えた札）。押すと一覧の紙。 */

@@ -2,7 +2,7 @@
    時計を 16:53 に止める。
    - 済ませた二件は物差しに居ず、上の一覧（.tl-done）に済ませた順・済ませた時刻。物差しはまだの二件だけで、頭はいまの時（16:00）
    - 一覧の ✓ で元に戻すと物差しへ帰る。題を押すと詳細の紙
-   - みな済ませたら、物差しは畳んだ空きと「いま」だけ
+   - みな済ませたら、物差しはいまの時から一日の終わりまでの一枚の札と「いま」（札の中身は timeline-all-done.js）
    - ほかの日（昨日）の済ませたものは、今までどおり物差しの上
    - 送っても掴み手は消えず、「今日｜週｜月」の帯は掴み手の下（帯が掴み手を覆っていた。同日） */
 const { open, checker } = require("./lib");
@@ -40,6 +40,7 @@ const DAY = "2026-10-28";
       ruler: [...list.querySelectorAll(":scope > .tl-row .item-name")].map((x) => x.textContent.trim()),
       first: Math.min(...[...list.querySelectorAll(":scope > .tl-seg, :scope > .tl-fold")].map((x) => Number(x.dataset.at))),
       folds: list.querySelectorAll(":scope > .tl-fold").length,
+      rest: list.querySelectorAll(":scope > .tl-rest").length,
       now: !!scr.querySelector(".tl-now"),
       above: (() => { const d = scr.querySelector(".tl-done"); return d ? d.getBoundingClientRect().bottom <= list.getBoundingClientRect().top + 1 : null; })(),
     };
@@ -65,15 +66,15 @@ const DAY = "2026-10-28";
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 5000 }).catch(() => {});
 
-  /* みな済ませたら、物差しは畳んだ空きと「いま」だけ。 */
+  /* みな済ませたら、物差しはいまの時から一日の終わりまでの一枚の札と「いま」。 */
   await page.evaluate((list) => {
     KN.store.update((st) => list.forEach((id) => { const x = st.todos.find((y) => y.id === id); x.done = true; x.doneAt = new Date().toISOString(); }));
   }, [ids.b, ids.c, ids.d]);
   await page.waitForFunction(() => !document.querySelector("#screen-todo .tl-list > .tl-row"), null, { timeout: 5000 });
   await page.waitForTimeout(300);
   r = await read();
-  c.check("みな済ませたら、物差しは畳んだ空きと「いま」だけ（一覧は四件）",
-    r.done.length === 4 && !r.ruler.length && r.folds === 1 && r.now, JSON.stringify(r));
+  c.check("みな済ませたら、物差しは一枚の札と「いま」だけ（一覧は四件）",
+    r.done.length === 4 && !r.ruler.length && r.rest === 1 && !r.folds && r.now, JSON.stringify(r));
 
   /* 送っても掴み手は消えず、帯は掴み手の下。 */
   await page.evaluate(() => {
