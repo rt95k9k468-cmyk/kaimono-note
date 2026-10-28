@@ -4957,6 +4957,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   /* 紙のふちの一本は、ここではなく紙（.tl-sheet の border-top）が持ちます——掴み手は
      中身と一緒に跳ね返るので。 */
+  /* 地を上へ 3px 延ばす。iPhone では貼りついた掴み手と紙のふちのあいだに 1px の隙間ができ、下を流れる字や
+     背骨がのぞいていた（2026年10月28日、利用者の写真。紙の border-top のぶんだけ下げて貼るらしい）。 */
+  box-shadow: 0 -3px 0 var(--c-sheet);
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
@@ -4995,9 +4998,17 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
 #screen-todo, #head { --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); }
-/* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。少し透かして下の字を見せる。 */
-.wk-faces { position: sticky; top: 0; z-index: var(--z-stick);
-  background: color-mix(in srgb, var(--c-sheet, var(--c-bg)) 82%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+/* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。**掴み手の下に**貼りつく（掴み手の背 29px
+   から 1px 重ねる）。前は top:0 で掴み手に重なり、送ると掴み手が消えていた。地は紙と同じ一色——透かしてぼかすと、
+   下を流れる字や丸がにじんで帯だけ色が違って見えた（2026年10月28日、利用者）。下のきわは掴み手と同じく溶かす。 */
+.wk-faces { position: sticky; top: 28px; z-index: var(--z-stick); background: var(--c-sheet); }
+.wk-faces::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: var(--sp-4);
+  background: linear-gradient(var(--c-sheet), transparent); pointer-events: none; opacity: 0;
+}
+@supports (animation-timeline: scroll()) {
+  .wk-faces::after { animation: edge-in linear both; animation-timeline: scroll(nearest block); animation-range: 0 var(--sp-6); }
+}
 .wk-work { flex: none; }
 .wk-faces .seg { width: 186px; }
 .wk-faces .seg-btn { min-height: 40px; padding: 0 var(--sp-2); }   /* 札の背丈（look.md。34 だった。design-review の Y2） */
@@ -5609,6 +5620,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-log,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-counts,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-list { background: transparent; }
+#screen-archive[data-season] .tl-sheet.is-daily > .tl-grip { box-shadow: none; }
 /* まとめの札も写真を透かす（2026年10月10日・利用者「まとめも透過させて」）。 */
 #screen-archive[data-season] .tl-sheet.is-daily .arc-counts-item { background: color-mix(in srgb, var(--c-surface-2) 55%, transparent); }
 /* ノートの地にも同じ層（daily は写真、ノートは広重。2026年10月7日、利用者が見比べて選んだ・docs/season-art.md）。

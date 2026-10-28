@@ -87,7 +87,7 @@ const { open, checker } = require("./lib");
   const pos = await page.evaluate(() => {
     const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
     const r = document.querySelector('#screen-todo .mo-day[data-day="2026-10-30"]').getBoundingClientRect();
-    const bar = document.querySelector("#screen-todo .wk-faces").offsetHeight;   // 貼りつく「今日｜週｜月」の帯
+    const bar = document.querySelector("#screen-todo .wk-faces").getBoundingClientRect().bottom - sc.getBoundingClientRect().top;   // 貼りつく「今日｜週｜月」の帯の下のきわ（掴み手の下）
     return { top: r.top - sc.getBoundingClientRect().top, scroll: sc.scrollTop, bar };
   });
   a = await look();

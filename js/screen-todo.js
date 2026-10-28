@@ -4643,11 +4643,13 @@
     jumpToDay(day);
   }
 
-  /** 紙の頭に貼りつく「今日｜週｜月」の帯の丈（.wk-faces は sticky top:0）。送った行がその裏に潜らないよう、送り先から引く
-      （引かずに 8px だけ下げていて、押した日の行が帯の裏に隠れ、次の日から見えていた。2026年10月24日）。 */
+  /** 紙の頭に貼りつく「今日｜週｜月」の帯の下のきわ（器の頭から。帯は掴み手の下に貼りつく——sticky の top ＋丈）。
+      送った行がその裏に潜らないよう、送り先から引く（引かずに 8px だけ下げていて、押した日の行が帯の裏に隠れ、
+      次の日から見えていた。2026年10月24日）。 */
   function faceFloor() {
     const bar = root && root.querySelector(".wk-faces");
-    return bar && bar.getClientRects().length ? bar.offsetHeight : 0;
+    if (!bar || !bar.getClientRects().length) return 0;
+    return (parseFloat(getComputedStyle(bar).top) || 0) + bar.offsetHeight;
   }
 
   /** 月の面で押した日：別の月ならその月へ、同じ月ならその日（か次に予定のある日）の行へ送る。題もその日に。 */
