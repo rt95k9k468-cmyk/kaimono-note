@@ -4,7 +4,8 @@
      時刻を決めたやること（夜のルーティン）は白い札のまま。
    - 白い札・太字・実線の縁は時刻を決めたものだけ。is-about は地が紙（--c-sheet）寄り、題は細字（400）、縁は点線。
      棒はどちらも実線（8px の棒を刻むと角丸の太い塊に見えた）。
-   - 地は紙と札のあいだ（明るい面でも暗い面でも、紙より濃くならない）。進んでいる一件（is-live）は is-live の地が勝つ。
+   - 地は紙と札のあいだ（明るい面でも暗い面でも、紙より濃くならない）。
+   - 開いたまま時計が目安の時刻に追いついても、始めたことにしない（塗り・is-live・is-late なし）。
    - 畳んだ空きの点線は前のまま（点線は一つの変数 --tl-dash から）。 */
 const { open, checker } = require("./lib");
 
@@ -82,17 +83,20 @@ const DAY = "2026-10-29";
     JSON.stringify({ call: call.bg, book: book.bg, sheet: r.sheet, surface: r.surface }));
   c.check("畳んだ空きの棒は点線のまま", r.foldDash, "");
 
-  /* 進んでいる一件は is-live の地が勝つ（沈めた地を上から塗らない）。 */
-  const live = await page.evaluate(() => {
-    const li = [...document.querySelectorAll("#screen-todo .tl-list > li.tl-row.is-about")][0];
-    const card = li.querySelector(".item.tl-item");
-    const was = getComputedStyle(card).backgroundColor;
-    li.classList.add("is-live");
-    const now = getComputedStyle(card).backgroundColor;
-    li.classList.remove("is-live");
-    return { was, now };
+  /* 開いたまま時計が進んでも、時刻を決めていない札は始まらない（目安の時刻に追いついただけ。2026年10月29日、利用者）。
+     組み直さずに塗りだけ置き直す（axis.__paint）。12:20 は「本を返す」の終わりを過ぎ、「予約の電話」の途中。 */
+  await page.clock.setFixedTime(new Date(2026, 9, 29, 12, 20));
+  const went = await page.evaluate(() => {
+    document.querySelector("#screen-todo .tl-axis").__paint();
+    return [...document.querySelectorAll("#screen-todo .tl-list > li.tl-row")].map((li) => ({
+      title: li.querySelector(".item-name").textContent.trim(), about: li.classList.contains("is-about"),
+      pass: Number(li.style.getPropertyValue("--pass")), live: li.classList.contains("is-live"), late: li.classList.contains("is-late"),
+    }));
   });
-  c.check("進んでいる一件は、沈めた地ではなく is-live の地", live.was !== live.now, JSON.stringify(live));
+  const wa = went.filter((x) => x.about), we = went.find((x) => x.title.includes("児童センター")) || {};
+  c.check("開いたまま時計が追いついても、時刻を決めていない札は塗らない・進んでいるにしない・過ぎてもまだにしない",
+    wa.length === 2 && wa.every((x) => x.pass === 0 && !x.live && !x.late), JSON.stringify(went));
+  c.check("時刻を決めた札は、時計どおり塗る", we.pass === 1, JSON.stringify(we));
 
   /* 暗い面：紙と札が同じ色でも、沈めた札が紙より濃く浮かない（--c-bg へ寄せると濃くなった）。 */
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));

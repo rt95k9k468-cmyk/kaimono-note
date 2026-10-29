@@ -4784,7 +4784,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 /* 時刻を決めていない用事（「ごろ」・is-about。2026年10月29日、利用者「時刻の決まった予定と、いつでもいいタスクが
    同じ大きさ・同じ重さに見える」）。白い札・太字・実線の縁は時刻を決めたものだけ——こちらは紙に沈め、題は細字、縁は点線。
-   地は紙（--c-sheet）へ寄せる：--c-bg へ寄せると、暗い面で札が紙より濃く浮いた。進んでいる一件は is-live の地と枠のまま。
+   地は紙（--c-sheet）へ寄せる：--c-bg へ寄せると、暗い面で札が紙より濃く浮いた。is-about は is-live にならない（markPass）。
    縁は outline（border だと中身が 1px 動く）。棒は点線にしない（幅8pxを刻むと角丸の太い塊に見えた）。 */
 .tl-list > li.tl-row:not(.is-live):not(.is-done) > .item.tl-item { outline: 1px solid var(--c-border); outline-offset: -1px; }
 .tl-list > li.tl-row.is-about:not(.is-live) > .item.tl-item {

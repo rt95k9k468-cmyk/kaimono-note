@@ -5219,7 +5219,7 @@
         continue;
       }
       if (!li.classList.contains("tl-row")) continue;
-      const on = ny != null && li.dataset.len === "1"
+      const on = ny != null && li.dataset.len === "1" && !li.classList.contains("is-about")
         && !li.classList.contains("is-done") && nowMin > Number(li.dataset.until);
       li.classList.toggle("is-late", on);
       if (on) late.push(li);
@@ -5367,8 +5367,13 @@
       if (!row && !li.classList.contains("tl-seg") && !li.classList.contains("tl-fold") && !li.classList.contains("tl-rest")) continue;
       const a = Number(li.dataset.at), end = Number(li.dataset.until);
       const known = isFinite(a) && isFinite(end) && end > a;
+      /* 時刻を決めていない用事（is-about）の時刻は、組み立てがいまから先へ詰めた目安。開いて見ているあいだに
+         時計が追いついても、始めたことにしない（塗らない・is-live にしない・過ぎてもまだにしない。2026年10月29日、
+         利用者）。組み直せば、いまから先へ置き直る。 */
+      const about = row && li.classList.contains("is-about");
       let pass;
-      if (nowMin == null || !known || li.classList.contains("is-done")) pass = 1;
+      if (about) pass = 0;
+      else if (nowMin == null || !known || li.classList.contains("is-done")) pass = 1;
       else if (nowMin >= end) pass = 1;
       else if (nowMin <= a) pass = 0;
       else pass = (nowMin - a) / (end - a);
@@ -5377,7 +5382,7 @@
       /* いま進んでいる一件。うすい地は残します——「いま目を向けるのは
          ここ」という合図で、塗りの境目とは別のことを言っているので。
          済ませたものには出しません。 */
-      const live = liveMin != null && known && liveMin > a && liveMin < end
+      const live = !about && liveMin != null && known && liveMin > a && liveMin < end
         && !li.classList.contains("is-done");
       li.classList.toggle("is-live", live);
       if (live) li.setAttribute("aria-current", "time");
