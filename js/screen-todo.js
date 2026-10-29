@@ -6238,10 +6238,12 @@
     }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
     const closed = t.done || t.archived;
+    /* 時刻を決めていない（組み立てが詰めた目安の）用事。「ごろ」と、紙に沈めた札（is-about）の両方がこれを見る。 */
+    const rough = !it.fixed && !closed && !!it.at;
     /* 札の大きさで中身を削る：低い札は題だけ、三列では絵も外す（幅が約90px）。 */
     const size = c && c.height < SHORT_CARD ? "is-short" : "";
     const li = node(html`
-      <li class="tl-row ${closed ? "is-done" : ""} ${size} ${c && c.lanes > 1 ? "is-lane" : ""} ${c && c.lanes > 2 ? "is-narrow" : ""}"
+      <li class="tl-row ${closed ? "is-done" : ""} ${rough ? "is-about" : ""} ${size} ${c && c.lanes > 1 ? "is-lane" : ""} ${c && c.lanes > 2 ? "is-narrow" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"
           data-at="${String(it.atMin)}" data-until="${String(it.untilMin)}"
           ${c ? KN.util.raw(`data-top="${c.top.toFixed(1)}" data-h="${c.height.toFixed(1)}"`) : ""}
@@ -6254,7 +6256,7 @@
               浮かせます——列は 44px で横に並べる幅が無く、行の中に積むと時刻の
               字が丸の中心からずれるので。済ませたもの（押した時刻）には付けない。 */""}
         <span class="tl-time ${it.fixed ? "is-fixed" : ""}">${quiet ? "" : html`${tlClock(it.at)}${
-          (about == null ? !it.fixed && !closed && it.at : about) ? html`<span class="tl-about">ごろ</span>` : ""}`}</span>
+          (about == null ? rough : about) ? html`<span class="tl-about">ごろ</span>` : ""}`}</span>
         <span class="tl-rail" data-grow><span class="tl-node">${tlMark(t)}</span></span>
         ${more.length ? html`<button type="button" class="tl-more"
             aria-label="同じ時間の用事をあと${more.length}件見る">＋${more.length}</button>` : ""}
