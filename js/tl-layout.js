@@ -40,11 +40,14 @@
     const starts = list.map((it) => it.atMin).sort((a, b) => a - b);
     const drawn = list.map((it) => {
       const until = Number(it.untilMin) || it.atMin;
-      const len = Math.max(0, until - it.atMin);
+      let len = Math.max(0, until - it.atMin);
       let least = it.known ? o.minH : o.minUnknownH;
       if (!it.known) {
         const next = starts.find((a) => a > it.atMin);
-        if (next != null && next >= until) least = Math.max(o.minH, Math.min(least, (next - it.atMin) * o.pxMin));
+        /* 長さ未定の長さは見込み（plan の usualOf）。見込みが次の用事にかかっても、次の頭で止める——
+           見込みで決めた予定を横へ押しのけない（2026年10月30日、利用者「2列になる必要がない」）。 */
+        if (next != null && next < until) len = next - it.atMin;
+        if (next != null) least = Math.max(o.minH, Math.min(least, (next - it.atMin) * o.pxMin));
       }
       const h = Math.max(len * o.pxMin, least);
       return { it, at: it.atMin, end: it.atMin + h / o.pxMin, h };

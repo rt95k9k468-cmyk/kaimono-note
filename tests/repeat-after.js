@@ -55,6 +55,12 @@ TABLE.forEach(([text, title, rep, every]) => {
   t.check(`「${text}」→ ${rep ? `${rep}${every ? " " + every : ""}「${title}」` : "読まない"}`, ok,
     JSON.stringify({ title: r.title, repeat: r.repeat, every: r.repeatEvery, due: r.due }));
 });
+/* ぶら下がった助詞だけを題に残さない（2026年10月30日、利用者「10時から」→「から」） */
+[["10時から", "10時から", null], ["10時から 会議", "会議", "10:00"], ["10時から会議", "会議", "10:00"],
+  ["明日の", "明日の", null], ["明日からあげを作る", "からあげを作る", null]].forEach(([text, title, time]) => {
+  const r = W.parse(text, { today: TODAY });
+  t.check(`「${text}」→「${title}」${time || ""}`, r.title === title && (r.time || null) === time, JSON.stringify(r));
+});
 {
   const r = W.parse("明日 3日ごとに 水やり", { today: TODAY });
   t.check("日付といっしょにも読める（明日から3日ごと）",

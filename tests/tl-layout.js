@@ -43,7 +43,10 @@ t.check("続けて置いた長さ未定は次の札の頭まで（36px）・列�
 r = L([it("a", H(9), H(9, 30), false), it("b", H(9, 45), H(10))], O);
 t.check("次まで空いていれば長さ未定は44px（9:45まで＝54px）", near(r.cards[0].height, 44) && r.cards.every((c) => c.lanes === 1), JSON.stringify(r.cards));
 r = L([it("a", H(9), H(9, 30), false), it("b", H(9, 20), H(10))], O);
-t.check("時間が重なる長さ未定は44pxのまま2列", near(r.cards[0].height, 44) && r.cards.map((c) => c.lane).join() === "0,1", JSON.stringify(r.cards));
+t.check("次まで最低高より近い長さ未定は36pxで2列（見た目が重なる）", near(r.cards[0].height, 36) && r.cards.map((c) => c.lane).join() === "0,1", JSON.stringify(r.cards));
+r = L([it("a", H(9), H(11, 5), false), it("b", H(11), H(12))], O);
+t.check("見込みの長さが次の予定にかかっても、次の頭で止めて列に割れない", near(r.cards[0].height, 144)
+  && r.cards.every((c) => c.lanes === 1 && c.lane === 0), JSON.stringify(r.cards));
 
 // 畳み：9時の用事と17時の用事のあいだ（10時〜17時）は畳む。
 r = L([it("a", H(9), H(10)), it("b", H(17), H(18))], O);
