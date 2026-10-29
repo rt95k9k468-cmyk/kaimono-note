@@ -2948,6 +2948,32 @@
     return usualIndex().get(usualKey(t)) || null;
   }
 
+  /** これまでに書いたやることの題（足す紙の候補。2026年10月29日）。写さず引く——
+      開くたびに todos から数えます。同じ題（折った形）は一つ、言い方・絵・長さは
+      いちばん新しいもの。score は書いた日ごとに古いほど軽く（30日で半分）。
+      いま続いているくり返し（自分で立つもの）は出さない。 */
+  function todoTitles() {
+    const fold = KN.util.foldKana;
+    const today = KN.util.dayDate(KN.util.todayKey());
+    const live = new Set(get().todos.filter((t) => t.repeat && !t.trace && !t.done && !t.archived).map((t) => fold(t.title)));
+    const seen = new Map();
+    get().todos.forEach((t) => {
+      const title = String(t.title || "").trim();
+      const k = fold(title);
+      if (!k || title.length > 40 || live.has(k)) return;
+      const day = String(t.due || t.doneAt || t.createdAt || "").slice(0, 10);
+      const d = KN.util.dayDate(day);
+      const age = d && today ? Math.max(0, Math.round((today - d) / 864e5)) : 365;
+      const e = seen.get(k) || { title, icon: null, minutes: null, score: 0, day: "", days: new Set() };
+      if (!e.days.has(day)) { e.days.add(day); e.score += Math.pow(0.5, age / 30); }
+      if (day >= e.day) { e.day = day; e.title = title; e.icon = t.icon || null; e.minutes = t.minutes || null; }
+      seen.set(k, e);
+    });
+    return [...seen.values()]
+      .sort((a, b) => (b.score - a.score) || b.day.localeCompare(a.day))
+      .map(({ title, icon, minutes, score }) => ({ title, icon, minutes, often: score >= 1.5 }));
+  }
+
   /**
    * 「やった記録」を取り消します。
    *
@@ -5278,7 +5304,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

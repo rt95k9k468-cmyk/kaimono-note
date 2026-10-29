@@ -138,6 +138,7 @@
     const f = KN.productSheet.frame({ fav: false, add: true, chips: true });
     const body = f.body;
     const nameEl = f.name;
+    nameEl.setAttribute("data-yomi", "");   // 変換を覚える欄（KN.yomi）
     const memoEl = f.memo;
     const acHost = f.ac;
     const known  = f.known;
@@ -478,14 +479,11 @@
     const onList = new Set(store.get().items.filter((i) => !i.checked).map((i) => i.productId));
     /* 打つ前は、よく買う物（V27）。押せばそのまま足す（onOften）。 */
     const often = !q && onOften && KN.insights && KN.insights.oftenBought ? KN.insights.oftenBought() : [];
+    /* 変換前の平仮名でも引く（KN.yomi。「ぎゅう」で「牛乳」）。 */
     const found = q ? store.get().products
-      .map((p) => ({ p, key: KN.util.foldKana(p.name) }))
-      .filter((r) => r.key.includes(q))
-      .sort((a, b) => {
-        const aStarts = a.key.startsWith(q) ? 0 : 1;
-        const bStarts = b.key.startsWith(q) ? 0 : 1;
-        return aStarts - bStarts || a.p.name.localeCompare(b.p.name, "ja");
-      })
+      .map((p) => ({ p, h: KN.yomi.hit(p.name, typed) }))
+      .filter((r) => r.h >= 0)
+      .sort((a, b) => a.h - b.h || a.p.name.localeCompare(b.p.name, "ja"))
       .slice(0, 8)
       .map((r) => r.p) : often;
 

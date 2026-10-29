@@ -15,6 +15,8 @@
 - ほかに別の入れ物が三つ：ノート `kaimono-note-notes`（docs/notes.md）・ノートの画像 `kaimono-note-images`
   （段5。版1の決め打ち。自動の控え・「バックアップを保存」には載せず、端末の外は Dropbox の `images/` だけ。
   docs/image-design.md）・鳴らす役 `kaimono-note-bell`（下）。
+- 記録の外の小さな控え：消した直後の控え `kaimono-note-gone`・**変換の読み `kaimono-note-yomi`**
+  （`js/yomi.js`。`data-yomi` の欄で打った変換の組。控え・書き出しに乗せない。消えても候補が漢字に当たりにくくなるだけ）。
 - 大きな保存場所が使えない端末・使えなかった日は、**前のまま**（localStorage だけ）で
   動く。どちらのモジュールも、失敗したら「前のまま」が行き先。
 - `idb.js` は版を決め打ちにしない。版を持たずに開き、棚が足りなければ版を一つ上げて

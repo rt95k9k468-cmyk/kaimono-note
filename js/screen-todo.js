@@ -761,9 +761,10 @@
                 入るのは貼りつけたときだけ。wrap="off" で、一行のあいだは
                 input と同じく横へ流れます。 */""}
           <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="例：ゴミ出し・電球を替える"
-                 autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+                 autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" data-yomi
                  aria-label="やること">${editing ? t.title : (opts && opts.title) || ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
+          <span class="todo-cands js-cands" role="list" aria-label="前に書いたもの" hidden></span>
           <button type="button" class="dest-chip js-dest" hidden></button>
           <button type="button" class="dest-chip js-act-note" hidden></button>
           <span class="unf-hint js-unfold-hint" hidden>
@@ -1912,9 +1913,13 @@
       });
     }
     /* 打っている途中でも移す。読めた語のあとに空きを打ったら（「病院 10:00 」「10:00 病」）
-       すぐ、そうでなくても**打つ手が 0.7 秒止まったら**。一字ごとには移さない——
+       すぐ、そうでなくても**打つ手が止まったら**。一字ごとには移さない——
        「10時」まで打って「半」を足す人の字が、先に動いてしまうため。変換中は触らない
-       （値を差し替えると変換が切れる）ので、確定してから数える。 */
+       （値を差し替えると変換が切れる）ので、確定してから数える。待つ長さはお尻で決める
+       （2026年10月29日、利用者「時刻に変わるのが遅い」）：言い切った時刻（10:00・10時半・
+       30分）は 0.25 秒、「10時」は 0.45 秒（半・30分が続きうる）、ほかは 0.7 秒。 */
+    const liveWait = (v) => /[0-9０-９]{1,2}[:：][0-9０-９]{2}$|時半$|[0-9０-９]分$|正午$/.test(v) ? 250
+      : /[0-9０-９]時$/.test(v) ? 450 : 700;
     let liveTimer = 0;
     const liveApply = () => {
       clearTimeout(liveTimer);
@@ -1923,16 +1928,58 @@
     };
     let composing = false;
     titleEl.addEventListener("compositionstart", () => { composing = true; clearTimeout(liveTimer); });
-    titleEl.addEventListener("compositionend", () => { composing = false; liveTimer = setTimeout(liveApply, 700); });
+    titleEl.addEventListener("compositionend", () => { composing = false; liveTimer = setTimeout(liveApply, liveWait(titleEl.value)); });
     titleEl.addEventListener("input", (ev) => {
       clearTimeout(liveTimer);
       if (composing || ev.isComposing) return;
       const v = titleEl.value, n = v.length;
       const sp = (c) => c === " " || c === "\u3000";
       if (ev.inputType === "insertText" && n && (sp(v[n - 1]) || (n > 1 && sp(v[n - 2])))) { liveApply(); return; }
-      liveTimer = setTimeout(liveApply, 700);
+      liveTimer = setTimeout(liveApply, liveWait(v));
     });
     titleEl.addEventListener("change", () => whenApply());
+
+    /* 前に書いた題（store.todoTitles）。新しく足す紙だけ。打つ前はくり返し書くもの、
+       打ちかけなら全部から——変換前の平仮名でも引く（KN.yomi）。押すと題がその言葉に
+       なり、絵と長さも前のものを借りる（自分で決めていなければ）。 */
+    if (!editing) {
+      const candsEl = hero.querySelector(".js-cands");
+      const past = store.todoTitles();
+      const paintCands = () => {
+        const v = titleEl.value;
+        const res = v.trim() && KN.whenParse ? KN.whenParse.parse(v) : {};
+        const q = (res.title != null ? res.title : v).trim();
+        const fq = KN.util.foldKana(q);
+        const hits = q
+          ? past.map((e) => ({ e, h: KN.yomi.hit(e.title, q) }))
+            .filter((x) => x.h >= 0 && KN.util.foldKana(x.e.title) !== fq)
+            .sort((a, b) => a.h - b.h).map((x) => x.e)
+          : past.filter((e) => e.often);
+        candsEl.textContent = "";
+        hits.slice(0, 12).forEach((e) => {
+          const b = node(html`<button type="button" class="chip" role="listitem">${e.title}</button>`);
+          /* 押しても欄から focus を外さない（キーボードが一度閉じて開くので）。 */
+          b.addEventListener("pointerdown", (ev) => ev.preventDefault());
+          b.addEventListener("mousedown", (ev) => ev.preventDefault());
+          b.addEventListener("click", () => {
+            const cur = titleEl.value;
+            const at = q && cur.lastIndexOf(q);
+            setTitle(q && at >= 0 ? cur.slice(0, at) + e.title + cur.slice(at + q.length) : e.title);
+            titleTouched = true;
+            if (!iconKey && e.icon) { iconKey = e.icon; paintIcon(); }
+            if (!minsPicked && e.minutes) { minutes = e.minutes; minsPicked = true; repaintWhen(); }
+            haptic(10);
+            titleEl.dispatchEvent(new Event("input"));
+            titleEl.focus();
+          });
+          candsEl.append(b);
+        });
+        candsEl.hidden = !candsEl.childElementCount;
+        candsEl.scrollLeft = 0;
+      };
+      titleEl.addEventListener("input", paintCands);
+      paintCands();
+    }
     titleEl.addEventListener("keydown", (ev) => {
       if (!KN.util.isEnter(ev)) return;
       ev.preventDefault();

@@ -2832,7 +2832,7 @@
           <b class="diet-slot-name">${sl.label}</b>
           <span class="diet-slot-kcal mono-num">${kcalText}</span>
         </div>
-        <textarea class="textarea diet-slot-memo grow-field" rows="1" spellcheck="false"
+        <textarea class="textarea diet-slot-memo grow-field" rows="1" spellcheck="false" data-yomi
                   autocapitalize="sentences" aria-label="${sl.label}に食べたもの"
                   placeholder="${SLOT_PLACEHOLDER}">${saved}</textarea>
         <div class="chip-row diet-slot-cands" role="list" aria-label="前に書いたもの"></div>
@@ -2858,13 +2858,16 @@
       const have = new Set(ta.value.split(/[\s、,，。;；]+/).map(fold).filter(Boolean));
       /* 何も打っていなければ、この枠でくり返し書いているものだけ（often）。
          打ちかけなら全部から——めったに書かない言葉も、探せば出る。 */
-      const hits = words.filter((e) => {
+      /* 変換前の平仮名でも引く（KN.yomi。「なっと」で「納豆」）。 */
+      const hits = words.map((e) => {
         const k = fold(e.word);
-        if (have.has(k)) return false;
-        return q ? (k !== q && k.includes(q)) : e.often;
-      }).map((e) => e.word);
-      /* 頭が合うものを先に（「な」で「納豆」が「バナナ」より前）。 */
-      if (q) hits.sort((x, y) => Number(!fold(x).startsWith(q)) - Number(!fold(y).startsWith(q)));
+        if (have.has(k)) return null;
+        if (!q) return e.often ? { w: e.word, h: 0 } : null;
+        const h = k === q ? -1 : KN.yomi.hit(e.word, q);
+        return h >= 0 ? { w: e.word, h } : null;
+      }).filter(Boolean)
+        /* 頭が合うものを先に（「な」で「納豆」が「バナナ」より前）。 */
+        .sort((x, y) => x.h - y.h).map((x) => x.w);
       cands.textContent = "";
       hits.slice(0, 16).forEach((w) => {
         const b = node(html`<button type="button" class="chip" role="listitem">${w}</button>`);

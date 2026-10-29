@@ -26,6 +26,7 @@ const ASSETS = [
   "js/activity.js",
   "js/unfold.js",
   "js/when-parse.js",
+  "js/yomi.js",
   "js/split-items.js",
   "js/capture.js",
   "js/season.js",

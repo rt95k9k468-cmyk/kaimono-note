@@ -2160,3 +2160,13 @@ button.hero-node:active { scale: var(--press-dot); }
 .unf-hint { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .unf-hint-x { display: grid; place-items: center; width: 28px; height: 28px; color: inherit; opacity: .8; }
 .unf-hint-x svg { width: var(--ico-sm); height: var(--ico-sm); }
+
+/* やることの足す紙の、前に書いた題（screen-todo.js の paintCands）。題の下に横一列、横へ送る。 */
+.todo-cands {
+  display: flex; gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+}
+.todo-cands[hidden] { display: none; }
+.todo-cands::-webkit-scrollbar { display: none; }
+.todo-cands .chip { flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
