@@ -447,6 +447,17 @@
     const body = node(html`<div class="stack"></div>`);
     const bad = books.flatMap((b) => b.bad);
     let total = 0;
+    /* Evernote は archive の一番上の入れ物「名前」の中へまとめる（6つの棚のあと。空なら冊「Evernote」。notes-unify.md「整理」）。 */
+    const into = { name: "Evernote" };
+    if (books.some((b) => b.kind !== "notion" && b.notes.length) && KN.notes.notebooks().includes("archive")) {
+      const f = node(html`
+        <label class="field">
+          <span class="field-label">archive の中へ</span>
+          <input class="input" value="${into.name}" enterkeyhint="done" autocomplete="off" spellcheck="false">
+        </label>`);
+      f.querySelector("input").addEventListener("input", (e) => { into.name = e.target.value; });
+      body.append(f);
+    } else into.name = "";
     books.forEach((b) => {
       if (!b.notes.length) return;
       const c = count(b, have);
@@ -509,7 +520,7 @@
       if (res.done === res.total) {
         keepOriginals(files, res.batch);
         /* 整理した形で（notes-unify.md「整理」）。控えは取り込む前に取ってある。書けなければ、設定の「整理する」に残る。 */
-        if (KN.noteOrganize) await KN.noteOrganize.after(res.batch).catch(() => null);
+        if (KN.noteOrganize) await KN.noteOrganize.after(res.batch, { into: into.name }).catch(() => null);
       }
       if (!res.fails.length) {
         if (!closed) h.close();
@@ -537,7 +548,7 @@
   function batches() {
     const by = new Map();
     const list = KN.notes.list();
-    const box = new Map(list.filter((n) => n.src && /^enbook:/.test(String(n.src.key || ""))).map((n) => [n.id, n]));
+    const box = new Map(list.filter((n) => n.src && /^en(?:book|root):/.test(String(n.src.key || ""))).map((n) => [n.id, n]));
     list.forEach((n) => {
       const b = n.src && n.src.batch;
       if (!b || String(n.updatedAt) > b || box.has(n.id)) return;

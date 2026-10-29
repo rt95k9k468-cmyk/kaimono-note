@@ -83,7 +83,7 @@ const importBtn = (page) => page.evaluate(() => {
   await page.exposeFunction("tookSnap", (r) => takes.push(r));
   await page.evaluate(() => { const was = KN.backup.take; KN.backup.take = (r, o) => { window.tookSnap(r); return was(r, o); }; });
   const rows = () => page.evaluate(() => [...document.querySelectorAll(".set-layer:last-child .set-row, .sheet.is-open .set-row")].map((r) => r.textContent.replace(/\s+/g, "")));
-  t.check("設定に「取り込む」は出ない", !(await page.$$eval(".set-layer .set-row", (xs) => xs.some((x) => x.textContent.trim() === "取り込む"))));
+  t.check("設定に「取り込む」が出る（10月29日に戻した）", await page.$$eval(".set-layer .set-row", (xs) => xs.some((x) => x.textContent.trim() === "取り込む")));
   await importBtn(page);
   await page.waitForSelector('.set-layer:last-child .set-row:has-text("取り込んだノートを整理する")');
   await page.waitForTimeout(300);
@@ -231,6 +231,27 @@ const importBtn = (page) => page.evaluate(() => {
   t.check("取り込みのあと：その取り込みの分だけ（新しい一冊・整理した親の下は親の冊）", nw[0].notebook === "新しい" && nw[0].head === true
     && nw[1].notebook === "新しい" && nw[2].notebook === "仕事" && JSON.stringify(pick(await get("n-tandoku"))) === JSON.stringify(tandoku0),
   JSON.stringify(nw.map(pick)));
+
+  /* 名前を入れた Evernote の取り込み：archive › 名前 › 元の冊 › ノート（10月29日）。 */
+  const B6 = "2026-10-29T11:00:00.000Z";
+  const enNew = [["x1", "甲帳"], ["x2", "甲帳"], ["x3", "乙帳"]].map(([id, nb], i) => ({ id, title: id, body: "本文", notebook: nb,
+    tags: [], fav: false, deletedAt: null, createdAt: `2018-0${i + 1}-01T00:00:00.000Z`, updatedAt: `2018-0${i + 1}-02T00:00:00.000Z`,
+    src: { from: "evernote", key: `en:${id}`, batch: B6 } }));
+  await page.evaluate((list) => KN.notes.addMany(list), enNew);
+  await page.evaluate((b) => KN.noteOrganize.after(b, { into: "Evernote旧" }), B6);
+  const ex = await page.evaluate(() => {
+    const N = KN.notes;
+    const root = N.list().find((n) => n.title === "Evernote旧");
+    const kids = root ? N.tree().kids(root.id) : [];
+    return { root: root && { nb: root.notebook, parent: root.parent || "", pos: !!root.pos }, kids: kids.map((n) => n.title).sort().join(),
+      ok: ["x1", "x2", "x3"].every((i) => { const n = N.get(i); const b = N.get(n.parent); return n.notebook === "archive" && b && b.parent === root.id; }) };
+  });
+  t.check("名前を入れた Evernote：archive の一番上の入れ物の中に元の冊", !!ex.root && ex.root.nb === "archive" && !ex.root.parent && ex.root.pos
+    && ex.kids === "乙帳,甲帳" && ex.ok, JSON.stringify(ex));
+  const exb = (await page.evaluate(() => KN.noteImport.batches())).find((b) => b.batch === B6) || { books: [] };
+  t.check("取り込みの一覧：入れ物は数えず元の冊の名前", exb.books.slice().sort().join() === "乙帳,甲帳", JSON.stringify(exb));
+  const exGone = await page.evaluate(async (b) => { await KN.notes.unimport(b); return KN.notes.list().filter((n) => n.src && n.src.batch === b).length; }, B6);
+  t.check("取り消すと入れ物ごと消える", exGone === 0, String(exGone));
 
   /* ---------------- リンクのとおりに中へ（Notion 全体。平らに来たページ） ---------------- */
   const B5 = "2026-10-14T02:00:00.000Z";

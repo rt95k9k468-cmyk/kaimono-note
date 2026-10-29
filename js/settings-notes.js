@@ -61,7 +61,8 @@
         navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
         navRow({ ico: "copy", tint: TINT.sub, title: "目次をコピー", act: true, onTap: copyTitles }),
         ...sixRows(),
-        /* 「取り込む」は外した（10月14日、利用者：もう取り込まない。KN.noteImport.open は残す。docs/notes-unify.md「取り込み」）。 */
+        /* 「取り込む」は10月14日に外し、10月29日に戻した（利用者：別のアカウントの Evernote を取り込む）。 */
+        KN.noteImport ? navRow({ ico: "download", tint: TINT.sub, title: "取り込む", onTap: () => KN.noteImport.open() }) : null,
         navRow({ ico: "lock", tint: TINT.data, title: "ロック",
           value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
       ),

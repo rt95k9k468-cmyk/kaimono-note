@@ -87,6 +87,22 @@
       groups.get(n.notebook).push(n);
     });
     const names = [...groups.keys()].sort((a, b) => a.localeCompare(b, "ja"));
+    /* o.into（取り込みの紙で名前を入れたとき）：冊「Evernote」でなく archive の一番上の入れ物「名前」の中へ
+       （archive › 名前 › 元の冊 › ノート。10月29日、利用者：別のアカウントを「Evernote旧」に）。 */
+    const into = o.batch && o.into ? oneLine(o.into) : "";
+    const EVB = into ? "archive" : EV;
+    let root = null;
+    if (into && names.length) {
+      const rkey = `enroot:${into}`;
+      root = tops.find((n) => n.notebook === EVB && n.src && n.src.key === rkey && n.src.batch === o.batch);
+      if (!root) {
+        const t = new Date(Date.parse(o.batch) - names.length - 1).toISOString();
+        const k = live.filter((n) => n.notebook === EVB && !upOf(n)).length + 1;
+        root = { id: uid(), title: into, body: "", notebook: EVB, tags: [], fav: false, createdAt: t, updatedAt: t, deletedAt: null,
+          pos: "0" + String(k).padStart(3, "0"), src: { from: "evernote", key: rkey, batch: o.batch }, org: { at, made: 1 } };
+        made.push(root);
+      }
+    }
     names.forEach((name, i) => {
       const evs = groups.get(name);
       let members = evs;
@@ -97,20 +113,21 @@
         members = here;
       }
       const key = `enbook:${name}`;
-      let box = tops.find((n) => n.notebook === EV && n.src && n.src.key === key);
+      let box = root ? null : tops.find((n) => n.notebook === EV && n.src && n.src.key === key);
       if (!box) {
         const batch = evs.map((n) => n.src.batch).filter(Boolean).sort()[0] || at;
         /* 取り込みを取り消すと一緒に消えるよう、日時はその取り込みより前（名前の順に 1ms ずつ）。 */
         const t = new Date(Date.parse(batch) - (names.length - i)).toISOString();
-        box = { id: uid(), title: name, body: "", notebook: EV, tags: [], fav: false, createdAt: t, updatedAt: t, deletedAt: null,
+        box = { id: uid(), title: name, body: "", notebook: EVB, tags: [], fav: false, createdAt: t, updatedAt: t, deletedAt: null,
           src: { from: "evernote", key, batch }, org: { at, made: 1 } };
+        if (root) box.parent = root.id;
         made.push(box);
       }
       ev.push(name);
       members.forEach((m) => {
         set(m, "parent", box.id);
-        set(m, "notebook", EV);
-        under(m.id).forEach((k) => set(k, "notebook", EV));
+        set(m, "notebook", EVB);
+        under(m.id).forEach((k) => set(k, "notebook", EVB));
       });
     });
 
@@ -277,9 +294,9 @@
   }
 
   /** 取り込みのあと：その取り込みの分だけ。 */
-  function after(batch) {
+  function after(batch, o) {
     if (!KN.notes || KN.notes.state() !== "on" || !batch) return Promise.resolve(null);
-    return apply(plan(null, { batch }));
+    return apply(plan(null, { batch, into: o && o.into }));
   }
 
   /**
