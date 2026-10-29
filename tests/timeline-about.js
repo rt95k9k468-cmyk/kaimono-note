@@ -2,7 +2,8 @@
    同じ大きさ・同じ重さに見える」。docs/todo-timeline.md の「ごろ」）。
    - 印（is-about）は「ごろ」と同じ一つの判定：時刻を決めていない・まだの用事だけ。種類（予定・やること）とは別の軸で、
      時刻を決めたやること（夜のルーティン）は白い札のまま。
-   - 白い札・太字・実線の棒は時刻を決めたものだけ。is-about は地が紙（--c-sheet）寄り、題は細字（400）、棒は点線。
+   - 白い札・太字・実線の縁は時刻を決めたものだけ。is-about は地が紙（--c-sheet）寄り、題は細字（400）、縁は点線。
+     棒はどちらも実線（8px の棒を刻むと角丸の太い塊に見えた）。
    - 地は紙と札のあいだ（明るい面でも暗い面でも、紙より濃くならない）。進んでいる一件（is-live）は is-live の地が勝つ。
    - 畳んだ空きの点線は前のまま（点線は一つの変数 --tl-dash から）。 */
 const { open, checker } = require("./lib");
@@ -52,6 +53,7 @@ const DAY = "2026-10-29";
       weight: getComputedStyle(li.querySelector(".item-name")).fontWeight,
       dash: /repeating-linear-gradient/.test(getComputedStyle(li.querySelector(".tl-node")).maskImage
         || getComputedStyle(li.querySelector(".tl-node")).webkitMaskImage || ""),
+      edge: getComputedStyle(li.querySelector(".item.tl-item")).outlineStyle,
     }));
     const fold = list.querySelector(".tl-fold-rail");
     return { rows, sheet: probe("--c-sheet"), surface: probe("--c-surface"),
@@ -70,10 +72,11 @@ const DAY = "2026-10-29";
   c.check("印は時刻を決めていない二件だけ（時刻を決めたやること＝夜のルーティンには付かない）",
     call.about && book.about && !ev.about && !night.about, JSON.stringify(r.rows.map((x) => [x.title, x.about])));
   c.check("印と「ごろ」は同じ判定", r.rows.every((x) => x.about === x.goro), JSON.stringify(r.rows.map((x) => [x.title, x.about, x.goro])));
-  c.check("時刻を決めた札は白（--c-surface）・太字・実線の棒",
-    [ev, night].every((x) => same(x.bg, r.surface) && x.weight === "700" && !x.dash), JSON.stringify([ev, night, r.surface]));
-  c.check("時刻を決めていない札は細字・点線の棒",
-    [call, book].every((x) => x.weight === "400" && x.dash), JSON.stringify([call, book]));
+  c.check("時刻を決めた札は白（--c-surface）・太字・実線の縁",
+    [ev, night].every((x) => same(x.bg, r.surface) && x.weight === "700" && x.edge === "solid"), JSON.stringify([ev, night, r.surface]));
+  c.check("時刻を決めていない札は細字・点線の縁",
+    [call, book].every((x) => x.weight === "400" && x.edge === "dashed"), JSON.stringify([call, book]));
+  c.check("棒はどれも点線にしない（8px を刻むと太い塊に見えた）", r.rows.every((x) => !x.dash), JSON.stringify(r.rows.map((x) => [x.title, x.dash])));
   c.check("時刻を決めていない札の地は紙と札のあいだで、白ではない（明るい面）",
     [call, book].every((x) => between(x.bg, r.sheet, r.surface) && lum(x.bg) < lum(r.surface) - 1),
     JSON.stringify({ call: call.bg, book: book.bg, sheet: r.sheet, surface: r.surface }));

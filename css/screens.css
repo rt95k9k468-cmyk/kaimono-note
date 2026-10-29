@@ -4666,7 +4666,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row { grid-template-columns: 44px 20px 1fr; }
 .tl-node { width: 8px; border-radius: 4px; }
 .tl-node > * { display: none; }
-/* 札は白（2026年10月20日、利用者が見比べで選んだ。種類の色は棒・絵・題だけ。札を塗ると色が面になる）。枠線は引かない。
+/* 札は白（2026年10月20日、利用者が見比べで選んだ。種類の色は棒・絵・題だけ。札を塗ると色が面になる）。縁は細い線（時刻を決めたものは実線・決めていないものは点線。下の is-about）。
    進んでいる一件だけ、うすく種類の色。 */
 .tl-row .item.tl-item {
   align-self: stretch; margin: 3px 0; padding: 5px var(--sp-3) 5px 12px; border-radius: 14px;
@@ -4730,7 +4730,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-list {
   --tl-pad: 10px; --tl-gut: 48px; --tl-gap: 4px; --tl-right: var(--sp-4);
   --tl-area: calc(100% - var(--tl-gut) - var(--tl-right) + var(--tl-gap));
-  --tl-dash: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);   /* 点線（畳んだ空き・時刻を決めていない札の棒） */
+  --tl-dash: repeating-linear-gradient(to bottom, #000 0 6px, transparent 6px 10px);   /* 点線（畳んだ空き） */
   position: relative;
   box-sizing: content-box;
   padding: var(--tl-pad) 0;
@@ -4783,11 +4783,15 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   overflow: clip;
 }
 /* 時刻を決めていない用事（「ごろ」・is-about。2026年10月29日、利用者「時刻の決まった予定と、いつでもいいタスクが
-   同じ大きさ・同じ重さに見える」）。白い札・太字・実線の棒は時刻を決めたものだけ——こちらは紙に沈め、題は細字、棒は点線。
-   地は紙（--c-sheet）へ寄せる：--c-bg へ寄せると、暗い面で札が紙より濃く浮いた。進んでいる一件は is-live の地のまま。 */
-.tl-list > li.tl-row.is-about:not(.is-live) > .item.tl-item { background: color-mix(in srgb, var(--c-surface) 40%, var(--c-sheet)); }
+   同じ大きさ・同じ重さに見える」）。白い札・太字・実線の縁は時刻を決めたものだけ——こちらは紙に沈め、題は細字、縁は点線。
+   地は紙（--c-sheet）へ寄せる：--c-bg へ寄せると、暗い面で札が紙より濃く浮いた。進んでいる一件は is-live の地と枠のまま。
+   縁は outline（border だと中身が 1px 動く）。棒は点線にしない（幅8pxを刻むと角丸の太い塊に見えた）。 */
+.tl-list > li.tl-row:not(.is-live):not(.is-done) > .item.tl-item { outline: 1px solid var(--c-border); outline-offset: -1px; }
+.tl-list > li.tl-row.is-about:not(.is-live) > .item.tl-item {
+  background: color-mix(in srgb, var(--c-surface) 40%, var(--c-sheet));
+  outline: 1.5px dashed color-mix(in srgb, var(--c-text-3) 60%, transparent);
+}
 .tl-list > li.tl-row.is-about .tl-item .item-name { font-weight: var(--fw-regular); }
-.tl-list > li.tl-row.is-about .tl-node { -webkit-mask: var(--tl-dash); mask: var(--tl-dash); }
 /* 低い札は一行に：題と事実（済ませた時刻・手順）を横に並べ、メモは外す。三列では題だけ（幅が約90px）。
    flex にするのは .tl-body まで——行数を絞る .item-name は .tl-open（block）の中なので畳まれない。 */
 /* 低い札（30分など）は、左の時刻も札の縦中央へ（上に付いていて、絵・題・印より5px高く見えた）。背の高い札は頭のまま。 */
