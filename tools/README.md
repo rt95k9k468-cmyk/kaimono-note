@@ -3,7 +3,7 @@
 アプリ本体には入りません。`sw.js` の ASSETS にも `build-standalone.js` にも
 載せていないので、PWA が持ち歩くことも、`dist/` に混ざることもありません。
 
-## diary-import.html — 日記の PDF を、暗号化した控えに変える
+## diary-import.html — 日記（PDF・.txt・ジャーナルの書き出し）を、暗号化した控えに変える
 
 数年ぶんの日記を他のアプリからくらしノートへ移すための道具です。
 

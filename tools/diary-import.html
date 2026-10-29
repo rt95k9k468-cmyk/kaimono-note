@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-QplUtG0ah/BvWlqQRGMdd5dip88TQ8bASfU+aZu2Bic='; worker-src 'self'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PDWAvZQDYh0n49pSGOb2fDhqrhHz23jgqhbtlEayYgM='; worker-src 'self'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>くらしノート — 日記の取り込み</title>
 
 <!--
   =========================================================
-  日記の PDF を、暗号化した控えに変える道具
+  日記（PDF・テキスト・ジャーナルの書き出し）を、暗号化した控えに変える道具
   =========================================================
 
   一回きりの引っ越し道具です。アプリ本体には入りません（sw.js の
@@ -113,22 +113,22 @@
 <main>
   <h1>日記の取り込み</h1>
   <p class="lede">
-    PDF の日記を読み取って、<b>暗号化した控え</b>を作ります。できたファイルを
+    日記（PDF・簡単日記などの <code>.txt</code>・iPhone のジャーナルの書き出し）を読み取って、<b>暗号化した控え</b>を作ります。できたファイルを
     くらしノートに読ませると、日記が入ります。
   </p>
 
   <!-- ① ファイル -->
   <section>
-    <h2>① PDF を選ぶ <i>何枚でも。順番は問いません</i></h2>
+    <h2>① ファイルを選ぶ <i>何個でも。種類が混ざっても構いません</i></h2>
     <div id="drop">
-      ここに PDF を落とすか、押して選んでください
-      <input type="file" id="file" accept="application/pdf" multiple hidden>
+      ここにファイルを落とすか、押して選んでください<br><span class="note">PDF ・ .txt ・ ジャーナルの zip（フォルダを長押し →「圧縮」）か Entries の .html</span>
+      <input type="file" id="file" accept=".pdf,.txt,.zip,.html,.htm,application/pdf,text/plain,text/html,application/zip" multiple hidden>
     </div>
     <div class="bar" id="pbar" hidden><i></i></div>
     <p class="note" id="pmsg"></p>
     <p class="note">
       <b>この頁は何もどこにも送りません。</b>読み取りも暗号化も、ぜんぶこの
-      ブラウザの中で終わります。心配なら、PDF を選ぶ前に機内モードにしても
+      ブラウザの中で終わります。心配なら、ファイルを選ぶ前に機内モードにしても
       最後まで通ります。
     </p>
   </section>
@@ -205,6 +205,8 @@
 </main>
 
 <script src="../js/diary-crypto.js"></script>
+<!-- zip を読む口（listOf・openOf）だけ借ります。通信はしません。 -->
+<script src="../js/note-notion.js"></script>
 <script type="module">
 /* pdf.js は同じ場所に置いてあるものを読みます（通信しません）。 */
 import * as pdfjs from "./vendor/pdf.min.mjs";
@@ -229,8 +231,53 @@ $("file").addEventListener("change", (e) => readAll([...e.target.files]));
   $("drop").addEventListener(t, () => $("drop").classList.remove("over")));
 $("drop").addEventListener("drop", (e) => {
   e.preventDefault();
-  readAll([...e.dataTransfer.files].filter((f) => /\.pdf$/i.test(f.name)));
+  readAll([...e.dataTransfer.files].filter((f) => KIND.test(f.name)));
 });
+
+const KIND = /\.(pdf|txt|zip|html?)$/i;
+
+/** テキストの字。BOM を見て、UTF-8 で読めなければ Shift_JIS（古いアプリの書き出し）。 */
+function textOf(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xff && b[1] === 0xfe) return new TextDecoder("utf-16le").decode(b);
+  if (b[0] === 0xfe && b[1] === 0xff) return new TextDecoder("utf-16be").decode(b);
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(b); } catch (_) { /* 次へ */ }
+  try { return new TextDecoder("shift_jis").decode(b); } catch (_) { return new TextDecoder().decode(b); }
+}
+
+/* ジャーナル（iPhone の Journal の書き出し）の一日ぶん。日付は .pageHeader、写真・地図などは .assetGrid
+   （obsidian-importer の apple-journal を手がかりに）。画像の字（場所の名前など）は入れません。
+   日付はファイル名（2023-12-16.html）から、無ければ見出しから。頭に「その行が日付だけ」の形の一行を付けて
+   ほかのファイルと同じ切り分けに乗せます（見出しが本文に残っても、同じ日が二つ並んで繋がるだけ）。 */
+const WEEK = "日月火水木金土";
+function journalDay(src, name) {
+  const doc = new DOMParser().parseFromString(src, "text/html");
+  const b = doc.body;
+  if (!b) return null;
+  let m = /(\d{4})-(\d{2})-(\d{2})/.exec(name.split("/").pop());
+  const head = b.querySelector(".pageHeader");
+  if (!m && head) m = /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/.exec(head.textContent || "");
+  if (!m) return null;
+  const [y, mo, d] = [+m[1], +m[2], +m[3]];
+  b.querySelectorAll(".pageHeader, .assetGrid, .gridItem, script, style, img, video, audio, picture, svg, figure, noscript")
+    .forEach((e) => e.remove());
+  b.querySelectorAll("br").forEach((e) => e.replaceWith("\n"));
+  b.querySelectorAll("p, div, li, h1, h2, h3, h4, h5, h6, tr, blockquote").forEach((e) => e.append("\n"));
+  const body = (b.textContent || "").replace(/ /g, " ").replace(/[ \t　]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  const w = WEEK[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];
+  return `${y}年${mo}月${d}日 ${w}曜日\n${body}`;
+}
+
+/** zip の中のジャーナル（index.html と Resources は読まない）。 */
+async function journalZip(f) {
+  const Z = window.KN.noteNotion;
+  const list = (await Z.listOf(f)).filter((e) => /\.html?$/i.test(e.name) && !/(^|\/)index\.html?$/i.test(e.name)
+    && !/(^|\/)(__MACOSX\/|\.)/.test(e.name));
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  const out = [];
+  for (const e of list) out.push([e.name, await (await Z.openOf(f, e)).text()]);
+  return out;
+}
 
 async function readAll(files) {
   if (!files.length) return;
@@ -243,15 +290,32 @@ async function readAll(files) {
      途中経過が読みにくくなります）。 */
   files.sort((a, b) => a.name.localeCompare(b.name, "ja"));
 
-  let total = 0, done = 0;
+  let total = 0, done = 0, pdfPages = 0, entries = 0;
   const docs = [];
+  const bad = [];
+  const texts = [];
   for (const f of files) {
     $("pmsg").textContent = `${f.name} を開いています…`;
-    const buf = await f.arrayBuffer();
-    const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
-    docs.push({ name: f.name, doc });
-    total += doc.numPages;
+    try {
+      if (/\.pdf$/i.test(f.name)) {
+        const buf = await f.arrayBuffer();
+        const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+        docs.push({ name: f.name, doc });
+        total += doc.numPages;
+      } else if (/\.txt$/i.test(f.name)) {
+        texts.push(textOf(await f.arrayBuffer()));
+      } else if (/\.zip$/i.test(f.name)) {
+        const got = await journalZip(f);
+        if (!got.length) bad.push(f.name);
+        got.forEach(([n, src]) => { const t = journalDay(src, n); if (t) { texts.push(t); entries++; } else bad.push(n); });
+      } else if (/\.html?$/i.test(f.name) && !/^index\.html?$/i.test(f.name)) {
+        const t = journalDay(await f.text(), f.name);
+        if (t) { texts.push(t); entries++; } else bad.push(f.name);
+      }
+    } catch (_) { bad.push(f.name); }
   }
+  pages.push(...texts);
+  pdfPages = total;
 
   for (const { name, doc } of docs) {
     for (let i = 1; i <= doc.numPages; i++) {
@@ -267,13 +331,20 @@ async function readAll(files) {
       }
     }
   }
+  bar.style.width = "100%";
 
   const chars = pages.reduce((a, t) => a + t.length, 0);
-  $("pmsg").innerHTML = `<b>${total} ページ・${chars.toLocaleString()} 字</b>を読み取りました。`;
-  if (chars < total * 20) {
+  const what = [pdfPages ? `${pdfPages} ページ` : "", entries ? `ジャーナル ${entries} 件` : "",
+    texts.length - entries ? `テキスト ${texts.length - entries} 個` : ""].filter(Boolean).join("・");
+  $("pmsg").innerHTML = `<b>${esc(what || "0 件")}・${chars.toLocaleString()} 字</b>を読み取りました。`;
+  if (bad.length) {
+    $("pmsg").innerHTML += ` <span class="bad">読めなかったもの ${bad.length} 個：${esc(bad.slice(0, 5).join("、"))}${bad.length > 5 ? " ほか" : ""}</span>`;
+  }
+  if (pdfPages && chars < pdfPages * 20) {
     $("pmsg").innerHTML += ` <span class="bad">文字がほとんど取れていません。`
       + `この PDF は画像かもしれません。</span>`;
   }
+  if (!pages.length) return;
   $("s-peek").hidden = false;
   $("peek").textContent = pages.slice(0, 3).join("\n\n─── ページの切れ目 ───\n\n").slice(0, 3000);
   $("s-date").hidden = false;
