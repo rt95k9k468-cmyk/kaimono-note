@@ -6518,7 +6518,7 @@
     const doneOf = (l) => l.classList.contains("is-done") || l.classList.contains("is-skipped");
     const rest = lines.filter((l) => !doneOf(l)), done = lines.filter(doneOf);
     let more = null;
-    const pop = KN.ui.popOver(chip, { side: "left", cls: "is-subs", label: `${t.title} の手順`,
+    const pop = KN.ui.popOver(chip, { side: "left", cls: "is-subs", follow: true, label: `${t.title} の手順`,
       onClose: () => {
         chip.setAttribute("aria-expanded", "false");
         if (more) more.remove();

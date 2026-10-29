@@ -1472,11 +1472,11 @@
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
-  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, onClose } = {}) {
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, follow = false, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
     const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || (lift ? zSheet() : 0);
-    const r = anchor.getBoundingClientRect();
+    let r = anchor.getBoundingClientRect();
     const cover = node(html`<div class="note-pop-cover"></div>`);
     const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);
     cover.style.zIndex = String(z + 1);
@@ -1493,6 +1493,7 @@
       pop.classList.remove("is-open");
       document.removeEventListener("keydown", onKey, true);
       document.removeEventListener("pointerdown", onOutside, true);
+      document.removeEventListener("scroll", onScroll, true);
       cover.remove();
       setTimeout(() => pop.remove(), KN.motion.ms("--m-pop-grow") + 40);
       if (onClose) onClose();
@@ -1510,8 +1511,32 @@
       if (e.target.closest && e.target.closest(".note-pop, .note-pop-cover")) return;
       close();
     };
+    /* follow … 札に付いた小窓（時間割の手順）。iOS は覆いの上の指でも後ろの紙を送るので、送られたら口に付いて
+       動き、口が紙の見える範囲（下の帯の上まで）から出たら閉じる（2026年10月30日、利用者「宙に浮いたまま居座る」）。 */
+    let moving = 0;
+    const onScroll = (e) => {
+      const sc = e.target === document ? null : e.target;
+      if (moving || (sc && !(sc.contains && sc.contains(anchor)))) return;
+      moving = requestAnimationFrame(() => {
+        moving = 0;
+        if (gone || !anchor.isConnected) return;
+        const nr = anchor.getBoundingClientRect();
+        const box = sc ? sc.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+        const bar = document.getElementById("tabbar");
+        const barTop = bar && !anchor.closest("#sheet-root") ? bar.getBoundingClientRect().top : 0;
+        const floor = barTop > 0 ? Math.min(box.bottom, barTop) : box.bottom;
+        if (nr.bottom < box.top || nr.top > floor) { close(); return; }
+        const dy = nr.top - r.top;
+        r = nr;
+        if (!dy) return;
+        const top = Math.round(parseFloat(pop.style.top) + dy);
+        pop.style.top = `${top}px`;
+        pop.style.setProperty("--pop-top", `${top}px`);
+      });
+    };
     pops.push(close);
     cover.addEventListener("click", close);
+    if (follow) document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     document.addEventListener("keydown", onKey, true);
     document.addEventListener("pointerdown", onOutside, true);
     document.body.append(cover, pop);
@@ -1519,6 +1544,7 @@
        小窓が幅広いとき（タグの「＋」）、左の外へはみ出していた（2026年10月1日、
        iPhone）。縦は口の下、入りきらず上のほうが広ければ口の上（is-up）。 */
     const place = () => {
+      if (follow && anchor.isConnected) r = anchor.getBoundingClientRect();
       const vw = document.documentElement.clientWidth || window.innerWidth;
       let vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       /* 画面の行から開いた小窓は、下の帯の上で止めます（帯のほうが手前なので、かかると
