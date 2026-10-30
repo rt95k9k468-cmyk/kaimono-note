@@ -6711,17 +6711,17 @@ button.note-when:active { opacity: var(--press-fade); }
 .arc-good-field {
   display: flex; align-items: flex-start; gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--c-primary-fill) 18%, var(--c-surface));
-  border: 1.5px solid color-mix(in srgb, var(--c-primary-fill) 50%, transparent);
+  background: color-mix(in srgb, var(--c-warn) 16%, var(--c-surface));
+  border: 1.5px solid color-mix(in srgb, var(--c-warn) 50%, transparent);
   transition: border-color var(--m-state) var(--ease);
 }
-.arc-good-field:focus-within { border-color: var(--c-primary); }
-.arc-good-ico { flex: none; display: grid; place-items: center; height: calc(var(--fs-lg) * var(--lh-body)); color: var(--c-primary); }
+.arc-good-field:focus-within { border-color: var(--c-warn); }
+.arc-good-ico { flex: none; display: grid; place-items: center; height: calc(var(--fs-lg) * var(--lh-body)); color: var(--c-warn); }
 .arc-good-ico svg { width: var(--ico-sm); height: var(--ico-sm); }
 .arc-good-field > .textarea, .arc-good-field > .textarea:focus {
   flex: 1 1 auto; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; resize: none;
 }
-.arc-memo-field.is-good > .textarea { background: color-mix(in srgb, var(--c-primary-fill) 12%, var(--c-surface)); }
+.arc-memo-field.is-good > .textarea { background: color-mix(in srgb, var(--c-warn) 12%, var(--c-surface)); }
 /* 日付は一行（字と欄を横に並べる）。縦に積むと、メモより先に場所を取っていた
    （2026年10月6日・利用者「日付で場所をとりすぎ」）。 */
 /* 日記の紙の底：↶ ↷ と閉じる（screen-archive.js の histFoot）。 */

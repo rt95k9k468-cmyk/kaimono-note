@@ -1723,7 +1723,7 @@
     });
     /* 新しい一件は、押した流れのまま欄へ（iOS は同期で focus しないとキーボードを出さない）。
        前からの一件は日記の紙と同じく、カーソルを終わりに置くだけ。 */
-    if (fresh) KN.ui.focusNow(memo);
+    if (fresh) KN.ui.focusNow(withGood ? body.querySelector(".js-good") : memo);
     if (fresh && !seed) return;
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* 投げる端末がある */ }

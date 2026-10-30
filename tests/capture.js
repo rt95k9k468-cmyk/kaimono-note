@@ -242,7 +242,7 @@ const SEP = "\u001E";
       n: document.querySelectorAll(".sheet.is-open").length,
       pick: !!(s && s.querySelector(".js-pick, .arc-pick-b, .arc-pick-diary")),
       rec: !!s && /記録を書く/.test(s.textContent),
-      focused: !!m && document.activeElement === m,
+      focused: !!m && (document.activeElement === m || document.activeElement.classList.contains("js-good")),
       // 透ける灰の地（rgba）ではなく、塗りきった地
       card: !!s && s.classList.contains("is-card") && /^rgb\(/.test(getComputedStyle(s).backgroundColor),
       bottomGap: r ? Math.round(innerHeight - r.bottom) : -1,
