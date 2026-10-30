@@ -10,6 +10,7 @@
      --scroll 400             送る器を下へ（px）
      --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。A（今のまま）はいつも撮る
      --empty                  試しの記録を入れない
+     --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）
      --out <dir>              置き場（既定 /tmp/kn-shots）
 
    一枚ずつの画像のほかに、差し替えを横・組み合わせを縦に並べ、番号を書いた compare.png を作る（393×852・2倍）。
@@ -33,7 +34,9 @@ const CLOCK = arg("clock", null);
 const SHEET = arg("sheet", null);
 const SCROLL = +arg("scroll", 0);
 const EMPTY = process.argv.includes("--empty");
-const VIEW = { width: 393, height: 852 };
+const [VW, VH] = String(arg("view", "393x852")).split("x").map(Number);
+const VIEW = { width: VW, height: VH };
+const DPR = +arg("dpr", 2);
 const VARIANTS = [{ name: "A", css: "" }, ...all("css").map((s) => {
   const i = s.indexOf("=");
   const name = s.slice(0, i), body = s.slice(i + 1);
@@ -91,7 +94,7 @@ async function openSheet(which) {
 }
 
 async function shoot(browser, v, combo) {
-  const ctx = await browser.newContext({ serviceWorkers: "block", viewport: VIEW, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({ serviceWorkers: "block", viewport: VIEW, deviceScaleFactor: DPR });
   /* tests/lib.js の open() と同じ前置き：控えのトースト・ノートブックの小窓・やることの面。 */
   await ctx.addInitScript((face) => {
     try {

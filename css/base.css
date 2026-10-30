@@ -2331,6 +2331,43 @@ a { color: var(--c-primary); }
 }
 .has-fab .dock { transform-origin: 50% 100%; }
 
+/* ---------------- 幅の広い画面（desk・docs/desk.md） ----------------
+
+   840px から（Material の expanded。iPad の縦は電話と同じ、横とパソコンはこちら）。620px の列を
+   真ん中に置くのをやめ、下の帯は**左の縦の列**（同じカプセル・同じ席・同じ印）に、中身は残りの幅いっぱいに。
+   画面ごとの並べ方は screens.css の終わりの「幅の広い画面」。境目の数は JS（screen-notes.js の WIDE）にもある。
+
+   帯の大きさの札（`--tab-cap`）はそのまま。帯は下に居ないので、画面が下に空けていたぶん（`--tabbar-space`）は 0。
+   帯の背丈は席の数ぶん（`height: auto`）——カプセル・縁の光・屈折・押した光（四つとも同じ形）が帯の箱に沿う。 */
+@media (min-width: 840px) {
+  :root { --rail-w: 96px; --tabbar-space: 0px; }
+  body { background: var(--c-bg); }
+  .app { max-width: none; padding-left: var(--rail-w); box-shadow: none; }
+  .tabbar {
+    top: var(--sp-3); bottom: auto; right: auto;
+    width: var(--rail-w); height: auto;
+    grid-template-columns: 1fr;
+    grid-auto-rows: var(--tab-cap);
+    padding: 6px calc(var(--sp-2) + 6px);
+    background: none;
+  }
+  .tabbar::before, .tabbar::after, .tab-edge, .tab-hold { inset: 0 var(--sp-2); }
+  /* ＋は右下の角に（帯の上に立つ理由が無い）。 */
+  .has-fab .dock { right: var(--sp-5); bottom: var(--sp-5); }
+  .head-name.is-sub { max-width: calc(100vw - var(--rail-w) - 128px); }
+  /* 画面は帯と同じ向きへ流れる（docs/screens-nav.md）——帯が縦なので縦に。一面ぶん滑らせると大きな画面では
+     重いので、少しだけずらして入れ替える（Material の shared axis）。出ていく面は先に薄れる。 */
+  .screen.is-active.is-in-r { animation-name: desk-in-dn; }
+  .screen.is-active.is-in-l { animation-name: desk-in-up; }
+  .screen.is-leaving.is-out-l { animation-name: desk-out-up; }
+  .screen.is-leaving.is-out-r { animation-name: desk-out-dn; }
+}
+:root { --desk-shift: 32px; }
+@keyframes desk-in-dn { 0%, 25% { opacity: 0; transform: translateY(var(--desk-shift)); } }
+@keyframes desk-in-up { 0%, 25% { opacity: 0; transform: translateY(calc(-1 * var(--desk-shift))); } }
+@keyframes desk-out-up { 40%, 100% { opacity: 0; transform: translateY(calc(-1 * var(--desk-shift))); } }
+@keyframes desk-out-dn { 40%, 100% { opacity: 0; transform: translateY(var(--desk-shift)); } }
+
 /* =========================================================
    基調色（accent themes）
 

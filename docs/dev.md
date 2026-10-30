@@ -228,6 +228,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 | 絵の系統・「こと」アイコン・絵選び紙 | `docs/icons.md` |
 | 絵を描く・なぞる・型・画風・崩れの測り方（core） | `docs/icons-drawing.md` |
 | 絵の引き当て（`findKey`・`hasWord`・`icon-eval.json`・絵の報告） | `docs/icons-matching.md` |
+| パソコン・幅の広い画面（840px〜の左の帯・画面ごとの並べ方） | `docs/desk.md` |
 
 - コードや `ICON-*.md` のコメントにある「CLAUDE.md の『〜』」は、いまは
   `docs/` のどれかにある。見出しの一部で `grep -rn '〜' docs/` すれば出る。

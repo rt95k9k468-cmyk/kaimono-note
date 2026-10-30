@@ -807,7 +807,9 @@
     const head = front.querySelector(".tl-grip") || front.querySelector(".tl-sheet");
     const bar = document.getElementById("tabbar");
     const b = box.getBoundingClientRect();
-    const floor = bar ? bar.getBoundingClientRect().top : b.bottom;
+    /* 帯が下に居ないとき（幅の広い画面は左の縦の列。docs/desk.md）は、面の箱の底まで。 */
+    const barTop = bar ? bar.getBoundingClientRect().top : 0;
+    const floor = barTop > b.top + b.height / 2 ? barTop : b.bottom;
     if (!head) return Math.max(1, b.height - FACE_PEEK);
     /* いま動いているぶんを差し引いて、**動かす前の頭の位置**を出します。
        留まっているところ（p=1）から掴み直しても同じ道のりになるように。 */

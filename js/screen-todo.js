@@ -2706,6 +2706,9 @@
     if (swiping) return;
     takeSharedDay();
     renderBody();
+    /* どの面か（幅の広い画面で、今日だけ道と時間割を左右に並べる。screens.css の「幅の広い画面」）。 */
+    const f = oneDay() ? face : "";
+    if (root && (root.dataset.face || "") !== f) { if (f) root.dataset.face = f; else delete root.dataset.face; }
     paintDayTitle();
     /* 暦は組み直しのたびに別の要素になるので、厚みも測り直します
        （掴み手はそのぶん下に貼りつくので）。**ただし一拍おいてから**

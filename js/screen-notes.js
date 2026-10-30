@@ -28,8 +28,9 @@
   const page = () => pages[pages.length - 1];
   /* 開いている書く紙（重ねた順）。道すじの親へ戻るとき、重ねた紙にあればそこまで閉じる。 */
   const papers = [];
-  /* 左の木を出す幅（段1b）。アプリの列（--maxw）の左に、木が入るだけの余白がある画面（iPad の横・パソコン）。 */
-  const WIDE = "(min-width: 1080px)";
+  /* 左の木を出す幅（段1b）。幅の広い画面（desk。iPad の横・パソコン）と同じ境目——base.css・screens.css の
+     「幅の広い画面」の @media と同じ数（docs/desk.md）。 */
+  const WIDE = "(min-width: 840px)";
   /* 電話を横にした（base.css の「portrait only」と同じ式）。 */
   const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
