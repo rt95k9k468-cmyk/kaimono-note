@@ -2380,6 +2380,8 @@ a { color: var(--c-primary); }
     .tab:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--c-text) 6%, transparent); color: var(--c-text); }
   }
   .tab:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+  /* 送り棒は細く地の色に（Windows の太い灰の棒が紙と列のあいだに立っていた。Mac の重ねる棒には効かない）。 */
+  * { scrollbar-width: thin; scrollbar-color: var(--c-border-2) transparent; }
   /* ＋は右下の角に（帯の上に立つ理由が無い）。 */
   .has-fab .dock { right: var(--sp-5); bottom: var(--sp-5); }
   .head-name.is-sub { max-width: calc(100vw - var(--rail-w) - 128px); }
