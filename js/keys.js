@@ -6,10 +6,10 @@
      ← →         前・次の日（日を持つ画面）。日を持たない画面は暦を一つ送る
      Shift+← →   前・次の週（暦）
      t           今日へ
-     /           さがす
+     /・⌘K       さがす（⌘K・Ctrl+K は打っている欄の中でも）
      n           ＋（その画面で足す）
      ,           設定
-   ⌘・Ctrl・Alt 付き、変換中、覆いのある紙・小窓が開いているあいだは何もしません（右の段に据えたノートは覆いが無いので効く）。
+   ⌘・Ctrl・Alt 付き（⌘K のほか）、変換中、覆いのある紙・小窓が開いているあいだは何もしません（右の段に据えたノートは覆いが無いので効く）。
 
    トラックパッドの二本指の横払い（wheel の deltaX）：暦の上なら週、画面の上なら日を一つ送る（払う向きは指で
    払うのと同じ——左へ払えば次）。一回の払いで一度だけ（指を離したあとの慣性の続きは待つ）。横に送れる中身
@@ -47,6 +47,11 @@
 
   document.addEventListener("keydown", (e) => {
     if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+    /* ⌘K・Ctrl+K：さがす（Notion・Slack と同じ）。打っている欄の中でも効く——書いている途中から探しに行く道。 */
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K")) {
+      if (!covered() && press(document.querySelector("#head .js-search-btn"))) e.preventDefault();
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (typing(e.target) || typing(document.activeElement)) return;
     const k = e.key;

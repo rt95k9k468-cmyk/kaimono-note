@@ -2337,23 +2337,49 @@ a { color: var(--c-primary); }
    真ん中に置くのをやめ、下の帯は**左の縦の列**（同じカプセル・同じ席・同じ印）に、中身は残りの幅いっぱいに。
    画面ごとの並べ方は screens.css の終わりの「幅の広い画面」。境目の数は JS（screen-notes.js の WIDE）にもある。
 
-   帯の大きさの札（`--tab-cap`）はそのまま。帯は下に居ないので、画面が下に空けていたぶん（`--tabbar-space`）は 0。
-   帯の背丈は席の数ぶん（`height: auto`）——カプセル・縁の光・屈折・押した光（四つとも同じ形）が帯の箱に沿う。 */
+   帯は下に居ないので、画面が下に空けていたぶん（`--tabbar-space`）は 0。
+   **帯は窓の背いっぱいの平らな左の列**（段5。Notion・Things の形）：席は絵と名前を横に並べた行、いま居る席は滑る一枚
+   （tab-lens.js。縦に滑る）。ガラスのカプセル・縁の光・屈折・押した光・押してふくらむのは指の下で起きることなので出さない。
+   ノートの席では、席の行の下にノートの木（screens.css の「左の木」。`--side-nav-h` から下）。 */
 @media (min-width: 840px) {
-  :root { --rail-w: 96px; --tabbar-space: 0px; }
+  :root {
+    --rail-w: 232px; --tabbar-space: 0px;
+    --side-row: 36px; --side-gap: 2px; --side-pad: var(--sp-3);
+    --side-nav-h: calc(var(--side-pad) * 2 + var(--side-row) * 5 + var(--side-gap) * 4);
+  }
   /* トラックパッドの横払いは日・週を送る（js/keys.js）。ブラウザの「戻る・進む」にしない。 */
   html, body { overscroll-behavior-x: none; }
   body { background: var(--c-bg); }
   .app { max-width: none; padding-left: var(--rail-w); box-shadow: none; }
   .tabbar {
-    top: var(--sp-3); bottom: auto; right: auto;
+    top: 0; bottom: 0; right: auto;
     width: var(--rail-w); height: auto;
     grid-template-columns: 1fr;
-    grid-auto-rows: var(--tab-cap);
-    padding: 6px calc(var(--sp-2) + 6px);
-    background: none;
+    grid-auto-rows: var(--side-row);
+    row-gap: var(--side-gap);
+    align-content: start;
+    padding: var(--side-pad) var(--sp-2);
+    background: var(--c-bg);
+    border-right: 1px solid var(--c-border);
   }
-  .tabbar::before, .tabbar::after, .tab-edge, .tab-hold { inset: 0 var(--sp-2); }
+  .tabbar::before, .tabbar::after, .tab-edge, .tab-hold { display: none; }
+  .tab {
+    flex: none; flex-direction: row; justify-content: flex-start; gap: var(--sp-3);
+    padding: 0 var(--sp-3); border-radius: var(--r-sm);
+    font-size: var(--fs-md); font-weight: var(--fw-regular); letter-spacing: 0;
+    cursor: pointer;
+  }
+  .tab[aria-selected="true"] { font-weight: var(--fw-bold); }
+  .tab .tab-ico { width: var(--ico); height: var(--ico); flex: none; }
+  .tab svg, .tab-ico-face svg { width: var(--ico); height: var(--ico); }  /* 入れもの：左の列の席 */
+  .tab[aria-selected="true"] .tab-ico { transform: none; }
+  .tab.is-held, .tab.is-held .tab-ico, .tab-lens.is-held { scale: none; }
+  .tab-lens { border-radius: var(--r-sm); }
+  .tab-badge { position: static; translate: none; margin-left: auto; }
+  @media (hover: hover) {
+    .tab:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--c-text) 6%, transparent); color: var(--c-text); }
+  }
+  .tab:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
   /* ＋は右下の角に（帯の上に立つ理由が無い）。 */
   .has-fab .dock { right: var(--sp-5); bottom: var(--sp-5); }
   .head-name.is-sub { max-width: calc(100vw - var(--rail-w) - 128px); }

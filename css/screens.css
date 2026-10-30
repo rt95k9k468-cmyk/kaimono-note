@@ -5979,24 +5979,27 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-place-row[aria-current="true"] { background: var(--c-primary-soft); }
 .notes-place-row[aria-disabled="true"] { color: var(--c-text-3); }
 .notes-place-row:not([aria-disabled="true"]):active { background: var(--press-sink); }
-/* 左の木（段1b）。幅の広い画面（desk・840px〜。docs/desk.md）で、ノートの席が出ているときだけ、左の帯の右・
-   上の帯の下に（上の帯の背は `.topbar` の上下の詰めと 34px のボタン、下の線 1px）。ノートの画面はそのぶん右へ
-   （このファイルの終わりの「幅の広い画面」）。紙・覆い・鍵より下（--z-bar）。js/screen-notes.js の paintTree。 */
+/* 左の木（段1b）。幅の広い画面（desk・840px〜。docs/desk.md）で、ノートの席が出ているときだけ、左の列の中の
+   席の行の下に（`--side-nav-h` から窓の底まで。段5で左の列へ入れた——前は左の帯の右に別の段を取っていた）。
+   左の列の線（border-right 1px）は覆わない。紙・覆い・鍵より下（--z-bar。帯より後ろの DOM なので帯の上に描かれる）。
+   js/screen-notes.js の paintTree。 */
 .notes-tree { display: none; }
 @media (min-width: 840px) {
   html:not(.is-locked)[data-screen="notes"] .notes-tree {
-    display: block; position: fixed; top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); bottom: 0;
-    left: var(--rail-w); z-index: var(--z-bar);
-    width: var(--tree-w);
+    display: block; position: fixed; top: var(--side-nav-h); bottom: 0;
+    left: 0; z-index: var(--z-bar);
+    width: calc(var(--rail-w) - 1px);
     padding: var(--sp-2) var(--sp-2) var(--sp-6);
+    border-top: 1px solid var(--c-border);
     overflow-y: auto; overscroll-behavior: contain;
   }
 }
 @media print { .notes-tree { display: none !important; } }
 .notes-tree > [role="tree"] { display: flex; flex-direction: column; }
-/* 左の木の行はホームの木と同じ（.nt-row）。ここは地の上なので、押したとき・寄せたときは白。 */
+/* 左の木の行はホームの木と同じ（.nt-row）。ここは地の上なので、押したとき・寄せたときは白。
+   頭の「Notes」（ホーム）は出さない——すぐ上の席の行（notes）が同じ所へ行き、印も持つので、二つ並ぶと印が二重になる。 */
 .notes-tree .nt-row { font-size: var(--fs-md); }
-.notes-tree .nt-row.is-head { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
+.notes-tree .nt-row.is-head { display: none; }
 .notes-tree .nt-grp:has(> .nt-row.is-book) { margin-top: var(--sp-2); }
 @media (hover: hover) { .notes-tree .nt-row:not([aria-current="true"]):hover { background-color: var(--c-surface); } }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
@@ -8119,7 +8122,7 @@ button.note-when:active { opacity: var(--press-fade); }
    - 1200px から：やることの今日は道と時間割を左右に、からだはカードを段組みに。
    ========================================================= */
 @media (min-width: 840px) {
-  :root { --desk-read: 760px; --desk-wide: 1180px; --tree-w: 264px; }
+  :root { --desk-read: 760px; --desk-wide: 1180px; }
   .tl-sheet.is-daily .day-slide,
   #screen-todo .day-slide,
   #screen-list .tl-sheet > .js-body,
@@ -8128,9 +8131,21 @@ button.note-when:active { opacity: var(--press-fade); }
   #screen-notes .search-wrap,
   .set-scroll { padding-inline: max(0px, calc((100% - var(--desk-read)) / 2)); }
   #screen-todo .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2 + var(--sp-4))); }
-  #screen-notes { padding-left: var(--tree-w); }
   /* 設定の帯（‹・題）も読む列にそろえる（‹ が窓の左端に離れていた）。 */
   .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); }
+  /* からだの紙は地を持たない（`.is-bare`。中のカードの束が地）。広い幅ではカードが段に並んで束が短くなり、束の下で
+     地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
+  #screen-diet .tl-sheet.is-bare { background: var(--c-sheet); }
+  #screen-diet .diet-day.card { border-bottom: none; }
+  /* daily の季節の写真（docs/daily.md の「季節の絵」）：電話では幅いっぱいの一枚が紙の頭の帯（窓の三割ほど）に収まるが、
+     広い幅で同じ「幅いっぱい」にすると写真の背が窓を越え、紙ぜんぶが写真になる。広い幅では帯の背（--season-h）を決め、
+     写真は帯を覆う大きさで真ん中を見せる（Notion の表紙の形）。幕の層は電話と同じ（帯の半ばまで同じ濃さ、帯の下の端で閉じる）。 */
+  #screen-archive[data-season] .tl-sheet.is-daily {
+    --season-h: clamp(260px, 40vh, 420px);
+    --season-w: max(calc(100vw - var(--rail-w)), calc(var(--season-h) / var(--season-ar, 0.67)));
+    background-size: auto, auto, var(--season-w) auto, auto;
+    background-position: 0 0, 0 0, center calc((var(--season-h) - var(--season-w) * var(--season-ar, 0.67)) / 2), 0 0;
+  }
   /* 書く紙（ノート・日記・積み上げ）は読む幅の大きな一枚。真ん中のまま、背は窓のほぼいっぱい。 */
   .sheet.is-note:not(.is-wide), .sheet.is-card {
     width: min(100% - var(--sp-8) * 2, var(--desk-read));
@@ -8153,15 +8168,15 @@ button.note-when:active { opacity: var(--press-fade); }
   .diet-day.card { display: block; columns: 3 380px; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
   .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
 }
-/* 1280px から、ノートは三列：木｜一覧（--list-w）｜本文。ノートの席で開いたノートは紙でなく右の段に据える
+/* 1280px から、ノートは三列：木（左の列の中）｜一覧（--list-w）｜本文。ノートの席で開いたノートは紙でなく右の段に据える
    （screen-notes.js の docked）。段の場所は何も開いていなくても白い面で取っておく（開いても並びが動かない）。
-   段の上端は上の帯の下（左の木と同じ数）。＋は一覧の右下へ。 */
+   段の上端は上の帯の下。＋は一覧の右下へ。 */
 @media (min-width: 1280px) {
-  :root { --list-w: 380px; --pane-x: calc(var(--rail-w) + var(--tree-w) + var(--list-w)); }
+  :root { --list-w: 380px; --pane-x: calc(var(--rail-w) + var(--list-w)); }
   #screen-notes .notes-ground, #screen-notes .search-wrap { padding-inline: 0; width: var(--list-w); }
   .head ~ .panes > #screen-notes {
-    background: linear-gradient(to right, transparent calc(var(--tree-w) + var(--list-w)),
-      var(--c-border) 0 calc(var(--tree-w) + var(--list-w) + 1px), var(--c-surface) 0);
+    background: linear-gradient(to right, transparent var(--list-w),
+      var(--c-border) 0 calc(var(--list-w) + 1px), var(--c-surface) 0);
   }
   :root[data-screen="notes"] .sheet.is-note:not(.is-wide) {
     left: var(--pane-x); right: 0; top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); bottom: 0;

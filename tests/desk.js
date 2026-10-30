@@ -1,15 +1,16 @@
 /* パソコン・幅の広い画面（docs/desk.md）。ほかの台本はみな電話の幅で開くので、広い幅の崩れはここだけが見る。
    - 電話の幅：帯は下（変えていない）
-   - 840px〜：帯は左の縦の列（幅 --rail-w）、席は縦に並び、印は縦に滑る。中身は帯の右から窓の右端まで
+   - 840px〜：帯は窓の背いっぱいの平らな左の列（幅 --rail-w。段5）、席は絵の右に名前の横長の行で縦に並び、印は縦に滑る。
+     中身は帯の右から窓の右端まで
    - 読む幅：買うものの棚は 760px まで
    - 1200px〜：やることの今日は道が時間割の左、週の面は日の行が左・これからが右、からだのカードは二段以上に並ぶ
-   - ノートの左の木は帯の右（840px でも出る）
+   - ノートの左の木は左の列の中、席の行の下（840px でも出る）
    - 1280px〜：ノートの席で開いたノートは右の段（木と一覧の右・上の帯の下・窓の右端まで）。覆いは無く、
      一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は一覧の右下。ほかの席へ移ると閉じる
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
    - 買うもの ⇄ 価格（席の二度押し）は広い幅でも行き来する
    - 広い幅から電話の幅へ縮めると、帯と印は下へ戻る
-   - 段3（js/keys.js）：1〜5 で席・→ で次の日・t で今日・Shift+→ で次の週・, で設定・/ でさがす欄（欄で打つ字は席を動かさない）。
+   - 段3（js/keys.js）：1〜5 で席・→ で次の日・t で今日・Shift+→ で次の週・, で設定・/ と Ctrl+K（⌘K）でさがす欄（欄で打つ字は席を動かさない）。
      トラックパッドの横払い（wheel の deltaX）は紙の上で日、暦の上で週を送る
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk.js */
 const { open, checker } = require("./lib");
@@ -46,19 +47,23 @@ const { open, checker } = require("./lib");
   await wait(400);
   const bar = await box("#tabbar");
   const d1 = await box(".tab-archive"), d2 = await box(".tab-notes");
-  t.check("広い幅：帯は左の縦の列（幅 96px）、席は縦に並ぶ", bar.l === 0 && bar.w === 96 && bar.t < 40 && d1.l === d2.l && d2.t > d1.t,
-    JSON.stringify({ bar, d1, d2 }));
+  const ico = await box(".tab-archive .tab-ico"), lab = await box(".tab-archive .tab-label");
+  t.check("広い幅：帯は窓の背いっぱいの左の列（幅 232px）、席は縦に並ぶ横長の行（絵の右に名前）",
+    bar.l === 0 && bar.w === 232 && bar.t === 0 && bar.b === 900 && d1.l === d2.l && d2.t > d1.t && d1.w > 180 && d1.h <= 40
+    && ico.r <= lab.l && Math.abs((ico.t + ico.b) / 2 - (lab.t + lab.b) / 2) <= 3, JSON.stringify({ bar, d1, d2, ico, lab }));
   const app = await box("#app"), scr = await box("#screens");
-  t.check("中身は帯の右から窓の右端まで", app.w === 1440 && scr.l === 96 && scr.r === 1440, JSON.stringify({ app, scr }));
+  t.check("中身は帯の右から窓の右端まで", app.w === 1440 && scr.l === 232 && scr.r === 1440, JSON.stringify({ app, scr }));
+  const glass = await page.evaluate(() => getComputedStyle(document.getElementById("tabbar"), "::before").display);
+  t.check("左の列はガラスのカプセルを持たない（平らな地）", glass === "none", glass);
 
   const lensAt = async (id) => {
     await page.click(`.tab-${id}`);
     await page.waitForFunction((i) => document.documentElement.dataset.screen === i, id);
     await wait(700);
     const l = await box(".tab-lens"), tab = await box(`.tab-${id}`);
-    return Math.abs((l.t + l.b) / 2 - (tab.t + tab.b) / 2) <= 2 && l.l >= tab.l && l.r <= tab.r;
+    return Math.abs((l.t + l.b) / 2 - (tab.t + tab.b) / 2) <= 2 && l.l >= tab.l && l.r <= tab.r && l.h <= tab.h;
   };
-  t.check("印は席から席へ縦に滑る（いつも押した席の上）", (await lensAt("list")) && (await lensAt("diet")) && (await lensAt("todo")));
+  t.check("印は席から席へ縦に滑る（いつも押した席の上、行からはみ出さない）", (await lensAt("list")) && (await lensAt("diet")) && (await lensAt("todo")));
 
   /* 段3：キーボードとトラックパッド（js/keys.js）。打っていないときだけ。 */
   const scrId = () => page.evaluate(() => document.documentElement.dataset.screen);
@@ -125,6 +130,13 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
   await page.waitForFunction(() => !document.querySelector(".sheet-backdrop"), null, { timeout: 3000 }).catch(() => {});
   await wait(400);
+  /* 段5：⌘K・Ctrl+K でもさがす欄へ。 */
+  await page.keyboard.press("Control+k");
+  await wait(500);
+  t.check("Ctrl+K（⌘K）でさがす欄へ", await page.evaluate(() => { const a = document.activeElement; return !!(a && a.matches("input.js-search")); }));
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await wait(400);
 
   /* やることの今日：道が時間割の左。 */
   const road = await box("#screen-todo .day-road"), tl = await box("#screen-todo .todo-day.is-tl > .tl");
@@ -150,12 +162,16 @@ const { open, checker } = require("./lib");
   const tops = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-day.is-here > .diet-card, #screen-diet .day-slide > .diet-card")]
     .map((c) => Math.round(c.getBoundingClientRect().top)));
   t.check("からだ：カードは横にも並ぶ", tops.length >= 2 && new Set(tops).size < tops.length, JSON.stringify(tops));
+  const dietPaper = await page.evaluate(() => { const s = document.querySelector("#screen-diet .tl-sheet"), r = s.getBoundingClientRect();
+    return { bg: getComputedStyle(s).backgroundColor, b: Math.round(r.bottom) }; });
+  t.check("からだ：紙は窓の底まで地を持つ（段に並んだカードの束の下で切れない）", dietPaper.bg !== "rgba(0, 0, 0, 0)" && dietPaper.b === 900,
+    JSON.stringify(dietPaper));
 
   /* 買うもの：読む幅。価格へ行き来する。 */
   await page.click(".tab-list");
   await wait(700);
   const shelf = await box("#screen-list .cat-group");
-  t.check("買うもの：棚は読む幅（760px）まで、真ん中に", shelf && shelf.w <= 760 && Math.abs((shelf.l + shelf.r) / 2 - (96 + 1440) / 2) <= 2,
+  t.check("買うもの：棚は読む幅（760px）まで、真ん中に", shelf && shelf.w <= 760 && Math.abs((shelf.l + shelf.r) / 2 - (232 + 1440) / 2) <= 2,
     JSON.stringify(shelf));
   await page.click(".tab-list");
   await page.waitForFunction(() => document.documentElement.dataset.screen === "prices", null, { timeout: 3000 }).catch(() => {});
@@ -164,11 +180,12 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.documentElement.dataset.screen === "list", null, { timeout: 3000 }).catch(() => {});
   t.check("価格 → 買うもの", await page.evaluate(() => document.documentElement.dataset.screen === "list"));
 
-  /* ノート：左の木は帯の右。 */
+  /* ノート：左の木は左の列の中、席の行の下。 */
   await page.click(".tab-notes");
   await wait(800);
-  const tree = await box(".notes-tree");
-  t.check("ノート：左の木は帯の右", tree && tree.l === 96 && tree.w > 200, JSON.stringify(tree));
+  const tree = await box(".notes-tree"), lastSeat = await box(".tab-diet"), notesScr = await box("#screen-notes");
+  t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 232 && tree.t >= lastSeat.b
+    && tree.b === 900 && notesScr.l === 232, JSON.stringify({ tree, lastSeat, notesScr }));
 
   /* 三列：開いたノートは右の段。 */
   const openRow = async (title) => {

@@ -64,16 +64,20 @@
      汚れているので、読むたびに画面ぜんぶの様式と配置を強いていた（daily に入るとき
      21ms・2026年10月27日）。忘れるのは帯か席の大きさが変わったとき（下の ro）と mount。 */
   let seats = null;
-  const measure = (tab) => ({
-    x: tab.offsetLeft + INSET_X,
-    w: tab.offsetWidth - INSET_X * 2,
-    cy: tab.offsetTop + tab.offsetHeight / 2,
-  });
+  /* 幅の広い画面の左の列（docs/desk.md）は、席が丸薬より背の低い横長の行——印は行の箱そのものに敷く。 */
+  const measure = (tab) => {
+    const h = tab.offsetHeight;
+    const ix = h < REST_H ? 0 : INSET_X;
+    return { x: tab.offsetLeft + ix, w: tab.offsetWidth - ix * 2, cy: tab.offsetTop + h / 2, h: Math.min(REST_H, h) };
+  };
   function seatBox(tab) {
     if (seats && seats.has(tab)) return seats.get(tab);
     seats = new Map();
     bar.querySelectorAll(".tab").forEach((t) => seats.set(t, measure(t)));
     seats.span = bar.offsetWidth;   // 帯の幅（滑る長さの割合に。to）
+    /* 縦に並んだ席（左の列）は、端の席から端の席までを道のりの全部に。 */
+    const ys = [...seats.values()].map((s) => s.cy);
+    seats.spanY = ys.length ? Math.max(...ys) - Math.min(...ys) + Math.max(...[...seats.values()].map((s) => s.h)) : 1;
     return seats.get(tab) || measure(tab);
   }
 
@@ -89,9 +93,9 @@
     lens.style.setProperty("--lens-ms", (ms || 0) + "ms");
     if (ease) lens.style.setProperty("--lens-ease", ease);
     lens.style.width = s.w.toFixed(2) + "px";
-    lens.style.height = REST_H + "px";
+    lens.style.height = s.h + "px";
     lens.style.transform =
-      "translate(" + s.x.toFixed(2) + "px," + (s.cy - REST_H / 2).toFixed(2) + "px)";
+      "translate(" + s.x.toFixed(2) + "px," + (s.cy - s.h / 2).toFixed(2) + "px)";
   }
 
   /**
@@ -111,14 +115,16 @@
     const dst = seatBox(tab);
     if (!from || from === tab || opt.jump) { place(dst); return; }
 
-    const dist = dst.x - seatBox(from).x;
+    const src = seatBox(from);
+    const across = dst.x - src.x;
+    const dist = across || dst.cy - src.cy;   // 横の帯は横、左の列は縦
     if (!dist) { place(dst); return; }
 
     /* 滑る長さと曲線は glide から。押した指には「離したときの速さ」が
        ありませんが（タップにはそれが無い）、glide はそのとき**道のりの
        割合**で答えます——隣の席へは短く、端から端へは長く。決め打ちの
        一つの数で送ると、その二つが同じ時間になります。 */
-    const g = M.glide(dist, 0, { span: seats.span, base: M.ms("--m-nav") });
+    const g = M.glide(dist, 0, { span: across ? seats.span : seats.spanY, base: M.ms("--m-nav") });
     place(dst, g.ms, g.ease);
     /* 滑り終わったら 0ms へ戻します——戻さないと、次に幅が変わったとき
        （回転・キーボード）置きなおしまで滑って見えます。 */
