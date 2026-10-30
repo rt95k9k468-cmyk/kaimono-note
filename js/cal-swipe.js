@@ -51,6 +51,8 @@
   /* いま、どこかの暦が指を持っているか。cal-peek（紙を引いて暦を開く）が
      見ます——同じ指を二つが取ると、盤を運んでいる最中に高さまで動きます。 */
   let active = false;
+  /* 結んだ暦（flipIn が出ている暦を探すため）。外れた暦は探すたびに落とす。 */
+  const wired = new Set();
 
   function wire(o) {
     const sec = o.sec, grid = o.grid;
@@ -278,7 +280,29 @@
       if (e.pointerId !== id) return;
       abort();
     });
+
+    /** 一つ送る（週を出していれば週、月なら月。パソコンのキーボード・トラックパッドの横払い。docs/desk.md の段3）。
+        指で払いきって離したのと同じ道。指が乗っている・滑っている最中・行けない向きは送らない。 */
+    function flip(delta) {
+      if (id !== null || track || (o.busy && o.busy()) || !o.step(delta)) return false;
+      if (KN.motion) KN.motion.fire("nav");
+      dx = 0; vx = 0;
+      if (o.isWeek() && mount()) settle(delta > 0 ? 2 : 0).then(() => { o.go(delta); unmount(); });
+      else o.go(delta);
+      return true;
+    }
+    wired.forEach((w) => { if (w.sec === sec || !w.sec.isConnected) wired.delete(w); });
+    wired.add({ sec, flip });
   }
 
-  KN.calSwipe = { wire, isActive: () => active };
+  /** root の中の、見えている暦を一つ送る。暦が無ければ false。 */
+  function flipIn(root, dir) {
+    for (const w of wired) {
+      if (!w.sec.isConnected) { wired.delete(w); continue; }
+      if (root.contains(w.sec) && w.sec.getClientRects().length && !w.sec.closest("[hidden], .is-cal-out")) return w.flip(dir);
+    }
+    return false;
+  }
+
+  KN.calSwipe = { wire, flipIn, isActive: () => active };
 })();

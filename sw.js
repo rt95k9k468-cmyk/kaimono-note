@@ -107,6 +107,7 @@ const ASSETS = [
   "js/lock.js",
   "js/tab-lens.js",
   "js/app.js",
+  "js/keys.js",
   "manifest.webmanifest",
   "icons/icon.svg",
   "icons/icon-192.png",

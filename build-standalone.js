@@ -123,6 +123,7 @@ const JS = [
   "js/lock.js",
   "js/tab-lens.js",
   "js/app.js",
+  "js/keys.js",
 ];
 
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");

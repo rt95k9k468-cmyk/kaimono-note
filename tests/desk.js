@@ -9,6 +9,8 @@
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
    - 買うもの ⇄ 価格（席の二度押し）は広い幅でも行き来する
    - 広い幅から電話の幅へ縮めると、帯と印は下へ戻る
+   - 段3（js/keys.js）：1〜5 で席・→ で次の日・t で今日・Shift+→ で次の週・, で設定・/ でさがす欄（欄で打つ字は席を動かさない）。
+     トラックパッドの横払い（wheel の deltaX）は紙の上で日、暦の上で週を送る
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk.js */
 const { open, checker } = require("./lib");
 
@@ -57,6 +59,72 @@ const { open, checker } = require("./lib");
     return Math.abs((l.t + l.b) / 2 - (tab.t + tab.b) / 2) <= 2 && l.l >= tab.l && l.r <= tab.r;
   };
   t.check("印は席から席へ縦に滑る（いつも押した席の上）", (await lensAt("list")) && (await lensAt("diet")) && (await lensAt("todo")));
+
+  /* 段3：キーボードとトラックパッド（js/keys.js）。打っていないときだけ。 */
+  const scrId = () => page.evaluate(() => document.documentElement.dataset.screen);
+  const todoDay = () => page.evaluate(() => KN.screens.todo.day());
+  const today = await page.evaluate(() => KN.util.todayKey());
+  const tomorrow = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), 1));
+  await page.keyboard.press("1");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "archive", null, { timeout: 3000 }).catch(() => {});
+  const k1 = await scrId();
+  await page.keyboard.press("3");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "todo", null, { timeout: 3000 }).catch(() => {});
+  t.check("1〜5 で席を移る", k1 === "archive" && (await scrId()) === "todo", k1);
+  await wait(600);
+  await page.keyboard.press("ArrowRight");
+  await page.waitForFunction((d) => KN.screens.todo.day() === d, tomorrow, { timeout: 3000 }).catch(() => {});
+  const kr = await todoDay();
+  await wait(400);
+  await page.keyboard.press("t");
+  await page.waitForFunction((d) => KN.screens.todo.day() === d, today, { timeout: 3000 }).catch(() => {});
+  t.check("→ で次の日、t で今日へ", kr === tomorrow && (await todoDay()) === today, JSON.stringify({ kr, today: await todoDay() }));
+  await wait(600);
+  const weekOf = () => page.evaluate(() => { const c = document.querySelector("#head .cal-day[data-day]"); return c ? c.dataset.day : null; });
+  const w0 = await weekOf();
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day !== w; }, w0, { timeout: 3000 }).catch(() => {});
+  const w1 = await weekOf();
+  t.check("Shift+→ で暦が次の週へ", !!w0 && !!w1 && w1 > w0, JSON.stringify({ w0, w1 }));
+  await page.keyboard.press("Shift+ArrowLeft");
+  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day === w; }, w0, { timeout: 3000 }).catch(() => {});
+  await wait(500);
+  /* トラックパッドの横払い：紙の上なら日、暦の上なら週。 */
+  const paper = await box("#screen-todo .tl-sheet");
+  await page.mouse.move(paper.l + 300, paper.t + 300);
+  await page.mouse.wheel(120, 4);
+  await page.waitForFunction((d) => KN.screens.todo.day() === d, tomorrow, { timeout: 3000 }).catch(() => {});
+  const wr = await todoDay();
+  await wait(500);
+  await page.keyboard.press("t");
+  await page.waitForFunction((d) => KN.screens.todo.day() === d, today, { timeout: 3000 }).catch(() => {});
+  await wait(500);
+  const calBox = await box("#head .head-cal");
+  await page.mouse.move(calBox.l + 200, calBox.t + calBox.h / 2);
+  await page.mouse.wheel(120, 0);
+  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day !== w; }, w0, { timeout: 3000 }).catch(() => {});
+  const ww = await weekOf();
+  t.check("トラックパッドの横払い：紙の上で次の日、暦の上で次の週", wr === tomorrow && ww > w0, JSON.stringify({ wr, ww, w0 }));
+  await page.mouse.wheel(-120, 0);
+  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day === w; }, w0, { timeout: 3000 }).catch(() => {});
+  await wait(500);
+  await page.keyboard.press(",");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "settings", null, { timeout: 3000 }).catch(() => {});
+  const ks = await scrId();
+  await page.keyboard.press("3");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "todo", null, { timeout: 3000 }).catch(() => {});
+  t.check(", で設定、設定から 3 でやることへ", ks === "settings" && (await scrId()) === "todo", ks);
+  await wait(600);
+  await page.keyboard.press("/");
+  await wait(500);
+  const found = await page.evaluate(() => { const a = document.activeElement; return !!(a && a.matches("input")); });
+  await page.keyboard.press("2");
+  await wait(400);
+  t.check("/ でさがす欄へ、欄で打つ字は席を動かさない", found && (await scrId()) === "todo");
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.waitForFunction(() => !document.querySelector(".sheet-backdrop"), null, { timeout: 3000 }).catch(() => {});
+  await wait(400);
 
   /* やることの今日：道が時間割の左。 */
   const road = await box("#screen-todo .day-road"), tl = await box("#screen-todo .todo-day.is-tl > .tl");

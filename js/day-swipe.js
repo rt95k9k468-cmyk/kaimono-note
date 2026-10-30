@@ -112,6 +112,9 @@
   /* 離したあとの滑りは、**残りの道のりと指の勢いから**出します
      （`KN.motion.glide`）。 */
 
+  /* 結んだ器（flipIn が出ている画面の器を探すため）。外れた器は探すたびに落とす。 */
+  const wired = new Set();
+
   /** ゴム（`KN.motion.rubber`）の逆。滑って戻っている紙を掴み直したとき、
       いまの位置から指の続きを出すために。 */
   const unrubber = (y, lim) => {
@@ -665,8 +668,47 @@
        控えを組みはじめます——`warm` の中の `ric` がそれです。 */
     warm();
 
-    return { warm, drop };
+    /** 隣の日へ一枚送る（パソコンのキーボードの ←→・トラックパッドの横払い。docs/desk.md の段3）。
+        指で払いきって離したのと同じ道（差し込む → 滑る → 据える → commit）。指が乗っている・
+        滑っている最中・行けない向きは送らない。@returns {boolean} 送ったか */
+    function flip(want) {
+      if (id !== null || settling || (o.busy && o.busy()) || !track.isConnected) return false;
+      const key = o.step(o.day(), want);
+      if (!key) return false;
+      if (KN.motion) KN.motion.fire("nav");
+      if (nudge) { o.commit(key); return true; }
+      pageW = viewport.getBoundingClientRect().width;
+      dx = 0;
+      if (o.lock) o.lock(true);
+      mountSide(want);
+      const which = want < 0 ? "back" : "fwd";
+      if (!peeks || !peeks[which]) { unmount(); if (o.lock) o.lock(false); return false; }
+      settling = { which, key };
+      prebuild(key, which);
+      settle(which, 0).then((done) => {
+        if (!done) return;
+        settling = null;
+        const kept = adopt(which, key);
+        if (o.lock) o.lock(false);
+        o.commit(key, kept);
+        if (track.isConnected) warm();
+      });
+      return true;
+    }
+    wired.forEach((w) => { if (w.viewport === viewport || !w.viewport.isConnected) wired.delete(w); });
+    wired.add({ viewport, flip });
+
+    return { warm, drop, flip };
   }
 
-  KN.daySwipe = { wire };
+  /** root の中の、見えている器を一枚送る。器が無ければ false。 */
+  function flipIn(root, dir) {
+    for (const w of wired) {
+      if (!w.viewport.isConnected) { wired.delete(w); continue; }
+      if (root.contains(w.viewport) && w.viewport.getClientRects().length) return w.flip(dir);
+    }
+    return false;
+  }
+
+  KN.daySwipe = { wire, flipIn };
 })();

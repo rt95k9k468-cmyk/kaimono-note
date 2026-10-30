@@ -2341,6 +2341,8 @@ a { color: var(--c-primary); }
    帯の背丈は席の数ぶん（`height: auto`）——カプセル・縁の光・屈折・押した光（四つとも同じ形）が帯の箱に沿う。 */
 @media (min-width: 840px) {
   :root { --rail-w: 96px; --tabbar-space: 0px; }
+  /* トラックパッドの横払いは日・週を送る（js/keys.js）。ブラウザの「戻る・進む」にしない。 */
+  html, body { overscroll-behavior-x: none; }
   body { background: var(--c-bg); }
   .app { max-width: none; padding-left: var(--rail-w); box-shadow: none; }
   .tabbar {
