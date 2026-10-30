@@ -105,6 +105,7 @@
     if (!behindStale || typingInSheet()) return;
     behindStale = false;
     if (KN.screens[active]) KN.screens[active].render();
+    if (duo) KN.screens[duo.back].render();
   }
 
   /* ---------------- theme ---------------- */
@@ -772,6 +773,12 @@
   ];
   const pairOf = (id) => PAIRS.find((x) => x.front === id || x.back === id) || null;
   let pair = PAIRS[0];
+  /* 1280px から、組の二枚を左右に並べる（docs/desk.md の段6）。席は前の一枚（active）、後ろの一枚は
+     右に出したまま（`.is-duo-r`）。めくる仕掛けは使わない——価格を呼ばれても前の一枚へ。 */
+  const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px)") : null;
+  const duoOf = (id) => (DUO && DUO.matches && pairOf(id)) || null;
+  let duo = null;          // いま並べている組
+  const DUO_CLS = ["is-duo-l", "is-duo-r"];
   /* **紙の頭を、これだけ帯の上に残します。** 下げきったところで前の紙を
      画面から出しきってしまうと、指で戻る道がどこにも無くなります（価格は
      地なので、掴み手を持てない——base.css の「紙一枚と、その後ろの地」）。
@@ -946,6 +953,7 @@
       0＝買うものの紙が全面、1＝価格の紙が全面。 */
   function faceTo(p, id) {
     const pr = pairOf(id || active);
+    if (duoOf(id || active)) { if (active !== pr.front) show(pr.front); return; }
     if (pr) pair = pr;
     const o = faceOpen();
     if (!o) return;
@@ -1124,6 +1132,8 @@
 
   function show(id, face) {
     if (!KN.screens[id]) return;
+    const dp = duoOf(id);
+    if (dp) id = dp.front;
     /* 出ていく暦の印の写しは、何も書き換えないうちに（js/head.js の snapFor）。 */
     if (KN.head.snapFor) KN.head.snapFor(id);
     if (!goingBack) {
@@ -1143,6 +1153,9 @@
     const from = active;
     if (from !== id && KN.ui.closePops) KN.ui.closePops();
     active = id;
+    const wasDuo = duo;
+    duo = dp;
+    document.documentElement.toggleAttribute("data-duo", !!duo);
     /* いまの画面を根に（下の帯の幕・ノートの左の木。CSS の `:has(#screen-….is-active)` をやめた——画面の中で
        何かが出入りするたびに入れ物ごと見直しが掛かり、席を移る一拍が重くなっていた。2026年10月24日）。 */
     document.documentElement.dataset.screen = id;
@@ -1153,7 +1166,7 @@
     /* ただし**引き出し（設定）は別**。開けたところへ帰る画面なので、紙は
        留めたまま潜ります——片づけると、帰ったとき戻り道の頭が消えていました。
        よそのタブへ移れば、そこで片づきます。 */
-    if ((!inPair || inPair !== pair) && !OFF_BAR.includes(id)) faceUnpark();
+    if (((!inPair || inPair !== pair) && !OFF_BAR.includes(id)) || duo) faceUnpark();
     if (inPair) pair = inPair;
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
@@ -1205,6 +1218,8 @@
       inEl.classList.remove(...ALL);
       inEl.classList.add("is-active");
     }
+    const mateEl = duo && document.getElementById("screen-" + duo.back);
+    if (mateEl) mateEl.hidden = false;
     /* 上の帯の持ち主を、組む**前**に入ってくるタブへ（js/head.js）。組む側は
        `render()` の中で自分の暦と題を帯に置きます。 */
     KN.head.enter(id);
@@ -1225,15 +1240,23 @@
     }
     behindStale = false;   // ここで組むので、預かっていた組み直しは要らない
     KN.screens[id].render();
+    if (duo) { ensureMounted(duo.back); KN.screens[duo.back].render(); }
 
     document.querySelectorAll(".screen").forEach((s) => {
-      const on = s.dataset.screen === id;
+      const sid = s.dataset.screen;
+      const on = sid === id;
+      const mate = !!duo && sid === duo.back;
       /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
-         動くものがありません。 */
-      const out = dir !== 0 && !on && s.dataset.screen === from;
+         動くものがありません。並べていた二枚は、二枚とも。 */
+      const out = dir !== 0 && !on && !mate && (sid === from || (!!wasDuo && sid === wasDuo.back));
       s.classList.remove(...ALL);
       s.classList.toggle("is-active", on);
-      if (on) {
+      /* 並べた側の印は、流れ終わるまで出ていく面にも残す（外すと全幅へ跳ぶ）。 */
+      if (!out) {
+        s.classList.toggle("is-duo-l", !!duo && sid === duo.front);
+        s.classList.toggle("is-duo-r", mate);
+      }
+      if (on || mate) {
         s.hidden = false;
         if (dir) s.classList.add(inCls);
       } else if (out) {
@@ -1258,7 +1281,7 @@
     if (dir) {
       slideT = setTimeout(() => {
         document.querySelectorAll(".screen.is-leaving").forEach((s) => {
-          s.classList.remove(...ALL);
+          s.classList.remove(...ALL, ...DUO_CLS);
           s.hidden = true;
           /* 開いたときの札も、隠れたここで外します（戻ってきた一拍に並べ直させない。motion.js の depart）。 */
           KN.motion.depart(s);
@@ -1298,6 +1321,10 @@
       const make = KN.screens[id] && KN.screens[id].dockButton;
       const fab = make ? make() : null;
       if (fab) dock.append(fab);
+      /* 並べた右の一枚の＋は、その一枚の右下に（base.css の「幅の広い画面」）。 */
+      const mk = duo && KN.screens[duo.back].dockButton;
+      const fab2 = mk ? mk() : null;
+      if (fab2) { fab2.classList.add("is-duo-r"); dock.append(fab2); }
       dock.hidden = !dock.childElementCount;
       dock.classList.remove("is-away");
       /* ＋ は帯の**右端の上**に立ちます（base.css の「＋ は帯の右端の上に」）。
@@ -1338,6 +1365,28 @@
     mounted.add(id);
   }
 
+  /* ---------------- 左の列を畳む（幅の広い画面。docs/desk.md の段6） ----------------
+     ⌘\（js/keys.js）か、列の下の ‹。畳むと絵だけの細い列で、席の名前は指したときの札に。 */
+  function applyRail() {
+    const on = store.get().settings.railFolded === true;
+    const moved = document.documentElement.classList.contains("rail-fold") !== on;
+    document.documentElement.classList.toggle("rail-fold", on);
+    const btn = document.getElementById("rail-fold");
+    if (btn) {
+      btn.setAttribute("aria-label", on ? "左の列をひらく" : "左の列を畳む");
+      btn.setAttribute("aria-expanded", String(!on));
+    }
+    document.querySelectorAll("#tabbar .tab").forEach((b) => {
+      const t = b.querySelector(".tab-label");
+      if (on && t) b.title = t.textContent; else b.removeAttribute("title");
+    });
+    /* 中身の幅が変わる——窓の幅が変わったときと同じく測り直させる（暦の選んだ日の輪・印の一枚）。 */
+    if (moved) requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  }
+  KN.app.foldRail = function foldRail() {
+    store.update((s) => { s.settings.railFolded = s.settings.railFolded !== true; });
+  };
+
   /* ---------------- boot ---------------- */
 
   function boot() {
@@ -1351,9 +1400,15 @@
       if (document.visibilityState === "visible" && store.get().settings.textSize === "auto") applyTextSize("auto");
     });
     buildTabs();
+    const fold = node(html`<button type="button" class="rail-fold-btn" id="rail-fold">${icon("chevron-left")}</button>`);
+    fold.addEventListener("click", KN.app.foldRail);
+    document.getElementById("tabbar").after(fold);
+    applyRail();
     watchGlass();
     watchFabAway();
     watchWriting();
+    /* 1280px をまたいだら、組の二枚を並べ直す・重ね直す。 */
+    if (DUO && DUO.addEventListener) DUO.addEventListener("change", () => { if (pairOf(active)) show(active, "settled"); });
     /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
        同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
        ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
@@ -1458,10 +1513,16 @@
     store.subscribe(() => {
       /* 組む前の支度のあいだは、何もしません——show() がこのあと組んで、席も塗ります。 */
       if (preparing) return;
+      /* 左の列を畳んだ・ひらいた（控えを戻したときも）。組む前に——輪や印は組むときに測るので、新しい幅で。 */
+      if (document.documentElement.classList.contains("rail-fold") !== (store.get().settings.railFolded === true)) applyRail();
       if (KN.screens[active]) {
         /* 紙の中で打っているあいだは、組み直しを預かります（上の behindStale）。 */
         if (typingInSheet()) behindStale = true;
-        else { behindStale = false; KN.screens[active].render(); }
+        else {
+          behindStale = false;
+          KN.screens[active].render();
+          if (duo) KN.screens[duo.back].render();
+        }
       }
       paintTabs();
     });

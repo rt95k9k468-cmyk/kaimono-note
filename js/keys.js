@@ -9,6 +9,7 @@
      /・⌘K       さがす（⌘K・Ctrl+K は打っている欄の中でも）
      n           ＋（その画面で足す）
      ,           設定
+     ⌘\          左の列を畳む・ひらく
    ⌘・Ctrl・Alt 付き（⌘K のほか）、変換中、覆いのある紙・小窓が開いているあいだは何もしません（右の段に据えたノートは覆いが無いので効く）。
 
    トラックパッドの二本指の横払い（wheel の deltaX）：暦の上なら週、画面の上なら日を一つ送る（払う向きは指で
@@ -20,6 +21,7 @@
 
   const KN = window.KN;
   const TABS = ["archive", "notes", "todo", "list", "diet"];
+  const WIDE = window.matchMedia("(min-width: 840px)");
 
   /** 打っているところ（欄・本文・選ぶ欄）。util.js の TEXT_FIELD と同じ見分け（チェック・ボタンの input は欄ではない）。 */
   const FIELD = "textarea, select, [contenteditable]:not([contenteditable='false']), input:not([type=checkbox])"
@@ -50,6 +52,11 @@
     /* ⌘K・Ctrl+K：さがす（Notion・Slack と同じ）。打っている欄の中でも効く——書いている途中から探しに行く道。 */
     if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K")) {
       if (!covered() && press(document.querySelector("#head .js-search-btn"))) e.preventDefault();
+      return;
+    }
+    /* ⌘\・Ctrl+\：左の列を畳む・ひらく（Notion・VS Code と同じ。JIS の ¥ キーも）。広い幅だけ。 */
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === "\\" || e.key === "¥" || e.code === "Backslash" || e.code === "IntlYen")) {
+      if (WIDE.matches && KN.app.foldRail) { KN.app.foldRail(); e.preventDefault(); }
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -108,7 +115,7 @@
     if (Math.abs(dx) <= Math.abs(dy)) return;            // 縦の送り
     const t = e.target;
     const onCal = !!(t.closest && t.closest("#head .head-cal"));
-    const onScreen = !!(t.closest && t.closest(".panes > .screen.is-active"));
+    const onScreen = !!(t.closest && t.closest(".panes > .screen:is(.is-active, .is-duo-r)"));
     if (!onCal && !onScreen) return;
     if (typing(t) || sideScroll(t, dx) || covered() || locked()) return;
     e.preventDefault();                                  // ブラウザの「戻る・進む」の払いにしない

@@ -5986,13 +5986,15 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-tree { display: none; }
 @media (min-width: 840px) {
   html:not(.is-locked)[data-screen="notes"] .notes-tree {
-    display: block; position: fixed; top: var(--side-nav-h); bottom: 0;
+    display: block; position: fixed; top: var(--side-nav-h); bottom: calc(var(--side-row) + var(--sp-3) * 2);
     left: 0; z-index: var(--z-bar);
     width: calc(var(--rail-w) - 1px);
     padding: var(--sp-2) var(--sp-2) var(--sp-6);
     border-top: 1px solid var(--c-border);
     overflow-y: auto; overscroll-behavior: contain;
   }
+  /* 畳んだ列（base.css の「左の列を畳む」）に木は入らない——ノートの一覧から行く。 */
+  :root.rail-fold[data-screen="notes"] .notes-tree { display: none; }
 }
 @media print { .notes-tree { display: none !important; } }
 .notes-tree > [role="tree"] { display: flex; flex-direction: column; }
@@ -8137,6 +8139,13 @@ button.note-when:active { opacity: var(--press-fade); }
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
   #screen-diet .tl-sheet.is-bare { background: var(--c-sheet); }
   #screen-diet .diet-day.card { border-bottom: none; }
+  /* 紙の掴み手の棒は指で引く道具（暦の段・買うもの⇄価格）。広い幅では指したときだけ見せる——題を押せば暦は開き、
+     席の二度押しで価格へ行ける。掴み手そのもの（引ける・押せる場所と背）は変えない。 */
+  @media (hover: hover) {
+    .tl-grip { cursor: grab; }
+    .tl-grip > i { opacity: 0; transition: opacity var(--m-state) var(--ease); }
+    .tl-grip:hover > i, .tl-grip:focus-visible > i { opacity: .8; }
+  }
   /* daily の季節の写真（docs/daily.md の「季節の絵」）：電話では幅いっぱいの一枚が紙の頭の帯（窓の三割ほど）に収まるが、
      広い幅で同じ「幅いっぱい」にすると写真の背が窓を越え、紙ぜんぶが写真になる。広い幅では帯の背（--season-h）を決め、
      写真は帯を覆う大きさで真ん中を見せる（Notion の表紙の形）。幕の層は電話と同じ（帯の半ばまで同じ濃さ、帯の下の端で閉じる）。 */
@@ -8189,6 +8198,13 @@ button.note-when:active { opacity: var(--press-fade); }
   :root[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
   :root[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
   :root[data-screen="notes"].has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
+  /* 買うもの｜価格を左右に（app.js の duo）。めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
+  .panes > .screen.is-duo-l { right: 50%; }
+  .panes > .screen.is-duo-r { left: 50%; display: flex; box-shadow: inset 1px 0 0 var(--c-border); }
+  .screen.is-duo-r.is-in-r { animation: desk-in-dn var(--m-nav) var(--ease-out); }
+  .screen.is-duo-r.is-in-l { animation: desk-in-up var(--m-nav) var(--ease-out); }
+  :root[data-duo].has-fab .dock { right: calc((100vw - var(--rail-w)) / 2 + var(--sp-5)); }
+  .dock > .quick-add.is-duo-r { position: fixed; right: var(--sp-5); bottom: var(--sp-5); }
 }
 
 /* ---- 小さな決まり（roadmap-unify の U13）。インラインの style= の代わり ----
