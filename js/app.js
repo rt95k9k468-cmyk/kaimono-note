@@ -1529,6 +1529,15 @@
     /* 欄を出たら（紙を閉じるときも、紙が欄から指を外す）、預かっていた組み直しを。 */
     document.addEventListener("focusout", () => requestAnimationFrame(catchUpBehind));
 
+    /* パソコンに入れたアプリは、開き直しても窓を増やさず今の窓へ戻る（manifest の launch_handler。docs/desk.md）。
+       席の近道（タスクバー・Dock の右クリック）から来たら、その席へ。 */
+    if ("launchQueue" in window) {
+      window.launchQueue.setConsumer((p) => {
+        const h = p && p.targetURL ? new URL(p.targetURL).hash : "";
+        if (h && h !== location.hash) location.hash = h;
+      });
+    }
+
     window.addEventListener("hashchange", () => {
       const id = location.hash.slice(1);
       /* 開いたままのところへショートカットが戻してきた。画面も紙もそのまま、
