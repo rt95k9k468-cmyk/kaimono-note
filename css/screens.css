@@ -8138,6 +8138,17 @@ button.note-when:active { opacity: var(--press-fade); }
   #screen-todo .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2 + var(--sp-4))); }
   /* 設定の帯（‹・題）も読む列にそろえる（‹ が窓の左端に離れていた）。 */
   .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); }
+  /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
+     まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。 */
+  @media (min-width: 1280px) {
+    .set-layer.is-duo .set-scroll { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
+    .set-layer.is-duo .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
+    .set-layer.is-duo .js-body { columns: 2; column-gap: var(--sp-4); padding-top: var(--sp-2); }
+    .set-sec { break-inside: avoid; margin-top: var(--sp-6); }
+    .set-sec:first-child { margin-top: 0; }
+    .set-sec > .set-head:first-child { margin-top: 0; }
+    .set-sec > .set-card:first-child, .set-sec > .settings-group:first-child { margin-top: var(--sp-2); }
+  }
   /* からだの紙は地を持たない（`.is-bare`。中のカードの束が地）。広い幅ではカードが段に並んで束が短くなり、束の下で
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
   #screen-diet .tl-sheet.is-bare { background: var(--c-sheet); }

@@ -94,6 +94,7 @@
     root.innerHTML = "";
     stack = [makeLayer(null)];
     root.append(stack[0].el);
+    if (DUO) DUO.addEventListener("change", () => stack.forEach(paintLayer));
     /* Dropbox へ送った・送れなかったは store の外で動くので、別に聞きます。 */
     if (KN.dropbox) KN.dropbox.onChange(render);
     /* ノート（js/notes-idb.js）も store の外。読み終えたらノートブック・タグの
@@ -303,8 +304,25 @@
       if (typeof page.title === "function") L.navTitle.textContent = titleOf(page);
       page.build().flat().filter(Boolean).forEach((n) => L.body.append(n));
     } else renderRoot(L);
+    duo(L);
     L.scroll.scrollTop = keep;
     paintNav(L);
+  }
+
+  /* 広い幅（1280px〜。docs/desk.md）は、見出しごとのまとまりを二段に組む。まとまりが一つなら一列のまま。
+     電話の DOM は今までどおり（まとめるのは広い幅のときだけ。幅をまたいだら組み直す）。 */
+  const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px)") : null;
+  function duo(L) {
+    const groups = [];
+    if (DUO && DUO.matches) {
+      for (const n of [...L.body.children]) {
+        if (!groups.length || n.matches(".set-head, .settings-group")) groups.push([]);
+        groups[groups.length - 1].push(n);
+      }
+    }
+    const on = groups.length > 1;
+    L.el.classList.toggle("is-duo", on);
+    if (on) groups.forEach((g) => { const sec = node(html`<div class="set-sec"></div>`); g[0].before(sec); sec.append(...g); });
   }
 
   /* ---------------- 一枚で済ませる ----------------

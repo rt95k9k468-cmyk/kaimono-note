@@ -221,6 +221,9 @@
        ——長さも同じところ（`--m-push`）から出します。 */
     const ms = (KN.motion && KN.motion.still && KN.motion.still())
       ? 0 : KN.motion.ms("--m-push");
+    /* 広い幅は一面ぶん滑らせず、少しずらして入れ替える（docs/desk.md。画面の入れ替えと同じ形の横）。
+       指で引いたあと（上の一枚がもう動いている）は、指の続きなので滑らせる。 */
+    if (ms && DESK && DESK.matches && !top.style.transform && top.animate) return swap(top, under, dir);
     const w = (top.getBoundingClientRect().width) || 1;
     const from = dir > 0 ? w : 0;
     const to   = dir > 0 ? 0 : w;
@@ -250,6 +253,27 @@
           done();
         }, ms + 20);
       }));
+    });
+  }
+
+  const DESK = window.matchMedia ? window.matchMedia("(min-width: 840px)") : null;
+
+  /** 広い幅の一段（Material の shared axis の横）：入る一枚は 32px 先から現れ、出る一枚は逆へ薄れる。 */
+  function swap(top, under, dir) {
+    const ms = KN.motion.ms("--m-nav");
+    const easing = KN.motion.ease("--ease-out", "cubic-bezier(.2,.8,.2,1)");
+    const d = 32 * dir;
+    const show = [{ opacity: 0, transform: `translate3d(${d}px,0,0)`, offset: 0 },
+      { opacity: 0, transform: `translate3d(${d}px,0,0)`, offset: .25 }, { opacity: 1, transform: "none" }];
+    const hide = [{ opacity: 1, transform: "none" },
+      { opacity: 0, transform: `translate3d(${-d}px,0,0)`, offset: .4 }, { opacity: 0, transform: `translate3d(${-d}px,0,0)` }];
+    /* 奥へ：上が右から入り、下が左へ出る。戻る：上が右へ出て（そのあと外される）、下が左から入る。 */
+    const [inEl, outEl] = dir > 0 ? [top, under] : [under, top];
+    if (dir < 0) clear(under);
+    const a = inEl ? inEl.animate(show, { duration: ms, easing }) : null;
+    const b = outEl ? outEl.animate(hide, { duration: ms, easing, fill: "forwards" }) : null;
+    return Promise.all([a, b].map((x) => (x ? x.finished.catch(() => {}) : null))).then(() => {
+      if (dir > 0) { clear(top); rest(under); if (b) b.cancel(); }
     });
   }
 

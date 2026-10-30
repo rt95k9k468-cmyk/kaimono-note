@@ -15,6 +15,7 @@
    - 広い幅から電話の幅へ縮めると、帯と印は下へ戻る
    - 段3（js/keys.js）：1〜5 で席・→ で次の日・t で今日・Shift+→ で次の週・, で設定・/ と Ctrl+K（⌘K）でさがす欄（欄で打つ字は席を動かさない）。
      トラックパッドの横払い（wheel の deltaX）は紙の上で日、暦の上で週を送る
+   - 段8：設定は 1280px〜 見出しごとに二段（電話・1280px 未満はまとめない）。「›」は 32px ずらして薄く入れ替える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk.js */
 const { open, checker } = require("./lib");
 
@@ -302,6 +303,31 @@ const { open, checker } = require("./lib");
   await wait(500);
   const back = await box("#tabbar"), lens = await box(".tab-lens"), todo = await box(".tab-todo");
   t.check("電話の幅へ縮めると、帯と印は下へ戻る", back.b >= 843 && back.w === 390 && Math.abs(lens.t - todo.t) < 20, JSON.stringify({ back, lens, todo }));
+
+  /* 段8：設定。電話はまとめない。1280px からは見出しごとのまとまりを二段に（幅をまたげば組み直す）。
+     「›」は一面ぶん滑らせず、32px だけずらして薄く入れ替える。 */
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await wait(700);
+  t.check("設定：電話の幅はまとめない（一列のまま）", await page.evaluate(() => !document.querySelector("#screen-settings .set-sec, #screen-settings .is-duo")));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await wait(500);
+  const secs = await page.evaluate(() => [...document.querySelectorAll("#screen-settings .set-layer.is-duo .set-sec > .set-head")]
+    .map((h) => { const r = h.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top) }; }));
+  t.check("設定：1280px〜は見出しごとに二段（二つ目の見出しは右の段の頭に揃う）", secs.length >= 2 && secs[1].l > secs[0].l + 300 && secs[1].t === secs[0].t,
+    JSON.stringify(secs));
+  await page.locator("#screen-settings .set-row", { hasText: "外観" }).first().click();
+  await wait(60);
+  const mid = await page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();
+    return { l: Math.round(L.getBoundingClientRect().left), o: +getComputedStyle(L).opacity, n: document.querySelectorAll("#screen-settings .set-layer").length }; });
+  t.check("設定：「›」は一面ぶん滑らせず、少しずらして薄く入れ替える", mid.n === 2 && mid.l >= 232 && mid.l <= 232 + 32 && mid.o < 1, JSON.stringify(mid));
+  await wait(600);
+  await page.locator("#screen-settings .set-layer:last-child .set-back").click();
+  await wait(600);
+  t.check("設定：戻ると根っこ一枚が素の姿で残る", await page.evaluate(() => { const L = document.querySelectorAll("#screen-settings .set-layer");
+    return L.length === 1 && !L[0].style.transform && getComputedStyle(L[0]).opacity === "1"; }));
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await wait(500);
+  t.check("設定：1280px より狭い desk は一列", await page.evaluate(() => !document.querySelector("#screen-settings .is-duo")));
 
   t.check("エラーなし", !errors.length, errors.join(" | "));
   t.done();
