@@ -83,7 +83,7 @@
     const diary = (arc.days || [])
       .filter((d) => inYear(d.date) && (hasMemo(d) || store.memoOut(d)))
       .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-      .map((d) => ({ day: d.date, text: hasMemo(d) ? String(d.memo).replace(/\s+$/, "") : null }));
+      .map((d) => ({ day: d.date, text: hasMemo(d) ? KN.diaryPosts.outText(String(d.memo).replace(/\s+$/, "")) : null }));
 
     return { year: y, madeOn: U.todayKey(), firsts, often, diary };
   }

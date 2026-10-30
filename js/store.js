@@ -5019,13 +5019,21 @@
    * 言葉にしてもらう**ときに、そのまま渡せる形にしてあります。数だけ渡すと
    * 数の話しか返ってきません。地の文（days）が一緒に入っているのはそのためです。
    */
+  /** 書き出しの写しの一日：よかったことの印を「よかった：」の字に（KN.diaryPosts.outText。記録は変えない）。 */
+  const outDay = (d) => {
+    const P = KN.diaryPosts;
+    if (!P || !d || typeof d.memo !== "string") return d;
+    const memo = P.outText(d.memo);
+    return memo === d.memo ? d : Object.assign({}, d, { memo });
+  };
+
   function exportMonth(ym) {
     return {
       app: "kaimono-note",
       kind: "daily-month",
       ym,
       exportedAt: stamp(),
-      days: daysOfMonth(ym),
+      days: daysOfMonth(ym).map(outDay),
     };
   }
 
@@ -5044,7 +5052,7 @@
       to: b,
       exportedAt: stamp(),
       days: archive().days.filter((d) => inside(d.date))
-        .slice().sort((x, y) => String(y.date).localeCompare(String(x.date))).map(bare),
+        .slice().sort((x, y) => String(y.date).localeCompare(String(x.date))).map(bare).map(outDay),
     };
   }
 

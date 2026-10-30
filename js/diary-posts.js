@@ -145,8 +145,18 @@
     return a && b ? `${a}\n\n${b}` : a || b;
   }
 
+  /* よかったこと（docs/thinking.md）：一件の中身の頭に見えない印 U+2063。字は本文のまま運ぶ
+     （NFKC でも trim でも落ちない。古い版では印の見えない普通の一件）。コピー・書き出しの字にだけ
+     「よかった：」を付ける（本文には書かない）。 */
+  const GOOD = "\u2063";
+  const isGood = (text) => String(text || "").startsWith(GOOD);
+  const bare = (text) => (isGood(text) ? String(text).slice(GOOD.length) : String(text || ""));
+  const GOOD_RE = new RegExp(`(^|\n)${GOOD}`, "g");
+  /** 外へ出す字（一件でも本文ぜんぶでも）。印の行の頭を「よかった：」に。 */
+  const outText = (s) => String(s == null ? "" : s).replace(GOOD_RE, "$1よかった：");
+
   /** 開いたときの一件が、いまの本文の同じ場所にまだあるか。 */
   const still = (memo, item) => parse(memo).some((x) => x.start === item.start && x.mark === item.mark && x.text === item.text);
 
-  KN.diaryPosts = { TAG, parse, markOf, mark, clean, add, swap, take, still, chunkOf, chunk, chunkAt };
+  KN.diaryPosts = { TAG, GOOD, isGood, bare, outText, parse, markOf, mark, clean, add, swap, take, still, chunkOf, chunk, chunkAt };
 })();

@@ -144,7 +144,8 @@
   function dailyCopyText(day) {
     const cur = store.dayLog(day) || {};
     const blocks = [];
-    const memo = (cur.memo || "").trim();
+    /* よかったことの印は、ここで「よかった：」の字に（本文には書かない。KN.diaryPosts.outText）。 */
+    const memo = KN.diaryPosts.outText((cur.memo || "").trim());
     if (memo) blocks.push(memo);
     if (cur.wake || cur.sleep) blocks.push(`起床 ${orDash(cur.wake)} ・ 就寝 ${orDash(cur.sleep)}`);
     const feed = store.dayFeed(day);
@@ -1421,14 +1422,14 @@
         </span>
         <span class="arc-log-text">
           <span class="arc-posts">${items.length ? items.map((x, k) => html`
-            <span class="arc-post is-folded ${x.mark ? "" : "is-head"}" data-k="${k}" data-key="${d.date}|${x.start}"
-              >${x.mark ? html`<span class="arc-post-at">${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-body"
+            <span class="arc-post is-folded ${x.mark ? "" : "is-head"} ${KN.diaryPosts.isGood(x.text) ? "is-good" : ""}" data-k="${k}" data-key="${d.date}|${x.start}"
+              >${x.mark ? html`<span class="arc-post-at">${KN.diaryPosts.isGood(x.text) ? icon("sun") : ""}${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-body"
                 >${!x.mark && stampOnly(x.text) ? "" : html`<span class="arc-post-acts"
                   ><button type="button" class="arc-post-act js-post-edit" aria-label="直す">${icon("edit")}</button
                   ><button type="button" class="arc-post-act js-post-copy" aria-label="コピー">${icon("copy")}</button></span>`
-                }<span class="arc-post-text">${x.text}</span
+                }<span class="arc-post-text">${KN.diaryPosts.bare(x.text)}</span
                 ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="全文を読む">${icon("chevron-down")}<span>全文を読む</span></button
-                ><span class="arc-post-tail" aria-hidden="true">${x.text}</span></span></span>`)
+                ><span class="arc-post-tail" aria-hidden="true">${KN.diaryPosts.bare(x.text)}</span></span></span>`)
             : html`${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
           ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
               S().showDayTimes === false ? "" : html`
@@ -1472,7 +1473,7 @@
       if (copy) copy.addEventListener("click", (e) => {
         e.stopPropagation();
         if (bodyBlocked()) return;
-        copyText(x.text).then((ok) => {
+        copyText(KN.diaryPosts.outText(x.text)).then((ok) => {
           KN.motion.fire("select");
           KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
         });
@@ -1554,75 +1555,122 @@
     const fresh = !item;
     /* 開いたときの一件が、もう同じ場所に無い（ほかで直した）なら、開かずに組み直す。 */
     if (!fresh && !P.still(memoOf(day), item)) { KN.ui.toast("日記が変わっていました"); render(); return; }
-    /* wrote … この紙が本文に書いた（直す前は、開いたときの）字と場所。text は一件の中身。 */
-    let wrote = fresh ? null : { at: P.chunkAt(item), chunk: P.chunkOf(memoOf(day), item), mark: item.mark, text: item.text };
-    let before = null, after = null, started = null;
-    /* 前からの一件は、打ったときだけ書く（開いて閉じただけで本文の形を変えない）。 */
-    let touched = false, changed = false;
+    /* よかったこと（docs/thinking.md）：新しい一件の紙は、いまのことの上に細い一行（別の一件になる）。
+       問いから開いたときは出さない。前からのよかったことを直す紙は、その一件だけ（印は欄に見せない）。 */
+    const good = !fresh && P.isGood(item.text);
+    const withGood = fresh && !seed;
+    /* 紙ぜんぶで：最初に書く前の本文と、最後に書いた本文（新しく書いて空にしたら、そっくり戻す）。 */
+    let before = null, after = null;
 
     const body = node(html`
       <div class="stack gap-4">
-        <label class="field arc-memo-field">
-          <textarea class="textarea js-memo" rows="5" aria-label="日記" placeholder="いまのことを一行から">${fresh ? seed || "" : item.text}</textarea>
+        ${withGood ? html`<label class="arc-good-field">
+          <span class="arc-good-ico" aria-hidden="true">${icon("sun")}</span>
+          <textarea class="textarea grow-field js-good" rows="1" aria-label="よかったこと" placeholder="よかったこと"></textarea>
+        </label>` : ""}
+        <label class="field arc-memo-field ${good ? "is-good" : ""}">
+          <textarea class="textarea js-memo" rows="5" aria-label="${good ? "よかったこと" : "日記"}" placeholder="${good ? "よかったこと" : "いまのことを一行から"}">${fresh ? seed || "" : P.bare(item.text)}</textarea>
         </label>
       </div>
     `);
     const memo = body.querySelector(".js-memo");
 
-    let timer = 0, since = 0;
-    const save = () => {
-      clearTimeout(timer); timer = 0;
-      /* 書かないのは、まだ打っていないときだけ（読めない日は開く前に断っている。一枚の紙と同じ）。 */
-      if (!touched) return;
-      const text = P.clean(memo.value);
-      if (!text) return;                      // 空のうちは書かない（閉じたときに決める）
-      const m = memoOf(day);
-      if (!wrote) {
-        const mk = P.mark(started || new Date(), day);
-        /* 本文の無い日は、頭に日付と育休の行（日記の紙の下書きと同じもの。コピーが日付を言わないので）。 */
-        const r = P.add(m, text, mk, m.trim() ? "" : dailyStamp(day));
-        if (!r) return;
-        if (before == null) before = m;
-        store.setDayLog(day, { memo: r.memo });
-        wrote = { at: r.at, chunk: r.chunk, mark: mk, text };
-        after = r.memo;
-        return;
-      }
-      const next = P.chunk(wrote, text);
-      if (next === wrote.chunk) return;
-      const out = P.swap(m, wrote.at, wrote.chunk, next);
-      /* 書いた場所に、書いた字がもう無い：上書きせず、新しい一件として残す。 */
-      if (out == null) { wrote = null; save(); return; }
-      store.setDayLog(day, { memo: out });
-      wrote.chunk = next;
-      wrote.text = text;
-      after = out;
-      changed = true;
+    /* 書いた一件の、いまの場所。書いた場所にそのままあればそこ、無ければ同じ字の一件が一つだけのときその場所
+       （同じ紙のもう一つの欄が前で長さを変えた）。どちらでもなければ -1。 */
+    const where = (m, w) => {
+      if (m.slice(w.at, w.at + w.chunk.length) === w.chunk) return w.at;
+      const hit = P.parse(m).filter((x) => x.mark && P.chunkOf(m, x) === w.chunk);
+      return hit.length === 1 ? P.chunkAt(hit[0]) : -1;
     };
-    const queue = () => {
-      touched = true;
-      if (!started) started = new Date();
-      clearTimeout(timer);
-      if (!timer) since = Date.now();
-      timer = setTimeout(save, Math.max(0, Math.min(500, since + 3000 - Date.now())));
+
+    /**
+     * 一つの欄が書く一件。lead … 中身の頭に置く印（よかったことは P.GOOD）。
+     * 打った先から残す（日記の紙と同じ：手が止まって 500ms、最初の一字から 3 秒まで）。
+     * wrote … この欄が本文に書いた（直す前は、開いたときの）字と場所。text は一件の中身。
+     */
+    const pen = (ta, lead, it) => {
+      const p = {
+        ta, gone: false,
+        wrote: it ? { at: P.chunkAt(it), chunk: P.chunkOf(memoOf(day), it), mark: it.mark, text: it.text } : null,
+        /* 前からの一件は、打ったときだけ書く（開いて閉じただけで本文の形を変えない）。 */
+        touched: false, changed: false, timer: 0,
+      };
+      let started = null, since = 0;
+      p.empty = () => !P.clean(ta.value);
+      p.save = () => {
+        clearTimeout(p.timer); p.timer = 0;
+        /* 書かないのは、まだ打っていないときだけ（読めない日は開く前に断っている。一枚の紙と同じ）。 */
+        if (!p.touched || p.gone) return;
+        const t = P.clean(ta.value);
+        if (!t) return;                       // 空のうちは書かない（閉じたときに決める）
+        const text = lead + t;
+        const m = memoOf(day);
+        const w = p.wrote;
+        if (!w) {
+          const mk = P.mark(started || new Date(), day);
+          /* 本文の無い日は、頭に日付と育休の行（日記の紙の下書きと同じもの。コピーが日付を言わないので）。 */
+          const r = P.add(m, text, mk, m.trim() ? "" : dailyStamp(day));
+          if (!r) return;
+          if (before == null) before = m;
+          store.setDayLog(day, { memo: r.memo });
+          p.wrote = { at: r.at, chunk: r.chunk, mark: mk, text };
+          after = r.memo;
+          return;
+        }
+        const next = P.chunk(w, text);
+        if (next === w.chunk) return;
+        const i = where(m, w);
+        /* 書いた場所に、書いた字がもう無い：上書きせず、新しい一件として残す。 */
+        if (i < 0) { p.wrote = null; p.save(); return; }
+        w.at = i;
+        const out = P.swap(m, w.at, w.chunk, next);
+        store.setDayLog(day, { memo: out });
+        w.chunk = next;
+        w.text = text;
+        after = out;
+        p.changed = true;
+      };
+      /** この欄の一件を外した本文（外せなければ m のまま）。 */
+      p.cut = (m) => {
+        p.gone = true;
+        const i = p.wrote ? where(m, p.wrote) : -1;
+        const out = i < 0 ? null : P.take(m, i, p.wrote.chunk);
+        return out == null ? m : out;
+      };
+      ta.addEventListener("input", () => {
+        p.touched = true;
+        if (!started) started = new Date();
+        clearTimeout(p.timer);
+        if (!p.timer) since = Date.now();
+        p.timer = setTimeout(p.save, Math.max(0, Math.min(500, since + 3000 - Date.now())));
+      });
+      ta.addEventListener("blur", p.save);
+      return p;
     };
-    memo.addEventListener("input", queue);
-    memo.addEventListener("blur", save);
+    const main = pen(memo, good ? P.GOOD : "", item);
+    const goodTa = body.querySelector(".js-good");
+    const pens = goodTa ? [pen(goodTa, P.GOOD, null), main] : [main];
+    const saveAll = () => pens.forEach((p) => p.save());
+
     /* 裏へ回る・閉じられる瞬間は、待っている分をその場で（日記の紙と同じ）。 */
-    const hide = () => { if (timer) { save(); store.flush(); } };
+    const hide = () => { if (pens.some((p) => p.timer)) { saveAll(); store.flush(); } };
     const onVis = () => { if (document.visibilityState === "hidden") hide(); };
     window.addEventListener("pagehide", hide);
     document.addEventListener("visibilitychange", onVis);
 
-    /** 一件を外す（空にして閉じた・「消す」）。この紙で書いた一件は書く前の本文へ戻し、
+    /** 一件を外す（空にして閉じた・「消す」）。この紙で書いた一件だけなら書く前の本文へ戻し、
         前からの一件は「元に戻す」を出す。 */
     let gone = false;
-    const drop = (loud) => {
-      if (gone || !wrote) return;
-      gone = true;
+    const drop = (loud, list) => {
+      const mine = list.filter((p) => p.wrote && !p.gone);
+      if (!mine.length) return;
+      const all = pens.every((p) => !p.wrote || p.gone || mine.includes(p));
+      if (all) gone = true;
       const m = memoOf(day);
-      const out = fresh && after != null && m === after ? before : P.take(m, wrote.at, wrote.chunk);
-      if (out == null) return;
+      let out = m;
+      if (fresh && all && after != null && m === after) { out = before; mine.forEach((p) => { p.gone = true; }); }
+      else mine.forEach((p) => { out = p.cut(out); });
+      if (out === m) return;
       store.setDayLog(day, { memo: out });
       /* 新しく書いて空にしたのは、書かなかったのと同じ（黙って戻す）。それ以外は「元に戻す」。 */
       if (fresh && !loud) return;
@@ -1636,21 +1684,23 @@
       unwatch();
       window.removeEventListener("pagehide", hide);
       document.removeEventListener("visibilitychange", onVis);
-      save();
+      saveAll();
       if (gone) return;
-      if (touched && !P.clean(memo.value)) { drop(false); return; }
-      if (toNote && wrote) { const c = Object.assign({}, wrote); setTimeout(() => moveToNote(day, c), 0); return; }
+      drop(false, pens.filter((p) => p.touched && p.empty()));
+      if (gone) return;
+      const kept = pens.filter((p) => p.wrote && !p.gone);
+      if (toNote && main.wrote && !main.gone) { const c = Object.assign({}, main.wrote); setTimeout(() => moveToNote(day, c), 0); return; }
       /* 一枚で開く：本文ぜんぶと起床・就寝の紙へ（書いた一件は残してから）。 */
       if (toPage) { setTimeout(() => openLogSheet(day), 0); return; }
       /* 書いた先から残す紙の一言（docs/look.md）：新しい一件は「保存しました」、直したら「更新しました」。 */
-      if (fresh ? !!wrote : changed) KN.ui.toast(fresh ? "保存しました" : "更新しました");
+      if (fresh ? kept.length : main.changed) KN.ui.toast(fresh ? "保存しました" : "更新しました");
     };
 
     let h = null;
     const menu = [
       { icon: "notes", label: "ノートへ移す", onPick: () => { toNote = true; h.close(); } },
       { icon: "edit", label: "一枚で開く", onPick: () => { toPage = true; h.close(); } },
-      { icon: "trash", label: "消す", danger: true, onPick: () => { save(); drop(true); h.close(); } },
+      { icon: "trash", label: "消す", danger: true, onPick: () => { saveAll(); drop(true, pens); h.close(); } },
     ];
     const at = item && item.mark ? ` ${item.date ? `${item.date} ` : ""}${item.at}` : "";
     h = KN.ui.sheet({
@@ -1667,7 +1717,7 @@
     /* 日記だけの鍵が閉じたら、この紙も閉じる（閉じれば残す）。 */
     if (KN.lock) unwatch = KN.lock.diarySheet(() => h.close());
     h.el.querySelector(".js-ok").addEventListener("click", () => {
-      save();
+      saveAll();
       KN.motion.fire("select");
       h.close();
     });
@@ -1704,7 +1754,7 @@
     const N = KN.notes;
     const NS = KN.screens.notes;
     if (!N || N.state() !== "on" || !NS || !NS.pick) { KN.ui.toast("ノートを開けませんでした"); return; }
-    const text = KN.diaryPosts.clean(c.text);
+    const text = KN.diaryPosts.clean(KN.diaryPosts.outText(c.text));
     if (!text) return;
     const put = async (id) => {
       let note, back;

@@ -3924,6 +3924,13 @@ a.btn { text-decoration: none; }
   border: 1px solid color-mix(in srgb, var(--c-text) 7%, transparent);
   transition: opacity var(--m-state) var(--ease);
 }
+/* よかったこと（docs/thinking.md）：地を主色の塗りでうすく温め、時刻の前に小さな陽の絵（主色の字）。数えない。 */
+.arc-post.is-good .arc-post-body {
+  background: color-mix(in srgb, color-mix(in srgb, var(--c-primary-fill) 22%, var(--c-surface)) var(--post-a), transparent);
+  border-color: color-mix(in srgb, var(--c-primary-fill) 45%, transparent);
+}
+.arc-post.is-good .arc-post-at { display: inline-flex; align-items: center; gap: 4px; }
+.arc-post.is-good .arc-post-at svg { width: 1em; height: 1em; color: var(--c-primary); }
 .arc-post.can-more .arc-post-body { cursor: pointer; }
 .arc-post.can-more .arc-post-body:active:not(:has(.arc-post-act:active)) { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-post-acts {
@@ -6700,6 +6707,21 @@ button.note-when:active { opacity: var(--press-fade); }
 .sheet.is-card .sheet-body > .stack,
 .sheet.is-card .arc-memo-field { flex: 1 0 auto; }
 .sheet.is-card .arc-memo-field > .textarea { flex: 1 0 auto; min-height: 5lh; resize: none; }
+/* よかったこと：新しい一件の紙の頭に細い一行（打てば伸びる）。いまのことの欄より温かい地。 */
+.arc-good-field {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-primary-fill) 18%, var(--c-surface));
+  border: 1.5px solid color-mix(in srgb, var(--c-primary-fill) 50%, transparent);
+  transition: border-color var(--m-state) var(--ease);
+}
+.arc-good-field:focus-within { border-color: var(--c-primary); }
+.arc-good-ico { flex: none; display: grid; place-items: center; height: calc(var(--fs-lg) * var(--lh-body)); color: var(--c-primary); }
+.arc-good-ico svg { width: var(--ico-sm); height: var(--ico-sm); }
+.arc-good-field > .textarea, .arc-good-field > .textarea:focus {
+  flex: 1 1 auto; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; resize: none;
+}
+.arc-memo-field.is-good > .textarea { background: color-mix(in srgb, var(--c-primary-fill) 12%, var(--c-surface)); }
 /* 日付は一行（字と欄を横に並べる）。縦に積むと、メモより先に場所を取っていた
    （2026年10月6日・利用者「日付で場所をとりすぎ」）。 */
 /* 日記の紙の底：↶ ↷ と閉じる（screen-archive.js の histFoot）。 */
@@ -6713,7 +6735,7 @@ button.note-when:active { opacity: var(--press-fade); }
    「メモ」の字を畳み、余った高さはぜんぶメモ欄へ（2026年10月6日・利用者「メモ欄が狭すぎる。
    中心に大きく」）。キーボードを下げれば元に戻る。電話の幅だけ（`.kb-open` は欄に触れただけで付く）。 */
 @media (max-width: 639.98px) {
-  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .sheet-body > .stack > :not(.arc-memo-field),
+  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .sheet-body > .stack > :not(.arc-memo-field, .arc-good-field),
   .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .arc-memo-field > .field-label { display: none; }
   .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .arc-memo-field > .textarea { min-height: 3lh; }
 }
