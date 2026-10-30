@@ -7,6 +7,8 @@
    - ノートの左の木は左の列の中、席の行の下（840px でも出る）
    - 1280px〜：ノートの席で開いたノートは右の段（木と一覧の右・上の帯の下・窓の右端まで）。覆いは無く、
      一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は一覧の右下。ほかの席へ移ると閉じる
+   - 1280px〜（段7）：ホームは木｜本文の二列（真ん中の一覧なし、★・最近直した・問い は木に、＋は木の右下）。
+     すべてのノート・問い・さがすときだけ真ん中に一覧。さがしているあいだも左の列は残る
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
    - 1280px〜：買うもの｜価格は左右に並ぶ（席の二度押しでめくらない・＋は一枚ずつ・#prices でも並び）。1280px より狭い desk はめくる
    - 右クリック：買うもの・価格の行の払う操作を小窓で。⌘\\・Ctrl+\\ と列の下の口で左の列を畳む（段6）
@@ -238,10 +240,32 @@ const { open, checker } = require("./lib");
   t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 232 && tree.t >= lastSeat.b
     && tree.b < 900 && tree.b > 820 && notesScr.l === 232, JSON.stringify({ tree, lastSeat, notesScr }));
 
-  /* 三列：開いたノートは右の段。 */
+  /* 段7：ホームは木｜本文の二列（真ん中の一覧は出さない）。★・最近直した・問い は木に。 */
+  const shown = (s) => page.evaluate((q) => { const e = document.querySelector(q); return !!e && getComputedStyle(e).display !== "none"; }, s);
+  const quick = await page.evaluate(() => [...document.querySelectorAll(".notes-tree .nt-quick")].filter((e) => getComputedStyle(e).display !== "none").map((e) => e.getAttribute("aria-label")));
+  t.check("二列のホーム：真ん中の一覧は出さず、木に 問い・最近直した", !(await shown("#screen-notes .notes-ground"))
+    && await shown(".notes-tree .js-tree-asks") && quick.includes("最近直した"), JSON.stringify(quick));
+  await page.evaluate(() => [...document.querySelectorAll(".notes-tree .nt-quick .nt-row")].find((e) => e.textContent.includes("一つめ")).click());
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await wait(500);
+  const pane0 = await box(".sheet.is-note.is-open"), fab0 = await box("#dock");
+  const fabTop = await page.evaluate(() => { const r = document.getElementById("dock").getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!e && !!e.closest("#dock"); });
+  t.check("二列のホーム：開いたノートは木のすぐ右から・＋は木の右下（隠れない）", pane0 && pane0.l === 232 && pane0.r === 1440 && fab0.r <= 232 && fabTop,
+    JSON.stringify({ pane0, fab0, fabTop }));
+  await page.keyboard.press("Control+k");
+  await wait(500);
+  t.check("さがすと真ん中の一覧が出る・左の列は残る", await shown("#screen-notes .notes-ground") && await shown(".tab-archive")
+    && Math.round((await box(".sheet.is-note.is-open")).l) >= 232 + 380);
+  await page.evaluate(() => document.activeElement.blur());
+  await wait(400);
+  t.check("空のまま窓を離れると二列へ戻る", !(await shown("#screen-notes .notes-ground")));
+  await page.evaluate(() => document.querySelector(".notes-tree .js-tree-all").click());
+  await wait(600);
+
+  /* 三列（すべてのノート）：開いたノートは右の段。 */
   const openRow = async (title) => {
     await page.evaluate((s) => {
-      const r = [...document.querySelectorAll("#screen-notes .nt-row, #screen-notes .note-row .note-open")].find((e) => e.textContent.includes(s));
+      const r = [...document.querySelectorAll("#screen-notes .note-row .note-open")].find((e) => e.textContent.includes(s));
       r.click();
     }, title);
     await page.waitForFunction((s) => [...document.querySelectorAll(".sheet.is-note.is-open")].some((e) => e.querySelector(".note-title-in") && e.querySelector(".note-title-in").value === s), title);

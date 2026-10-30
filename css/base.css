@@ -2025,8 +2025,9 @@ a { color: var(--c-primary); }
 }
 
 /* Nobody switches tabs mid-word, and the room is better spent on the list
-   while the keyboard has the bottom half of the screen. */
-.kb-open .tabbar { display: none; }
+   while the keyboard has the bottom half of the screen.
+   広い幅の左の列は残す（kb-open は欄に触れただけで付く。docs/desk.md）。 */
+@media (max-width: 839.98px) { .kb-open .tabbar { display: none; } }
 
 /* ---------------- portrait only ---------------- */
 

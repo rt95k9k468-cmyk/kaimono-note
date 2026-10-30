@@ -39,6 +39,7 @@
   const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
   let treeEl = null;
+  let seeking = false;             // さがす窓に指が入っている
   /* ホームの木の印：木から開いて閉じたノート（homeCur）か、道すじから戻ったノートブック（homeNb）。 */
   let homeCur = null;
   let homeNb = null;
@@ -108,6 +109,19 @@
       body: root.querySelector(".js-body"),
     };
 
+    /* 三列の真ん中は探すあいだも出す（docs/desk.md）。虫めがね・⌘K は窓に指を入れるので、その前に出しておく。 */
+    const unseek = () => { if (!els.search.value && document.activeElement !== els.search) { seeking = false; paintMid(); } };
+    els.searchBtn.addEventListener("click", () => {
+      if (!els.mine()) return;
+      seeking = true;
+      paintMid();
+      setTimeout(unseek);              // 押して閉じたとき
+    });
+    /* 一覧を押して窓を離れたときは、押し終えてから（先に畳むと押した行が消える）。 */
+    els.search.addEventListener("blur", () => {
+      if (root.matches(":active")) window.addEventListener("pointerup", () => setTimeout(unseek), { once: true });
+      else unseek();
+    });
     KN.ui.wireSearch(els, () => renderBody(), (q) => { query = q; });
 
     /* 読み終えた・★・消した・戻した。打つたびには来ません（紙を閉じたときに
@@ -287,8 +301,8 @@
     const favs = all.filter((n) => n.fav);
     if (favs.length) { box.append(secTitle("★")); box.append(flatRows(favs)); }
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
-    const recent = all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch));
-    if (recent.length) { box.append(secTitle("最近直した")); box.append(flatRows(recent.slice(0, 3))); }
+    const recent = recentOf(all);
+    if (recent.length) { box.append(secTitle("最近直した")); box.append(flatRows(recent)); }
     /* 6つの棚があれば、棚ごとに色のカード。 */
     const shelves = N().notebooks().some((nb) => SHELF[nb]);
     const tree = node(html`<div class="notes-books ${shelves ? "has-shelves" : ""}" role="tree" aria-label="ノートブック"></div>`);
@@ -314,6 +328,8 @@
       return nb;
     });
   }
+
+  const recentOf = (all) => all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)).slice(0, 3);
 
   /** 行だけの短い並び（★・最近直した）：ノートブックの小さな絵と題。押すと紙（閉じるとこの行へ縮んで戻る）。 */
   function flatRows(list) {
@@ -761,6 +777,12 @@
     const p = page();
     KN.head.notesTitle(p.k === "list" ? html`<span>すべてのノート</span>` : p.k === "ask" ? html`<span>問い</span>` : "",
       pages.length > 1 ? back : null, again);
+    paintMid();
+  }
+  /** 三列（1280px〜）の真ん中の一覧を出すか：すべてのノート・問い・探しているときだけ。ホームは木｜本文の二列
+      （ホームの中身は左の木と同じなので。docs/desk.md）。効くのは css の 1280px の中だけ。 */
+  function paintMid() {
+    document.documentElement.classList.toggle("notes-mid", page().k !== "home" || !!query || seeking);
   }
   /** 席をもう一度押したら、ホームへ。ホームに居れば断る（今までどおり）。 */
   function again() {
@@ -2326,6 +2348,23 @@
       closePapers();
       if (page().k !== "list") go({ k: "list" });
     }, "is-all js-tree-all");
+    line(html`${icon("thought")}<span class="nt-name">問い</span>`, !cur && !query && p.k === "ask", () => {
+      closePapers();
+      if (page().k !== "ask") go({ k: "ask" });
+    }, "is-all js-tree-asks");
+    /* ★・最近直した（三列のホームは真ん中を出さないので、木の上へ。出すのは css の 1280px から）。 */
+    const all = N().list();
+    [["★", all.filter((n) => n.fav)], ["最近直した", recentOf(all)]].forEach(([title, list]) => {
+      if (!list.length) return;
+      const sec = node(html`<div class="nt-quick" role="group" aria-label="${title}"><div class="section-title">${title}</div></div>`);
+      list.forEach((n) => {
+        const r = node(html`
+          <button type="button" class="nt-row is-flat" data-id="${n.id}">${n.notebook ? book(n.notebook) : html`<span class="nb-ico is-blank">${icon("book")}</span>`}<span class="nt-name">${headOf(n) || "ノート"}</span></button>`);
+        r.addEventListener("click", () => { KN.motion.fire("select"); fromTree(n.id); });
+        sec.append(r);
+      });
+      box.append(sec);
+    });
     bookRows(box, t, {
       open: treeOpen, stick: false, cur,
       curNb: curNote && t.isHead(cur) ? curNote.notebook : null,

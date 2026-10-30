@@ -6004,6 +6004,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-tree .nt-row.is-head { display: none; }
 .notes-tree .nt-grp:has(> .nt-row.is-book) { margin-top: var(--sp-2); }
 @media (hover: hover) { .notes-tree .nt-row:not([aria-current="true"]):hover { background-color: var(--c-surface); } }
+/* ★・最近直した（木の上）。三列のホームは真ん中を出さないので、ここに（1280px から。下の「三列」）。 */
+.notes-tree .nt-quick { display: none; margin-top: var(--sp-2); }
+.notes-tree .nt-quick > .section-title { padding-inline: var(--sp-2); }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
 .notes-chips { margin-top: var(--sp-2); }
 .notes-chips .chip svg,
@@ -8198,6 +8201,14 @@ button.note-when:active { opacity: var(--press-fade); }
   :root[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
   :root[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
   :root[data-screen="notes"].has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
+  /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
+     木｜本文の二列（ホームの中身は木と同じ。★・最近直した は木の上へ）。畳んだ列には木が無いので、ホームも出す。 */
+  .notes-tree .nt-quick { display: block; }
+  :root[data-screen="notes"]:not(.notes-mid, .rail-fold) { --list-w: 0px; }
+  :root:not(.notes-mid, .rail-fold) #screen-notes :is(.notes-ground, .search-wrap) { display: none; }
+  :root:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: var(--c-surface); }
+  /* ＋は木の右下（--pane-x が列の幅になる）。木（--z-bar）より前へ。 */
+  :root[data-screen="notes"]:not(.notes-mid, .rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 1); }
   /* 買うもの｜価格を左右に（app.js の duo）。めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
   .panes > .screen.is-duo-l { right: 50%; }
   .panes > .screen.is-duo-r { left: 50%; display: flex; box-shadow: inset 1px 0 0 var(--c-border); }
