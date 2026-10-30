@@ -2997,6 +2997,9 @@
   const WORK_KEY = "kaimono-note-todo-work";
   let workOnly = (() => { try { return localStorage.getItem(WORK_KEY) === "1"; } catch (_) { return false; } })();
   const weekFace = () => oneDay() && face === "week";
+  /* 週の面を左右に並べる幅（docs/desk.md の段4。screens.css の「幅の広い画面」の 1200px と同じ数）。またいだら組み直す。 */
+  const WEEK_TWO = window.matchMedia("(min-width: 1200px)");
+  WEEK_TWO.addEventListener("change", () => { if (root && weekFace()) render(); });
   /* 月の面（2026年10月19日、利用者）。押せば暦が月の段に開き、下はその月の予定・締切を日ごとに。暦を畳めば週の面へ。 */
   const monthFace = () => oneDay() && face === "month";
   /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
@@ -3164,7 +3167,13 @@
     const mine = (t) => !workOnly || t.side === "work";
     const open = openAll.filter(mine);
     const all = store.get().todos.filter(mine);
-    const el = node(html`<div class="day-slide wk" data-week="${w.from}"></div>`);
+    /* 幅の広い画面（1200px〜）では左に日の行、右に期限・やること・これから（docs/desk.md の段4）。電話は一列のまま
+       （並びも同じ。main・side が el そのもの）。 */
+    const two = WEEK_TWO.matches;
+    const el = node(html`<div class="day-slide wk ${two ? "is-two" : ""}" data-week="${w.from}"></div>`);
+    const main = two ? node(html`<div class="wk-main"></div>`) : el;
+    const side = two ? node(html`<div class="wk-side"></div>`) : el;
+    if (two) el.append(main, side);
 
     const row = (t, fact, c) => {
       const r = node(html`
@@ -3185,7 +3194,7 @@
     let dues = [], marked = [];
     if (now) {
       const cp = copyBlock();
-      if (cp) el.append(cp);
+      if (cp) side.append(cp);
     }
     /* 今週（幅・›）→ まとめの一行 → 過ぎた日（畳む）→ 今日からの行 → 期限 → やること → 来週 → これから。
        大きな見出しは 今週・来週・これから の三つだけ（期限・やることは今週の中の小見出し）。前は過ぎた日を送って上へ
@@ -3195,22 +3204,22 @@
     const tally = { ev: 0, min: 0, due: tasks.filter((t) => t.deadline && t.deadline >= w.from && t.deadline <= w.to).length };
     const fold = now && today > w.from;   // 過ぎた日のある今週
     const grid = weekDays(w, open, all, today, tally, fold && !pastOpen ? today : null);
-    el.append(wkHead(w, true));
+    main.append(wkHead(w, true));
     const sum = wkSum(tally);
-    if (sum) el.append(sum);
+    if (sum) main.append(sum);
     if (fold) {
       const zk = U.shiftDay(today, -1), a = U.dayDate(w.from), z = U.dayDate(zk);
       const span = w.from === zk ? `${a.getDate()}日`
         : a.getMonth() === z.getMonth() ? `${a.getDate()}日〜${z.getDate()}日` : `${mdJa(w.from)}〜${mdJa(zk)}`;
-      el.append(node(html`<button type="button" class="wk-past" aria-expanded="${String(pastOpen)}">過ぎた日<span class="wk-range">${span}</span><span class="wk-twist">${icon("chevron")}</span></button>`));
+      main.append(node(html`<button type="button" class="wk-past" aria-expanded="${String(pastOpen)}">過ぎた日<span class="wk-range">${span}</span><span class="wk-twist">${icon("chevron")}</span></button>`));
     }
-    el.append(grid);
+    main.append(grid);
     if (now) {
       dues = tasks.filter((t) => t.deadline && t.deadline <= w.to)
         .sort((a, b) => (a.deadline < b.deadline ? -1 : a.deadline > b.deadline ? 1 : 0));
       if (dues.length) {
-        el.append(node(html`<h3 class="wk-h is-sub">期限</h3>`));
-        el.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`, "var(--kind-due)"))));
+        side.append(node(html`<h3 class="wk-h is-sub">期限</h3>`));
+        side.append(list(dues.map((t) => row(t, `${dWeek(t.deadline)}まで`, "var(--kind-due)"))));
       }
       /* 日の過ぎたまだのやることは、書き換えずに今週へ戻って見える（決めごと1「元の場所へ戻るだけ」）。
          七日の行の過ぎた日には出さない（同じものを二か所に置かない）。先週より前のものはこれから。 */
@@ -3222,7 +3231,7 @@
       if (marked.length || picks) {
         const h = node(html`<h3 class="wk-h is-sub">やること<button type="button" class="wk-pick ${ask ? "is-ask" : ""}">選ぶ</button></h3>`);
         h.querySelector(".wk-pick").addEventListener("click", (e) => { haptic(); pickSheet(e.currentTarget); });
-        el.append(h);
+        side.append(h);
       }
       if (marked.length) {
         const box = list((weekMore ? marked : marked.slice(0, 5))
@@ -3232,18 +3241,18 @@
           more.addEventListener("click", () => { haptic(); weekMore = !weekMore; render(); });
           box.append(more);
         }
-        el.append(box);
+        side.append(box);
       }
     }
 
     if (now) {
       // 来週の七日。見出しは今週と同じ形（題と日付の幅）。
       const nx = U.weekOf(U.shiftDay(w.from, 7));
-      el.append(wkHead(nx, false));
+      main.append(wkHead(nx, false));
       const after = weekDays(nx, open, all, today);
       wkLanes(grid, after);
-      el.append(after);
-      el.append(laterBlock(tasks, dues, marked, w.from, nx.to));
+      main.append(after);
+      side.append(laterBlock(tasks, dues, marked, w.from, nx.to));
     }
     el.addEventListener("click", (e) => {
       const n = e.target.closest(".js-open");

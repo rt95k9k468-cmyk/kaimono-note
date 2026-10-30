@@ -2,7 +2,7 @@
    - 電話の幅：帯は下（変えていない）
    - 840px〜：帯は左の縦の列（幅 --rail-w）、席は縦に並び、印は縦に滑る。中身は帯の右から窓の右端まで
    - 読む幅：買うものの棚は 760px まで
-   - 1200px〜：やることの今日は道が時間割の左、からだのカードは二段以上に並ぶ
+   - 1200px〜：やることの今日は道が時間割の左、週の面は日の行が左・これからが右、からだのカードは二段以上に並ぶ
    - ノートの左の木は帯の右（840px でも出る）
    - 1280px〜：ノートの席で開いたノートは右の段（木と一覧の右・上の帯の下・窓の右端まで）。覆いは無く、
      一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は一覧の右下。ほかの席へ移ると閉じる
@@ -131,6 +131,18 @@ const { open, checker } = require("./lib");
   const face = await page.evaluate(() => document.getElementById("screen-todo").dataset.face);
   t.check("やることの今日：道は時間割の左に並ぶ", face === "today" && road && tl && road.r <= tl.l && Math.abs(road.t - tl.t) < 40,
     JSON.stringify({ face, road, tl }));
+
+  /* 週の面：左に日の行、右に期限・やること・これから（段4）。 */
+  await page.click('#screen-todo .wk-faces .seg-btn[data-face="week"]');
+  await page.waitForFunction(() => document.getElementById("screen-todo").dataset.face === "week", null, { timeout: 3000 }).catch(() => {});
+  await wait(700);
+  const wkMain = await box("#screen-todo .wk.is-two > .wk-main"), wkSide = await box("#screen-todo .wk.is-two > .wk-side");
+  const later = await page.evaluate(() => !!document.querySelector("#screen-todo .wk-side .wk-later, #screen-todo .wk-side .wk-later-h, #screen-todo .wk-side [class*='later']"));
+  t.check("週の面：日の行は左、これからは右に並ぶ", wkMain && wkSide && wkMain.r <= wkSide.l && Math.abs(wkMain.t - wkSide.t) < 30 && later,
+    JSON.stringify({ wkMain, wkSide, later }));
+  await page.click('#screen-todo .wk-faces .seg-btn[data-face="today"]');
+  await page.waitForFunction(() => document.getElementById("screen-todo").dataset.face === "today", null, { timeout: 3000 }).catch(() => {});
+  await wait(600);
 
   /* からだ：カードは段組み（同じ高さに二枚以上）。 */
   await page.click(".tab-diet");

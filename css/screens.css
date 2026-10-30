@@ -8129,6 +8129,8 @@ button.note-when:active { opacity: var(--press-fade); }
   .set-scroll { padding-inline: max(0px, calc((100% - var(--desk-read)) / 2)); }
   #screen-todo .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2 + var(--sp-4))); }
   #screen-notes { padding-left: var(--tree-w); }
+  /* 設定の帯（‹・題）も読む列にそろえる（‹ が窓の左端に離れていた）。 */
+  .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); }
   /* 書く紙（ノート・日記・積み上げ）は読む幅の大きな一枚。真ん中のまま、背は窓のほぼいっぱい。 */
   .sheet.is-note:not(.is-wide), .sheet.is-card {
     width: min(100% - var(--sp-8) * 2, var(--desk-read));
@@ -8137,8 +8139,12 @@ button.note-when:active { opacity: var(--press-fade); }
   }
 }
 @media (min-width: 1200px) {
-  #screen-todo[data-face="today"] .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
-  #screen-todo[data-face="today"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+  :root { --side-w: 380px; }
+  #screen-todo:is([data-face="today"], [data-face="week"]) .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
+  #screen-todo:is([data-face="today"], [data-face="week"]) .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+  /* 週の面：左に日の行（今週・来週）、右に期限・やること・これから（screen-todo.js の weekSlide が分けて組む）。
+     今週でない週も同じ二段（右は空）——払って週を替えても日の行が同じ場所に居るように。 */
+  .wk.is-two { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); column-gap: var(--sp-8); align-items: start; }
   /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。 */
   #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
   #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: 480px; }
