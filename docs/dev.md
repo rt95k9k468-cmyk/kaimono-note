@@ -127,6 +127,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   （`const` で下に書くと TDZ で落ちる——過去のデータ消失事故の原因）。
   `tests/traps.js` が js/ の全部で、読み込みで走る道（即時関数・すぐ呼ぶ関数・同期メソッドの
   引数・Promise の executor）を推移的にたどって見張る。オブジェクト越しの呼び出し（`api.f()`）はたどらない。
+  **`reconcile()` で足す設定の鍵は `emptyState()` にも置く**（空から始めた記録が読み直すたびに変わり、Dropbox が
+  同じ中身を送り直した。`dropbox.js`「日が変わると〜」・`lock.js`「記録は一つも変わらない」が赤になる）。
 - `KN.util.today()` は **UTC ISO**（`toISOString()`）、`dayKey()` /
   `todayKey()` は**ローカル**。混ぜると JST で9時間・1日のズレが起きる。
   日をまたぐ集計は必ず `dayKey()` 系で揃える。
