@@ -2170,3 +2170,13 @@ button.hero-node:active { scale: var(--press-dot); }
 .todo-cands[hidden] { display: none; }
 .todo-cands::-webkit-scrollbar { display: none; }
 .todo-cands .chip { flex: none; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* キーボードの近道の一覧（js/keys.js の help。docs/desk.md の段11） */
+.keys-list { display: grid; gap: 10px; margin: 0; padding: 4px 4px 12px; }
+.keys-row { display: grid; grid-template-columns: 9.5em 1fr; align-items: center; gap: 12px; }
+.keys-row dt { display: flex; flex-wrap: wrap; gap: 4px; }
+.keys-row dd { margin: 0; color: var(--c-text-2); }
+.keys-list kbd {
+  min-width: 1.9em; padding: 2px 7px; border: 1px solid var(--c-border); border-bottom-width: 2px;
+  border-radius: var(--r-sm); background: var(--c-bg); color: var(--c-text); font: inherit; font-size: .88em; text-align: center;
+}

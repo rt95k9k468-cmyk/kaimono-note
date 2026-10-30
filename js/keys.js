@@ -10,7 +10,9 @@
      n           ＋（その画面で足す）
      ,           設定
      ⌘\          左の列を畳む・ひらく
+     ?           近道の一覧（段11）
    ⌘・Ctrl・Alt 付き（⌘K のほか）、変換中、覆いのある紙・小窓が開いているあいだは何もしません（右の段に据えたノートは覆いが無いので効く）。
+   一文字の近道（矢印も）は 外観 → キーボード で切れる（WCAG 2.1.4。この端末だけ・記録の外）。⌘K・⌘\ は切らない。
 
    トラックパッドの二本指の横払い（wheel の deltaX）：暦の上なら週、画面の上なら日を一つ送る（払う向きは指で
    払うのと同じ——左へ払えば次）。一回の払いで一度だけ（指を離したあとの慣性の続きは待つ）。横に送れる中身
@@ -22,6 +24,25 @@
   const KN = window.KN;
   const TABS = ["archive", "notes", "todo", "list", "diet"];
   const WIDE = window.matchMedia("(min-width: 840px)");
+  const OFF = "kn-keys-off";
+  const on = () => { try { return localStorage.getItem(OFF) !== "1"; } catch (_) { return true; } };
+  const setOn = (v) => { try { if (v) localStorage.removeItem(OFF); else localStorage.setItem(OFF, "1"); } catch (_) { /* 置けなければ今のまま */ } };
+  const MAC = /Mac|iP(hone|ad|od)/.test(navigator.platform || "");
+
+  /** 近道の一覧（?）。決める紙ではないが、設定の中でも一枚を押しのけず紙のまま出す（as: "dialog"）。 */
+  function help() {
+    if (!KN.ui || !KN.ui.sheet) return false;
+    const { html, node } = KN.util;
+    const mod = MAC ? "⌘" : "Ctrl";
+    const rows = [
+      [["1〜5"], "席"], [["←", "→"], "前・次の日"], [["Shift", "←", "→"], "前・次の週"], [["t"], "今日"],
+      [["/"], "さがす"], [[mod, "K"], "さがす"], [["n"], "足す"], [[","], "設定"], [[mod, "\\"], "左の列を畳む"], [["?"], "この一覧"],
+    ];
+    const body = node(html`<dl class="keys-list">${rows.map(([ks, what]) =>
+      html`<div class="keys-row"><dt>${ks.map((k) => html`<kbd>${k}</kbd>`)}</dt><dd>${what}</dd></div>`)}</dl>`);
+    KN.ui.sheet({ title: "キーボード", content: body, as: "dialog" });
+    return true;
+  }
 
   /** 打っているところ（欄・本文・選ぶ欄）。util.js の TEXT_FIELD と同じ見分け（チェック・ボタンの input は欄ではない）。 */
   const FIELD = "textarea, select, [contenteditable]:not([contenteditable='false']), input:not([type=checkbox])"
@@ -60,6 +81,7 @@
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!on()) return;
     if (typing(e.target) || typing(document.activeElement)) return;
     const k = e.key;
     const tab = "12345".indexOf(k);
@@ -72,6 +94,8 @@
     } else if (k === "ArrowLeft" || k === "ArrowRight") {
       const dir = k === "ArrowLeft" ? -1 : 1;
       done = e.shiftKey ? cal(dir) : (day(dir) || cal(dir));
+    } else if (k === "?") {
+      done = help();
     } else if (e.shiftKey) {
       return;
     } else if (k === "t") {
@@ -128,5 +152,5 @@
     else if (!day(dir)) cal(dir);
   }, { passive: false });
 
-  KN.keys = { TABS };
+  KN.keys = { TABS, on, setOn, help };
 })();

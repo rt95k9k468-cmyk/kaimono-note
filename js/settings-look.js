@@ -251,6 +251,11 @@
           },
         }),
       ].filter(Boolean); return rows.length ? [head("一覧"), card(...rows)] : []; })(),
+      /* 一文字の近道（js/keys.js。WCAG 2.1.4）。指だけの端末には出さない。 */
+      ...(KN.keys && matchMedia("(any-pointer: fine)").matches ? [head("キーボード"), card(switchRow({
+        title: "一文字の近道", on: KN.keys.on(),
+        onTap: (v) => { KN.keys.setOn(v); render(); },
+      })), foot("? で一覧")] : []),
       canBadge ? head("ホーム画面") : null,
       canBadge ? card(
         switchRow({

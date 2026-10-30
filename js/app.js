@@ -1559,8 +1559,15 @@
     });
 
     // Keep two tabs of the same app in sync.
+    /* ノートの書きかけ（IndexedDB）を書き終えてから読み直す。読み直しが書き込みを途中で捨て、別の窓が書いた
+       拍に打っていたノートの本文が消えていた（パソコン段10。docs/desk.md・tests/desk-windows.js）。 */
+    let otherWrote = false;
     window.addEventListener("storage", (e) => {
-      if (e.key === store.KEY) KN.app.reloadHere();
+      if (e.key !== store.KEY || otherWrote) return;
+      otherWrote = true;
+      const notes = KN.notes && KN.notes.flush ? KN.notes.flush() : null;
+      Promise.race([Promise.resolve(notes).catch(() => {}), new Promise((ok) => setTimeout(ok, 1500))])
+        .then(() => KN.app.reloadHere());
     });
 
     /* The clock moving is a thing that changes the screen.

@@ -321,6 +321,7 @@ const { open, checker } = require("./lib");
     return { l: Math.round(L.getBoundingClientRect().left), o: +getComputedStyle(L).opacity, n: document.querySelectorAll("#screen-settings .set-layer").length }; });
   t.check("設定：「›」は一面ぶん滑らせず、少しずらして薄く入れ替える", mid.n === 2 && mid.l >= 232 && mid.l <= 232 + 32 && mid.o < 1, JSON.stringify(mid));
   await wait(600);
+  t.check("設定の外観に「一文字の近道」（指の細かい端末）", await page.locator("#screen-settings .set-layer:last-child .set-row", { hasText: "一文字の近道" }).count() === 1);
   await page.locator("#screen-settings .set-layer:last-child .set-back").click();
   await wait(600);
   t.check("設定：戻ると根っこ一枚が素の姿で残る", await page.evaluate(() => { const L = document.querySelectorAll("#screen-settings .set-layer");
@@ -328,6 +329,25 @@ const { open, checker } = require("./lib");
   await page.setViewportSize({ width: 1100, height: 800 });
   await wait(500);
   t.check("設定：1280px より狭い desk は一列", await page.evaluate(() => !document.querySelector("#screen-settings .is-duo")));
+
+  /* 段11：? で近道の一覧。一文字の近道は切れる（切っても ⌘K・⌘\\ は効く）。 */
+  await page.click(".tab-todo");
+  await wait(500);
+  await page.keyboard.press("?");
+  await page.waitForSelector(".sheet.is-open .keys-list", { timeout: 3000 }).catch(() => {});
+  t.check("? で近道の一覧", await page.evaluate(() => document.querySelectorAll(".sheet.is-open .keys-list kbd").length >= 10));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+  await wait(300);
+  await page.evaluate(() => KN.keys.setOn(false));
+  await page.keyboard.press("2");
+  await wait(400);
+  const offSeat = await page.evaluate(() => KN.app.activeScreen());
+  await page.evaluate(() => KN.keys.setOn(true));
+  await page.keyboard.press("2");
+  await wait(400);
+  const onSeat = await page.evaluate(() => KN.app.activeScreen());
+  t.check("一文字の近道を切ると 2 で席が移らない・入れると移る", offSeat === "todo" && onSeat === "notes", JSON.stringify({ offSeat, onSeat }));
 
   t.check("エラーなし", !errors.length, errors.join(" | "));
   t.done();
