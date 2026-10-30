@@ -197,7 +197,7 @@
   }
 
   /* ---------------- 同期（js/notes-sync.js。docs/notes-unify.md「同期」） ----------------
-     既定は切り。入れた端末だけ合わせる。合わせている最中の印は出さない（最後に合わせた時刻だけ）。
+     既定は切り。入れた端末だけ合わせる。合わせている最中は、取る・送るの数だけを値に（`onStep`）。
      Dropbox につないでいなければ、つなぐ紙へ。 */
   function syncCard() {
     const Y = KN.notesSync;
@@ -211,13 +211,23 @@
       const d = new Date(iso);
       return isNaN(d.getTime()) ? "" : `${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
     };
+    const rest = (t) => (t.error ? "合わせられません" : t.at ? when(t.at) : "");
+    const valueOf = (p) => (p ? `${p.kind === "pull" ? "取っています" : "送っています"} ${p.done}／${p.all}` : rest(Y.status()));
+    const now = s.on && !s.halt ? pickRow({
+      title: "今すぐ合わせる", value: valueOf(s.step),
+      onTap: () => { haptic(); Y.now().then(render, render); },
+    }) : null;
+    if (now && Y.onStep) {
+      const val = now.querySelector(".set-val");
+      const off = Y.onStep((p) => {
+        if (!now.isConnected) { off(); return; }
+        val.textContent = valueOf(p);
+      });
+    }
     return card(
       switchRow({ title: "同期", on: s.on, onTap: (v) => { Y.setOn(v).then(render, render); render(); } }),
       s.on && s.halt ? pickRow({ title: "合わせ直す", value: "止めています", onTap: askRestart }) : null,
-      s.on && !s.halt ? pickRow({
-        title: "今すぐ合わせる", value: s.error ? "合わせられません" : s.at ? when(s.at) : "",
-        onTap: () => { haptic(); Y.now().then(render, render); },
-      }) : null
+      now
     );
   }
 

@@ -12,6 +12,7 @@
    - 一度にたくさん無くなったら止まる → 合わせ直すと足し合わせで戻る。
    - 開いて書いているノートには、閉じてから。id の無い .md に触れない。429 を待つ。送り返さない。
    - 新しい端末は写し（pack.json）から、rev の違うものだけ取る。写しは1日1回まで。
+   - はじめて来たノートは取りながら書く（終わる前に手元にある）。取る数を設定の行に。
    - 見えているあいだは longpoll で、向こうの直しが黙って来る。
    - 合わせられないまま3日で、歯車に点と設定の頭に一行。 */
 const { open, checker } = require("./lib");
@@ -25,6 +26,7 @@ const { open, checker } = require("./lib");
   const log = [];                // 変わった道（小文字）。cursor はここの長さ
   let revN = 0, idN = 0, busy = 0, notify = false;   // notify … longpoll が変わったと言う（ほかの節を乱さないよう、その節だけ）
   const calls = [];
+  let hold = null;               // { after, n, p } … この数の download（rev:）のあとは、開けるまで待たせる（取りながら書くの節だけ）
   const blobs = new Map();       // images/・files/ の中身（字にしない）
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
   const json = (route, status, obj) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
@@ -65,6 +67,7 @@ const { open, checker } = require("./lib");
       }
       case "/2/files/download": {
         const p = arg.path;
+        if (hold && p.startsWith("rev:") && ++hold.n > hold.after) await hold.p;
         if (blobs.has(p.toLowerCase())) return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: blobs.get(p.toLowerCase()) });
         const text = p.startsWith("rev:") ? hist.get(p.slice(4)) : (files.get(p.toLowerCase()) || {}).text;
         if (text == null) return json(route, 409, { error_summary: "path/not_found/" });
@@ -344,6 +347,35 @@ const { open, checker } = require("./lib");
   const errsC = C.errors.slice();
   await C.browser.close();
 
+  /* ---------- はじめて来たノートは取りながら書く・取る数を設定の行に ---------- */
+  await a.evaluate(() => { for (let i = 0; i < 50; i++) KN.notes.put({ ...KN.notes.draft(), title: `大束${i}`, body: `大束の本文${i}` }); });
+  await a.evaluate(() => KN.notesSync.now());
+  let release;
+  hold = { after: 44, n: 0, p: new Promise((r) => (release = r)) };
+  const E = await device();
+  const e = E.page;
+  const c1 = calls.length;
+  await e.click('.tab[data-tab="notes"]');
+  await e.waitForFunction(() => KN.app.activeScreen() === "notes");
+  await e.evaluate(() => { KN.notesSync.setOn(true); KN.app.showScreen("settings"); });
+  const early = await e.waitForFunction(() => KN.notes.list().length >= 40, null, { timeout: 15000 }).then(() => true, () => false);
+  const mid = await e.evaluate(() => ({ busy: KN.notesSync.status().busy, step: KN.notesSync.status().step }));
+  t.check("はじめて来たノートは、取り終える前に手元にある（途中で閉じても続きから）",
+    early && mid.busy && mid.step && mid.step.kind === "pull" && mid.step.done < mid.step.all, JSON.stringify(mid));
+  const shown = await e.waitForFunction(() => [...document.querySelectorAll(".set-row")].some((r) => /今すぐ合わせる[\s\S]*取っています \d+／\d+/.test(r.textContent)),
+    null, { timeout: 5000 }).then(() => true, () => false);
+  t.check("合わせている最中は、取る数を「今すぐ合わせる」の値に", shown);
+  release();
+  hold = null;
+  await e.waitForFunction(() => !KN.notesSync.status().busy, null, { timeout: 15000 }).catch(() => {});
+  const eGot = await e.evaluate(() => ({ big: KN.notes.list().filter((n) => /^大束/.test(n.title)).length, step: KN.notesSync.status().step,
+    row: [...document.querySelectorAll(".set-row")].map((r) => r.textContent).find((x) => x.includes("今すぐ合わせる")) || "" }));
+  const eSent = calls.slice(c1).filter((c) => c.path === "/2/files/upload" && /^\/notes\//.test(c.arg.path)).length;
+  t.check("取り終えたら全部そろい、数は消える。取ったノートは送り返さない",
+    eGot.big === 50 && eGot.step === null && !/取っています/.test(eGot.row) && eSent === 0, JSON.stringify([eGot, eSent]));
+  const errsE = E.errors.slice();
+  await E.browser.close();
+
   /* ---------- 見えているあいだは longpoll ---------- */
   notify = true;
   await a.evaluate((id) => { KN.notes.begin(id); KN.notes.edit(id, { body: "longpoll で来る" }); KN.notes.end(id); }, ids.p);
@@ -377,7 +409,7 @@ const { open, checker } = require("./lib");
   await a.waitForTimeout(100);
   t.check("合わせられたら点は消える", !(await a.evaluate(() => KN.notesSync.stale())) && !(await dotOf()));
 
-  const errs = A.errors.concat(B.errors, errsC);
+  const errs = A.errors.concat(B.errors, errsC, errsE);
   t.check("エラーが無い", !errs.length, errs.join(" | "));
   await A.browser.close();
   await B.browser.close();

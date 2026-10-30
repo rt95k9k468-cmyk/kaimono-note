@@ -18,6 +18,8 @@
      （写しよりファイルが正）。写しは合わせ終えた端末が1日1回まで書き直す。
    - 見えているあいだは longpoll（notify。鍵は要らない）で待ち、変わったら一回。
    - 入れてあるのに合わせられないまま3日 → 歯車に点（`stale`。今の控えと同じ）。
+   - はじめて来たノート（手元にも元にも無い）は、取りながら KEEP 件ごとに書く（途中で閉じても続きから）。
+     取る・送るの数は `status().step`・`onStep`（設定の行だけが見る）。
    ========================================================= */
 (function () {
   "use strict";
@@ -35,6 +37,7 @@
   const GAP = 5000;                  // longpoll のあいだは少なくともこれだけ空ける
   const FIRST = 9000;                // 開いてすぐは起動の邪魔をしない（dropbox.js の 8 秒のあと）
   const PULL = 4;                    // 取るのは同時にこれだけ
+  const KEEP = 40;                   // はじめて来たノートは、取りながらこれだけごとに書く
   const MANY = 3;                    // これだけ、かつ生きている覚えの 1/5 以上が一度に無くなったら止まる
   const PACK_MIN = 8;                // 元の無いファイルがこれだけあれば写しを読む（少なければ書かない）
   const DAY = 86400000;
@@ -58,6 +61,10 @@
   let checked = false;               // この開きで、つないだ Dropbox を確かめた
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => { try { fn(); } catch (_) { /* 一つ落ちても続けます */ } });
+  /* 取る・送るの数（{ kind: "pull"|"send", done, all } か null）。歯車の点の聞き手は起こさない。 */
+  let step = null;
+  const steppers = new Set();
+  const setStep = (v) => { step = v; steppers.forEach((fn) => { try { fn(step); } catch (_) { /* 続けます */ } }); };
 
   /* ---------------- 形（.md） ---------------- */
 
@@ -469,6 +476,22 @@
       try { return parse(fileOf(x.note), e.server_modified); } catch (_) { return null; }
     };
     const remote = new Map();
+    /* はじめて来たノート（手元にも元にも無い）は、取りながら書く——途中で閉じても、次はその続きから。
+       書くのは下の「一件ずつ決める」と同じ形（取る・元）で、そこでは見ない（kept）。 */
+    const fresh = [];
+    const kept = new Set();
+    const keep = async () => {
+      const have = new Set(N().list().concat(N().trash()).map((n) => n.id));
+      const notes = [], rows = [];
+      fresh.splice(0).forEach(({ e, n }) => {
+        if (have.has(n.id) || bases.has(n.id) || N().isOpen(n.id)) return;
+        notes.push([n.id, patchOf(n), null]);
+        rows.push([`sync:${n.id}`, baseOf(n.id, { fid: e.id, path: e.path_display, rev: e.rev }, n)]);
+        kept.add(n.id);
+      });
+      if (notes.length) await N().absorb(notes, rows);
+    };
+    if (pull.length) setStep({ kind: "pull", done: 0, all: pull.length });
     for (let i = 0; i < pull.length; i += PULL) {
       const got = await Promise.all(pull.slice(i, i + PULL).map((e) => {
         const n = fromPack(e);
@@ -480,7 +503,10 @@
         const b = bases.get(n.id);
         if (had && !(b && b.fid === e.id)) return;       // 同じ id の写し（外で複製したもの）は一つめだけ
         remote.set(n.id, { e, n });
+        if (!had && !bases.has(n.id)) fresh.push({ e, n });
       });
+      setStep({ kind: "pull", done: Math.min(i + PULL, pull.length), all: pull.length });
+      if (fresh.length >= KEEP) await keep();
     }
 
     /* ---- 無くなったもの ---- */
@@ -513,6 +539,7 @@
     let held = false;
     const now = new Date().toISOString();
     ids.forEach((id) => {
+      if (kept.has(id)) return;
       if (N().isOpen(id)) { if (remote.has(id) || gone.has(id)) held = true; return; }
       const L = local.get(id) || null;
       const b = bases.get(id) || null;
@@ -556,11 +583,15 @@
       if (p.base !== undefined) metas.push([`sync:${id}`, p.base]);
     });
     if (notes.length || metas.length) await N().absorb(notes, metas);
-    if (notes.length && KN.noteImg && KN.noteImg.pullMissing) KN.noteImg.pullMissing().catch(() => {});
+    if ((notes.length || kept.size) && KN.noteImg && KN.noteImg.pullMissing) KN.noteImg.pullMissing().catch(() => {});
 
     /* ---- 送る・消す（一本ずつ） ---- */
     let out = [];
+    const all = [...plan.values()].filter((p) => p.send || p.del).length;
+    let done = 0;
+    if (all) setStep({ kind: "send", done, all });
     for (const [id, p] of plan) {
+      if (p.send || p.del) setStep({ kind: "send", done: done++, all });
       if (p.send) {
         const m = await send(p.send.n, p.send.at);
         if (m === "conflict") { again = true; continue; }
@@ -678,7 +709,7 @@
         if (!again || res !== "done") break;
       }
       return res;
-    })().finally(() => { running = null; emit(); if (!polling) poll(); });
+    })().finally(() => { running = null; setStep(null); emit(); if (!polling) poll(); });
     return running;
   }
 
@@ -761,7 +792,7 @@
   function status() {
     return {
       on: !!(st && st.on), at: (st && st.at) || "", halt: (st && st.halt) || "",
-      error: (st && st.err) || "", errorAt: (st && st.errAt) || "", busy: !!running,
+      error: (st && st.err) || "", errorAt: (st && st.errAt) || "", busy: !!running, step,
     };
   }
 
@@ -776,6 +807,7 @@
   KN.notesSync = {
     status, setOn, restart, soon, stale, now: sync, ready: loadState,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    onStep(fn) { steppers.add(fn); return () => steppers.delete(fn); },
     /* 試験の口（台本が形を確かめる） */
     _: { fileOf, parse, merge3, namesFor, mergeLabels, st: () => st },
   };
