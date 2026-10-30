@@ -402,6 +402,8 @@
       onRight: () => toggleListed(product),
       onLeft: () => toggleArchived(product),
     });
+    /* 右クリックでも同じ二つ（パソコン。docs/desk.md の段6）。 */
+    KN.ui.rowMenu(wrap, () => menuOf(product));
     return wrap;
   }
 
@@ -463,6 +465,16 @@
     KN.ui.toast(said, { action: { label: "元に戻す", onClick: undo } });
   }
 
+  /** 払う二つ（右：リスト・左：アーカイブ）を、右クリックの小窓の行に。買うものの行も使う。 */
+  function menuOf(product) {
+    const p = store.getProduct(product.id) || product;
+    const listed = !!buying(p.id);
+    return [
+      { label: listed ? "リストから外す" : "リストへ", icon: listed ? "minus" : "plus", onPick: () => toggleListed(p) },
+      { label: p.archived ? "戻す" : "アーカイブ", icon: p.archived ? "undo" : "download", onPick: () => toggleArchived(p) },
+    ];
+  }
+
   /** The ＋ the shell floats over this screen — the list screen's, in kind. */
   function dockButton() {
     const fab = node(html`
@@ -475,5 +487,5 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.prices = { mount, render, dockButton, day: () => KN.head.shopDay() };
+  KN.screens.prices = { mount, render, dockButton, menuOf, day: () => KN.head.shopDay() };
 })();

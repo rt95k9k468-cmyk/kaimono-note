@@ -8,7 +8,8 @@
    - 1280px〜：ノートの席で開いたノートは右の段（木と一覧の右・上の帯の下・窓の右端まで）。覆いは無く、
      一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は一覧の右下。ほかの席へ移ると閉じる
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
-   - 買うもの ⇄ 価格（席の二度押し）は広い幅でも行き来する
+   - 1280px〜：買うもの｜価格は左右に並ぶ（席の二度押しでめくらない・＋は一枚ずつ・#prices でも並び）。1280px より狭い desk はめくる
+   - 右クリック：買うもの・価格の行の払う操作を小窓で。⌘\\・Ctrl+\\ と列の下の口で左の列を畳む（段6）
    - 広い幅から電話の幅へ縮めると、帯と印は下へ戻る
    - 段3（js/keys.js）：1〜5 で席・→ で次の日・t で今日・Shift+→ で次の週・, で設定・/ と Ctrl+K（⌘K）でさがす欄（欄で打つ字は席を動かさない）。
      トラックパッドの横払い（wheel の deltaX）は紙の上で日、暦の上で週を送る
@@ -167,25 +168,75 @@ const { open, checker } = require("./lib");
   t.check("からだ：紙は窓の底まで地を持つ（段に並んだカードの束の下で切れない）", dietPaper.bg !== "rgba(0, 0, 0, 0)" && dietPaper.b === 900,
     JSON.stringify(dietPaper));
 
-  /* 買うもの：読む幅。価格へ行き来する。 */
+  /* 1280px〜 買うもの｜価格を左右に（段6）。席の二度押しでもめくらない。＋は一枚ずつ。 */
   await page.click(".tab-list");
   await wait(700);
-  const shelf = await box("#screen-list .cat-group");
-  t.check("買うもの：棚は読む幅（760px）まで、真ん中に", shelf && shelf.w <= 760 && Math.abs((shelf.l + shelf.r) / 2 - (232 + 1440) / 2) <= 2,
-    JSON.stringify(shelf));
+  const lst = await box("#screen-list"), prc = await box("#screen-prices");
+  t.check("買うもの｜価格：左右に並ぶ（列の右から真ん中・真ん中から窓の右端）", lst && prc && lst.l === 232 && Math.abs(lst.r - 836) <= 1
+    && Math.abs(prc.l - 836) <= 1 && prc.r === 1440 && prc.w > 0, JSON.stringify({ lst, prc }));
+  t.check("並べても席は買うもの、価格の行も出ている", await page.evaluate(() => document.documentElement.dataset.screen === "list"
+    && document.querySelectorAll("#screen-prices .product-wrap").length === 3));
+  const fabs = await page.evaluate(() => [...document.querySelectorAll("#dock .add-fab")].map((b) => Math.round(b.getBoundingClientRect().right)));
+  t.check("＋は一枚ずつ、その一枚の右下に", fabs.length === 2 && fabs[0] <= 836 && fabs[1] > 836, JSON.stringify(fabs));
+  await page.click(".tab-list");
+  await wait(700);
+  t.check("並べているあいだ、席の二度押しはめくらない", await page.evaluate(() => document.documentElement.dataset.screen === "list"
+    && !document.querySelector(".is-face-parked") && !document.getElementById("screen-prices").hidden));
+  await page.goto(page.url().replace(/#.*$/, "") + "#prices");
+  await page.waitForFunction(() => document.documentElement.dataset.screen, null, { timeout: 5000 });
+  await wait(700);
+  t.check("#prices で開いても二枚並び（席は買うもの）", await page.evaluate(() => document.documentElement.dataset.screen === "list"
+    && document.getElementById("screen-prices").classList.contains("is-duo-r")));
+
+  /* 右クリック：行の払う操作を小窓で。 */
+  await page.click("#screen-list .item-wrap .item-name", { button: "right" });
+  await wait(300);
+  const listMenu = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.textContent.trim()));
+  t.check("右クリック（買うもの）：今回買う・買った・リストから外す・アーカイブ", JSON.stringify(listMenu) === JSON.stringify(["今回買う", "買った", "リストから外す", "アーカイブ"]),
+    JSON.stringify(listMenu));
+  await page.click(".note-pop-item >> text=今回買う");
+  await wait(300);
+  t.check("右クリック：今回買う で★が付く", await page.evaluate(() => KN.store.get().items.filter((i) => i.fav).length === 1));
+  await page.click("#screen-prices .product-wrap .product-name", { button: "right" });
+  await wait(300);
+  const priceMenu = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.textContent.trim()));
+  t.check("右クリック（価格）：リストから外す・アーカイブ", JSON.stringify(priceMenu) === JSON.stringify(["リストから外す", "アーカイブ"]), JSON.stringify(priceMenu));
+  await page.keyboard.press("Escape");
+  await wait(300);
+
+  /* 1280px より狭い desk は、これまでどおり紙をめくる。 */
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await wait(500);
+  t.check("1100px：価格は隠れ、買うものは全幅", await page.evaluate(() => document.getElementById("screen-prices").hidden
+    && Math.round(document.getElementById("screen-list").getBoundingClientRect().right) === 1100));
   await page.click(".tab-list");
   await page.waitForFunction(() => document.documentElement.dataset.screen === "prices", null, { timeout: 3000 }).catch(() => {});
-  t.check("買うもの → 価格（席の二度押し）", await page.evaluate(() => document.documentElement.dataset.screen === "prices"));
-  await page.click(".tab-list");
-  await page.waitForFunction(() => document.documentElement.dataset.screen === "list", null, { timeout: 3000 }).catch(() => {});
-  t.check("価格 → 買うもの", await page.evaluate(() => document.documentElement.dataset.screen === "list"));
+  t.check("1100px：買うもの → 価格（席の二度押し）", await page.evaluate(() => document.documentElement.dataset.screen === "prices"));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await wait(700);
+  t.check("価格を見たまま 1280px を越えたら、二枚並びへ", await page.evaluate(() => document.documentElement.dataset.screen === "list"
+    && !document.getElementById("screen-prices").hidden && !document.querySelector(".is-face-parked")));
+
+  /* 左の列を畳む（⌘\・Ctrl+\）。 */
+  await page.keyboard.press("Control+Backslash");
+  await wait(500);
+  const folded = await page.evaluate(() => ({ bar: Math.round(document.getElementById("tabbar").getBoundingClientRect().width),
+    scr: Math.round(document.getElementById("screen-list").getBoundingClientRect().left),
+    label: getComputedStyle(document.querySelector(".tab-list .tab-label")).display,
+    title: document.querySelector(".tab-list").title, saved: KN.store.get().settings.railFolded }));
+  t.check("Ctrl+\\：列は絵だけの細い列に、中身はその右から", folded.bar === 64 && folded.scr === 64 && folded.label === "none"
+    && folded.title === "shopping" && folded.saved === true, JSON.stringify(folded));
+  await page.click("#rail-fold");
+  await wait(500);
+  t.check("列の下の口で開く", await page.evaluate(() => Math.round(document.getElementById("tabbar").getBoundingClientRect().width) === 232
+    && !document.querySelector(".tab-list").title));
 
   /* ノート：左の木は左の列の中、席の行の下。 */
   await page.click(".tab-notes");
   await wait(800);
   const tree = await box(".notes-tree"), lastSeat = await box(".tab-diet"), notesScr = await box("#screen-notes");
   t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 232 && tree.t >= lastSeat.b
-    && tree.b === 900 && notesScr.l === 232, JSON.stringify({ tree, lastSeat, notesScr }));
+    && tree.b < 900 && tree.b > 820 && notesScr.l === 232, JSON.stringify({ tree, lastSeat, notesScr }));
 
   /* 三列：開いたノートは右の段。 */
   const openRow = async (title) => {

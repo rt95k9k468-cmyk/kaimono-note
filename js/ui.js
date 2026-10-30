@@ -1472,11 +1472,12 @@
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
-  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, follow = false, onClose } = {}) {
+  function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, follow = false, at = null, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
     const z = (sheetEl && parseInt(getComputedStyle(sheetEl).zIndex, 10)) || (lift ? zSheet() : 0);
-    let r = anchor.getBoundingClientRect();
+    /* at … 口の代わりの一点（右クリックした所。rowMenu）。 */
+    let r = at ? { left: at.x, right: at.x, top: at.y, bottom: at.y, width: 0, height: 0 } : anchor.getBoundingClientRect();
     const cover = node(html`<div class="note-pop-cover"></div>`);
     const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);
     cover.style.zIndex = String(z + 1);
@@ -1536,6 +1537,7 @@
     };
     pops.push(close);
     cover.addEventListener("click", close);
+    cover.addEventListener("contextmenu", (e) => { e.preventDefault(); close(); });
     if (follow) document.addEventListener("scroll", onScroll, { capture: true, passive: true });
     document.addEventListener("keydown", onKey, true);
     document.addEventListener("pointerdown", onOutside, true);
@@ -1573,6 +1575,7 @@
     /* 押した札の ＞（中の最後の絵、無ければ札のまん中）からふくらみ、閉じるときは同じ点へ
        縮んで帰る。 */
     function originOf() {
+      if (at) return `${Math.round(at.x - parseFloat(pop.style.left))}px ${Math.round(at.y - parseFloat(pop.style.top))}px`;
       if (!anchor.isConnected) return "";
       const marks = anchor.querySelectorAll("svg");
       const g = (marks.length ? marks[marks.length - 1] : anchor).getBoundingClientRect();
@@ -1589,8 +1592,8 @@
   function closePops() { pops.slice().reverse().forEach((c) => c()); }
 
   /** 「⋯」の中身を、押した ⋯ のすぐ下に縦に並べる。選ぶか外を押すと閉じる。 */
-  function popMenu(anchor, items) {
-    const p = popOver(anchor, { role: "menu", side: "right" });
+  function popMenu(anchor, items, at) {
+    const p = popOver(anchor, { role: "menu", side: at ? "left" : "right", at });
     (items || []).forEach((it) => {
       const label = typeof it.label === "function" ? it.label() : it.label;
       const b = node(html`
@@ -1604,6 +1607,21 @@
     });
     p.place();
     return p;
+  }
+
+  /** 行の右クリック（パソコン。docs/desk.md の段6）：払う操作と同じことを、押した所の小窓で。items() は開くたびに
+      組む（★の向きがいまの姿に合うように）。細かい指し手（マウス）の端末だけ——電話の長押しは今までどおり。 */
+  const FINE = window.matchMedia ? window.matchMedia("(pointer: fine)") : null;
+  function rowMenu(el, items) {
+    el.addEventListener("contextmenu", (e) => {
+      if (!FINE || !FINE.matches) return;
+      const sel = window.getSelection && window.getSelection();
+      if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return;   // 選んだ字はブラウザの小窓で写す
+      e.preventDefault();
+      /* キーボードの「メニュー」キーは点を持たない（0,0）——そのときは行の下に。 */
+      const at = e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : null;
+      popMenu(el, items(), at);
+    });
   }
 
   /** 一件の記録を消す「⋯」の一行（roadmap-unify の U11）。確かめずに消し、「元に戻す」だけ付ける。
@@ -2835,7 +2853,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, closePops, popMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
+    sheet, actionSheet, popOver, closePops, popMenu, rowMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard, reopen, keepDraft, dropDraft, takeDraft, takeGone,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

@@ -2341,6 +2341,7 @@ a { color: var(--c-primary); }
    **帯は窓の背いっぱいの平らな左の列**（段5。Notion・Things の形）：席は絵と名前を横に並べた行、いま居る席は滑る一枚
    （tab-lens.js。縦に滑る）。ガラスのカプセル・縁の光・屈折・押した光・押してふくらむのは指の下で起きることなので出さない。
    ノートの席では、席の行の下にノートの木（screens.css の「左の木」。`--side-nav-h` から下）。 */
+.rail-fold-btn { display: none; }   /* 左の列を畳む口は広い幅だけ（下） */
 @media (min-width: 840px) {
   :root {
     --rail-w: 232px; --tabbar-space: 0px;
@@ -2391,6 +2392,22 @@ a { color: var(--c-primary); }
   .screen.is-active.is-in-l { animation-name: desk-in-up; }
   .screen.is-leaving.is-out-l { animation-name: desk-out-up; }
   .screen.is-leaving.is-out-r { animation-name: desk-out-dn; }
+  /* 左の列を畳む（⌘\・列の下の ‹。app.js の foldRail）。畳むと絵だけの細い列。 */
+  .rail-fold-btn {
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; left: var(--sp-2); bottom: var(--sp-3); z-index: var(--z-bar);
+    width: var(--side-row); height: var(--side-row);
+    border-radius: var(--r-sm); color: var(--c-text-3); cursor: pointer;
+  }
+  .rail-fold-btn svg { width: var(--ico-sm); height: var(--ico-sm); }
+  .rail-fold-btn:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+  @media (hover: hover) { .rail-fold-btn:hover { background: color-mix(in srgb, var(--c-text) 6%, transparent); color: var(--c-text); } }
+  :root.rail-fold { --rail-w: 64px; }
+  .rail-fold .rail-fold-btn { left: calc((var(--rail-w) - 1px - var(--side-row)) / 2); }
+  .rail-fold .rail-fold-btn svg { transform: rotate(180deg); }
+  .rail-fold .tab { justify-content: center; padding: 0; gap: 0; }
+  .rail-fold .tab-label { display: none; }
+  .rail-fold .tab-badge { position: absolute; top: 1px; right: 4px; margin: 0; }
 }
 :root { --desk-shift: 32px; }
 @keyframes desk-in-dn { 0%, 25% { opacity: 0; transform: translateY(var(--desk-shift)); } }

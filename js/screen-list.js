@@ -990,6 +990,17 @@
       KN.productSheet.openIconPicker(product.id, () => {});
     });
 
+    /* 右クリック（パソコン。docs/desk.md の段6）：★・買った と、価格の払う二つ（リストから外す・アーカイブ）。 */
+    KN.ui.rowMenu(wrap, () => {
+      const rec = store.get().items.find((i) => i.id === item.id) || item;
+      const more = KN.screens.prices ? KN.screens.prices.menuOf(product) : [];
+      return [
+        ...(rec.checked ? [] : [{ label: rec.fav ? "今回から外す" : "今回買う", icon: "star", onPick: () => toggleFav(item.id) }]),
+        { label: rec.checked ? "まだ買っていない" : "買った", icon: "check", onPick: () => row.querySelector(".check").click() },
+        ...(rec.checked ? more.slice(1) : more),   // 買った行の「リストへ」は「まだ買っていない」と同じ
+      ];
+    });
+
     return wrap;
   }
 

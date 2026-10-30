@@ -762,6 +762,7 @@
     out.settings.glanceWork = out.settings.glanceWork !== false;
     out.settings.inboxPost = out.settings.inboxPost === true;
     out.settings.v2 = out.settings.v2 === true;
+    out.settings.railFolded = out.settings.railFolded === true;   // 左の列を畳む（広い幅。docs/desk.md）
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
     /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */

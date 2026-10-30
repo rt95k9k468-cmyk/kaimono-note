@@ -5986,13 +5986,15 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-tree { display: none; }
 @media (min-width: 840px) {
   html:not(.is-locked)[data-screen="notes"] .notes-tree {
-    display: block; position: fixed; top: var(--side-nav-h); bottom: 0;
+    display: block; position: fixed; top: var(--side-nav-h); bottom: calc(var(--side-row) + var(--sp-3) * 2);
     left: 0; z-index: var(--z-bar);
     width: calc(var(--rail-w) - 1px);
     padding: var(--sp-2) var(--sp-2) var(--sp-6);
     border-top: 1px solid var(--c-border);
     overflow-y: auto; overscroll-behavior: contain;
   }
+  /* 畳んだ列（base.css の「左の列を畳む」）に木は入らない——ノートの一覧から行く。 */
+  :root.rail-fold[data-screen="notes"] .notes-tree { display: none; }
 }
 @media print { .notes-tree { display: none !important; } }
 .notes-tree > [role="tree"] { display: flex; flex-direction: column; }
@@ -8196,6 +8198,13 @@ button.note-when:active { opacity: var(--press-fade); }
   :root[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
   :root[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
   :root[data-screen="notes"].has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
+  /* 買うもの｜価格を左右に（app.js の duo）。めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
+  .panes > .screen.is-duo-l { right: 50%; }
+  .panes > .screen.is-duo-r { left: 50%; display: flex; box-shadow: inset 1px 0 0 var(--c-border); }
+  .screen.is-duo-r.is-in-r { animation: desk-in-dn var(--m-nav) var(--ease-out); }
+  .screen.is-duo-r.is-in-l { animation: desk-in-up var(--m-nav) var(--ease-out); }
+  :root[data-duo].has-fab .dock { right: calc((100vw - var(--rail-w)) / 2 + var(--sp-5)); }
+  .dock > .quick-add.is-duo-r { position: fixed; right: var(--sp-5); bottom: var(--sp-5); }
 }
 
 /* ---- 小さな決まり（roadmap-unify の U13）。インラインの style= の代わり ----
