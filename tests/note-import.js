@@ -148,7 +148,7 @@ const importBtn = (page) => page.evaluate(() => {
   await page.evaluate(() => KN.ui.closeAll && KN.ui.closeAll());
   await page.evaluate((id) => KN.notes.edit(id, { body: "直した" }), a.id);
   const batches = await page.evaluate(() => KN.noteImport.batches());
-  t.check("取り込みの一覧に一つ", batches.length === 1 && batches[0].books.join() === "Evernote 旅", JSON.stringify(batches));
+  t.check("取り込みの一覧に一つ（今ある数も。入れ物は数えない）", batches.length === 1 && batches[0].books.join() === "Evernote 旅" && batches[0].n === 3, JSON.stringify(batches));
   const n = await page.evaluate((bt) => KN.notes.unimport(bt), batches[0].batch);
   const after = await page.evaluate(() => ({ live: KN.notes.list().filter((x) => x.src).map((x) => x.title), trash: KN.notes.trash().filter((x) => x.src).length }));
   t.check("取り消す：直したノートとその入れ物は残る・ほかは最近削除へ", n === 2 && after.live.slice().sort().join() === ["Evernote 旅", "旅の支度 & 地図"].sort().join()

@@ -20,6 +20,7 @@
    - 入れてあるのに合わせられないまま3日 → 歯車に点（`stale`。今の控えと同じ）。
    - はじめて来たノート（手元にも元にも無い）は、取りながら KEEP 件ごとに書く（途中で閉じても続きから）。
      取る・送るの数は `status().step`・`onStep`（設定の行だけが見る）。
+   - 取れなかったファイル（つながらない）があれば、その数を覚え（`miss`）、次の回は全部を見直す（cursor の先へ進めない）。
    ========================================================= */
 (function () {
   "use strict";
@@ -476,6 +477,7 @@
       try { return parse(fileOf(x.note), e.server_modified); } catch (_) { return null; }
     };
     const remote = new Map();
+    let missed = 0;
     /* はじめて来たノート（手元にも元にも無い）は、取りながら書く——途中で閉じても、次はその続きから。
        書くのは下の「一件ずつ決める」と同じ形（取る・元）で、そこでは見ない（kept）。 */
     const fresh = [];
@@ -495,7 +497,7 @@
     for (let i = 0; i < pull.length; i += PULL) {
       const got = await Promise.all(pull.slice(i, i + PULL).map((e) => {
         const n = fromPack(e);
-        return n ? { e, n } : download(e.rev).then((text) => ({ e, n: parse(text, e.server_modified) }), () => ({ e, n: null }));
+        return n ? { e, n } : download(e.rev).then((text) => ({ e, n: parse(text, e.server_modified) }), () => { missed++; return { e, n: null }; });
       }));
       got.forEach(({ e, n }) => {
         if (!n) return;                                  // 読まず・消さず・上書きせず
@@ -609,7 +611,9 @@
     if (!again && !held) { try { await writePack(); } catch (_) { /* 写しは作り直せる。書けない日は書かない */ } }
 
     st.cursor = listed.cursor;
-    st.full = held;
+    /* 取れなかったファイルは cursor の手前にある——次は全部を見直して取り直す。 */
+    st.full = held || missed > 0;
+    if (missed) { st.miss = missed; again = true; } else delete st.miss;
     st.at = new Date().toISOString();
     delete st.err;
     delete st.errAt;
@@ -793,6 +797,7 @@
     return {
       on: !!(st && st.on), at: (st && st.at) || "", halt: (st && st.halt) || "",
       error: (st && st.err) || "", errorAt: (st && st.errAt) || "", busy: !!running, step,
+      miss: (st && st.miss) || 0,
     };
   }
 

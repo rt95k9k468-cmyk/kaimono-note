@@ -13,6 +13,7 @@
    - 開いて書いているノートには、閉じてから。id の無い .md に触れない。429 を待つ。送り返さない。
    - 新しい端末は写し（pack.json）から、rev の違うものだけ取る。写しは1日1回まで。
    - はじめて来たノートは取りながら書く（終わる前に手元にある）。取る数を設定の行に。
+   - 取れなかったファイルは数を覚え、次の回で全部を見直して取り直す。
    - 見えているあいだは longpoll で、向こうの直しが黙って来る。
    - 合わせられないまま3日で、歯車に点と設定の頭に一行。 */
 const { open, checker } = require("./lib");
@@ -26,6 +27,7 @@ const { open, checker } = require("./lib");
   const log = [];                // 変わった道（小文字）。cursor はここの長さ
   let revN = 0, idN = 0, busy = 0, notify = false;   // notify … longpoll が変わったと言う（ほかの節を乱さないよう、その節だけ）
   const calls = [];
+  let dlFail = 0;                // これだけの download（rev:）を 500 で断る（取れなかったの節だけ）
   let hold = null;               // { after, n, p } … この数の download（rev:）のあとは、開けるまで待たせる（取りながら書くの節だけ）
   const blobs = new Map();       // images/・files/ の中身（字にしない）
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
@@ -68,6 +70,7 @@ const { open, checker } = require("./lib");
       case "/2/files/download": {
         const p = arg.path;
         if (hold && p.startsWith("rev:") && ++hold.n > hold.after) await hold.p;
+        if (dlFail > 0 && p.startsWith("rev:")) { dlFail--; return json(route, 500, { error_summary: "internal/" }); }
         if (blobs.has(p.toLowerCase())) return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: blobs.get(p.toLowerCase()) });
         const text = p.startsWith("rev:") ? hist.get(p.slice(4)) : (files.get(p.toLowerCase()) || {}).text;
         if (text == null) return json(route, 409, { error_summary: "path/not_found/" });
@@ -375,6 +378,19 @@ const { open, checker } = require("./lib");
     eGot.big === 50 && eGot.step === null && !/取っています/.test(eGot.row) && eSent === 0, JSON.stringify([eGot, eSent]));
   const errsE = E.errors.slice();
   await E.browser.close();
+
+  /* ---------- 取れなかったファイルは数を覚え、次の回で取り直す ---------- */
+  await b.evaluate(() => KN.notesSync.now());              // 大束を先に（ここで見たいのは一件だけ）
+  const lostId = await a.evaluate(() => { const n = { ...KN.notes.draft(), title: "取り損ね", body: "電波が切れた" }; KN.notes.put(n); return n.id; });
+  await a.evaluate(() => KN.notesSync.now());
+  dlFail = 99;
+  const rMiss = await b.evaluate(() => KN.notesSync.now());
+  const bMiss = await b.evaluate((id) => ({ miss: KN.notesSync.status().miss, has: !!KN.notes.get(id) }), lostId);
+  dlFail = 0;
+  t.check("取れなかったら、済んだことにせず数を覚える", rMiss === "done" && bMiss.miss === 1 && !bMiss.has, JSON.stringify([rMiss, bMiss]));
+  await b.evaluate(() => KN.notesSync.now());
+  const bGot = await b.evaluate((id) => ({ miss: KN.notesSync.status().miss, has: !!KN.notes.get(id) }), lostId);
+  t.check("次の回で取り直す（cursor の先へ進めていない）", bGot.miss === 0 && bGot.has, JSON.stringify(bGot));
 
   /* ---------- 見えているあいだは longpoll ---------- */
   notify = true;

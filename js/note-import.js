@@ -544,11 +544,17 @@
   }
 
   /** 取り込みの一覧（取り消せるノートのあるものだけ。新しい順）。名前は冊の名前（Evernote の入れ物の中は、
-      元の冊＝入れ物の題）。入れ物そのものは数えない（中のノートと一緒に消える）。 */
+      元の冊＝入れ物の題）。入れ物そのものは数えない（中のノートと一緒に消える）。n … その取り込みの、今ある
+      ノートの数（直したものも。端末どうしで比べて、同期で全部来たかを見る）。 */
   function batches() {
     const by = new Map();
+    const count = new Map();
     const list = KN.notes.list();
     const box = new Map(list.filter((n) => n.src && /^en(?:book|root):/.test(String(n.src.key || ""))).map((n) => [n.id, n]));
+    list.forEach((n) => {
+      const c = n.src && n.src.batch;
+      if (c && !box.has(n.id)) count.set(c, (count.get(c) || 0) + 1);
+    });
     list.forEach((n) => {
       const b = n.src && n.src.batch;
       if (!b || String(n.updatedAt) > b || box.has(n.id)) return;
@@ -556,7 +562,7 @@
       const up = n.parent ? box.get(String(n.parent)) : null;
       by.get(b).add(up ? up.title : n.notebook);
     });
-    return [...by.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([batch, nbs]) => ({ batch, books: [...nbs].filter(Boolean) }));
+    return [...by.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([batch, nbs]) => ({ batch, books: [...nbs].filter(Boolean), n: count.get(batch) || 0 }));
   }
 
   const whenOf = (iso) => {
@@ -583,7 +589,7 @@
     if (runs.length) body.append(P.card(runs.map((at) => P.dangerRow({ ico: "undo", title: `${whenOf(at)}の整理を戻す`, onTap: () => O.undo(at, shut) }))));
     const named = (bs) => (bs.length > 3 ? `${bs.slice(0, 3).join("・")} ほか` : bs.join("・"));
     if (list.length) body.append(P.card(list.map((b) => P.dangerRow({
-      ico: "undo", title: `${whenOf(b.batch)}${b.books.length ? `（${named(b.books)}）` : ""}を取り消す`,
+      ico: "undo", title: `${whenOf(b.batch)}${b.books.length ? `（${named(b.books)}）` : ""}${b.n}件を取り消す`,
       onTap: () => KN.ui.confirm({
         title: "この取り込みを取り消す", message: "取り込んだあと直したノートは残します。", okLabel: "取り消す", danger: true,
       }).then((ok) => {
