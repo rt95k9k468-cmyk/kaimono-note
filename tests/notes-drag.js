@@ -22,7 +22,8 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   const t = checker("notes-drag");
 
   /* ================= データ（幅のある画面で開いて、そのまま画面へ） ================= */
-  const { browser, page, errors } = await open({ viewport: { width: 1280, height: 900 } });
+  /* 1200px：ホームの木と左の木が両方出る幅（1280px からホームは木｜本文の二列。docs/desk.md の段7）。 */
+  const { browser, page, errors } = await open({ viewport: { width: 1200, height: 900 } });
   await page.evaluate(() => KN.notes.ready());
   const lsSize = () => page.evaluate(() => {
     const o = {};
