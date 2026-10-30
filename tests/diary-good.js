@@ -56,11 +56,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const s = document.querySelector(".sheet.is-open");
     const g = s.querySelector(".js-good"), m = s.querySelector(".js-memo");
     return { g: !!g, above: !!(g && (g.compareDocumentPosition(m) & Node.DOCUMENT_POSITION_FOLLOWING)), ph: g && g.placeholder,
-      icon: !!s.querySelector(".arc-good-field svg"), focus: document.activeElement === m,
+      icon: !!s.querySelector(".arc-good-field svg"), focus: document.activeElement === g,
       emoji: /\p{Extended_Pictographic}/u.test(s.innerText) };
   });
   t.check("よかったことの一行が、いまのことの欄の上に（絵つき・字は「よかったこと」）", s1.g && s1.above && s1.ph === "よかったこと" && s1.icon, JSON.stringify(s1));
-  t.check("カーソルはいまのことの欄・絵文字なし", s1.focus && !s1.emoji, JSON.stringify(s1));
+  t.check("カーソルはよかったことの欄・絵文字なし", s1.focus && !s1.emoji, JSON.stringify(s1));
 
   /* よかったことだけ書く */
   await page.focus(".sheet.is-open .js-good");
