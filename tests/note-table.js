@@ -92,7 +92,8 @@ const BODY = [
   await pick("画面いっぱい");
   const w1 = await width();
   const box = await page.$eval(".sheet.is-note", (s) => { const r = s.getBoundingClientRect(); return { t: Math.round(r.top), b: Math.round(innerHeight - r.bottom) }; });
-  t.check("「画面いっぱい」で四方を空けた一枚に", w0 <= 620 && w1 === 1280 - 32 && box.t >= 16 && box.b >= 16, JSON.stringify({ w0, w1, box }));
+  /* 元の大きさは、広い画面（840px〜）では読む幅の一枚（docs/desk.md）。 */
+  t.check("「画面いっぱい」で四方を空けた一枚に", w0 <= 760 && w0 < w1 && w1 === 1280 - 32 && box.t >= 16 && box.b >= 16, JSON.stringify({ w0, w1, box }));
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
   await page.evaluate((i) => KN.screens.notes.open(i), id);

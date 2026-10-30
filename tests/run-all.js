@@ -46,7 +46,8 @@ const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "to
   "ime-enter",                     // roadmap-seamless の N5：改行は KN.util.isEnter だけ・変換を決める改行で手順が増えない
   "security-gate",                 // 配信の守り（セキュリティ S1）：CSP の形・外のスクリプト・eval・外への通信（docs/dev.md）
   "xss-probe",                     // 画面の中の守り（セキュリティ S2）：記録の字が要素にならない（docs/dev.md）
-  "relay-worker"];                 // 外との口の守り（セキュリティ S3）：中継所のふるまいと埋めた写し（docs/dev.md）
+  "relay-worker",                  // 外との口の守り（セキュリティ S3）：中継所のふるまいと埋めた写し（docs/dev.md）
+  "desk"];                         // パソコン・幅の広い画面：左の帯・読む幅・ノートの三列（ほかの台本はみな電話の幅。docs/desk.md）
 
 /* --quick：門のうち画面を開かないもの（決まりの見張り。全部で数秒）。main への push の前に
    .claude/hooks/push-gate.js が回す。10月9〜26日に門で落ちた21回のうち19回は、これだけで落ちていた（docs/dev.md）。 */

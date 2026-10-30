@@ -31,6 +31,10 @@
   /* 左の木を出す幅（段1b）。幅の広い画面（desk。iPad の横・パソコン）と同じ境目——base.css・screens.css の
      「幅の広い画面」の @media と同じ数（docs/desk.md）。 */
   const WIDE = "(min-width: 840px)";
+  /* 三列（1280px〜）：ノートの席で開いたノートは、紙ではなく右の段に据える（木｜一覧｜本文。docs/desk.md）。
+     覆いが無いので一覧も押せる——ほかのノートを押せば入れ替わり、席を移れば閉じる（onLeave）。 */
+  const PANE = "(min-width: 1280px)";
+  const docked = () => window.matchMedia(PANE).matches && document.documentElement.dataset.screen === "notes";
   /* 電話を横にした（base.css の「portrait only」と同じ式）。 */
   const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
@@ -893,6 +897,12 @@
     const fresh = !id;
     const note = fresh ? N().draft() : N().get(id);
     if (!note) return;
+    /* 右の段は一枚（中のノートから開いたものだけ重ねる）。同じノートならそのまま。 */
+    const dock = docked() && !o.within;
+    if (dock && papers.length) {
+      if (!fresh && papers[papers.length - 1].id === id) return;
+      closePapers();
+    }
     if (fresh) {
       const up = o.parent ? N().get(o.parent) : null;
       if (up) { note.parent = up.id; note.notebook = up.notebook; }
@@ -1921,7 +1931,8 @@
       guard: false,
       cls: "is-note",
       clear: true,
-      grow: {
+      /* 右の段は一覧のカードから膨らまない（据える場所が決まっている）。 */
+      grow: dock ? null : {
         from: from || null,
         back: () => {
           /* 中のノートは、親の紙の「中のノート」のカードへ戻る（段1）。 */
@@ -1957,6 +1968,8 @@
     me.h = h;
     papers.push(me);
     paintTree();
+    /* 右の段のときに覆いを外すための印（screens.css の「幅の広い画面」）。 */
+    if (h.backdrop) h.backdrop.classList.add("is-note-cover");
     h.el.setAttribute("aria-label", "ノート");
     h.el.classList.add("is-note");
     try { if (localStorage.getItem(FULL)) h.el.classList.add("is-wide"); } catch (_) {}
@@ -2650,6 +2663,9 @@
   }
 
   KN.screens = KN.screens || {};
-  KN.screens.notes = { mount, render, dockButton, again, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
+  /** ほかの席・設定へ移る。右の段に据えたノートは、その画面の上に残さず閉じる（保存は閉じる道のまま）。 */
+  function onLeave() { if (window.matchMedia(PANE).matches) closePapers(); }
+
+  KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
     pick: pickNote, asks, answer, newBook };
 })();

@@ -1192,6 +1192,10 @@
        それを引き取ります。日を持たない画面（買うもの・価格・設定）からは
        何も置かないので、その前に見ていた日がそのまま残ります。 */
     const fromScr = from && KN.screens[from];
+    /* 出ていく画面に言う（幅の広い画面のノートは、右の段に据えた紙をここで閉じる。docs/desk.md）。 */
+    if (fromScr && fromScr.onLeave && from !== id) {
+      try { fromScr.onLeave(id); } catch (err) { /* 移ることを妨げない */ }
+    }
     if (fromScr && fromScr.day && from !== id) {
       try { KN.util.dayShare.set(fromScr.day()); } catch (err) { /* 移ることを妨げない */ }
     }

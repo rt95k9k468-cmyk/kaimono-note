@@ -1172,7 +1172,7 @@
     /* tryClose も渡します。Escape で閉じる道（下の keydown）が close() を
        直接呼んでいて、そこだけ**書きかけを黙って捨てていました**。閉じ方が
        四つあるなら、四つとも同じ扱いにします。 */
-    const handle = { close, tryClose, el };
+    const handle = { close, tryClose, el, backdrop };
     /* 隠れる瞬間に書きかけを控える紙（上の keepDraft）。 */
     if (opts && opts.draft) handle.draft = opts.draft;
     openSheets.push(handle);
