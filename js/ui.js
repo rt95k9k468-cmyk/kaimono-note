@@ -2854,7 +2854,7 @@
 
   KN.ui = {
     sheet, actionSheet, popOver, closePops, popMenu, rowMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
-    setPageHost, makeGuard, reopen, keepDraft, dropDraft, takeDraft, takeGone,
+    setPageHost, makeGuard, reopen, sheetsOpen: () => openSheets.length, keepDraft, dropDraft, takeDraft, takeGone,
     isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,
   };

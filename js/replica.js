@@ -25,6 +25,7 @@
   const on = store.replica();
   const listeners = new Set();
   let info = null;     // { rev, at }（at は Dropbox に置かれた時刻）
+  let text0 = "";      // いま見せている控えの字（足した依頼を重ね直すため）
   let busy = null;
 
   function readMark() {
@@ -47,6 +48,13 @@
     Promise.race([Promise.all([gone, notes]).catch(() => {}), new Promise((ok) => setTimeout(ok, 1500))])
       .then(() => (KN.app && KN.app.reloadHere ? KN.app.reloadHere() : location.reload()));
   }
+
+  /* 足した依頼（js/desk-inbox.js）を写しの上に重ねて見せる。 */
+  function show(text) {
+    store.showReplica(text, (s) => { if (KN.deskInbox) KN.deskInbox.lay(s); });
+    text0 = text;
+  }
+  function redraw() { if (on && text0) { try { show(text0); } catch (err) { console.warn("replica redraw", err); } } }
 
   function changed() { listeners.forEach((fn) => { try { fn(); } catch (err) { console.error(err); } }); }
 
@@ -73,7 +81,7 @@
       const d = await db.call(db.CONTENT, "/2/files/download", { arg: { path: LATEST }, raw: true });
       if (!d.res.ok) return false;
       const text = await d.res.text();
-      store.showReplica(text);
+      show(text);
       info = { rev, at: m.body.server_modified || "" };
       await keep({ ...info, text });
       changed();
@@ -110,18 +118,30 @@
     put(KN.notify, { init: nop, tick: nop });
   }
 
-  /* iPhone だけの操作。薄くするのは css/screens.css の「写しの端末」（同じ並び）。 */
+  /* iPhone だけの操作。薄くするのは css/screens.css の「写しの端末」（同じ並び）。
+     やること・買うもの・daily の＋は薄くせず、受け箱へ足す紙を開く（js/desk-inbox.js）。 */
+  const ADD = 'html:is([data-screen="todo"], [data-screen="list"], [data-screen="archive"]) #dock .add-fab';
   const ONLY = [
     '.screen:not(#screen-notes):not(#screen-settings) :is(.check, .sub-check, .tl-tick, .fav)',
-    'html:not([data-screen="notes"]) #dock .add-fab',
+    'html:not([data-screen="notes"]):not([data-screen="todo"]):not([data-screen="list"]):not([data-screen="archive"]) #dock .add-fab',
   ].join(", ");
   function guard() {
     const stop = (e) => {
-      const el = e.target && e.target.closest && e.target.closest(ONLY);
-      if (!el) return;
+      const t = e.target && e.target.closest ? e.target : null;
+      const add = t && t.closest(ADD);
+      if (!add && !(t && t.closest(ONLY))) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      if (e.type === "click") KN.ui.toast("iPhoneで操作できます");
+      if (e.type !== "click") return;
+      const I = KN.deskInbox;
+      if (add && I) {
+        const scr = document.documentElement.dataset.screen;
+        if (scr === "todo") I.addTodo();
+        else if (scr === "list") I.addItem();
+        else I.post(KN.util.todayKey(), null, "", "今日");
+        return;
+      }
+      KN.ui.toast("iPhoneで操作できます");
     };
     ["pointerdown", "click"].forEach((t) => document.addEventListener(t, stop, true));
   }
@@ -135,7 +155,7 @@
         : null;
       const v = got && got.v;
       if (v && typeof v.text === "string") {
-        store.showReplica(v.text);
+        show(v.text);
         info = { rev: v.rev || "", at: v.at || "" };
         changed();
       }
@@ -151,7 +171,7 @@
     on: () => on,
     /** 写しの元が Dropbox に置かれた時刻（ISO。まだ無ければ ""）。 */
     at: () => (info && info.at) || "",
-    refresh, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
+    refresh, redraw, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
     enable: () => setOn(true), disable: () => setOn(false),
   };
 })();

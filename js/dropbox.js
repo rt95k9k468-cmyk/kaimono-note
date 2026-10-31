@@ -734,6 +734,8 @@
       lastAt: cfg.lastAt || "",
       /* false … 控えはほかの端末が送っている（この端末はノートの画像だけ） */
       sender: cfg.sender !== false,
+      /* 控えを送る役と決まった（主の一台。写しの端末の受け箱を取りこむ。js/desk-inbox.js） */
+      main: cfg.sender === true,
       error: cfg.error || "",
       errorAt: cfg.errorAt || "",
       keep: KEEP,

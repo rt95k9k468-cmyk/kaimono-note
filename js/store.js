@@ -789,6 +789,13 @@
     out.settings.inboxPost = out.settings.inboxPost === true;
     out.settings.v2 = out.settings.v2 === true;
     out.settings.railFolded = out.settings.railFolded === true;   // 左の列を畳む（広い幅。docs/desk.md）
+    /* 写しの端末の受け箱から取りこんだ依頼の id と時刻（js/desk-inbox.js。二度当てない）。持つ記録だけ。 */
+    if (s.inboxSeen != null) {
+      const seen = {};
+      const v = s.inboxSeen;
+      if (v && typeof v === "object" && !Array.isArray(v)) Object.keys(v).forEach((k) => { const n = Number(v[k]); if (Number.isFinite(n)) seen[k] = n; });
+      out.inboxSeen = seen;
+    }
     { const cd = out.settings.captureDest;
       out.settings.captureDest = (cd && typeof cd === "object" && !Array.isArray(cd)) ? cd : {}; }
     /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */
@@ -1384,8 +1391,9 @@
   }
 
   /** 写しを見せる（js/replica.js）。iPhone の控えの字。読めなければ投げる（今の写しのまま）。
-      控えの付けたし（exportedAt・app・…Book＝ノート）は入れない。設定はこの端末のもの。 */
-  function showReplica(text) {
+      控えの付けたし（exportedAt・app・…Book＝ノート）は入れない。設定はこの端末のもの。
+      lay … まだ取りこまれていない依頼を重ねる（js/desk-inbox.js）。重ねた形が写しになる。 */
+  function showReplica(text, lay) {
     if (!replica) return false;
     const { next } = readBackup(text);
     const s = {};
@@ -1393,6 +1401,7 @@
       if (!["exportedAt", "app", "lsSeq"].includes(k) && !/Book$/.test(k)) s[k] = next[k];
     });
     s.settings = state.settings;
+    if (lay) { try { lay(s); } catch (err) { console.warn("replica lay", err); } }
     clearTimeout(saveTimer);
     saveTimer = null;
     state = s;
@@ -5393,7 +5402,7 @@
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
-    addTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, buildTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,

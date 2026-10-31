@@ -99,6 +99,7 @@ const JS = [
   "js/health-relay.js",
   "js/bell.js",
   "js/replica.js",
+  "js/desk-inbox.js",
   "js/due-sheet.js",
   "js/product-sheet.js",
   "js/screen-archive.js",

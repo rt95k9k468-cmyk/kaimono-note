@@ -1552,6 +1552,11 @@
     if (bodyBlocked()) return;
     const P = KN.diaryPosts;
     if (store.memoOut(store.dayLog(day))) { KN.ui.toast(MISSING); return; }
+    /* 写しの端末は記録に書かず、閉じたときに依頼を置く（js/desk-inbox.js）。 */
+    if (KN.deskInbox && KN.deskInbox.on()) {
+      KN.deskInbox.post(day, item, seed, `${dayLabel(day)}${item && item.mark ? ` ${item.date ? `${item.date} ` : ""}${item.at}` : ""}`);
+      return;
+    }
     const fresh = !item;
     /* 開いたときの一件が、もう同じ場所に無い（ほかで直した）なら、開かずに組み直す。 */
     if (!fresh && !P.still(memoOf(day), item)) { KN.ui.toast("日記が変わっていました"); render(); return; }

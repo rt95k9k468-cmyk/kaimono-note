@@ -114,8 +114,11 @@ const { open, checker, URL } = require("./lib");
   const after = await B.evaluate(() => ({ done: KN.store.get().todos.find((x) => x.id === "t-ip1").done,
     toast: [...document.querySelectorAll(".toast")].map((e) => e.textContent).join("|") }));
   t.check("済みの丸を押しても済まない・「iPhoneで操作できます」", !after.done && after.toast.includes("iPhoneで操作できます"), JSON.stringify(after));
+  /* やることの＋は受け箱へ足す紙（段15③。tests/desk-inbox.js）なので薄くしない。からだの＋は薄い。 */
+  await B.click(".tab-diet");
+  await B.waitForTimeout(600);
   const fab = await B.evaluate(() => Number(getComputedStyle(document.querySelector("#dock .add-fab")).opacity));
-  t.check("＋は薄い", fab < 0.5, String(fab));
+  t.check("からだの＋は薄い", fab < 0.5, String(fab));
   await B.click(".tab-notes");
   await B.waitForTimeout(600);
   const nfab = await B.evaluate(() => Number(getComputedStyle(document.querySelector("#dock .add-fab")).opacity));
