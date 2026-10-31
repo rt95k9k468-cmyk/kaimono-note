@@ -1428,7 +1428,7 @@
         if (!r) return;
         const i = [...el.children].indexOf(r);
         if (i === col.index()) { takeWheels(); return; }
-        el.scrollTo({ top: i * WHEEL_ROW, behavior: "smooth" });
+        el.scrollTo({ top: i * WHEEL_ROW, behavior: KN.motion.smooth() });
       });
       return col;
     }

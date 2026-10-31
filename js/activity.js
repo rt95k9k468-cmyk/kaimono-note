@@ -34,7 +34,7 @@
     el.addEventListener("scroll", mark, { passive: true });
     el.addEventListener("click", (e) => {
       const r = e.target.closest(".note-wheel-row");
-      if (r) el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
+      if (r) el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: KN.motion.smooth() });
     });
     return { el, value: () => vals[idx()], go: (v) => { el.scrollTop = Math.max(0, vals.indexOf(v)) * ROW; mark(); } };
   }

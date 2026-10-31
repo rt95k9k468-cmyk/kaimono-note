@@ -1042,7 +1042,7 @@
       const f = field.getBoundingClientRect();
       const s = scroller.getBoundingClientRect();
       if (f.top >= s.top + 4 && f.bottom <= s.bottom - 4) return;   // already visible
-      field.scrollIntoView({ block: "center", behavior: "smooth" });
+      field.scrollIntoView({ block: "center", behavior: KN.motion.smooth() });
     };
 
     el.addEventListener("focusin", (e) => {
@@ -1759,7 +1759,7 @@
       const to = Math.round(el.scrollTop / rowH) * rowH;
       if (Math.abs(el.scrollTop - to) <= 0.5) { live = false; return; }
       if (force) { el.scrollTop = to; live = false; return; }
-      el.scrollTo({ top: to, behavior: "smooth" });
+      el.scrollTo({ top: to, behavior: KN.motion.smooth() });
       t = setTimeout(() => settle(true), 400);
     };
     const later = () => { clearTimeout(t); t = setTimeout(settle, 90); };
@@ -1809,7 +1809,7 @@
     el.addEventListener("click", (e) => {
       const r = e.target.closest(".note-wheel-row");
       if (!r) return;
-      el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: "smooth" });
+      el.scrollTo({ top: [...el.children].indexOf(r) * ROW, behavior: KN.motion.smooth() });
     });
     const go = (v) => {
       const i = Math.max(0, [...el.children].findIndex((r) => Number(r.dataset.v) === v));
