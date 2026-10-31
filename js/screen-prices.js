@@ -211,10 +211,14 @@
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(p);
       });
+      /* 買うもの｜価格を左右に並べたとき（1280px〜、app.js の duo）は、左の買うものと同じ棚のカードと
+         棚の名前で組む（design-review 9節の W3。電話の DOM は今までどおり）。 */
+      const shelf = document.documentElement.hasAttribute("data-duo");
       groups.forEach((rows, key) => {
         const cat = store.getCategory(key);
         const group = node(html`
-          <section class="cat-group" style="--cat:${(cat && cat.color) || ""}">
+          <section class="cat-group ${shelf ? "is-run" : ""}" style="--cat:${(cat && cat.color) || ""}">
+            ${shelf && cat ? html`<h3 class="shelf-head"><span class="chip-dot"></span>${cat.name}</h3>` : ""}
             <div class="product-list"></div>
           </section>
         `);

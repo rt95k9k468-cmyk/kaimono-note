@@ -505,6 +505,9 @@
   }
 
   function paintTabs() {
+    /* 窓の題（パソコンのタスクバー・タブ）にも、いま居る席の名前（design-review 9節の W4）。 */
+    const title = FACES[active] ? `${FACES[active].label} — くらしノート` : "くらしノート";
+    if (document.title !== title) document.title = title;
     let hereBtn = null;
     TABS.forEach((t) => {
       const btn = document.querySelector(`.tab[data-tab="${t.id}"]`);
@@ -1408,7 +1411,13 @@
     watchFabAway();
     watchWriting();
     /* 1280px をまたいだら、組の二枚を並べ直す・重ね直す。 */
-    if (DUO && DUO.addEventListener) DUO.addEventListener("change", () => { if (pairOf(active)) show(active, "settled"); });
+    /* 並べるのをやめたら、後ろだった一枚も組み直す（並べたときだけの棚のカードを外す）。 */
+    if (DUO && DUO.addEventListener) DUO.addEventListener("change", () => {
+      if (!pairOf(active)) return;
+      const was = duo;
+      show(active, "settled");
+      if (was && !duo && KN.screens[was.back]) KN.screens[was.back].render();
+    });
     /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
        同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
        ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */

@@ -191,6 +191,23 @@ const { open, checker } = require("./lib");
   await wait(700);
   t.check("#prices で開いても二枚並び（席は買うもの）", await page.evaluate(() => document.documentElement.dataset.screen === "list"
     && document.getElementById("screen-prices").classList.contains("is-duo-r")));
+  /* W3：並べた右の一枚（価格）も、左の買うものと同じ棚のカードと棚の名前。 */
+  const shelf = await page.evaluate(() => {
+    const L = document.querySelector("#screen-list .cat-group.is-run"), R = document.querySelector("#screen-prices .cat-group.is-run");
+    const look = (e) => { if (!e) return null; const c = getComputedStyle(e); return [c.backgroundColor, c.borderTopWidth, c.borderTopColor, c.borderTopLeftRadius].join(" "); };
+    return { l: look(L), r: look(R), head: !!(R && R.querySelector(".shelf-head .chip-dot")) };
+  });
+  t.check("並べた価格も棚のカードと棚の名前（W3）", !!shelf.r && shelf.r === shelf.l && shelf.head, JSON.stringify(shelf));
+  t.check("窓の題に席の名前（W4）", (await page.title()) === "shopping — くらしノート", await page.title());
+  /* W4：マウスで指した行は薄く塗る（動きは足さない）。 */
+  const tint = async () => page.evaluate(() => getComputedStyle(document.querySelector("#screen-list .item-wrap .item")).backgroundImage);
+  const before = await tint();
+  await page.hover("#screen-list .item-wrap .item-name");
+  await wait(100);
+  const over = await tint();
+  await page.mouse.move(600, 880);
+  await wait(100);
+  t.check("指した行は薄く塗り、離れれば戻る（W4）", before === "none" && /gradient/.test(over) && (await tint()) === "none", JSON.stringify({ before, over }));
 
   /* 右クリック：行の払う操作を小窓で。 */
   await page.click("#screen-list .item-wrap .item-name", { button: "right" });
@@ -216,6 +233,9 @@ const { open, checker } = require("./lib");
   await page.click(".tab-list");
   await page.waitForFunction(() => document.documentElement.dataset.screen === "prices", null, { timeout: 3000 }).catch(() => {});
   t.check("1100px：買うもの → 価格（席の二度押し）", await page.evaluate(() => document.documentElement.dataset.screen === "prices"));
+  t.check("1100px：価格は棚のカードにしない（並べたときだけ）", await page.evaluate(() => !document.querySelector("#screen-prices .cat-group.is-run, #screen-prices .shelf-head")
+    && document.querySelectorAll("#screen-prices .product-wrap").length === 3));
+  t.check("1100px：窓の題は prices", (await page.title()) === "prices — くらしノート", await page.title());
   await page.setViewportSize({ width: 1440, height: 900 });
   await wait(700);
   t.check("価格を見たまま 1280px を越えたら、二枚並びへ", await page.evaluate(() => document.documentElement.dataset.screen === "list"
@@ -377,7 +397,28 @@ const { open, checker } = require("./lib");
   const onSeat = await page.evaluate(() => KN.app.activeScreen());
   t.check("一文字の近道を切ると 2 で席が移らない・入れると移る", offSeat === "todo" && onSeat === "notes", JSON.stringify({ offSeat, onSeat }));
 
+  const rowH = () => page.evaluate(() => Math.round(document.querySelector(".tab-list").getBoundingClientRect().height));
+  t.check("マウスの左の列の行は 36px", (await rowH()) === 36, String(await rowH()));
   t.check("エラーなし", !errors.length, errors.join(" | "));
-  t.done();
   await browser.close();
+
+  /* W6：指で触る広い画面（iPad の横）は、左の列の行と畳む口を 44px。 */
+  {
+    const c = await open({ viewport: { width: 1180, height: 820 }, touch: true });
+    const h = await c.page.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches,
+      tabs: [...document.querySelectorAll("#tabbar .tab")].map((b) => Math.round(b.getBoundingClientRect().height)),
+      fold: Math.round(document.getElementById("rail-fold").getBoundingClientRect().height) }));
+    t.check("指の 1180px：左の列の行と畳む口は 44px（W6）", h.coarse && h.tabs.length === 5 && h.tabs.every((x) => x === 44) && h.fold === 44, JSON.stringify(h));
+    await c.page.click(".tab-notes");
+    await c.page.waitForTimeout(600);
+    const tree = await c.page.evaluate(() => {
+      const last = [...document.querySelectorAll("#tabbar .tab")].pop().getBoundingClientRect();
+      const t = [...document.querySelectorAll(".notes-tree, .notes-books")].find((e) => e.getClientRects().length);
+      return { last: Math.round(last.bottom), tree: t ? Math.round(t.getBoundingClientRect().top) : null };
+    });
+    t.check("指の 1180px：ノートの木は席の行の下から（重ならない）", tree.tree != null && tree.tree >= tree.last, JSON.stringify(tree));
+    t.check("指の 1180px：エラーなし", !c.errors.length, c.errors.join(" | "));
+    await c.browser.close();
+  }
+  t.done();
 })().catch((e) => { console.error(e); process.exit(1); });

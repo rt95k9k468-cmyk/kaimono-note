@@ -2358,6 +2358,8 @@ a { color: var(--c-primary); }
     --side-row: 36px; --side-gap: 2px; --side-pad: var(--sp-3);
     --side-nav-h: calc(var(--side-pad) * 2 + var(--side-row) * 5 + var(--side-gap) * 4);
   }
+  /* 指で触る広い画面（iPad の横）は、席の行と畳む口を 44px に（W6。マウスの 36px は詰めた行）。 */
+  @media (pointer: coarse) { :root { --side-row: 44px; } }
   /* トラックパッドの横払いは日・週を送る（js/keys.js）。ブラウザの「戻る・進む」にしない。 */
   html, body { overscroll-behavior-x: none; }
   body { background: var(--c-bg); }

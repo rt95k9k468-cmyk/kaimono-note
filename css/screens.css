@@ -211,13 +211,15 @@
 /* 棚ごとのカード（Apple リマインダーの組。2026年10月8日、利用者が見比べの画像で選んだ）。面は .card と
    同じ材。頭に棚の名前、行と行のあいだは品名の頭から右の端までの細い線（docs/shopping.md）。 */
 #screen-list .cat-group.is-run,
+#screen-prices .cat-group.is-run,
 #screen-list .day-bought > .item-list {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-1);
 }
-#screen-list .cat-group.is-run { margin: 0 var(--sp-3) var(--sp-4); padding-bottom: var(--sp-1); }
+#screen-list .cat-group.is-run,
+#screen-prices .cat-group.is-run { margin: 0 var(--sp-3) var(--sp-4); padding-bottom: var(--sp-1); }
 /* 買ったもの（今日・過ぎた日）も同じカードに入れ、行の列を棚と揃える（tests/shop-day.js の「同じ列」）。
    見出しはカードの外、棚の名前と同じ左に。 */
 #screen-list .day-bought > .item-list { margin: 0 var(--sp-3); }
@@ -228,9 +230,12 @@
   font-size: var(--fs-md); font-weight: var(--fw-bold);
   color: color-mix(in srgb, var(--cat, var(--c-text-2)) 72%, var(--c-text));
 }
-#screen-list :is(.cat-group.is-run, .day-bought) .item-wrap + .item-wrap {
+#screen-list :is(.cat-group.is-run, .day-bought) .item-wrap + .item-wrap,
+#screen-prices .cat-group.is-run .product-wrap + .product-wrap {
   background: linear-gradient(var(--c-border), var(--c-border)) var(--shelf-inset, 104px) 0 / 100% 1px no-repeat;
 }
+/* 価格の棚のカード（1280px〜で買うもの｜価格を並べたときだけ。screen-prices.js）。線は品名の頭から。 */
+#screen-prices .cat-group.is-run { --shelf-inset: 68px; }
 
 .cat-head-count { color: var(--c-text-3); font-weight: var(--fw-bold); }
 
@@ -8169,6 +8174,8 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 @media (min-width: 840px) {
   :root { --desk-read: 760px; --desk-wide: 1180px; }
+  /* 帯の暦の用事の札は 11px（W5。電話の 10px は七つ並べるマスの幅から。マスの背 27px＝行 13px×2 は変えない）。 */
+  .cal-name { font-size: calc(11px * var(--fs-k)); }
   /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
      まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。 */
   @media (min-width: 1280px) {
@@ -8247,10 +8254,12 @@ button.note-when:active { opacity: var(--press-fade); }
   @container seat (min-width: 792px) {
     #screen-todo[data-face="today"] .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
     #screen-todo[data-face="today"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
-    /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。道は 400px（電話の 393 より細いと札が切れる）〜480px、
+    /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。道は 400px（電話の 393 より細いと札が切れる）〜580px
+       （中身 1044px＝窓 1276px から。道の絵ごと一回り大きく、時の数字が 11px に届く＝W5）、
        時間割に 440px を残す（列の幅は器と --desk-wide の小さいほう）。並べる境目 792px は窓 1024px の中身＝道 400＋間 24＋時間割 368。 */
     #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
-    #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(400px, min(100cqi, var(--desk-wide)) - var(--sp-6) - 440px, 480px); }
+    #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(400px, min(100cqi, var(--desk-wide)) - var(--sp-6) - 440px, 580px); }
+    #screen-todo .todo-day.is-tl > .day-road .road-map { max-width: none; }
     #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
     /* からだ：カードを段組みに（上から下へ流れ、段の高さをそろえる）。三段は 380px ずつ入る幅から。 */
     .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
@@ -8308,6 +8317,17 @@ button.note-when:active { opacity: var(--press-fade); }
   .screen.is-duo-r.is-in-l { animation: desk-in-up var(--m-nav) var(--ease-out); }
   :root[data-duo].has-fab .dock { right: calc((100vw - var(--rail-w)) / 2 + var(--sp-5)); }
   .dock > .quick-add.is-duo-r { position: fixed; right: var(--sp-5); bottom: var(--sp-5); }
+}
+
+/* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
+   重ねられるよう、塗りは background-image の一枚で（色の地はそのまま）。透けるカードは下の色で。 */
+@media (hover: hover) and (pointer: fine) {
+  :is(.item-wrap:not(.is-tile-wrap) .item, .tl-item, .arc-log-row, .topbar-day, .cal-day, .diet-stat,
+      .seg-btn:not([aria-pressed="true"]), .tl-open, .tl-someday-add):hover {
+    --tint: color-mix(in srgb, var(--c-text) 6%, transparent);
+    background-image: linear-gradient(var(--tint), var(--tint));
+  }
+  .think-card:hover { background-color: color-mix(in srgb, var(--c-text) 6%, transparent); }
 }
 
 /* ---- 小さな決まり（roadmap-unify の U13）。インラインの style= の代わり ----

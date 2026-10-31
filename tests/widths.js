@@ -15,10 +15,11 @@ const SIZES = [[393, 852, "iPhone"], [430, 932, "iPhone Pro Max"], [720, 450, "1
   [820, 1180, "iPad 縦"], [900, 800, "並べた窓"], [1024, 768, "小さい PC"], [1032, 1376, "iPad 13 縦"], [1180, 820, "iPad 横"],
   [1366, 1024, "iPad 13 横"], [1440, 900, "PC"], [1920, 1080, "大きい PC"]];
 const SEATS = ["archive", "notes", "todo", "list", "diet"];
-/* 段を待っているもの。直したらここから消す。 */
+/* 決めて残した小さな字：[名前, 何, その幅で残すか]。そのほかの幅では 11px を見張る（W5、P4）。 */
 const WAIT = [
-  [/road-hours/, "道の時の数字（W5。P4 で、道の絵ごと一回り大きくできるときだけ）"],
-  [/cal-name/, "帯の暦の用事の札 10px（W5。P4）"],
+  /* 道は viewBox 360 を列の幅へ伸ばす。道の絵ごと一回り大きくできるのは道の列が 580px 取れる窓 1276px から。 */
+  [/road-hours/, "道の時の数字（電話と窓 1276px 未満。道の絵の大きさのまま）", (w) => w < 1276],
+  [/cal-name/, "帯の暦の用事の札 10px（電話の幅。七つ並べるマス）", (w) => w < 840],
 ];
 
 /* 頁の中で：出ている字・押すところを一つずつ見る。 */
@@ -141,7 +142,7 @@ async function seed(page) {
         const sc = await page.evaluate(scan);
         sc.out.forEach((x) => out.push(`${s}: ${x}`));
         for (const x of sc.small) {
-          const wt = WAIT.find(([re]) => re.test(x.name));
+          const wt = WAIT.find(([re, , keep]) => re.test(x.name) && keep(w));
           if (wt) waits.set(wt[1], (waits.get(wt[1]) || 0) + 1);
           else small.push(`${s}: ${x.name} ${x.px}px`);
         }
