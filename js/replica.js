@@ -13,6 +13,8 @@
    - 版（rev）が変わったときだけ読む：開いた・前に出た・見えているあいだ EVERY おき・引いて読み直す。
    - iPhone だけの操作（済み・★・＋）は薄く、押せば「iPhoneで操作できます」。
      ほかの道からの書き換えは store の update が写しへ戻す。
+   - 困ったときだけ歯車に点（trouble。設定の頭に一行）：読めない（fail）・届かないまま3日（far）・
+     写しの元が置かれてから3日（old）。数は出さない。確かめた時刻は OK_KEY（印は store が書き直すので別）。
    ========================================================= */
 (function () {
   "use strict";
@@ -22,11 +24,16 @@
   const LATEST = "/kurashi-latest.json";
   const META = "replica";
   const EVERY = 3 * 60 * 1000;
+  const OK_KEY = "kn-replica-ok";
+  const DAY = 86400000;
+  const STUCK = 3;     // 送れないまま3日（backup.js の REMIND_STUCK_DAYS・notes-sync の STUCK）と同じ
   const on = store.replica();
   const listeners = new Set();
   let info = null;     // { rev, at }（at は Dropbox に置かれた時刻）
   let text0 = "";      // いま見せている控えの字（足した依頼を重ね直すため）
   let busy = null;
+  let failed = "";     // "" | "far"（届かない）| "fail"（届いたが読めない）。いちばん新しい一回
+  let need = false;    // Dropbox がつながっていない（待っても直らない）
 
   function readMark() {
     try {
@@ -41,6 +48,7 @@
     const cur = readMark();
     const settings = (cur && cur.settings) || store.get().settings;
     localStorage.setItem(store.REPLICA_KEY, JSON.stringify({ on: !!v, settings }));
+    try { if (v) localStorage.setItem(OK_KEY, new Date().toISOString()); else localStorage.removeItem(OK_KEY); } catch (_) { /* 印が無くても動く */ }
     const gone = !v && KN.idb && KN.idb.available()
       ? KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").delete(META); }).catch(() => {})
       : null;
@@ -58,6 +66,29 @@
 
   function changed() { listeners.forEach((fn) => { try { fn(); } catch (err) { console.error(err); } }); }
 
+  /* 最後に Dropbox の今の控えと突き合わせられた時刻（入れたときから数える）。 */
+  function okAt() { try { return localStorage.getItem(OK_KEY) || ""; } catch (_) { return ""; } }
+  function seen() { try { localStorage.setItem(OK_KEY, new Date().toISOString()); } catch (_) { /* 次に */ } }
+  const ago = (iso, now) => { const t = iso ? new Date(iso).getTime() : NaN; return isFinite(t) ? Math.floor((now - t) / DAY) : null; };
+
+  /** 困ったときだけ "fail" | "far" | "old"、ふだんは null（歯車の点・設定の頭の一行）。 */
+  function trouble(now) {
+    if (!on) return null;
+    const t = now || Date.now();
+    if (failed === "fail") return "fail";
+    if (need) return "far";
+    if (failed === "far") { const d = ago(okAt(), t); if (d !== null && d >= STUCK) return "far"; }
+    const d = ago(info && info.at, t);
+    return d !== null && d >= STUCK ? "old" : null;
+  }
+  function ended(kind, lack) {
+    const was = trouble();
+    failed = kind;
+    need = !!lack;
+    if (!kind) seen();
+    if (trouble() !== was) changed();
+  }
+
   function keep(v) {
     if (!KN.idb || !KN.idb.available()) return Promise.resolve();
     return KN.idb.run(["meta"], "readwrite", (t) => { t.objectStore("meta").put({ k: META, v }); })
@@ -73,21 +104,28 @@
   }
   async function look() {
     const db = KN.dropbox && KN.dropbox.api;
+    let text = null;
     try {
-      if (!db || !(await db.ready())) return false;
+      if (!db || !(await db.ready())) { ended("far", true); return false; }
       const m = await db.call(db.API, "/2/files/get_metadata", { json: { path: LATEST } });
       const rev = m.res.ok && m.body && m.body.rev;
-      if (!rev || (info && info.rev === rev)) return false;
+      if (!rev) { ended("far"); return false; }
+      if (info && info.rev === rev) { ended(""); return false; }
       const d = await db.call(db.CONTENT, "/2/files/download", { arg: { path: LATEST }, raw: true });
-      if (!d.res.ok) return false;
-      const text = await d.res.text();
+      if (!d.res.ok) { ended("far"); return false; }
+      text = await d.res.text();
       show(text);
       info = { rev, at: m.body.server_modified || "" };
       await keep({ ...info, text });
+      failed = "";
+      need = false;
+      seen();
       changed();
       return true;
     } catch (err) {
       console.warn("replica not read", err);
+      /* 字まで届いて写せなかった（壊れた控え）は待っても直らない。届かないのは3日待つ。 */
+      ended(text === null ? "far" : "fail");
       return false;
     }
   }
@@ -107,7 +145,9 @@
     };
     put(KN.diaryIdb, { ...shelf, body: () => "ok" });
     put(KN.todoPast, shelf);
+    /* この端末は控えを送らないので、端末の外の控えの見張り（歯車の点）は写しの trouble が受け持つ。 */
     put(KN.backup, {
+      offDeviceStale: () => null, exportDue: () => false,
       init: nop, ready: done, snapshot: done, take: done, maybeDaily: done, maybeHourly: done, maybeEvery: done,
       prune: done, restore: no, clear: no, markExported: nop, settleLost: nop, mergeNotes: no,
       lost: () => null, doubt: () => null, checked: done,
@@ -149,6 +189,7 @@
   async function start() {
     document.documentElement.classList.add("is-replica");
     guard();
+    if (!okAt()) seen();   // 前の版で入れた端末は、ここから数える
     try {
       const got = KN.idb && KN.idb.available()
         ? await KN.idb.run(["meta"], "readonly", (t) => { const r = t.objectStore("meta").get(META); return () => r.result; })
@@ -171,6 +212,7 @@
     on: () => on,
     /** 写しの元が Dropbox に置かれた時刻（ISO。まだ無ければ ""）。 */
     at: () => (info && info.at) || "",
+    trouble,
     refresh, redraw, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
     enable: () => setOn(true), disable: () => setOn(false),
   };

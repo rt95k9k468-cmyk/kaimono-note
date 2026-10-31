@@ -638,14 +638,22 @@
     if (up) up.hidden = !(KN.store && KN.store.get().settings.showUpcoming === true);
     const btn = root && root.querySelector(".js-settings");
     if (!btn || !KN.backup || !KN.backup.offDeviceStale) return;
-    /* ノートの同期が合わせられないまま3日も、同じ点（js/notes-sync.js の stale）。 */
-    const notes = !!(KN.notesSync && KN.notesSync.stale());
-    const on = notes || !!KN.backup.offDeviceStale();
-    if (btn.classList.contains("has-dot") === on && btn.dataset.dot === String(notes)) return;
-    btn.classList.toggle("has-dot", on);
-    btn.dataset.dot = String(notes);
-    btn.setAttribute("aria-label", !on ? "設定" : notes ? "設定（ノートを合わせられていません）" : "設定（端末の外の控えが古くなっています）");
+    /* ノートの同期が合わせられないまま3日も、写しの端末が困ったときも、同じ点
+       （js/notes-sync.js の stale・js/replica.js の trouble。写しのあいだ offDeviceStale は黙る）。 */
+    const rep = KN.replica && KN.replica.trouble ? KN.replica.trouble() : null;
+    const why = rep ? "replica-" + rep
+      : KN.notesSync && KN.notesSync.stale() ? "notes"
+      : !(KN.store && KN.store.replica()) && KN.backup.offDeviceStale() ? "backup" : "";
+    if (btn.dataset.dot === why) return;
+    btn.classList.toggle("has-dot", !!why);
+    btn.dataset.dot = why;
+    btn.setAttribute("aria-label", !why ? "設定" : `設定（${DOT_SAY[why]}）`);
   }
+  const DOT_SAY = {
+    notes: "ノートを合わせられていません", backup: "端末の外の控えが古くなっています",
+    "replica-fail": "iPhone の写しを読めませんでした", "replica-far": "iPhone の写しが届いていません",
+    "replica-old": "iPhone の写しが古いままです",
+  };
   function queueDot() {
     if (dotQueued) return;
     dotQueued = true;
@@ -680,6 +688,10 @@
   paintDot();
   if (KN.store) KN.store.subscribe(queueDot);
   if (KN.notesSync) KN.notesSync.onChange(queueDot);
+  /* replica.js は head.js よりあとに読む（index.html）ので、読み終えてから。 */
+  const late = () => { if (KN.replica) KN.replica.onChange(queueDot); queueDot(); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", late, { once: true });
+  else late();
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") queueDot();
   });

@@ -100,6 +100,8 @@
     /* ノート（js/notes-idb.js）も store の外。読み終えたらノートブック・タグの
        行が出るので、組み直します。 */
     if (KN.notes) KN.notes.onChange(() => { if (KN.app.activeScreen() === "settings") render(); });
+    /* 写しの端末の困りごと（js/replica.js の trouble）も store の外。 */
+    if (KN.replica) KN.replica.onChange(() => { if (KN.app.activeScreen() === "settings") render(); });
 
     /* 左端から引いて一段戻る。設定の中では紙の重なり、いちばん外では
        画面そのものが動きます——どちらも「上の一枚と、その下の一枚」なので、
@@ -667,6 +669,12 @@
       onTap: () => go("data"),
     })));
     if (S.notesSyncAlert) put([S.notesSyncAlert()]);
+    /* 写しの端末が困ったとき（js/replica.js の trouble）。数は出さない。押すと Dropbox（最後の控えの時刻はそこ）。 */
+    const rep = KN.replica && KN.replica.trouble && KN.replica.trouble();
+    if (rep) L.body.append(card(navRow({
+      ico: "download", tint: TINT.warn, alert: true, onTap: () => go("dropbox"),
+      title: rep === "fail" ? "iPhone の写しを読めませんでした" : rep === "far" ? "iPhone の写しが届いていません" : "iPhone の写しが古いままです",
+    })));
     /* 開いたときの点検（B4、backup.js の doubt）：記録が写しや控えより大きく少ない。
        記録は「自動バックアップ」へ。ノートは、その控えから消さずに合わせる。 */
     const doubt = KN.backup.doubt && KN.backup.doubt();
