@@ -1994,7 +1994,8 @@
       title: "",
       content: body,
       guard: false,
-      cls: "is-note",
+      /* 据えた紙の印（席の印が替わっても、閉じ終わるまで段の形のまま。screens.css の右の段）。 */
+      cls: docked() ? "is-note is-docked" : "is-note",
       clear: true,
       /* 右の段は一覧のカードから膨らまない（据える場所が決まっている）。 */
       grow: dock ? null : {
@@ -2417,7 +2418,22 @@
     treeEl.scrollTop = keep;
   }
 
-  function closePapers() { papers.slice().reverse().forEach((x) => x.h.close()); }
+  function closePapers() {
+    const list = papers.slice().reverse();
+    /* 右の段の紙は、閉じるあいだ段の形のまま留める（P7）。閉じた直後に一覧が出る・席を移ると段の規則が変わり、閉じる紙が
+       380px 跳んだり、真ん中の大きな紙の姿で一瞬出たりしていた（席の印は onLeave より先に替わるので、段の形は開いたときの印 is-docked でも効く）。
+       測ってから書く（docs/traps.md）。 */
+    if (document.documentElement.classList.contains("notes-dock")) {
+      const at = list.map((x) => (x.h.el.classList.contains("is-docked") && !x.h.el.classList.contains("is-wide") ? x.h.el.getBoundingClientRect() : null));
+      list.forEach((x, i) => {
+        const r = at[i];
+        if (!r) return;
+        Object.assign(x.h.el.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, right: "auto", bottom: "auto" });
+        if (x.h.backdrop) x.h.backdrop.style.display = "none";
+      });
+    }
+    list.forEach((x) => x.h.close());
+  }
 
   /** 木のノートへ：重ねた紙にあればそこまで戻る。無ければ紙を閉じて、そのノートを開く。 */
   function fromTree(id) {

@@ -8305,16 +8305,17 @@ button.note-when:active { opacity: var(--press-fade); }
     background: linear-gradient(to right, transparent var(--list-w),
       var(--c-border) 0 calc(var(--list-w) + 1px), var(--c-surface) 0);
   }
-  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide) {
+  /* 据えた紙（is-docked）は席の印が替わっても段の形のまま——席を移ると閉じるが、閉じ終わるまで真ん中の紙の姿にしない（P7）。 */
+  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide), :root.notes-dock .sheet.is-note.is-docked:not(.is-wide) {
     left: var(--pane-x); right: 0; top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); bottom: 0;
     width: auto; height: auto;
     border-radius: 0;
     box-shadow: -1px 0 0 var(--c-border);
     transform: translateX(var(--sp-6));
   }
-  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide).is-open { transform: none; }
+  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide).is-open, :root.notes-dock .sheet.is-note.is-docked:not(.is-wide).is-open { transform: none; }
   :root.notes-dock[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
-  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
+  :root.notes-dock :is([data-screen="notes"] .sheet.is-note, .sheet.is-note.is-docked):not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
   /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
