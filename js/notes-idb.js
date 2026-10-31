@@ -190,7 +190,9 @@
   }
 
   /** 直したノートだけを、いま書きます。 */
-  const WROTE = "kn-notes-wrote";
+  const chan = typeof BroadcastChannel === "function" ? new BroadcastChannel("kn-notes") : null;
+  /** ほかの窓がノートを書いたとき（自分の窓の書き込みでは呼ばない）。 */
+  const onOther = (fn) => { if (chan) chan.addEventListener("message", () => fn()); };
 
   function writeNow(retried) {
     clearTimeout(timer);
@@ -229,9 +231,9 @@
     })).then(() => {
       wrote.forEach((list, id) => verCache.set(id, list));
       ids.forEach((id) => { if (!byId.has(id)) verCache.delete(id); });
-      /* 同じ端末のほかの窓へ合図（app.js の storage が頁ごと読み直す）。ノートの記憶は窓ごとなので、
-         合図が無いと古い本文のまま直して、ほかの窓の直しを上書きしていた（P6d。tests/desk-windows.js）。 */
-      if (ids.length) { try { localStorage.setItem(WROTE, `${Date.now()}-${Math.random()}`); } catch (_) { /* 合図だけ */ } }
+      /* 同じ端末のほかの窓へ合図（app.js が頁ごと読み直す）。ノートの記憶は窓ごとなので、合図が無いと古い本文の
+         まま直して、ほかの窓の直しを上書きしていた（P6d。tests/desk-windows.js）。localStorage は使わない（記録の外に書かない）。 */
+      if (ids.length && chan) { try { chan.postMessage("wrote"); } catch (_) { /* 合図だけ */ } }
       if (KN.dropbox && KN.dropbox.soon) KN.dropbox.soon();
       if (loud && KN.notesSync) KN.notesSync.soon();
     }, (err) => {
@@ -1101,7 +1103,7 @@
     /** まだ入れ物に書けていないか（flush のあとに見る。日記の一件をノートへ移すとき、
         書けたと確かめてから日記から外すため。docs/thinking.md）。 */
     pending: (id) => dirty.has(id),
-    WROTE, begin, end, versions, versionBodies, revert, merge,
+    onOther, begin, end, versions, versionBodies, revert, merge,
     absorb, addMany, unimport, reshape, metaAll, colors, setColors, isOpen: (id) => opened.has(id), shape,
     setLabels, setCreated, cleanTags, notebooks, tagNames, headOf, renameLabel, tree, move, isTable,
     place, unplace, linked, gather, ungather, bundle, unbundle, inOrder, orderOf, setBooks, moveBook, addBook,

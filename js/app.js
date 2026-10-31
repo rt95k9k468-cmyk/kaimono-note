@@ -1571,14 +1571,15 @@
     /* ノートの書きかけ（IndexedDB）を書き終えてから読み直す。読み直しが書き込みを途中で捨て、別の窓が書いた
        拍に打っていたノートの本文が消えていた（パソコン段10。docs/desk.md・tests/desk-windows.js）。 */
     let otherWrote = false;
-    window.addEventListener("storage", (e) => {
-      const notesKey = KN.notes && KN.notes.WROTE;   // ノートを書いた合図も（js/notes-idb.js）
-      if ((e.key !== store.KEY && (!notesKey || e.key !== notesKey)) || otherWrote) return;
+    const otherWindow = () => {
+      if (otherWrote) return;
       otherWrote = true;
       const notes = KN.notes && KN.notes.flush ? KN.notes.flush() : null;
       Promise.race([Promise.resolve(notes).catch(() => {}), new Promise((ok) => setTimeout(ok, 1500))])
         .then(() => KN.app.reloadHere());
-    });
+    };
+    window.addEventListener("storage", (e) => { if (e.key === store.KEY) otherWindow(); });
+    if (KN.notes && KN.notes.onOther) KN.notes.onOther(otherWindow);   // ノートを書いた合図も（js/notes-idb.js。P6d）
 
     /* The clock moving is a thing that changes the screen.
 
