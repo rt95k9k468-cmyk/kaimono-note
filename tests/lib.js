@@ -75,12 +75,15 @@ function clockAt(hms) {
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。
     unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false, unfold = [] } = {}) {
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false, unfold = [], scrollbars = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
   /* KN_BROWSER=webkit：WebKit で開く（毎朝の全部の二つ目の列。roadmap-3.2 の G3）。CDP・page.coverage は Chromium だけ。 */
-  const browser = await require("playwright")[process.env.KN_BROWSER === "webkit" ? "webkit" : "chromium"].launch();
+  /* scrollbars：送り棒が場所を取る（Windows の形）。試験の Chromium は既定で棒を隠すので、その引数を外して開く。 */
+  const webkit = process.env.KN_BROWSER === "webkit";
+  const browser = await require("playwright")[webkit ? "webkit" : "chromium"]
+    .launch(scrollbars && !webkit ? { ignoreDefaultArgs: ["--hide-scrollbars"] } : {});
   /* KN_TZ=Asia/Tokyo：頁の時間帯（台本が timezoneId を渡していれば、そちらが勝つ）。機械と門は UTC なので、
      日本の朝（0〜9時。UTC ではまだ前の日）にだけ出る取り違えは、ふだんの回し方では見えない。
      台本の側の日付も揃えるなら、node にも同じ TZ を渡す（`TZ=Asia/Tokyo KN_TZ=Asia/Tokyo KN_CLOCK=07:30`）。 */

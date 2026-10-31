@@ -36,7 +36,7 @@
   const PANE = "(min-width: 1280px)";
   const docked = () => window.matchMedia(PANE).matches && document.documentElement.dataset.screen === "notes";
   /* 電話を横にした（base.css の「portrait only」と同じ式）。 */
-  const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2)");
+  const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
   let treeEl = null;
   let seeking = false;             // さがす窓に指が入っている

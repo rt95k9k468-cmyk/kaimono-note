@@ -7,6 +7,9 @@
 
 - **境目は 840px**（Material の expanded。iPad の縦は電話と同じ、iPad の横とパソコンが desk）。数は CSS の
   `@media (min-width: 840px)`（base.css・screens.css の「幅の広い画面」）と `screen-notes.js`・`keys.js` の `WIDE`・`edge-back.js` の `DESK` にある。変えるなら全部。
+- **640〜839px（iPad の縦・並べた窓）**：地・帯・写真は窓いっぱい、中身は読む幅 680px へ内側の余白で（screens.css の
+  640px の「読む幅」。840px から 760px）。下の帯のカプセルは 600px で真ん中、＋はその右端（base.css の `--bar-x`）。
+  電話を横にした案内は `pointer: coarse` だけ（200% の窓 720×450 でアプリが隠れていた）。幅の物差しは `tests/widths.js`。
 - **電話の見た目は一画素も変えない。** desk の規則はどれも @media の中。iPhone 幅で撮り比べてから流す。
 - **下の帯は窓の背いっぱいの平らな左の列**（段5。Notion・Things の形。段1〜4 の浮いたカプセルは iPad に見えた）。幅
   `--rail-w` 232px・地は `--c-bg`・右に線一本。席は絵の右に名前の横長の行（36px）、いま居る席は滑る一枚（`tab-lens.js`：

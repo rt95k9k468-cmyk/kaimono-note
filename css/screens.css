@@ -8148,8 +8148,9 @@ button.note-when:active { opacity: var(--press-fade); }
      （padding の % は器の幅）。一枚の幅を変えると、隣の日へ払う道のりが狂う。
    - 1200px から：やることの今日は道と時間割を左右に、からだはカードを段組みに。
    ========================================================= */
-@media (min-width: 840px) {
-  :root { --desk-read: 760px; --desk-wide: 1180px; }
+/* 640px から（iPad の縦・並べた窓）：読む幅は 680px。地と帯は窓いっぱい（base.css）。840px からは 760px。 */
+@media (min-width: 640px) {
+  :root { --desk-read: 680px; }
   .tl-sheet.is-daily .day-slide,
   #screen-todo .day-slide,
   #screen-list .tl-sheet > .js-body,
@@ -8160,6 +8161,13 @@ button.note-when:active { opacity: var(--press-fade); }
   #screen-todo .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2 + var(--sp-4))); }
   /* 設定の帯（‹・題）も読む列にそろえる（‹ が窓の左端に離れていた）。 */
   .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); }
+}
+/* からだの紙も読む幅に（地は紙の色のまま）。840px からの形は P3（docs/log/design-review.md 10節）で。 */
+@media (min-width: 640px) and (max-width: 839.98px) {
+  #screen-diet .diet-day.card { padding-inline: max(0px, calc((100% - var(--desk-read)) / 2)); }
+}
+@media (min-width: 840px) {
+  :root { --desk-read: 760px; --desk-wide: 1180px; }
   /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
      まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。 */
   @media (min-width: 1280px) {

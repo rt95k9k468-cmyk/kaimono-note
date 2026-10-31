@@ -980,11 +980,11 @@ a { color: var(--c-primary); }
   position: relative;
 }
 
+/* 640px から：地・帯・写真は窓いっぱい、中身は内側の余白で読む幅へ（screens.css の「読む幅」。docs/desk.md）。
+   前は 620px の一列＋左右に灰の帯で、iPad の縦が電話を引き伸ばした見え方だった（design-review の W1・P1）。 */
 @media (min-width: 640px) {
-  body { background: var(--c-surface-2); }
-  .app {
-    box-shadow: 0 0 0 1px var(--c-border);
-  }
+  body { background: var(--c-bg); }
+  .app { max-width: none; }
 }
 
 .screens {
@@ -2038,10 +2038,11 @@ a { color: var(--c-primary); }
 
    Scoped to a phone held sideways: a short landscape viewport with a wide
    aspect. A desktop window and an iPad are landscape too, and both are fine
-   as they are. */
+   as they are. 指の端末だけ（`pointer: coarse`）——パソコンを 200% に拡大した窓（1440×900 → 720×450）や背の低い窓も
+   同じ形になり、アプリが隠れていた（design-review の P1）。 */
 .rotate-note { display: none; }
 
-@media (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) {
+@media (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse) {
   /* display: none にしない——WebKit は消した器の送りを捨て、縦に戻すと紙も一覧も頭からだった
      （2026年10月26日、利用者）。見えなくするだけにして、案内が上から覆う。 */
   .app, #sheet-root, .toast-root { visibility: hidden; }
@@ -2331,6 +2332,14 @@ a { color: var(--c-primary); }
     scale var(--m-state) var(--ease-in);
 }
 .has-fab .dock { transform-origin: 50% 100%; }
+/* 640〜839px：帯は窓いっぱいの幕のまま、カプセルは 600px で真ん中（窓の端から端まで伸ばさない）。＋はカプセルの右端に。
+   % は帯（＝窓の幅）に対して。840px からは左の列（下）。 */
+@media (min-width: 640px) and (max-width: 839.98px) {
+  :root { --bar-x: max(var(--sp-3), calc((100% - 600px) / 2)); }
+  .tabbar { padding-inline: var(--bar-x); }
+  .tabbar::before, .tabbar::after, .tab-edge, .tab-hold { inset-inline: var(--bar-x); }
+  .has-fab .dock { right: var(--bar-x); }
+}
 
 /* ---------------- 幅の広い画面（desk・docs/desk.md） ----------------
 
