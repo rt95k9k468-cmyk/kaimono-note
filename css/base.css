@@ -654,11 +654,16 @@
    同じ札（data-font）を持っていて、自分の書体で名前を出します。丸ゴは W4 一つ
    なので、太字（700）はブラウザが太らせた字です。iPhone・Mac のほかには丸ゴが
    無く、ゴシックの顔で出ます。 */
+/* Windows の游ゴシックは、名前で呼ぶと Regular（細くて読みにくい）か Medium 一つ（太字はブラウザが太らせた字）。
+   400 は Medium・700 は Bold の面を一つの名前に束ねて呼ぶ（P4。手元の面を読むだけ・取りに行かない）。 */
+@font-face { font-family: "KN Yu Gothic"; src: local("Yu Gothic Medium"), local("YuGothic-Medium"); font-weight: normal; }
+@font-face { font-family: "KN Yu Gothic"; src: local("Yu Gothic Bold"), local("YuGothic-Bold"); font-weight: bold; }
 :root, .seg-btn[data-font="gothic"] {
   --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
-          "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+          "KN Yu Gothic", "Yu Gothic Medium", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
 }
-:root[data-font="maru"], .seg-btn[data-font="maru"] { --font: "Hiragino Maru Gothic ProN", sans-serif; }
+/* 丸ゴの無い端末（Windows ほか）はゴシックの顔で（ブラウザ任せの sans-serif だとメイリオなどに落ちていた）。 */
+:root[data-font="maru"], .seg-btn[data-font="maru"] { --font: "Hiragino Maru Gothic ProN", "KN Yu Gothic", "Yu Gothic Medium", "Noto Sans JP", sans-serif; }
 :root[data-font="mincho"], .seg-btn[data-font="mincho"] {
   --font: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", serif;
 }

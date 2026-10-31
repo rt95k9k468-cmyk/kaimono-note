@@ -81,6 +81,25 @@
       return;
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
+    /* Esc：設定の画面は ‹ と同じく一枚もどる（紙・小窓は自分で閉じる。P4）。一文字の近道ではないので切らない。 */
+    if (e.key === "Escape") {
+      if (KN.app.activeScreen() !== "settings" || covered() || typing(e.target)) return;
+      const back = [...document.querySelectorAll("#screen-settings .js-back")].filter(shown).pop();
+      if (press(back)) {
+        e.preventDefault();
+        /* 設定から出たら、カーソルは歯車へ（キーボードで巡る人の居場所）。 */
+        const t0 = performance.now();
+        const toGear = () => {
+          const now = document.activeElement;
+          if (now && now !== document.body && !now.closest("#screen-settings")) return;   // ほかへ移った
+          if (KN.app.activeScreen() === "settings") { if (performance.now() - t0 < 1500) requestAnimationFrame(toGear); return; }
+          const gear = document.querySelector("#head .js-settings");
+          if (shown(gear)) gear.focus({ preventScroll: true });
+        };
+        requestAnimationFrame(toGear);
+      }
+      return;
+    }
     if (!on()) return;
     if (typing(e.target) || typing(document.activeElement)) return;
     const k = e.key;

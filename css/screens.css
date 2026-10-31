@@ -8330,6 +8330,13 @@ button.note-when:active { opacity: var(--press-fade); }
   .think-card:hover { background-color: color-mix(in srgb, var(--c-text) 6%, transparent); }
 }
 
+/* 強制配色（Windows のハイコントラスト。P4）：地と影で形を言っている押せるものに縁を、選んでいるものは Highlight で。
+   縁は outline（大きさを変えない）。 */
+@media (forced-colors: active) {
+  .add-fab, .seg-btn, .btn-primary, .btn-soft { outline: 1px solid ButtonText; outline-offset: -1px; }
+  .seg-btn[aria-pressed="true"], .tab[aria-selected="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+}
+
 /* ---- 小さな決まり（roadmap-unify の U13）。インラインの style= の代わり ----
    いちばん後ろに置く：同じ詳細度の規則（`.diet-steps { margin: 0 }` など）より後で効くように。
    値は札だけ。札に無い間（6・10・14・18px）は近い札へ寄せた（docs/look.md の「小見出し・空の画面・style」）。 */

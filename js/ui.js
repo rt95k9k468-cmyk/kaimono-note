@@ -795,11 +795,43 @@
          寄りかかった作りなので、移すと絵が壊れます。 */
   let pageHost = null;
 
+  /* 閉じたら、開く前にカーソルが居たもの（押したもの）へ戻す（design-review 10節の P4。キーボードで巡る人が
+     頭からやり直さない）。マウスの端末だけ——電話は今までどおり。閉じて組み直すと押したものが入れ替わるので、
+     同じ印（data-…id）の入れ物の中で、同じ名前の口（無ければ同じ種類の口）を探し直す。 */
+  function keepOpener() {
+    const e = document.activeElement;
+    if (!e || e === document.body || !(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches)) return null;
+    let key = null;
+    for (let a = e; a && a !== document.body && !key; a = a.parentElement) {
+      for (const at of a.attributes) if (/^data-[\w-]*id$/.test(at.name) && at.value) { key = { name: at.name, value: at.value, self: a === e }; break; }
+    }
+    return { el: e, key, tag: e.tagName, cls: e.classList[0] || "", label: e.getAttribute("aria-label") || "" };
+  }
+  function giveBack(o, from) {
+    if (!o) return;
+    requestAnimationFrame(() => {
+      const now = document.activeElement;
+      if (now && now !== document.body && !from.contains(now)) return;   // ほかへ移った（次の紙・打つ欄）
+      const shown = (x) => !!x && x.isConnected && x.getClientRects().length > 0 && !x.closest("[inert], [hidden]");
+      let el = shown(o.el) ? o.el : null;
+      if (!el && o.key && window.CSS && CSS.escape) {
+        const host = [...document.querySelectorAll(`[${o.key.name}="${CSS.escape(o.key.value)}"]`)].find(shown);
+        if (host && o.key.self) el = host;
+        else if (host) {
+          const same = [...host.getElementsByTagName(o.tag)].filter((x) => shown(x) && (!o.cls || x.classList.contains(o.cls)));
+          el = same.find((x) => (x.getAttribute("aria-label") || "") === o.label) || same[0] || null;
+        }
+      }
+      if (el) el.focus({ preventScroll: true });
+    });
+  }
+
   function sheet(opts) {
     const { title, titleMark, hero, menu, content, footer, onClose, guard } = opts || {};
     if (pageHost && opts && opts.as !== "dialog" && !hero && !menu && pageHost.wants()) {
       return pageHost.open(opts);
     }
+    const opener = keepOpener();
     const backdrop = node(html`<div class="sheet-backdrop"></div>`);
     /* cls … 紙に足す class（開く前の形を決めるもの。growCard が測るので）。
        clear … 電話の幅では後ろを暗くしない（ノートの書く紙。段4.3）。
@@ -970,6 +1002,7 @@
       if (!shrinks) tidy(closeMs);
       onClose && onClose();
       if (shrinks) tidy(shrinkCard(grow, el, floor + 1 + depth * 2, from));
+      giveBack(opener, el);
     }
 
     /* ---- 書きかけのまま閉じようとしたとき ----
@@ -2796,7 +2829,11 @@
        残したまま——見に行くのはこれからなので）。 */
     els.search.addEventListener("keydown", (e) => {
       if (KN.util.isEnter(e)) { e.preventDefault(); els.search.blur(); }
-      if (e.key === "Escape") close();
+      /* Esc で閉じたら虫めがねへ（マウスの端末。キーボードで巡る人の居場所。P4）。 */
+      if (e.key === "Escape") {
+        close();
+        if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches && els.searchBtn) els.searchBtn.focus({ preventScroll: true });
+      }
     });
 
     /* 送られていくあいだ、薄くなっていきます。
