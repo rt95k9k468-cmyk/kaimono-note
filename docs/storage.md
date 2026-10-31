@@ -181,6 +181,8 @@
   「立て直しの計画」）。
   罠（P6d）：同じ端末の窓二つでは、覚えた版（`latestRev`）が送った窓の記憶と置き場にだけ進む（ノートだけの直しは
   読み直しを起こさない）。断られたら降りる前に置き場を読み直す（`siblingRev`）。試験は `tests/desk-windows.js`。
+  ノートの記憶も窓ごとなので、書いた窓は合図（localStorage `kn-notes-wrote`）を出し、ほかの窓は記録と同じく頁ごと
+  読み直す（app.js の storage）。合図が無いと古い本文のまま直して、ほかの窓の直しを上書きしていた。
 - 中継所・AI の窓口の URL（`healthRelayUrl`・`dietAiUrl`）は資格情報なので、書き出しと Dropbox には
   載せない（`store.js` の `keyUrls()`）。戻すとき控えに欄が無ければ今の値を残す。端末の中の自動の控えには載る。
 - 試験は `tests/dropbox.js`（本物には繋がない）。

@@ -5,6 +5,7 @@
    - A で日記の書く紙に打ちかけ → B が書く → A の打ちかけは消えない（紙に戻るか、記録に入る）
    - A でノートの本文を打った直後 → B が書く → A を読み直してもノートの本文が残る
    - 主の一台の窓二つがノートだけ直して Dropbox へ送り合っても、送る役を降りない（P6d）
+   - 同じノートを窓二つで直す：書いた窓の合図でほかの窓が読み直し、両方の直しが残る・往復しない（P6d）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-windows.js */
 const { open, checker, URL, fakeDropbox } = require("./lib");
 
@@ -139,6 +140,11 @@ const { open, checker, URL, fakeDropbox } = require("./lib");
     await W2.goto(URL);
     await booted(W2);
     await ready(W2);
+    /* 読み直し（ノートの合図）が追いつく前の形：両方の窓の読み直しを止め、記憶の版を古いままにする。 */
+    await W.page.waitForTimeout(2500);   // W2 が開いたときの書き込みで W が読み直すなら、済ませてから
+    await booted(W.page);
+    await ready(W.page);
+    for (const p of [W.page, W2]) await p.evaluate(() => { KN.app.reloadHere = () => {}; });
     const note = (p, id) => p.evaluate((i) => { KN.notes.put({ ...KN.notes.draft(), id: i, body: `${i} の本文` }); return KN.notes.flush().then(() => KN.dropbox.sync()); }, id);
     const r1 = await note(W.page, "n-w1");
     const r2 = await note(W2, "n-w2");
@@ -148,6 +154,40 @@ const { open, checker, URL, fakeDropbox } = require("./lib");
       JSON.stringify({ r1, r2, r3, sender }));
     t.check("エラーなし（Dropbox の窓二つ）", !W.errors.length, W.errors.join(" | "));
     await W.browser.close();
+  }
+
+  /* 同じノートを窓二つで直す（P6d）。ノートを書いた窓は合図を出し（js/notes-idb.js の WROTE）、ほかの窓は読み直す。
+     前は古い本文のまま直して、もう片方の直しを上書きしていた（前の版にも残らなかった）。 */
+  {
+    const P = await open({ viewport: { width: 1440, height: 900 } });
+    const ready = (p) => p.evaluate(() => KN.notes.ready());
+    await ready(P.page);
+    await P.page.evaluate(() => { KN.notes.put({ ...KN.notes.draft(), id: "n-same", body: "はじめ" }); return KN.notes.flush(); });
+    const Q = await P.ctx.newPage();
+    Q.on("pageerror", (e) => P.errors.push("Q: " + e.message));
+    await Q.goto(URL);
+    await booted(Q);
+    await ready(Q);
+    const nav = { P: 0, Q: 0 };
+    P.page.on("framenavigated", (f) => { if (f === P.page.mainFrame()) nav.P++; });
+    Q.on("framenavigated", (f) => { if (f === Q.mainFrame()) nav.Q++; });
+    await Q.evaluate(() => { KN.notes.put({ ...KN.notes.get("n-same"), body: "はじめ＋Q の追記", updatedAt: new Date().toISOString() }); return KN.notes.flush(); });
+    for (let i = 0; i < 40 && !nav.P; i++) await P.page.waitForTimeout(100);
+    await booted(P.page);
+    await ready(P.page);
+    const seen = await P.page.evaluate(() => KN.notes.get("n-same").body);
+    t.check("ノートの窓：ほかの窓がノートを書くと読み直し、その本文が見える", nav.P === 1 && seen === "はじめ＋Q の追記", JSON.stringify({ nav, seen }));
+    await P.page.evaluate(() => { const n = KN.notes.get("n-same"); KN.notes.put({ ...n, body: n.body + "＋P の追記", updatedAt: new Date().toISOString() }); return KN.notes.flush(); });
+    for (let i = 0; i < 40 && !nav.Q; i++) await Q.waitForTimeout(100);
+    await booted(Q);
+    await ready(Q);
+    const both = await Q.evaluate(() => KN.notes.get("n-same").body);
+    t.check("ノートの窓：続けて直しても、両方の直しが残る", both === "はじめ＋Q の追記＋P の追記", both);
+    const settledNav = { ...nav };
+    await P.page.waitForTimeout(3000);
+    t.check("ノートの窓：読み直したあと、往復しない", nav.P === settledNav.P && nav.Q === settledNav.Q, JSON.stringify({ settledNav, nav }));
+    t.check("エラーなし（ノートの窓二つ）", !P.errors.length, P.errors.join(" | "));
+    await P.browser.close();
   }
   t.done();
 })().catch((e) => { console.error(e); process.exit(1); });

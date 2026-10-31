@@ -1572,7 +1572,8 @@
        拍に打っていたノートの本文が消えていた（パソコン段10。docs/desk.md・tests/desk-windows.js）。 */
     let otherWrote = false;
     window.addEventListener("storage", (e) => {
-      if (e.key !== store.KEY || otherWrote) return;
+      const notesKey = KN.notes && KN.notes.WROTE;   // ノートを書いた合図も（js/notes-idb.js）
+      if ((e.key !== store.KEY && (!notesKey || e.key !== notesKey)) || otherWrote) return;
       otherWrote = true;
       const notes = KN.notes && KN.notes.flush ? KN.notes.flush() : null;
       Promise.race([Promise.resolve(notes).catch(() => {}), new Promise((ok) => setTimeout(ok, 1500))])
