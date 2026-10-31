@@ -24,6 +24,29 @@
 - 暗号にはしない（利用者が決めた。鍵を失うと二度と戻らないので）。`js/diary.js`
   （暗号つき・未使用）は 2026-10-28 に消した。設計（D7）は git の履歴にある。
 
+## 守りの地図（P6a、2026年11月1日。置き場ごとに一行。戻り道の試験は右端）
+
+暗号にしているものは無い（上の一行）。「鍵」は四つあり、どれも**中身を開く鍵ではない**：画面の鍵（`settings.lock` は
+番号を PBKDF2 で崩した形、Face ID は `kaimono-note-lock-dev`＝この端末だけ）は覆うだけ／Dropbox の鍵（`kaimono-note-dropbox`
+＋meta `dropbox` の写し）／中継所の URL（`settings.healthRelayUrl`。書き出し・Dropbox に載らない）／取り込みの合言葉
+（`diary-sealed` を開くときだけ。どこにも置かない）。だから**鍵を失っても記録は失わない**（つなぎ直すだけ）。
+
+| 置き場 | 何が | 消えたときの戻り道 | 試験 |
+|---|---|---|---|
+| localStorage `kaimono-note-v2`（元） | 記録まるごと（日記の本文・過去のやることは外すまで） | 写し `live` から訊かずに → 無ければ自動の控え → Dropbox・書き出し | break 1・5・7、live-idb、lost-record、restore-drill 3 |
+| idb `kaimono-note` の meta `live`・`journal` | 記録の写し・開いた記録 | 元から作り直す（`journal` は失う）。開けない・中身が切れた日は元のまま | break 2、restore-drill 3 |
+| 同 `diary` | 日記の本文の写し（外したあとは**本物**） | 外す前は元から。外したあとは自動の控え・Dropbox・書き出し | diary-idb、diary-out |
+| 同 `todoPast` | 過去のやること（外したあとは本物） | 外す前は元から。外したあとは Dropbox の控え | todo-past、todo-out |
+| 同 `snaps`・`snapBodies` | 自動の控え（ノートつき） | 無い（端末の外が代わり）。いちばん新しくない控えへも戻せる | break 2、restore-drill 2 |
+| localStorage `kaimono-note-snapshots` | 大きな保存場所を使えない日の控え | 無い | （無し） |
+| idb `kaimono-note-notes` | ノート・前の版・同期の覚え | 自動の控え（設定の頭に一行）・Dropbox の `notes/`・書き出し | break 3、notes-restore、notes-sync |
+| idb `kaimono-note-images`・`-files` | ノートの画像・PDF | Dropbox の `images/`・`files/` だけ（控え・書き出しに載らない） | note-files |
+| meta `replica`・`kn-replica`・`kn-desk-held` | 写しの端末の写し・印・置く前の受け箱 | 写しは Dropbox から読み直す。置く前の受け箱は失う | desk-replica、desk-inbox |
+| idb `kaimono-note-bell` | 鳴らす予定 | 次に開いたとき作り直す（記録ではない） | bell |
+| Dropbox（App folder） | `kurashi-latest.json`・`daily/`（30日＋月の背骨12）・ノート・画像・受け箱 | Dropbox 側の版の履歴。外したら手の書き出しだけ | dropbox、offdevice-watch、restore-drill 1・2 |
+| 手の書き出し（ファイル） | `exportJSON`（画像・PDF は入らない） | — | restore-practice |
+| 中継所（Cloudflare） | ヘルスケアの便（受け取ると消える・一週間） | 記録ではない | relay/worker.test.mjs |
+
 ## 日記の本文：「二重に持つ時期」（外すまで）
 
 **2b（2026年10月4日）で外す仕組みは入ったが、外すのは利用者が設定で押したときだけ。**

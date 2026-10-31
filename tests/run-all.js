@@ -25,7 +25,7 @@ const NOT_SCRIPTS = new Set(["lib.js", "run-all.js", "frame-pace.js", "heavy-pac
 
 /* 門：速くて揺れないものだけ（docs/roadmap.md の R22）。一度でも揺れたら、ここから
    外して手元の一覧へ戻し、直してから戻す。 */
-const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "todo-out", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "startup", "offline", "audit", "csp", "break", "backup-budget",
+const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "todo-out", "press-dict", "split-items", "capture", "daily-rules", "restore-practice", "restore-drill", "startup", "offline", "audit", "csp", "break", "backup-budget",
   "desk-replica",  // パソコン段15：写しの端末のあいだ、記録・控え・日記の写しを動かさない・Dropbox に控えを置かない
   "desk-inbox",    // パソコン段15③：受け箱の取り込みで iPhone の記録が消えない・二度当てない・読めないものは動かさない
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
