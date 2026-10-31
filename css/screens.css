@@ -8283,6 +8283,19 @@ button.note-when:active { opacity: var(--press-fade); }
 @media (min-width: 840px) {
   :root.notes-dock { --list-w: 0px; --pane-x: calc(var(--rail-w) + var(--list-w)); }
   :root.notes-three:is(.notes-mid, .rail-fold) { --list-w: 380px; }
+  /* マウスの端末は一覧の右の線を引いて幅を変える（js/desk-split.js。この端末だけ）。本文の段に 480px を残す——
+     three は中身 860px からなので、引いていなければ 380px のまま。口は線の左の 8px（右の段の紙の下に入らない）。 */
+  @media (pointer: fine) {
+    :root.notes-three:is(.notes-mid, .rail-fold) {
+      --list-w: clamp(280px, var(--list-pick, 380px), min(560px, 100vw - var(--rail-w) - 480px));
+    }
+    html:not(.is-locked).notes-three:is(.notes-mid, .rail-fold)[data-screen="notes"] .split-list {
+      display: block; position: fixed; top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); bottom: 0;
+      left: calc(var(--pane-x) - 7px); width: 8px;
+      z-index: calc(var(--z-bar) + 1); cursor: col-resize; touch-action: none;
+    }
+    .split-list::after { left: 5px; }
+  }
   :root.notes-three:is(.notes-mid, .rail-fold) #screen-notes :is(.notes-ground, .search-wrap) { padding-inline: 0; width: var(--list-w); }
   :root.notes-three:is(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes {
     background: linear-gradient(to right, transparent var(--list-w),

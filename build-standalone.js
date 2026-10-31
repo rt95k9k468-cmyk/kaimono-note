@@ -126,6 +126,7 @@ const JS = [
   "js/tab-lens.js",
   "js/app.js",
   "js/keys.js",
+  "js/desk-split.js",
 ];
 
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");

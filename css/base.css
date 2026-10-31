@@ -2365,6 +2365,8 @@ a { color: var(--c-primary); }
   }
   /* 指で触る広い画面（iPad の横）は、席の行と畳む口を 44px に（W6。マウスの 36px は詰めた行）。 */
   @media (pointer: coarse) { :root { --side-row: 44px; } }
+  /* マウスの端末は境目を引いて幅を変える（js/desk-split.js。この端末だけ）。中身に 600px を残す。引いていなければ 232px。 */
+  @media (pointer: fine) { :root { --rail-w: clamp(184px, var(--rail-pick, 232px), min(360px, 100vw - 600px)); } }
   /* トラックパッドの横払いは日・週を送る（js/keys.js）。ブラウザの「戻る・進む」にしない。 */
   html, body { overscroll-behavior-x: none; }
   body { background: var(--c-bg); }
@@ -2425,6 +2427,22 @@ a { color: var(--c-primary); }
   .rail-fold .tab { justify-content: center; padding: 0; gap: 0; }
   .rail-fold .tab-label { display: none; }
   .rail-fold .tab-badge { position: absolute; top: 1px; right: 4px; margin: 0; }
+}
+/* 境目（js/desk-split.js）：左の列・ノートの一覧の右の線を引く口。マウスの端末の広い幅だけ。線の上に 8px の口、
+   指したとき・引くあいだ・カーソルがあるときだけ線を太く。一覧の口は screens.css の「ノートの右の段」。 */
+.split { display: none; }
+@media (min-width: 840px) and (pointer: fine) {
+  :root:not(.rail-fold) .split-rail {
+    display: block; position: fixed; top: 0; bottom: 0; left: calc(var(--rail-w) - 5px); width: 8px;
+    z-index: calc(var(--z-bar) + 1); cursor: col-resize; touch-action: none;
+  }
+  .split::after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px;
+    background: var(--c-primary-fill); opacity: 0; transition: opacity var(--m-state) var(--ease-out);
+  }
+  .split:hover::after, .split:focus-visible::after, .split.is-held::after { opacity: 1; }
+  .split:focus-visible { outline: none; }
+  :root.is-splitting, :root.is-splitting * { cursor: col-resize !important; user-select: none; }
 }
 :root { --desk-shift: 32px; }
 @keyframes desk-in-dn { 0%, 25% { opacity: 0; transform: translateY(var(--desk-shift)); } }

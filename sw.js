@@ -110,6 +110,7 @@ const ASSETS = [
   "js/tab-lens.js",
   "js/app.js",
   "js/keys.js",
+  "js/desk-split.js",
   "manifest.webmanifest",
   "icons/icon.svg",
   "icons/icon-192.png",
