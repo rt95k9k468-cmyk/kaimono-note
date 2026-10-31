@@ -143,7 +143,8 @@
         },
       });
     }
-    window.matchMedia(WIDE).addEventListener("change", paintTree);
+    /* ホームの中身は木の有無で変わる（deskHome）。組み直せば木も塗る。 */
+    window.matchMedia(WIDE).addEventListener("change", () => renderBody());
   }
 
   /** 引くあいだ後ろに見せる、一つ上の面の写し（押せない）。戻ったときの送りの位置に合わせ、
@@ -289,6 +290,8 @@
       ノートブックを足すのは設定、新しいノートは右下の＋（docs/notes.md「6つの棚」）。 */
   function homeBody(box, t) {
     const all = N().list();
+    /* 左の列に木がある幅では、ホームは最近直したノートの札（木と同じものを二度出さない。docs/desk.md 段7・P2）。 */
+    if (deskHome()) { box.append(recentCards(recentOf(all, 12))); return; }
     const gates = node(html`<div class="notes-books nt-gates" role="list"></div>`);
     const gate = (label, mark, to, cls) => {
       const b = node(html`<button type="button" class="nt-gate notes-book ${cls}" role="listitem">${mark}<span class="nt-name">${label}</span></button>`);
@@ -329,7 +332,35 @@
     });
   }
 
-  const recentOf = (all) => all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)).slice(0, 3);
+  const recentOf = (all, k) => all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)).slice(0, k || 3);
+
+  /* 左の列に木が出ている（広い幅で、列を畳んでいない）。木の出し入れは css の「左の木」と同じ条件。 */
+  const deskHome = () => window.matchMedia(WIDE).matches && !document.documentElement.classList.contains("rail-fold");
+
+  /** 札の日付＝直した日。今年なら月日だけ、今日なら時刻。 */
+  function editedOf(n) {
+    const d = new Date(n.updatedAt);
+    if (isNaN(d.getTime())) return "";
+    if (U.dayKey(d) === U.todayKey()) return hm(d);
+    const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+    return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
+  }
+
+  /** 最近直したノートの札（desk のホーム）：題・頭の数行・日付。押すと紙（1280px〜は右の段）。 */
+  function recentCards(list) {
+    const box = node(html`<div class="nt-cards" role="list" aria-label="最近直した"></div>`);
+    list.forEach((n) => {
+      const c = node(html`
+        <button type="button" class="nt-card" role="listitem" data-id="${n.id}">
+          <span class="nt-card-title">${headOf(n) || "ノート"}</span>
+          <span class="nt-card-lead">${leadOf(n)}</span>
+          <span class="nt-card-when">${n.notebook ? book(n.notebook) : ""}${editedOf(n)}</span>
+        </button>`);
+      c.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, c, { back: ".nt-cards .nt-card" }); });
+      box.append(c);
+    });
+    return box;
+  }
 
   /** 行だけの短い並び（★・最近直した）：ノートブックの小さな絵と題。押すと紙（閉じるとこの行へ縮んで戻る）。 */
   function flatRows(list) {
@@ -2352,9 +2383,9 @@
       closePapers();
       if (page().k !== "ask") go({ k: "ask" });
     }, "is-all js-tree-asks");
-    /* ★・最近直した（三列のホームは真ん中を出さないので、木の上へ。出すのは css の 1280px から）。 */
+    /* ★は木の上へ（desk のホームは最近直したの札なので、木には出さない＝二度出さない。docs/desk.md 段7）。 */
     const all = N().list();
-    [["★", all.filter((n) => n.fav)], ["最近直した", recentOf(all)]].forEach(([title, list]) => {
+    [["★", all.filter((n) => n.fav)]].forEach(([title, list]) => {
       if (!list.length) return;
       const sec = node(html`<div class="nt-quick" role="group" aria-label="${title}"><div class="section-title">${title}</div></div>`);
       list.forEach((n) => {

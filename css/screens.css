@@ -8199,6 +8199,39 @@ button.note-when:active { opacity: var(--press-fade); }
     background-size: auto, auto, var(--season-w) auto, auto;
     background-position: 0 0, 0 0, center calc((var(--season-h) - var(--season-w) * var(--season-ar, 0.67)) / 2), 0 0;
   }
+  /* ノートのホーム＝最近直したノートの札（screen-notes.js の recentCards。左の列に木があるときだけ組む）。
+     題・頭の数行・日付。札の背はそろえる（行ごとに一番高い札へ）。 */
+  .nt-cards {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-4) var(--sp-8);
+  }
+  .nt-card {
+    display: flex; flex-direction: column; gap: var(--sp-2); min-height: 148px; min-width: 0;
+    padding: var(--sp-4); text-align: left; cursor: pointer;
+    background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
+    transition: background var(--m-state) var(--ease);
+  }
+  .nt-card:active { background: var(--press-sink); transition-delay: var(--m-press); }
+  .nt-card:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) { .nt-card:hover { background: color-mix(in srgb, var(--c-text) 4%, var(--c-surface)); } }
+  .nt-card-title, .nt-card-lead { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .nt-card-title { -webkit-line-clamp: 2; font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text); }
+  .nt-card-lead { -webkit-line-clamp: 3; font-size: var(--fs-sm); line-height: var(--lh-ui); color: var(--c-text-2); }
+  .nt-card-when { display: flex; align-items: center; gap: var(--sp-2); margin-top: auto; font-size: var(--fs-xs); color: var(--c-text-3); }
+  .nt-card-when .nb-ico svg { width: calc(var(--ico-sm) - 2px); height: calc(var(--ico-sm) - 2px); }
+  /* ★は木の上（最近直したは札にあるので木には出さない）。 */
+  .notes-tree .nt-quick { display: block; }
+  /* 頭の帯の広重（base.css の「ノートは上から一枚の絵」）：電話と同じ「窓の幅いっぱい」だと、広い幅では帯の背に
+     絵の上の端（暗いぼかしと余白）しか入らず灰の帯に見えた。広い幅では電話くらいの大きさで右に置き、左へ地の色に溶かす。 */
+  .head[data-season]::after {
+    --season-art: 460px;
+    background:
+      linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent var(--season-end)),
+      linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-end) - 70px), var(--c-bg) var(--season-end)),
+      linear-gradient(to right, var(--c-bg) calc(100% - var(--season-art)), transparent calc(100% - var(--season-art) * .35)),
+      var(--season-img, none) right top / var(--season-art) auto no-repeat,
+      var(--c-bg);
+  }
   /* 書く紙（ノート・日記・積み上げ）は読む幅の大きな一枚。真ん中のまま、背は窓のほぼいっぱい。 */
   .sheet.is-note:not(.is-wide), .sheet.is-card {
     width: min(100% - var(--sp-8) * 2, var(--desk-read));
@@ -8243,11 +8276,11 @@ button.note-when:active { opacity: var(--press-fade); }
   :root[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
   :root[data-screen="notes"].has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
   /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
-     木｜本文の二列（ホームの中身は木と同じ。★・最近直した は木の上へ）。畳んだ列には木が無いので、ホームも出す。 */
-  .notes-tree .nt-quick { display: block; }
+     木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root[data-screen="notes"]:not(.notes-mid, .rail-fold) { --list-w: 0px; }
-  :root:not(.notes-mid, .rail-fold) #screen-notes :is(.notes-ground, .search-wrap) { display: none; }
-  :root:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: var(--c-surface); }
+  :root:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
+  :root:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { width: auto; padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
+  :root:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: transparent; }
   /* ＋は木の右下（--pane-x が列の幅になる）。木（--z-bar）より前へ。 */
   :root[data-screen="notes"]:not(.notes-mid, .rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 1); }
   /* 買うもの｜価格を左右に（app.js の duo）。めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */

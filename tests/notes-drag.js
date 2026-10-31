@@ -22,7 +22,8 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   const t = checker("notes-drag");
 
   /* ================= データ（幅のある画面で開いて、そのまま画面へ） ================= */
-  /* 1200px：ホームの木と左の木が両方出る幅（1280px からホームは木｜本文の二列。docs/desk.md の段7）。 */
+  /* 1200px（マウスの幅）。左の列に木があるとホームは札なので（docs/desk.md の段7・P2）、ホームの木は列を畳んで運び、
+     左の木を運ぶときだけ開く。 */
   const { browser, page, errors } = await open({ viewport: { width: 1200, height: 900 } });
   await page.evaluate(() => KN.notes.ready());
   const lsSize = () => page.evaluate(() => {
@@ -189,6 +190,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
     { id: "n-x4", title: "四", body: "x", notebook: "庭", tags: [], fav: false, createdAt: "2026-09-01T04:00:00.000Z", updatedAt: "2026-09-01T04:00:00.000Z", deletedAt: null },
     { id: "n-x2k", title: "二の子", body: "x", notebook: "庭", parent: "n-x2", tags: [], fav: false, createdAt: "2026-09-01T05:00:00.000Z", updatedAt: "2026-09-01T05:00:00.000Z", deletedAt: null },
   ]));
+  await page.evaluate(() => KN.app.foldRail());
   await page.click('.tab[data-tab="notes"]');
   await page.waitForSelector('#screen-notes .js-book[data-nb="庭"]');
   const book = (n) => `#screen-notes .js-book[data-nb="${n}"]`;
@@ -267,10 +269,13 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
 
   /* 左の木でも運べる */
   const side = (id) => `.notes-tree .js-tree-note[data-id="${id}"]`;
+  await page.evaluate(() => KN.app.foldRail());
   await page.waitForSelector(side("n-x1"));
   const sGap = await gapY(side("n-x2k"), side("n-x3"));     // 二 は開いている（ホームと一つ）
   await carry(side("n-x1"), (x) => [x, sGap]);
   t.check("左の木でも運べる", (await garden()) === "二,一,三", await garden());
+  await page.evaluate(() => KN.app.foldRail());
+  await page.waitForSelector(row("n-x3"));
 
   /* キー */
   await page.focus(row("n-x3"));

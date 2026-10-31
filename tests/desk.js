@@ -7,7 +7,8 @@
    - ノートの左の木は左の列の中、席の行の下（840px でも出る）
    - 1280px〜：ノートの席で開いたノートは右の段（木と一覧の右・上の帯の下・窓の右端まで）。覆いは無く、
      一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は一覧の右下。ほかの席へ移ると閉じる
-   - 1280px〜（段7）：ホームは木｜本文の二列（真ん中の一覧なし、★・最近直した・問い は木に、＋は木の右下）。
+   - 1280px〜（段7）：ホームは木｜本文の二列（真ん中の一覧なし、★・問い は木に、＋は木の右下）。
+     P2：左の列に木があればホームは最近直したの札（題・頭・日付。1100px も）、列を畳むと木のホームへ
      すべてのノート・問い・さがすときだけ真ん中に一覧。さがしているあいだも左の列は残る
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
    - 1280px〜：買うもの｜価格は左右に並ぶ（席の二度押しでめくらない・＋は一枚ずつ・#prices でも並び）。1280px より狭い desk はめくる
@@ -241,12 +242,25 @@ const { open, checker } = require("./lib");
   t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 232 && tree.t >= lastSeat.b
     && tree.b < 900 && tree.b > 820 && notesScr.l === 232, JSON.stringify({ tree, lastSeat, notesScr }));
 
-  /* 段7：ホームは木｜本文の二列（真ん中の一覧は出さない）。★・最近直した・問い は木に。 */
+  /* 段7・P2：ホームは木｜本文の二列（真ん中の一覧は出さない）。本文の段は最近直したノートの札（題・頭の数行・日付）、
+     ★・問い は木に（最近直したは札にあるので木には出さない）。 */
   const shown = (s) => page.evaluate((q) => { const e = document.querySelector(q); return !!e && getComputedStyle(e).display !== "none"; }, s);
-  const quick = await page.evaluate(() => [...document.querySelectorAll(".notes-tree .nt-quick")].filter((e) => getComputedStyle(e).display !== "none").map((e) => e.getAttribute("aria-label")));
-  t.check("二列のホーム：真ん中の一覧は出さず、木に 問い・最近直した", !(await shown("#screen-notes .notes-ground"))
-    && await shown(".notes-tree .js-tree-asks") && quick.includes("最近直した"), JSON.stringify(quick));
-  await page.evaluate(() => [...document.querySelectorAll(".notes-tree .nt-quick .nt-row")].find((e) => e.textContent.includes("一つめ")).click());
+  const homeLook = () => page.evaluate(() => {
+    const cards = [...document.querySelectorAll("#screen-notes .nt-card")];
+    const r0 = cards[0] && cards[0].getBoundingClientRect(), r1 = cards[1] && cards[1].getBoundingClientRect();
+    return {
+      n: cards.length, l: r0 && Math.round(r0.left), side: !!(r0 && r1 && Math.abs(r0.top - r1.top) < 2 && r1.left > r0.right),
+      parts: cards[0] ? ["title", "lead", "when"].map((k) => cards[0].querySelector(`.nt-card-${k}`).textContent.trim()) : [],
+      tree: document.querySelectorAll('#screen-notes .notes-books[role="tree"], #screen-notes .nt-gates').length,
+      mid: document.documentElement.classList.contains("notes-mid"),
+      quick: [...document.querySelectorAll(".notes-tree .nt-quick")].map((e) => e.getAttribute("aria-label")),
+    };
+  });
+  const home = await homeLook();
+  t.check("二列のホーム：本文の段に最近直したの札が横に並ぶ（題・頭・日付）、木と同じものは出さない", home.n === 3 && home.side && home.l >= 232
+    && home.parts[0] === "一つめ" && home.parts[1] === "試しの本文" && /^\d+:\d\d$/.test(home.parts[2]) && home.tree === 0 && !home.mid
+    && await shown(".notes-tree .js-tree-asks") && !home.quick.includes("最近直した"), JSON.stringify(home));
+  await page.click('#screen-notes .nt-card[data-id="n-desk0"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await wait(500);
   const pane0 = await box(".sheet.is-note.is-open"), fab0 = await box("#dock");
@@ -255,11 +269,11 @@ const { open, checker } = require("./lib");
     JSON.stringify({ pane0, fab0, fabTop }));
   await page.keyboard.press("Control+k");
   await wait(500);
-  t.check("さがすと真ん中の一覧が出る・左の列は残る", await shown("#screen-notes .notes-ground") && await shown(".tab-archive")
+  t.check("さがすと真ん中の一覧が出る・左の列は残る", (await homeLook()).mid && await shown("#screen-notes .search-wrap") && await shown(".tab-archive")
     && Math.round((await box(".sheet.is-note.is-open")).l) >= 232 + 380);
   await page.evaluate(() => document.activeElement.blur());
   await wait(400);
-  t.check("空のまま窓を離れると二列へ戻る", !(await shown("#screen-notes .notes-ground")));
+  t.check("空のまま窓を離れると二列へ戻る", !(await homeLook()).mid && await shown("#screen-notes .nt-cards"));
   await page.evaluate(() => document.querySelector(".notes-tree .js-tree-all").click());
   await wait(600);
 
@@ -329,6 +343,20 @@ const { open, checker } = require("./lib");
   await page.setViewportSize({ width: 1100, height: 800 });
   await wait(500);
   t.check("設定：1280px より狭い desk は一列", await page.evaluate(() => !document.querySelector("#screen-settings .is-duo")));
+
+  /* P2：1280px より狭い desk でも、ホームは札（前は左の木と同じ木を二度出していた）。列を畳むと木のホームへ。 */
+  await page.click(".tab-notes");
+  await wait(700);
+  await page.click(".tab-notes");    // 二度押しでホームへ（上で「すべてのノート」へ降りた）
+  await wait(500);
+  const home11 = await homeLook();
+  t.check("1100px：ノートのホームは最近直したの札・木は左の列だけ", home11.n === 3 && home11.side && home11.tree === 0, JSON.stringify(home11));
+  await page.keyboard.press("Control+Backslash");
+  await wait(600);
+  const homeF = await homeLook();
+  t.check("列を畳むと（木が無い）ホームは木に戻る", homeF.n === 0 && homeF.tree > 0, JSON.stringify(homeF));
+  await page.keyboard.press("Control+Backslash");
+  await wait(400);
 
   /* 段11：? で近道の一覧。一文字の近道は切れる（切っても ⌘K・⌘\\ は効く）。 */
   await page.click(".tab-todo");
