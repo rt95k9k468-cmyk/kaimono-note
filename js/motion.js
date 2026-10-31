@@ -632,7 +632,9 @@
     el.addEventListener("pointerleave", off);
   }
 
-  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, feel, arrive, onArrive, depart, warm, wakeSound, EVENTS };
+  /** 送りの behavior。JS で "smooth" と書いた送りはブラウザが「動きを減らす」でも止めないので、ここを通す（P7）。 */
+  const smooth = () => (still() ? "auto" : "smooth");
+  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, smooth, feel, arrive, onArrive, depart, warm, wakeSound, EVENTS };
 
   /* 指の重さ（roadmap-unify の U4・docs/motion.md の「指の重さは一か所」）。同じ身ぶりは
      どこでも同じ重さ。払いだけ二つ——行き先へ送る（日・面・暦の段）と、閉じる・戻る（紙・

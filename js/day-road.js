@@ -990,7 +990,7 @@
         const list = hit.hasAttribute("data-more")
           ? (el.closest(".day-slide") || document).querySelector(".tl-someday-sec")
           : el.parentNode && el.parentNode.querySelector(".tl-list");
-        if (list) list.scrollIntoView({ block: "start", behavior: KN.motion.still() ? "auto" : "smooth" });
+        if (list) list.scrollIntoView({ block: "start", behavior: KN.motion.smooth() });
         return;
       }
       const pick = hit.hasAttribute("data-k") ? stops[Number(hit.getAttribute("data-k"))]

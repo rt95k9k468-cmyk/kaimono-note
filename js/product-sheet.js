@@ -490,7 +490,7 @@
        worked out somewhere the user could not see. Bring it up as the pad
        arrives, and again once the sheet has finished resizing around it. */
     const revealStrip = () => [180, 400, 680].forEach((ms) => setTimeout(() => {
-      if (!strip.hidden) strip.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      if (!strip.hidden) strip.scrollIntoView({ block: "nearest", behavior: KN.motion.smooth() });
     }, ms));
 
     fields.forEach((f) => {

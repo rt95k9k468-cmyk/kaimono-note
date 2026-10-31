@@ -1711,6 +1711,8 @@
     const want = Math.max(0, Math.min(max, to));
     const from = el.scrollTop;
     if (Math.abs(want - from) < 1) return;
+    /* 動きを減らす設定では滑らせずに着く（P7。CSS の transition と違い、毎コマ書く送りは base.css では止まらない）。 */
+    if (KN.motion && KN.motion.still()) { el.scrollTop = want; gliding = performance.now() + 120; return; }
     const start = performance.now();
     gliding = start + ms + 160;
     const step = (now) => {

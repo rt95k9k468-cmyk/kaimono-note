@@ -192,7 +192,7 @@
     viewDay = day;
     render();
     // 暦は上にあるので、押した位置から画面ごと頭へ戻します。
-    if (root) root.scrollTo({ top: 0, behavior: "smooth" });
+    if (root) root.scrollTo({ top: 0, behavior: KN.motion.smooth() });
   }
 
   /* ================================================================

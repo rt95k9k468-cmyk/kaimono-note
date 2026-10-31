@@ -206,6 +206,9 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 **マウスの端末（`pointer: fine`）は弾みと光を控えめに**（P7。base.css の `:root` の直後）：`--spring` の行き過ぎを 1.42→1.16、
 ガラスの艶と縁の照り（`--glass-sheen`・`--glass-rim-spec` と夜の一組）を約6割、✓の輪（`.kn-burst`）を 0.7 倍・薄く。札を替える
 だけで動きは足さない・消さない。指の端末は今のまま（試験の Chromium はマウスの端末なので、電話の撮り比べは `touch: true` で）。
+**JS の動きも「動きを減らす」に従う**（P7）：CSS の transition・animation は base.css が止める（JS で付けた transition も）。止まらないのは
+JS の `behavior: "smooth"`（`KN.motion.smooth()` を通す）・毎コマ書く送り（`KN.app.glideTo` が入口で即座に着く）・`animate()`
+（`arrive` と `glide` が still を見る）。`ms()` は待ち時間に使うので値のまま。見張りは `tests/still-js.js`。
 
 曲線も同じ（`--ease` / `--ease-out` / `--ease-in` / `--spring` / `--push-e` /
 `--ease-glide` / `--ease-settle`）。**出てくるものは `--ease-out`、去るものは
