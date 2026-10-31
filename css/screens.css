@@ -8146,7 +8146,8 @@ button.note-when:active { opacity: var(--press-fade); }
    - 読む幅（`--desk-read`）：一覧と記録は真ん中の一列に。日本語は一行40字まで（WCAG 1.4.8）。
      紙（`.tl-sheet`）と日の一枚（`.day-slide`、払う器の 100%）は幅いっぱいのまま、**内側の余白で**寄せる
      （padding の % は器の幅）。一枚の幅を変えると、隣の日へ払う道のりが狂う。
-   - 1200px から：やることの今日は道と時間割を左右に、からだはカードを段組みに。
+   - 中身の幅 792px から（@container seat）：やることの今日は道と時間割を左右に、からだはカードを段組みに。
+   - 1200px から：やることの週を左右に。
    ========================================================= */
 /* 640px から（iPad の縦・並べた窓）：読む幅は 680px。地と帯は窓いっぱい（base.css）。840px からは 760px。 */
 @media (min-width: 640px) {
@@ -8239,20 +8240,31 @@ button.note-when:active { opacity: var(--press-fade); }
     max-height: none;
   }
 }
+/* P3a：やることの今日（道｜時間割）とからだ（段組み）は、窓でなく**中身の幅**（席の器＝窓から左の列を引いた幅）で決める
+   （docs/desk.md）。器は 840px からだけ——電話には container を付けない。左の列を畳めば広くなったぶん並ぶ。 */
+@media (min-width: 840px) {
+  #screen-todo, #screen-diet { container: seat / inline-size; }
+  @container seat (min-width: 792px) {
+    #screen-todo[data-face="today"] .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
+    #screen-todo[data-face="today"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+    /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。道は 400px（電話の 393 より細いと札が切れる）〜480px、
+       時間割に 440px を残す（列の幅は器と --desk-wide の小さいほう）。並べる境目 792px は窓 1024px の中身＝道 400＋間 24＋時間割 368。 */
+    #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
+    #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(400px, min(100cqi, var(--desk-wide)) - var(--sp-6) - 440px, 480px); }
+    #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
+    /* からだ：カードを段組みに（上から下へ流れ、段の高さをそろえる）。三段は 380px ずつ入る幅から。 */
+    .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
+    .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
+  }
+  @container seat (min-width: 1204px) { .diet-day.card { columns: 3; } }
+}
 @media (min-width: 1200px) {
   :root { --side-w: 380px; }
-  #screen-todo:is([data-face="today"], [data-face="week"]) .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
-  #screen-todo:is([data-face="today"], [data-face="week"]) .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+  #screen-todo[data-face="week"] .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
+  #screen-todo[data-face="week"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
   /* 週の面：左に日の行（今週・来週）、右に期限・やること・これから（screen-todo.js の weekSlide が分けて組む）。
-     今週でない週も同じ二段（右は空）——払って週を替えても日の行が同じ場所に居るように。 */
+     今週でない週も同じ二段（右は空）——払って週を替えても日の行が同じ場所に居るように。窓の幅のまま（P3a の外）。 */
   .wk.is-two { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); column-gap: var(--sp-8); align-items: start; }
-  /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。 */
-  #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
-  #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: 480px; }
-  #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
-  /* からだ：カードを段組みに（上から下へ流れ、段の高さをそろえる）。 */
-  .diet-day.card { display: block; columns: 3 380px; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
-  .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
 }
 /* 1280px から、ノートは三列：木（左の列の中）｜一覧（--list-w）｜本文。ノートの席で開いたノートは紙でなく右の段に据える
    （screen-notes.js の docked）。段の場所は何も開いていなくても白い面で取っておく（開いても並びが動かない）。

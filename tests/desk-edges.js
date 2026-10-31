@@ -1,7 +1,8 @@
 /* パソコンの境目（docs/desk.md の段12）。desk.js は 390・1100・1440px だけを見るので、形が切り替わる幅の両側と、
    背の低い窓・大きな窓はここが見る。
    - 839｜840：帯は下｜窓の背いっぱいの左の列
-   - 1199｜1200：やることの今日は道と時間割を並べない｜並べる。からだのカードは一列｜段組み
+   - 中身の幅（P3a。窓から左の列を引いた幅）791｜792＝窓 1023｜1024：やることの今日は道と時間割を並べない｜並べる。
+     からだのカードは一列｜段組み。左の列を畳めば同じ窓でも並ぶ（900px：中身 668 → 836）
    - 1279｜1280：買うものは一枚｜買うもの｜価格を左右。ノートの席で開いたノートは紙（覆いあり）｜右の段（覆いなし）
    - どの幅でも、どの席も頁が横に伸びない（はみ出して横に送れる頁にならない）
    - 背の低い窓（1024×768・1280×720）：日記の書く紙は窓に収まり、ボタンが窓の外に出ない
@@ -70,7 +71,7 @@ const { open, checker } = require("./lib");
     return { pane, cover };
   };
 
-  for (const [w, h] of [[839, 900], [840, 900], [1024, 768], [1199, 900], [1200, 900], [1279, 900], [1280, 900], [1920, 1080]]) {
+  for (const [w, h] of [[839, 900], [840, 900], [1023, 768], [1024, 768], [1199, 900], [1200, 900], [1279, 900], [1280, 900], [1920, 1080]]) {
     await page.setViewportSize({ width: w, height: h });
     await wait(500);
     const desk = w >= 840;
@@ -83,13 +84,13 @@ const { open, checker } = require("./lib");
       await go(s);
       const f = await flat();
       if (!f.ok) wide.push(`${s} ${f.sw}/${f.bw}>${f.w}`);
-      if (s === "todo" && (w === 1199 || w === 1200)) {
+      if (s === "todo" && (w === 1023 || w === 1024)) {
         const r = await roadBeside();
-        t.check(`${w}px：やることの今日は道と時間割を${w >= 1200 ? "左右に並べる" : "並べない"}`, r.on === (w >= 1200), JSON.stringify(r));
+        t.check(`${w}px：やることの今日は道と時間割を${w >= 1024 ? "左右に並べる" : "並べない"}`, r.on === (w >= 1024), JSON.stringify(r));
       }
-      if (s === "diet" && (w === 1199 || w === 1200)) {
+      if (s === "diet" && (w === 1023 || w === 1024)) {
         const c = await dietCols();
-        t.check(`${w}px：からだのカードは${w >= 1200 ? "段組み" : "一列"}`, c.on === (w >= 1200), JSON.stringify(c.tops));
+        t.check(`${w}px：からだのカードは${w >= 1024 ? "段組み" : "一列"}`, c.on === (w >= 1024), JSON.stringify(c.tops));
       }
       if (s === "list" && (w === 1279 || w === 1280)) {
         const duo = await page.evaluate(() => document.getElementById("screen-prices").classList.contains("is-duo-r"));
@@ -104,6 +105,19 @@ const { open, checker } = require("./lib");
     }
     t.check(`${w}px：どの席も頁が横に伸びない`, !wide.length, wide.join(" | "));
   }
+
+  /* P3a：窓の幅でなく中身の幅で。900px の窓は列を開けば一列、畳めば（中身が 836px に広がって）道｜時間割・からだ二段。 */
+  await page.setViewportSize({ width: 900, height: 900 });
+  await wait(500);
+  const seatForm = async () => { await go("todo"); const r = await roadBeside(); await go("diet"); return { road: r.on, diet: (await dietCols()).on }; };
+  const open900 = await seatForm();
+  await page.keyboard.press("Control+Backslash");
+  await wait(600);
+  const fold900 = await seatForm();
+  await page.keyboard.press("Control+Backslash");
+  await wait(600);
+  t.check("900px：列を開けば一列、畳めば道｜時間割・からだ二段（中身の幅で決まる）",
+    !open900.road && !open900.diet && fold900.road && fold900.diet, JSON.stringify({ open900, fold900 }));
 
   /* 背の低い窓：日記の書く紙は窓に収まり、押すところが窓の外に出ない。 */
   for (const [w, h] of [[1024, 768], [1280, 720]]) {
