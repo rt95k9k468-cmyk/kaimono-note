@@ -410,6 +410,8 @@
     if (!connected() || !cfg.appKey) return "off";
     clearTimeout(timer);
     timer = null;
+    /* 写しの端末（js/replica.js）は控えを送らない——記憶の state は iPhone の写し。ノートの画像だけ。 */
+    if (store.replica()) { dirty = false; await sendImages(); return "other"; }
     /* 記録が見当たらない日（backup.js）は、空に近い中身で kurashi-latest.json を
        上書きしてしまうので、戻すか「このまま始める」まで送りません。 */
     if (KN.backup && KN.backup.lost) {
@@ -600,7 +602,7 @@
 
   async function glance(force) {
     await recovered;
-    if (!connected() || !cfg.appKey || store.get().settings.glance !== true) return "off";
+    if (!connected() || !cfg.appKey || store.get().settings.glance !== true || store.replica()) return "off";
     if (store.isBlank(store.get())) return "empty";
     const now = new Date();
     const data = glanceData(now);
@@ -676,7 +678,7 @@
   async function inboxTake() {
     if (taking) return 0;
     await recovered;
-    if (!connected() || !cfg.appKey || store.get().settings.inboxPost === true || cfg.sender === false) return 0;
+    if (!connected() || !cfg.appKey || store.get().settings.inboxPost === true || cfg.sender === false || store.replica()) return 0;
     const todo = KN.screens && KN.screens.todo;
     if (!todo || !todo.weekAdd) return 0;
     taking = true;

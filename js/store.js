@@ -675,8 +675,17 @@
   let lastTotal = null;
   let wroteLive = false;
 
+  /* 写しの端末（docs/desk.md「段15」）。この端末だけの印 `kn-replica`（記録の外。控えで iPhone へ渡らない）。
+     入っているあいだは記録（KEY）に書かない。データの欄は iPhone の控えの写し（js/replica.js が showReplica で渡す。
+     来るまでは空）、設定だけこの端末のもの（印の settings に書く）。データを変える update は元へ戻す。 */
+  const REPLICA_KEY = "kn-replica";
+  const replica = readReplica();
+  let replicaData = null;     // 写しのデータの欄（settings を除く）の字。update が比べる
+  let replicaWrote = "";
+
   let migratedOnLoad = false;
   let state = load();
+  if (replica) state = replicaStart(state);
   try { lastTotal = totalOf(state); } catch (_) { lastTotal = null; }
   const listeners = new Set();
   // update()/reload() のたびに上がる版数。ダイエットの日付索引（下の
@@ -704,6 +713,20 @@
       if (!localStorage.getItem(RESCUE_KEY)) localStorage.setItem(RESCUE_KEY, raw);
     } catch (_) { /* 書けなくても、元の鍵はそのままなので失われません */ }
   }
+
+  function readReplica() {
+    try {
+      const v = JSON.parse(localStorage.getItem(REPLICA_KEY) || "null");
+      return v && typeof v === "object" && v.on === true ? v : null;
+    } catch (_) { return null; }
+  }
+  /* 写しの端末で開いたとき：データは空、設定は記録の設定に印の settings を重ねたもの。記録は読んだだけ。 */
+  function replicaStart(own) {
+    const s = reconcile({ settings: { ...(own.settings || {}), ...(replica.settings || {}) } });
+    replicaData = dataText(s);
+    return s;
+  }
+  function dataText(s) { return JSON.stringify({ ...s, settings: undefined }); }
 
   function load() {
     let rawV2 = null;
@@ -1326,6 +1349,7 @@
        前これを見ずに書いていたので、隠れる直前の一拍だけは、空の state で
        本物を上書きできました。ここで塞げば、どの道から来ても同じです。 */
     if (loadError) return;
+    if (replica) { writeReplica(); return; }
     const seq = lsSeq + 1;
     const json = JSON.stringify(Object.assign({}, liveShape(), { lsSeq: seq }));
     watchBefore();
@@ -1347,6 +1371,53 @@
       /* 過去のやることの棚へ（js/todo-past.js。R26 の段2）。同じ理由で、書けなかったときも。 */
       if (KN.todoPast) KN.todoPast.afterWrite();
     }
+  }
+
+  /* 写しの端末は設定だけを印へ（記録・日記の写し・記録の写し・過去のやることの棚には触れない）。
+     ほかの窓で印を切っていたら書かない（切ったのを入れ直さない）。 */
+  function writeReplica() {
+    if (!readReplica()) return;
+    const text = JSON.stringify({ on: true, settings: state.settings });
+    if (text === replicaWrote) return;
+    localStorage.setItem(REPLICA_KEY, text);
+    replicaWrote = text;
+  }
+
+  /** 写しを見せる（js/replica.js）。iPhone の控えの字。読めなければ投げる（今の写しのまま）。
+      控えの付けたし（exportedAt・app・…Book＝ノート）は入れない。設定はこの端末のもの。 */
+  function showReplica(text) {
+    if (!replica) return false;
+    const { next } = readBackup(text);
+    const s = {};
+    Object.keys(next).forEach((k) => {
+      if (!["exportedAt", "app", "lsSeq"].includes(k) && !/Book$/.test(k)) s[k] = next[k];
+    });
+    s.settings = state.settings;
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    state = s;
+    replicaData = dataText(s);
+    version++;
+    emit();
+    return true;
+  }
+
+  /* 写しのあいだの update。データの欄が変わったら写しへ戻し、指で押した直後なら言う（設定だけの変更は残す）。 */
+  let refusedAt = 0;
+  function replicaUpdate(mutator) {
+    mutator(state);
+    if (dataText(state) !== replicaData) {
+      const settings = state.settings;
+      state = JSON.parse(replicaData);
+      state.settings = settings;
+      if (Date.now() - handAt < HAND_MS && Date.now() - refusedAt > 1500 && KN.ui) {
+        refusedAt = Date.now();
+        KN.ui.toast("iPhoneで操作できます");
+      }
+    }
+    version++;
+    persist();
+    emit();
   }
 
   /* 元を書き換える直前に、いまの元を見ます（docs/storage.md の「記録の写し」）。
@@ -1404,6 +1475,7 @@
    * 保存の失敗として知らせます。
    */
   function adoptRaw(raw) {
+    if (replica) return false;
     try {
       const p = JSON.parse(raw);
       if (!p || typeof p !== "object" || Array.isArray(p)) return false;
@@ -1587,6 +1659,7 @@
 
   /** Apply a mutation, persist, and notify. */
   function update(mutator) {
+    if (replica) { replicaUpdate(mutator); return; }
     mutator(state);
     version++;
     persist();
@@ -1612,6 +1685,7 @@
      you ask for whatever the other one wrote. Our own pending save goes out
      first, so a refresh can never discard an edit that had not landed yet. */
   function reload() {
+    if (replica) { if (KN.replica) KN.replica.refresh(true); return; }
     flushPending();
     /* 読み直そうとしたら元が無い（使っているうちに消えた）。空を読み込まず、
        記憶の中の記録を書き戻します。 */
@@ -4488,6 +4562,7 @@
     } catch (_) { return []; }
   }
   function writeGone(list) {
+    if (replica) return;
     try {
       if (list.length) localStorage.setItem(GONE_KEY, JSON.stringify(list));
       else localStorage.removeItem(GONE_KEY);
@@ -5295,6 +5370,8 @@
     /* 読めなかったかどうか。画面はこれを見て「保存を止めています」と
        言えます（黙って動かないのが、いちばん困るので）。 */
     loadError: () => loadError,
+    // 写しの端末か（docs/desk.md「段15」。js/replica.js）。
+    replica: () => !!replica, showReplica, REPLICA_KEY,
     // 書いた回数と、読んだときの様子。日記の写し（js/diary-idb.js）が使います。
     lsSeq: () => lsSeq, loadInfo: () => loadInfo,
     /* 番号を、写しの番号より下にしない。元が読めなかった日（空で始まった日）

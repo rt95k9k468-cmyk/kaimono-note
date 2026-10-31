@@ -8265,3 +8265,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .sheet-text { color: var(--c-text-2); line-height: var(--lh-ui); }
 .fine-note { font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); flex: none; }
 .icon-btn.is-sm { width: 28px; height: 28px; }
+
+/* ---- 写しの端末（js/replica.js。docs/desk.md「段15」）：iPhone だけの操作は薄く。押せば言う（js が止める） ---- */
+html.is-replica .screen:not(#screen-notes):not(#screen-settings) :is(.check, .sub-check, .tl-tick, .fav),
+html.is-replica:not([data-screen="notes"]) #dock .add-fab { opacity: .35; cursor: default; }

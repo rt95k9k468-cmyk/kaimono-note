@@ -987,6 +987,10 @@
   }
 
   function dataRows() {
+    /* 写しの端末（js/replica.js）：この端末の記録は隠れているので、控えの行は出さない。切る口だけ。 */
+    if (KN.replica && KN.replica.on()) {
+      return [card(navRow({ ico: "upload", tint: TINT.data, title: "Dropbox", value: "iPhone の写し", onTap: () => go("dropbox") }))];
+    }
     const file = importInput();
     const verify = verifyInput();
     const diaryFile = diaryImportInput();
@@ -1104,6 +1108,14 @@
           : "ゆるすと出るコードを、ここへ貼ります。"),
       ];
     }
+    /* 写しの端末（docs/desk.md「段15」）。入れるのは控えを送っていない端末だけ。写しのあいだは送る・戻すを出さない。 */
+    const rep = KN.replica;
+    const mirror = rep && (rep.on() || !s.sender) ? card(switchRow({
+      title: "iPhone の写しを見る", on: rep.on(), onTap: (v) => (v ? rep.enable() : rep.disable()),
+    })) : null;
+    if (rep && rep.on()) {
+      return [mirror, foot(rep.at() ? `${whenText(rep.at())}の控え` : "読んでいます"), card(cutRow())];
+    }
     const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
     const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。` : "";
     /* 控えを送るのは一台だけ（js/dropbox.js「控えを送る端末は一台だけ」）。ほかの端末は役を取れるだけ。 */
@@ -1137,6 +1149,7 @@
         navRow({ ico: "undo", tint: TINT.sub, title: "Dropbox の控えから戻す", onTap: openDropboxBackups })
       ),
       foot(s.sender ? last + err : "控えはほかの端末から送っています。"),
+      mirror,
       /* 小窓（ホーム画面のショートカットの小窓。docs/todo-items.md 段4）。「仕事だけ」は写しているときだけ効くので、
          そのときだけ出す。組み方の行は、四角の付く行どうしで別のカードに（字の頭を揃える）。 */
       head("小窓"),
@@ -1158,20 +1171,24 @@
         title: "この端末は PC", on: store.get().settings.inboxPost === true,
         onTap: (v) => { store.update((x) => { x.settings.inboxPost = v; }); },
       })),
-      card(dangerRow({
-        ico: "close", title: "Dropbox とのつながりを切る",
-        onTap: async () => {
-          const ok = await KN.ui.confirm({
-            title: "つながりを切りますか？",
-            message: "これからは送りません。Dropbox に置いたファイルはそのまま残ります。",
-            okLabel: "切る", danger: true,
-          });
-          if (!ok) return;
-          await db.disconnect();
-          render();
-        },
-      })),
+      card(cutRow()),
     ];
+  }
+
+  function cutRow() {
+    return dangerRow({
+      ico: "close", title: "Dropbox とのつながりを切る",
+      onTap: async () => {
+        const ok = await KN.ui.confirm({
+          title: "つながりを切りますか？",
+          message: "これからは送りません。Dropbox に置いたファイルはそのまま残ります。",
+          okLabel: "切る", danger: true,
+        });
+        if (!ok) return;
+        await KN.dropbox.disconnect();
+        render();
+      },
+    });
   }
 
   /* Dropbox の控えから戻す（B2。js/dropbox.js の backups / download）。端末ごと
