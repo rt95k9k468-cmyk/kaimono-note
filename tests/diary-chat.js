@@ -98,6 +98,9 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.waitForTimeout(500);
 
   /* ---- 冒頭：書く口と問いの札。空の日の一行は前のまま ---- */
+  /* 札の絵は読み終わるまで待つ（混んだ機械では 500ms で読み終わらず揺れた。2026年10月31日、-j 6）。 */
+  await page.waitForFunction(() => { const h = document.querySelector("#screen-archive .think-home");
+    return !h || [...h.querySelectorAll("img")].every((im) => im.complete); }, null, { timeout: 8000 }).catch(() => {});
   const home = await page.evaluate(() => {
     const root = document.getElementById("screen-archive");
     const h = root.querySelector(".think-home");
@@ -172,12 +175,24 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("二件目は終わりに", m2.endsWith(tag("\n\n12:34\n一件目の字\n\n12:34\n二件目の字")), JSON.stringify(m2));
 
   /* ---- 一件を直す：時刻の行もほかの一件も変わらない ---- */
+  /* カーソルは開いた瞬間に見る。紙の作り（ui.js）は指の無い端末でだけ 320ms 後に最初の欄へカーソルを置くので、
+     混んだ機械で測るのが遅れると、そちらを拾って揺れた（2026年10月31日、-j 6）。 */
+  await page.evaluate(() => {
+    window.__openFocus = null;
+    const mo = new MutationObserver(() => {
+      const m = document.querySelector("#sheet-root .sheet.is-card .js-memo");
+      if (!m) return;
+      window.__openFocus = document.activeElement === m;
+      mo.disconnect();
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  });
   await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
   await sheetOpen();
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
     return { v: s.querySelector(".js-memo").value, title: s.querySelector(".sheet-title").textContent.trim(),
-      ok: s.querySelector(".js-ok").textContent.trim(), focused: document.activeElement === s.querySelector(".js-memo") };
+      ok: s.querySelector(".js-ok").textContent.trim(), focused: window.__openFocus !== false };
   });
   t.check("その一件の字で開く（題に時刻・キーボードは出さない）", s2.v === "一件目の字" && /12:34/.test(s2.title) && s2.ok === "閉じる" && !s2.focused, JSON.stringify(s2));
   await page.focus(".sheet.is-open .js-memo");
