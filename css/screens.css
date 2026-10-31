@@ -8266,36 +8266,42 @@ button.note-when:active { opacity: var(--press-fade); }
      今週でない週も同じ二段（右は空）——払って週を替えても日の行が同じ場所に居るように。窓の幅のまま（P3a の外）。 */
   .wk.is-two { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); column-gap: var(--sp-8); align-items: start; }
 }
-/* 1280px から、ノートは三列：木（左の列の中）｜一覧（--list-w）｜本文。ノートの席で開いたノートは紙でなく右の段に据える
-   （screen-notes.js の docked）。段の場所は何も開いていなくても白い面で取っておく（開いても並びが動かない）。
-   段の上端は上の帯の下。＋は一覧の右下へ。 */
-@media (min-width: 1280px) {
-  :root { --list-w: 380px; --pane-x: calc(var(--rail-w) + var(--list-w)); }
-  #screen-notes .notes-ground, #screen-notes .search-wrap { padding-inline: 0; width: var(--list-w); }
-  .head ~ .panes > #screen-notes {
+/* ノートの右の段（P3b。docs/desk.md）：ノートの席で開いたノートは紙でなく右の段に据える。段の場所は何も開いていなくても
+   取っておく（開いても並びが動かない）。段の上端は上の帯の下。決めるのは窓でなく中身の幅——紙と席の器そのものは器の中に
+   居ないので @container でなく、screen-notes.js の seatMarks が器を測って付ける印で：notes-dock（中身 600px〜＝desk なら
+   いつも）・notes-three（中身 860px〜＝窓 1092px・畳めば 924px）。真ん中の一覧（--list-w 380px）を本文の段と並べるのは
+   three のときだけ、それより狭いと段は器いっぱい（一覧の上に据わる。木は左の列のまま押せる）。 */
+@media (min-width: 840px) {
+  :root.notes-dock { --list-w: 0px; --pane-x: calc(var(--rail-w) + var(--list-w)); }
+  :root.notes-three:is(.notes-mid, .rail-fold) { --list-w: 380px; }
+  :root.notes-three:is(.notes-mid, .rail-fold) #screen-notes :is(.notes-ground, .search-wrap) { padding-inline: 0; width: var(--list-w); }
+  :root.notes-three:is(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes {
     background: linear-gradient(to right, transparent var(--list-w),
       var(--c-border) 0 calc(var(--list-w) + 1px), var(--c-surface) 0);
   }
-  :root[data-screen="notes"] .sheet.is-note:not(.is-wide) {
+  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide) {
     left: var(--pane-x); right: 0; top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); bottom: 0;
     width: auto; height: auto;
     border-radius: 0;
     box-shadow: -1px 0 0 var(--c-border);
     transform: translateX(var(--sp-6));
   }
-  :root[data-screen="notes"] .sheet.is-note:not(.is-wide).is-open { transform: none; }
-  :root[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
-  :root[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
-  :root[data-screen="notes"].has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
+  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide).is-open { transform: none; }
+  :root.notes-dock[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
+  :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
   /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
-  :root[data-screen="notes"]:not(.notes-mid, .rail-fold) { --list-w: 0px; }
-  :root:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
-  :root:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { width: auto; padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
-  :root:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: transparent; }
-  /* ＋は木の右下（--pane-x が列の幅になる）。木（--z-bar）より前へ。 */
-  :root[data-screen="notes"]:not(.notes-mid, .rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 1); }
-  /* 買うもの｜価格を左右に（app.js の duo）。めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
+  :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
+  :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
+  :root.notes-dock:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: transparent; }
+  /* ＋は段の左：一覧の右下、一覧を並べないときは木の右下（木＝--z-bar より前へ）。畳んだ列が細いときは窓の右下のまま
+     （段に隠れる——開いたノートを閉じれば出る）。 */
+  :root.notes-dock[data-screen="notes"]:is(.notes-three, :not(.rail-fold)).has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
+  :root.notes-dock[data-screen="notes"]:not(.rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 1); }
+}
+/* 1280px から、買うもの｜価格を左右に（app.js の duo）。 */
+@media (min-width: 1280px) {
+  /* めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
   .panes > .screen.is-duo-l { right: 50%; }
   .panes > .screen.is-duo-r { left: 50%; display: flex; box-shadow: inset 1px 0 0 var(--c-border); }
   .screen.is-duo-r.is-in-r { animation: desk-in-dn var(--m-nav) var(--ease-out); }

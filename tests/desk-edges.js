@@ -3,7 +3,9 @@
    - 839｜840：帯は下｜窓の背いっぱいの左の列
    - 中身の幅（P3a。窓から左の列を引いた幅）791｜792＝窓 1023｜1024：やることの今日は道と時間割を並べない｜並べる。
      からだのカードは一列｜段組み。左の列を畳めば同じ窓でも並ぶ（900px：中身 668 → 836）
-   - 1279｜1280：買うものは一枚｜買うもの｜価格を左右。ノートの席で開いたノートは紙（覆いあり）｜右の段（覆いなし）
+   - 1279｜1280：買うものは一枚｜買うもの｜価格を左右
+   - ノートの席で開いたノート（P3b。中身の幅で）：839 は紙（覆いあり）、840 から右の段（覆いなし）。「すべてのノート」は
+     中身 859｜860＝窓 1091｜1092 で、段が器いっぱい（一覧の上）｜一覧の右。畳めば窓 923｜924 で同じ
    - どの幅でも、どの席も頁が横に伸びない（はみ出して横に送れる頁にならない）
    - 背の低い窓（1024×768・1280×720）：日記の書く紙は窓に収まり、ボタンが窓の外に出ない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-edges.js */
@@ -59,6 +61,7 @@ const { open, checker } = require("./lib");
     await page.evaluate(() => {
       const r = [...document.querySelectorAll("#screen-notes .note-row .note-open")].find((e) => e.textContent.includes("一つめ"));
       if (r) r.click();
+      else KN.screens.notes.open("n-edge0", null, {});    // 木の無い幅（電話の形）のホームには「すべて」が無い
     });
     await page.waitForSelector(".sheet.is-note.is-open", { timeout: 4000 }).catch(() => {});
     await wait(500);
@@ -96,11 +99,11 @@ const { open, checker } = require("./lib");
         const duo = await page.evaluate(() => document.getElementById("screen-prices").classList.contains("is-duo-r"));
         t.check(`${w}px：買うもの｜価格を${w >= 1280 ? "左右に並べる" : "並べない（めくる）"}`, duo === (w >= 1280));
       }
-      if (s === "notes" && (w === 1279 || w === 1280)) {
+      if (s === "notes" && (w === 839 || w === 840)) {
         const n = await notePane();
-        const docked = !!n.pane && n.pane.r === w && !n.cover;
-        t.check(`${w}px：ノートの席で開いたノートは${w >= 1280 ? "右の段（覆いなし）" : "紙（覆いあり）"}`,
-          !!n.pane && (w >= 1280 ? docked : n.cover && !docked), JSON.stringify(n));
+        const docked = !!n.pane && n.pane.l === 232 && n.pane.r === w && !n.cover;
+        t.check(`${w}px：ノートの席で開いたノートは${w >= 840 ? "右の段（木の右・覆いなし）" : "紙（覆いあり）"}`,
+          !!n.pane && (w >= 840 ? docked : n.cover && !docked), JSON.stringify(n));
       }
     }
     t.check(`${w}px：どの席も頁が横に伸びない`, !wide.length, wide.join(" | "));
@@ -118,6 +121,24 @@ const { open, checker } = require("./lib");
   await wait(600);
   t.check("900px：列を開けば一列、畳めば道｜時間割・からだ二段（中身の幅で決まる）",
     !open900.road && !open900.diet && fold900.road && fold900.diet, JSON.stringify({ open900, fold900 }));
+
+  /* P3b：「すべてのノート」で開いたノートは、中身が 860px（一覧 380＋本文 480）からは一覧の右、狭いと器いっぱい（一覧の上）。
+     左の列を畳めば同じことが窓 924px から。 */
+  const paneAt = async (w, fold) => {
+    await page.setViewportSize({ width: w, height: 900 });
+    await wait(400);
+    if (fold) { await page.keyboard.press("Control+Backslash"); await wait(600); }
+    await go("notes");
+    const n = await notePane();
+    if (fold) { await page.keyboard.press("Control+Backslash"); await wait(400); }
+    return n;
+  };
+  for (const [w, fold, rail] of [[1091, false, 232], [1092, false, 232], [923, true, 64], [924, true, 64]]) {
+    const n = await paneAt(w, fold);
+    const three = w === 1092 || w === 924;
+    t.check(`${w}px${fold ? "（畳んだ列）" : ""}：すべてのノートで開いたノートは${three ? "一覧の右" : "器いっぱい（一覧の上）"}・覆いなし`,
+      !!n.pane && !n.cover && n.pane.r === w && n.pane.l === rail + (three ? 380 : 0), JSON.stringify(n));
+  }
 
   /* 背の低い窓：日記の書く紙は窓に収まり、押すところが窓の外に出ない。 */
   for (const [w, h] of [[1024, 768], [1280, 720]]) {

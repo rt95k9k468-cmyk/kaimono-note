@@ -31,10 +31,20 @@
   /* 左の木を出す幅（段1b）。幅の広い画面（desk。iPad の横・パソコン）と同じ境目——base.css・screens.css の
      「幅の広い画面」の @media と同じ数（docs/desk.md）。 */
   const WIDE = "(min-width: 840px)";
-  /* 三列（1280px〜）：ノートの席で開いたノートは、紙ではなく右の段に据える（木｜一覧｜本文。docs/desk.md）。
-     覆いが無いので一覧も押せる——ほかのノートを押せば入れ替わり、席を移れば閉じる（onLeave）。 */
-  const PANE = "(min-width: 1280px)";
-  const docked = () => window.matchMedia(PANE).matches && document.documentElement.dataset.screen === "notes";
+  /* 右の段（P3b。docs/desk.md）：ノートの席で開いたノートは、紙ではなく右の段に据える。覆いが無いので一覧も木も押せる
+     ——ほかのノートを押せば入れ替わり、席を移れば閉じる（onLeave）。決めるのは窓でなく席の器（中身）の幅。紙と器そのものは
+     器の中に居ないので @container が届かず、器を測って :root に印を付ける（seatMarks）：notes-dock＝据える（中身 600px〜）、
+     notes-three＝一覧（380px）を本文の段（480px 以上）と並べる（中身 860px〜）。 */
+  const DOCK_W = 600, THREE_W = 860;
+  function seatMarks() {
+    const wide = window.matchMedia(WIDE).matches;
+    const w = wide && root ? root.clientWidth : 0;
+    if (wide && !w) return;           // 隠れている席（display: none）は測れない——前の印のまま、出たときに測り直す
+    const r = document.documentElement.classList;
+    if (r.contains("notes-dock") !== w >= DOCK_W) r.toggle("notes-dock", w >= DOCK_W);
+    if (r.contains("notes-three") !== w >= THREE_W) r.toggle("notes-three", w >= THREE_W);
+  }
+  const docked = () => { seatMarks(); return document.documentElement.classList.contains("notes-dock") && document.documentElement.dataset.screen === "notes"; };
   /* 電話を横にした（base.css の「portrait only」と同じ式）。 */
   const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
@@ -144,7 +154,9 @@
       });
     }
     /* ホームの中身は木の有無で変わる（deskHome）。組み直せば木も塗る。 */
-    window.matchMedia(WIDE).addEventListener("change", () => renderBody());
+    window.matchMedia(WIDE).addEventListener("change", () => { seatMarks(); renderBody(); });
+    /* 右の段の印は器の幅で（窓の幅・左の列を畳むで変わる）。 */
+    if (window.ResizeObserver) new ResizeObserver(seatMarks).observe(root);
   }
 
   /** 引くあいだ後ろに見せる、一つ上の面の写し（押せない）。戻ったときの送りの位置に合わせ、
@@ -346,7 +358,7 @@
     return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
   }
 
-  /** 最近直したノートの札（desk のホーム）：題・頭の数行・日付。押すと紙（1280px〜は右の段）。 */
+  /** 最近直したノートの札（desk のホーム）：題・頭の数行・日付。押すと右の段（notes-dock）。 */
   function recentCards(list) {
     const box = node(html`<div class="nt-cards" role="list" aria-label="最近直した"></div>`);
     list.forEach((n) => {
@@ -810,8 +822,8 @@
       pages.length > 1 ? back : null, again);
     paintMid();
   }
-  /** 三列（1280px〜）の真ん中の一覧を出すか：すべてのノート・問い・探しているときだけ。ホームは木｜本文の二列
-      （ホームの中身は左の木と同じなので。docs/desk.md）。効くのは css の 1280px の中だけ。 */
+  /** 真ん中の一覧を出すか：すべてのノート・問い・探しているときだけ。ホームは木｜本文の二列
+      （ホームの中身は左の木と同じなので。docs/desk.md）。効くのは css の notes-dock の中だけ。 */
   function paintMid() {
     document.documentElement.classList.toggle("notes-mid", page().k !== "home" || !!query || seeking);
   }
@@ -2734,7 +2746,7 @@
 
   KN.screens = KN.screens || {};
   /** ほかの席・設定へ移る。右の段に据えたノートは、その画面の上に残さず閉じる（保存は閉じる道のまま）。 */
-  function onLeave() { if (window.matchMedia(PANE).matches) closePapers(); }
+  function onLeave() { if (document.documentElement.classList.contains("notes-dock")) closePapers(); }
 
   KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
     pick: pickNote, asks, answer, newBook };
