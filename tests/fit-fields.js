@@ -93,6 +93,10 @@ async function measure(fit) {
   await page.click("#dock .add-fab");
   await page.waitForSelector(".sheet.is-note.is-open");
   await wait(600);
+  /* ＋から紙が育つ動き（--m-sheet-grow）が終わるまで待つ。途中で測ると縮んだ高さになる（WebKit の毎朝の列で
+     題も本文も 0.855 倍、2026年10月31日）。決め打ちの ms だけで待たない（tests/README）。 */
+  await page.waitForFunction(() => { const s = document.querySelector(".sheet.is-note.is-open");
+    return s && Math.abs(s.getBoundingClientRect().width - s.offsetWidth) < 0.5; }, null, { timeout: 5000 });
   const title = ".sheet.is-note .js-title";
   const text = ".sheet.is-note .js-text";
   out.titleEmpty = await box(title);
