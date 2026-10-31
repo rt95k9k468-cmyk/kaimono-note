@@ -1458,6 +1458,8 @@ button.hero-node:active { scale: var(--press-dot); }
   z-index: var(--z-top);
   pointer-events: none;
 }
+/* マウスの端末は輪を小さく薄く（P7。base.css の「弾みと光を控えめに」）。 */
+@media (pointer: fine) { .kn-burst { scale: .7; opacity: .6; } }
 /* 点は**丸**です。星の形（clip-path の十角形）をやめました——参考にした
    画面は、押した印のまわりに丸い点が等間隔で一周します。星は「弾けた」、
    丸の輪は「一周した」。済ませたことの区切りには後者のほうが合います。
