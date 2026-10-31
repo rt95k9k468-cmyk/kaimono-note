@@ -8179,9 +8179,13 @@ button.note-when:active { opacity: var(--press-fade); }
   /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
      まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。 */
   @media (min-width: 1280px) {
-    .set-layer.is-duo .set-scroll { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
+    /* 端と段の間は、ほかの席の段組みと同じ 16px（カードの外の左右を 8px に。カードの中の --set-gut は電話と同じ）。 */
+    .set-layer.is-duo .set-scroll { padding-inline: max(var(--sp-2), calc((100% - var(--desk-wide)) / 2 + var(--sp-2))); }
     .set-layer.is-duo .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
-    .set-layer.is-duo .js-body { columns: 2; column-gap: var(--sp-4); padding-top: var(--sp-2); }
+    .set-layer.is-duo .js-body { columns: 2; column-gap: 0; padding-top: var(--sp-2); }
+    .set-layer.is-duo .js-body .set-card { margin-inline: var(--sp-2); }
+    .set-layer.is-duo .js-body :is(.set-head, .set-foot:not(.is-flush)) { padding-inline: calc(var(--sp-2) + var(--sp-5)); }
+    .set-layer.is-duo .js-body .set-more { margin-inline: calc(var(--sp-2) + var(--sp-5)); }
     .set-sec { break-inside: avoid; margin-top: var(--sp-6); }
     .set-sec:first-child { margin-top: 0; }
     .set-sec > .set-head:first-child { margin-top: 0; }
@@ -8210,7 +8214,7 @@ button.note-when:active { opacity: var(--press-fade); }
   /* ノートのホーム＝最近直したノートの札（screen-notes.js の recentCards。左の列に木があるときだけ組む）。
      題・頭の数行・日付。札の背はそろえる（行ごとに一番高い札へ）。 */
   .nt-cards {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-3);
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-4);
     padding: var(--sp-4) var(--sp-4) var(--sp-8);
   }
   .nt-card {
@@ -8262,7 +8266,7 @@ button.note-when:active { opacity: var(--press-fade); }
     #screen-todo .todo-day.is-tl > .day-road .road-map { max-width: none; }
     #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
     /* からだ：カードを段組みに（上から下へ流れ、段の高さをそろえる）。三段は 380px ずつ入る幅から。 */
-    .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
+    .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
     .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   }
   @container seat (min-width: 1204px) { .diet-day.card { columns: 3; } }
@@ -8314,7 +8318,7 @@ button.note-when:active { opacity: var(--press-fade); }
   /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
-  :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
+  :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
   :root.notes-dock:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: transparent; }
   /* ＋は段の左：一覧の右下、一覧を並べないときは木の右下（木＝--z-bar より前へ）。畳んだ列が細いときは窓の右下のまま
      （段に隠れる——開いたノートを閉じれば出る）。 */
