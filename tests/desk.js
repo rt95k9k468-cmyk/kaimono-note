@@ -90,14 +90,22 @@ const { open, checker } = require("./lib");
   await page.waitForFunction((d) => KN.screens.todo.day() === d, today, { timeout: 3000 }).catch(() => {});
   t.check("→ で次の日、t で今日へ", kr === tomorrow && (await todoDay()) === today, JSON.stringify({ kr, today: await todoDay() }));
   await wait(600);
-  const weekOf = () => page.evaluate(() => { const c = document.querySelector("#head .cal-day[data-day]"); return c ? c.dataset.day : null; });
+  /* 週の頭＝選んだ日（.is-here）の行の先頭。盤は月ぶん並ぶので、先頭のマスでは同じ月の中の週送りが見えない。 */
+  const weekOf = () => page.evaluate(() => {
+    const cs = [...document.querySelectorAll("#head .cal-day[data-day]")], i = cs.findIndex((c) => c.classList.contains("is-here"));
+    return i < 0 ? null : cs[i - (i % 7)].dataset.day;
+  });
+  const weekIs = (pred) => page.waitForFunction(([w, eq]) => {
+    const cs = [...document.querySelectorAll("#head .cal-day[data-day]")], i = cs.findIndex((c) => c.classList.contains("is-here"));
+    return i >= 0 && (cs[i - (i % 7)].dataset.day === w) === eq;
+  }, pred, { timeout: 3000 }).catch(() => {});
   const w0 = await weekOf();
   await page.keyboard.press("Shift+ArrowRight");
-  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day !== w; }, w0, { timeout: 3000 }).catch(() => {});
+  await weekIs([w0, false]);
   const w1 = await weekOf();
   t.check("Shift+→ で暦が次の週へ", !!w0 && !!w1 && w1 > w0, JSON.stringify({ w0, w1 }));
   await page.keyboard.press("Shift+ArrowLeft");
-  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day === w; }, w0, { timeout: 3000 }).catch(() => {});
+  await weekIs([w0, true]);
   await wait(500);
   /* トラックパッドの横払い：紙の上なら日、暦の上なら週。 */
   const paper = await box("#screen-todo .tl-sheet");
@@ -112,11 +120,11 @@ const { open, checker } = require("./lib");
   const calBox = await box("#head .head-cal");
   await page.mouse.move(calBox.l + 200, calBox.t + calBox.h / 2);
   await page.mouse.wheel(120, 0);
-  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day !== w; }, w0, { timeout: 3000 }).catch(() => {});
+  await weekIs([w0, false]);
   const ww = await weekOf();
   t.check("トラックパッドの横払い：紙の上で次の日、暦の上で次の週", wr === tomorrow && ww > w0, JSON.stringify({ wr, ww, w0 }));
   await page.mouse.wheel(-120, 0);
-  await page.waitForFunction((w) => { const c = document.querySelector("#head .cal-day[data-day]"); return c && c.dataset.day === w; }, w0, { timeout: 3000 }).catch(() => {});
+  await weekIs([w0, true]);
   await wait(500);
   await page.keyboard.press(",");
   await page.waitForFunction(() => document.documentElement.dataset.screen === "settings", null, { timeout: 3000 }).catch(() => {});
