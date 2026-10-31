@@ -643,6 +643,17 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
+/* マウスの端末（パソコン）は弾みと光を控えめに（design-review 10節の P7。docs/motion.md）。指の下で返す手ごたえは
+   指の端末のもの。曲線と材の札を替えるだけ（動きは足さない・消さない）。暗い面の札より前に置く（あとの規則が夜の一組を選ぶ）。 */
+@media (pointer: fine) {
+  :root {
+    --spring: cubic-bezier(.34, 1.16, .5, 1);
+    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 38%);
+    --glass-rim-spec: rgba(255, 255, 255, .24);
+    --glass-night-sheen: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 40%);
+    --glass-night-rim-spec: rgba(255, 255, 255, .25);
+  }
+}
 
 /* ---- 書体（設定 → 外観 → 書体）----
    三つとも iPhone に最初から入っている面です（Apple の書体表で「iOS system

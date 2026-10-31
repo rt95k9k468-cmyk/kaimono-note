@@ -203,6 +203,10 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | `--m-poke` | 押した絵が一度だけ、その絵らしく応える（席の絵・歯車。docs/tabbar.md の「押した席の絵が応える」） |
 | `--m-success` / `--m-warn` | うまくいった／気をつけて |
 
+**マウスの端末（`pointer: fine`）は弾みと光を控えめに**（P7。base.css の `:root` の直後）：`--spring` の行き過ぎを 1.42→1.16、
+ガラスの艶と縁の照り（`--glass-sheen`・`--glass-rim-spec` と夜の一組）を約6割、✓の輪（`.kn-burst`）を 0.7 倍・薄く。札を替える
+だけで動きは足さない・消さない。指の端末は今のまま（試験の Chromium はマウスの端末なので、電話の撮り比べは `touch: true` で）。
+
 曲線も同じ（`--ease` / `--ease-out` / `--ease-in` / `--spring` / `--push-e` /
 `--ease-glide` / `--ease-settle`）。**出てくるものは `--ease-out`、去るものは
 `--ease-in`。** 四つの面の指定が全部 `--ease-out` で、去る面が「出てくる動き」で
