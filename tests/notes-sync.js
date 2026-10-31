@@ -28,7 +28,7 @@ const { open, checker } = require("./lib");
   let revN = 0, idN = 0, busy = 0, notify = false;   // notify … longpoll が変わったと言う（ほかの節を乱さないよう、その節だけ）
   const calls = [];
   let dlFail = 0;                // これだけの download（rev:）を 500 で断る（取れなかったの節だけ）
-  let hold = null;               // { after, n, p } … この数の download（rev:）のあとは、開けるまで待たせる（取りながら書くの節だけ）
+  let hold = null;               // { after, n, p, page } … page の download（rev:）がこの数を越えたら、開けるまで待たせる（取りながら書くの節だけ）
   const blobs = new Map();       // images/・files/ の中身（字にしない）
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
   const json = (route, status, obj) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
@@ -69,7 +69,9 @@ const { open, checker } = require("./lib");
       }
       case "/2/files/download": {
         const p = arg.path;
-        if (hold && p.startsWith("rev:") && ++hold.n > hold.after) await hold.p;
+        /* 数えるのは取りに来た端末だけ——開いたままの B も A の大束を取りに来る。並べて回すと B が先に数を食い、
+           E が 1件で止まっていた（2026年10月31日）。 */
+        if (hold && p.startsWith("rev:") && req.frame().page() === hold.page && ++hold.n > hold.after) await hold.p;
         if (dlFail > 0 && p.startsWith("rev:")) { dlFail--; return json(route, 500, { error_summary: "internal/" }); }
         if (blobs.has(p.toLowerCase())) return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: blobs.get(p.toLowerCase()) });
         const text = p.startsWith("rev:") ? hist.get(p.slice(4)) : (files.get(p.toLowerCase()) || {}).text;
@@ -354,9 +356,9 @@ const { open, checker } = require("./lib");
   await a.evaluate(() => { for (let i = 0; i < 50; i++) KN.notes.put({ ...KN.notes.draft(), title: `大束${i}`, body: `大束の本文${i}` }); });
   await a.evaluate(() => KN.notesSync.now());
   let release;
-  hold = { after: 44, n: 0, p: new Promise((r) => (release = r)) };
   const E = await device();
   const e = E.page;
+  hold = { after: 44, n: 0, p: new Promise((r) => (release = r)), page: e };
   const c1 = calls.length;
   await e.click('.tab[data-tab="notes"]');
   await e.waitForFunction(() => KN.app.activeScreen() === "notes");
