@@ -281,3 +281,21 @@ docs（look・glass・icons ほか）へ短く移す。次に点検するとき�
 - Material 3 Expressive の研究：[Google Design](https://design.google/library/expressive-material-design-google-research)
 - Safari 27：[WebKit](https://webkit.org/blog/17967/news-from-wwdc26-webkit-in-safari-27-beta/)
 - `text-wrap: pretty`：[GIGAZINE](https://gigazine.net/news/20250409-safari-better-typography-text-wrap-pretty/)
+
+## 9. 2026年10月31日（三つの端末の幅で。main の `b089c80`）
+
+利用者「iPhone・iPad・パソコンで使う前提で、デザイン・動き・UI・その他すべてを全面的に」。393×852・820×1180（iPad 縦）・
+1180×820（iPad 横）・1440×900 で五つの席を撮り、はみ出し・押せる広さ・字の大きさを数え、コマ落ち（CPU 4倍遅）と
+1年ぶんの重さ（`heavy-pace.js`）を測った。はみ出し・エラーは四つの幅とも無し。押せる広さは `::after` が持っている。
+
+**見立て**：電話は Y1〜Y12 で整い、新しい崩れは無い。伸びしろは iPad 縦とパソコンの側（desk の段1〜15 の外の隙間）。
+
+| ID | どこ | 何 | 勧め |
+|---|---|---|---|
+| W1 | iPad 縦（640〜839px） | 620px の一列が真ん中に置かれ、左右が灰の帯（電話のアプリを引き伸ばした見え方）。iPad mini・11インチの縦・並べた窓 | 地・帯・写真は窓いっぱい、中身は読む幅 680px へ**内側の余白で**寄せる（desk と同じ手）。下の帯は 600px で真ん中。@media の中だけ。CSS の差し替えで撮って崩れなし |
+| W2 | ノート（desk） | 840〜1279px はホームが左の列の木と同じものを二度出す。1280px〜は何も開いていない右の段が白い面だけ。頭の帯は広重が切れて灰の帯に見える | 真ん中・右の段に「最近直した」ノートの札（題・頭の数行・日付）。頭の帯を整える |
+| W3 | 買うもの｜価格（1280px〜） | 右の一枚に題も器も無く、左のカードと別の顔 | 右も同じ器と題 |
+| W4 | パソコンの手ざわり | 押せる行・カードを指しても変わらない（買うものの行で確かめた。品物・設定・木の行には有る）。窓の題が席で変わらない | `(hover: hover) and (pointer: fine)` の中で薄い塗り（動きは足さない）。窓の題に席の名前 |
+| W5 | desk の字 | 帯の暦の用事の札 10px・道の時の数字 7.4px（`legibility.js` の WAIT） | desk では札を 11px 以上・道を一回り大きく |
+| W6 | iPad 横（指） | 左の列の行 36px | `pointer: coarse` だけ 44px |
+| W7 | 重さ | 1年ぶん・CPU 4倍遅で席を替える一拍 140〜430ms（組み直し）。紙の開閉は一拍目のほかコマ落ち無し | 「画面を取っておく」は前にやらないとした（inspection.md）。iPhone で重く感じるか訊いてから |
