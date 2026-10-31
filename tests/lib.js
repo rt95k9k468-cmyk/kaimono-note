@@ -203,4 +203,49 @@ async function openReview(page) {
   return true;
 }
 
-module.exports = { open, checker, ensureServer, noFit, noAnchor, openReview, URL, ROOT, ASKS };
+/** 偽の Dropbox（tests/restore-drill.js・desk-windows.js）。`on` は page か context（窓二つで分け合う）。
+    files（path → 中身）は端末をまたいで一つ渡す。uploads に置いた path を足す。 */
+async function fakeDropbox(on, files, uploads) {
+  const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+  const revs = new Map();
+  let n = 0;
+  const json = (route, status, obj) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
+  await on.route(/https:\/\/(api|content|notify)\.dropboxapi\.com\/.*/, async (route) => {
+    const req = route.request();
+    if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors, body: "" });
+    const u = new globalThis.URL(req.url());   // この器の URL は頁の住所（字）
+    const h = req.headers();
+    const arg = h["dropbox-api-arg"] ? JSON.parse(h["dropbox-api-arg"]) : null;
+    if (u.pathname === "/oauth2/token") {
+      const f = Object.fromEntries(new URLSearchParams(req.postData() || ""));
+      return json(route, 200, { access_token: "acc", expires_in: 14400, token_type: "bearer", ...(f.grant_type === "authorization_code" ? { refresh_token: "ref" } : {}) });
+    }
+    if (u.pathname === "/2/files/upload") {
+      if (arg.mode === "add" && files.has(arg.path)) return json(route, 409, { error_summary: "path/conflict/file/.." });
+      if (arg.mode && arg.mode[".tag"] === "update" && revs.get(arg.path) !== arg.mode.update) return json(route, 409, { error_summary: "path/conflict/file/.." });
+      files.set(arg.path, req.postData());
+      uploads.push(arg.path);
+      revs.set(arg.path, `r${++n}`);
+      return json(route, 200, { name: arg.path.split("/").pop(), rev: revs.get(arg.path) });
+    }
+    if (u.pathname === "/2/files/list_folder") {
+      const entries = [...files.keys()].filter((p) => p.startsWith("/daily/"))
+        .map((p) => ({ ".tag": "file", name: p.slice(7), server_modified: `${(/(\d{4}-\d\d-\d\d)/.exec(p) || [0, "2026-10-01"])[1]}T03:00:00Z`, size: files.get(p).length }));
+      return json(route, 200, { entries, has_more: false, cursor: "c" });
+    }
+    if (u.pathname === "/2/files/get_metadata") {
+      const { path } = JSON.parse(req.postData());
+      if (!files.has(path)) return json(route, 409, { error_summary: "path/not_found/.." });
+      if (!revs.has(path)) revs.set(path, `r${++n}`);
+      return json(route, 200, { ".tag": "file", name: path.slice(1), rev: revs.get(path), server_modified: "2026-10-31T03:00:00Z", size: files.get(path).length });
+    }
+    if (u.pathname === "/2/files/download") {
+      if (!files.has(arg.path)) return json(route, 409, { error_summary: "path/not_found/.." });
+      return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "application/octet-stream" }, body: files.get(arg.path) });
+    }
+    if (u.pathname === "/2/files/delete_v2") return json(route, 200, {});
+    return json(route, 409, { error_summary: "path/not_found/.." });
+  });
+}
+
+module.exports = { fakeDropbox, open, checker, ensureServer, noFit, noAnchor, openReview, URL, ROOT, ASKS };
