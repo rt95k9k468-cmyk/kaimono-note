@@ -364,24 +364,44 @@
 
   /** 送る役として kurashi-latest.json を置く。ほかの端末が置いていたら false。 */
   async function putLatest(text, first) {
-    const mode = first ? "add" : cfg.latestRev ? { ".tag": "update", update: cfg.latestRev } : "overwrite";
-    try {
-      if ((await upload(LATEST, text, mode)) === "exists") return false;
-    } catch (err) {
-      if (/conflict/.test(String(err && err.message))) return false;
-      throw err;
+    for (let i = 0; i < 2; i++) {
+      const tried = cfg.latestRev;
+      const mode = first ? "add" : tried ? { ".tag": "update", update: tried } : "overwrite";
+      let put = true;
+      try {
+        if ((await upload(LATEST, text, mode)) === "exists") put = false;
+      } catch (err) {
+        if (!/conflict/.test(String(err && err.message))) throw err;
+        put = false;
+      }
+      if (put) {
+        cfg.sender = true;
+        if (lastRev) cfg.latestRev = lastRev;
+        save();
+        return true;
+      }
+      if (!siblingRev(tried)) return false;
+      first = false;
     }
+    return false;
+  }
+
+  /* 同じ端末のほかの窓（タブ二つ）が先に送ると、進んだ版はその窓と置き場にだけあり、この窓の記憶は古い。
+     断られたら降りる前に置き場を読み直し、ほかの窓が進めた版ならそれを覚え直す。ノートだけ直した日は
+     記録の読み直し（app.js の storage）が起きないので、ここで拾う（P6d。tests/desk-windows.js）。 */
+  function siblingRev(tried) {
+    const v = read();
+    if (v.sender !== true || !v.latestRev || v.latestRev === tried) return null;
     cfg.sender = true;
-    if (lastRev) cfg.latestRev = lastRev;
-    save();
-    return true;
+    cfg.latestRev = v.latestRev;
+    return v.latestRev;
   }
 
   /** 前と同じ中身で日だけ変わったとき。置かれている版が覚えたものか（ほかの端末が置いていないか）。 */
   async function stillMine() {
     if (!cfg.latestRev) return true;
     const m = await call(API, "/2/files/get_metadata", { json: { path: LATEST } });
-    if (m.res.ok) return !!(m.body && m.body.rev === cfg.latestRev);
+    if (m.res.ok) return !!(m.body && (m.body.rev === cfg.latestRev || siblingRev(cfg.latestRev) === m.body.rev));
     if (/not_found/.test(summary(m))) return true;
     throw new Error(summary(m));
   }

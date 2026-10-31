@@ -4,8 +4,9 @@
    - A でやることの紙に打ちかけ → B が書く → A は読み直し、同じ紙に打ちかけが戻る（ui.js の keepDraft）
    - A で日記の書く紙に打ちかけ → B が書く → A の打ちかけは消えない（紙に戻るか、記録に入る）
    - A でノートの本文を打った直後 → B が書く → A を読み直してもノートの本文が残る
+   - 主の一台の窓二つがノートだけ直して Dropbox へ送り合っても、送る役を降りない（P6d）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-windows.js */
-const { open, checker, URL } = require("./lib");
+const { open, checker, URL, fakeDropbox } = require("./lib");
 
 (async () => {
   const t = checker("desk-windows");
@@ -117,6 +118,36 @@ const { open, checker, URL } = require("./lib");
   t.check("ノート：本文を打った直後に読み直しても、本文が残る", r3 && !!note && note.includes("窓Aの追記"), JSON.stringify({ r3, note }));
 
   t.check("エラーなし", !errors.length, errors.join(" | "));
-  t.done();
   await browser.close();
+
+  /* 主の一台の窓二つが、ノートだけ直して Dropbox へ送り合う（P6d）。ノートは記録の読み直しを起こさないので、
+     片方の記憶の版が古いまま。前は断られて「ほかの端末」と取り違え、送る役を降りていた（js/dropbox.js の siblingRev）。 */
+  {
+    const files = new Map();
+    const up = [];
+    const W = await open({ viewport: { width: 1440, height: 900 }, before: (c) => fakeDropbox(c, files, up) });
+    const ready = (p) => p.evaluate(() => Promise.all([KN.liveIdb.ready(), KN.diaryIdb.ready(), KN.notes.ready()]));
+    await ready(W.page);
+    await W.page.evaluate(async () => {
+      KN.store.loadSample();
+      KN.dropbox.setAppKey("testkey123");
+      for (let i = 0; i < 50 && !KN.dropbox.authUrl(); i++) await new Promise((r) => setTimeout(r, 50));
+      await KN.dropbox.finish("code-1");
+    });
+    const W2 = await W.ctx.newPage();
+    W2.on("pageerror", (e) => W.errors.push("W2: " + e.message));
+    await W2.goto(URL);
+    await booted(W2);
+    await ready(W2);
+    const note = (p, id) => p.evaluate((i) => { KN.notes.put({ ...KN.notes.draft(), id: i, body: `${i} の本文` }); return KN.notes.flush().then(() => KN.dropbox.sync()); }, id);
+    const r1 = await note(W.page, "n-w1");
+    const r2 = await note(W2, "n-w2");
+    const r3 = await note(W.page, "n-w3");
+    const sender = await W2.evaluate(() => JSON.parse(localStorage.getItem("kaimono-note-dropbox")).sender);
+    t.check("主の窓二つがノートだけ直して送り合っても、送る役を降りない", r1 === "sent" && r2 === "sent" && r3 === "sent" && sender === true,
+      JSON.stringify({ r1, r2, r3, sender }));
+    t.check("エラーなし（Dropbox の窓二つ）", !W.errors.length, W.errors.join(" | "));
+    await W.browser.close();
+  }
+  t.done();
 })().catch((e) => { console.error(e); process.exit(1); });
