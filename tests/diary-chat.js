@@ -143,12 +143,13 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await sheetOpen();
   const s1 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
-    return { focused: document.activeElement === s.querySelector(".js-memo"), pick: !!s.querySelector(".js-pick, .arc-pick-b"),
+    return { focused: document.activeElement === s.querySelector(".js-good"), pick: !!s.querySelector(".js-pick, .arc-pick-b"),
       ok: s.querySelector(".js-ok").textContent.trim(), title: s.querySelector(".sheet-title").textContent.trim(),
       ph: s.querySelector(".js-memo").placeholder };
   });
-  t.check("書く紙は欄にカーソル・種類の札なし", s1.focused && !s1.pick, JSON.stringify(s1));
+  t.check("書く紙はよかったことの欄にカーソル・種類の札なし", s1.focused && !s1.pick, JSON.stringify(s1));
   t.check("ボタンは「保存する」・空の欄に短い案内・題はその日", s1.ok === "保存する" && !!s1.ph && /10月6日/.test(s1.title), JSON.stringify(s1));
+  await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("一件目の字");
   await page.waitForTimeout(800);
   const m1 = await memo();
@@ -164,6 +165,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await sheetOpen();
   const plus = await page.evaluate(() => !!document.querySelector(".sheet.is-open .arc-pick-b") || /記録を書く/.test(document.querySelector(".sheet.is-open").textContent));
   t.check("＋で記録の紙（種類の札）は出ない", !plus);
+  await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("二件目の字");
   await closeSheet();
   const m2 = await memo();
@@ -304,6 +306,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   /* ---- 書いたばかりの一件も「消す」で外れ、元に戻せる ---- */
   await page.click("#screen-archive .js-think-write");
   await sheetOpen();
+  await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("すぐ消す一件");
   await page.waitForTimeout(800);
   const withNew = await memo();
@@ -394,6 +397,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("開いて閉じても一字も変わらない", (await memo()) === imported);
   await page.click("#screen-archive .js-think-write");
   await sheetOpen();
+  await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("取り込んだ日に足す");
   await closeSheet();
   const im2 = await memo();
