@@ -119,12 +119,15 @@
   /* 問い（思考のホーム。docs/thinking.md）：行の中身（行頭の印のあと）が「？」か「?」で始まる行。印は足さない
      ——打った「？」がそのまま印なので、どこへ持ち出しても読める。日記の本文も同じ決まりで引く。 */
   const ASK = /^[？?][\s\u3000]*(\S[\s\S]*)$/;
+  /* 前の文の「？」が行頭に残っただけの段落（音声入力の日記など）は問いにしない：句読点で始まる・長すぎる。 */
+  const ASK_NOT = /^[。、．，.,!！?？」』）)\]】…・]/, ASK_MAX = 100;
   /** 問いの行なら、その問い（「？」と太字の印を外した字）。違えば null。 */
   function askOf(line) {
     const p = parse(String(line || ""));
     if (p.kind === "rule" || p.kind === "blank" || p.kind === "img" || p.kind === "file") return null;
     const m = ASK.exec(unmark(p.text).trim());
-    return m ? m[1].trim() : null;
+    const t = m ? m[1].trim() : "";
+    return t && !ASK_NOT.test(t) && t.length <= ASK_MAX ? t : null;
   }
   /** 本文の問いの並び（line は render の data-line と同じ数え方）。 */
   function asks(body) {

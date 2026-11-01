@@ -23,6 +23,12 @@ const { open, checker, ASKS } = require("./lib");
   await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
   /* 問いの元は端末の記録（store.asks）にだけある。初めて開いた端末では空。 */
   t.check("初めて開いた端末に問いの元は無い", await page.evaluate(() => KN.store.get().asks.length === 0 && !KN.askItems));
+  /* 前の文の「？」が行頭に残っただけの段落（句読点で始まる・長い）は問いにしない。 */
+  t.check("行頭に「？」が残った段落は問いにしない", await page.evaluate(() => {
+    const F = KN.noteFormat;
+    return F.askOf("？なぜ空は青いのか") === "なぜ空は青いのか" && F.askOf("？。それから駅まで歩いた") === null
+      && F.askOf("？、そして") === null && F.askOf("？" + "あ".repeat(120)) === null;
+  }));
   await page.evaluate((a) => KN.store.setAsks(a), ASKS);
 
   const ids = await page.evaluate(() => {
