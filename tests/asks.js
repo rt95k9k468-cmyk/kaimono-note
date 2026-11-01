@@ -4,9 +4,9 @@
    - 読むときは「？」の行の字だけ主色（印は打ったまま。保存の形は変わらない）
    - タグの小窓に、まだ使っていなくても「種」「問い」
    - 「⋯」の「読んだところ」：終わりに「### 月日 p.」を足して書く欄へ（種をまくは外した）
-   - daily の問いの札（問い一覧）からノートの問いの面へ
+   - ノートのホームの「問い」から問いの面へ（daily の札は「思考」に替えた。tests/diary-chat.js）
    - 問いの面の「まだの問い」（今日の問いの元のうち書いていないもの）→ 答える紙（問いは欄の外）→ 「？問い」を頭にした
-     ノート。同じ問いは同じノートの終わりに日付と時刻の行をはさんで。打たずに閉じれば書かない
+     ノート（thinking へ）。同じ問いは同じノートの終わりに日付と時刻の行をはさんで。打たずに閉じれば書かない
    - 問いの面：続きから考える（最後に書いた順・前の答えを読んで続きを足す）・＋問いをつくる（同じ問いはつくらない）・
      一区切り（畳んだ段・消さない・読み込み直しても・再開）・空で閉じても変わらない
    - 今日の問い：前の日に書いた問いは引かない・一区切りは引かない・ノートに書いた「？」の問いが「あなたの問い」で混ざり、押すとそのノートへ。日記の「？」は混ざらない
@@ -44,10 +44,10 @@ const { open, checker, ASKS } = require("./lib");
   const asksText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks:not(.is-yet):not(.is-new) .note-row")]
     .map((r) => r.querySelector(".note-t").textContent.trim()));
 
-  /* ---- daily の問いの札 → ノートの問いの面 ---- */
-  await page.evaluate(() => KN.app.showScreen("archive"));
-  await page.waitForTimeout(500);
-  await page.click("#screen-archive .js-think-ask");
+  /* ---- ノートのホームの「問い」 → 問いの面 ---- */
+  await page.evaluate(() => KN.app.showScreen("notes"));
+  await page.waitForSelector("#screen-notes .js-asks", { timeout: 5000 });
+  await page.click("#screen-notes .js-asks");
   await page.waitForSelector("#screen-notes .notes-asks", { timeout: 5000 });
   const shown = await asksText();
   t.check("問いの面：ノートの「？」の行・問いのタグのノート（日記の「？」の行は引かない）", shown.includes("なぜ字は右へ流れるのか")
@@ -149,6 +149,8 @@ const { open, checker, ASKS } = require("./lib");
     await ok();
     const b1 = await bodies();
     t.check("保存すると「？問い」を頭にしたノート", b1.length === 1 && b1[0] === `？${q}\n答えの字`, JSON.stringify(b1));
+    const nb1 = await page.evaluate((q) => KN.notes.list().filter((n) => n.body.startsWith(`？${q}\n`)).map((n) => n.notebook), q);
+    t.check("答えの新しいノートは thinking へ", nb1.join() === "thinking", JSON.stringify(nb1));
     const goText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-go .note-t")].map((x) => x.textContent.trim()));
     t.check("答えた問いは「続きから考える」へ移る", (await goText())[0] === q && !(await yetText()).includes(q), JSON.stringify(await goText()));
     await page.evaluate((q) => KN.screens.notes.answer(q), q);
@@ -217,7 +219,9 @@ const { open, checker, ASKS } = require("./lib");
     };
     const n1 = await page.evaluate(() => KN.notes.list().length);
     await mk("試験でつくった問い");
-    const made = await page.evaluate(() => KN.notes.list().filter((n) => n.body === "？試験でつくった問い").length);
+    const madeNb = await page.evaluate(() => KN.notes.list().filter((n) => n.body === "？試験でつくった問い").map((n) => n.notebook));
+    t.check("つくった問いのノートも thinking へ", madeNb.join() === "thinking", JSON.stringify(madeNb));
+    const made = madeNb.length;
     const madeText = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-asks.is-made .note-t")].map((x) => x.textContent.trim()));
     t.check("つくった問いは「？問い」だけのノート、まだの問いの頭", made === 1 && (await madeText())[0] === "試験でつくった問い"
       && (await page.evaluate(() => KN.notes.list().length)) === n1 + 1, JSON.stringify(await madeText()));

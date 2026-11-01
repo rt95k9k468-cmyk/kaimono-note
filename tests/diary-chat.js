@@ -107,17 +107,17 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const slide = root.querySelector(".day-slide");
     const blank = root.querySelector(".arc-log-row.is-today .arc-log-memo");
     return { home: !!h, first: !!(h && slide && slide.firstElementChild === h), write: h ? h.querySelector(".js-think-write").textContent.trim() : "",
-      ask: !!(h && h.querySelector(".js-think-ask")), blank: blank ? blank.textContent.trim() : null,
+      think: !!(h && h.querySelector(".js-think-new")), blank: blank ? blank.textContent.trim() : null,
       cards: h ? [...h.querySelectorAll(".think-card-t")].map((x) => x.textContent.trim()) : [],
       cardIcons: h ? h.querySelectorAll(".think-card svg").length : -1,
       q: h ? (h.querySelector(".js-think-q") || {}).textContent : "",
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
-  t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・問い一覧）", home.home && home.first
-    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|問い一覧", JSON.stringify(home));
+  t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・思考）", home.home && home.first
+    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|思考", JSON.stringify(home));
   t.check("札に「＞」は付けない", home.cardIcons === 0, String(home.cardIcons));
-  t.check("問いの札がある", home.ask);
+  t.check("思考の札がある", home.think);
   t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
   t.check("空の日の一行は「この日のことを書く」のまま", home.blank === "この日のことを書く", String(home.blank));
   t.check("絵文字なし", !home.emoji);
@@ -140,6 +140,34 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await closeSheet();
     t.check("打たずに閉じれば書かない", (await memo()) === before0
       && (await page.evaluate(() => KN.notes.list().length)) === notes0);
+  }
+
+  /* ---- 思考の札：thinking に新しいノート。冊の小窓は出さず本文へ。打たずに閉じれば残らない ---- */
+  {
+    const n0 = await page.evaluate(() => { sessionStorage.removeItem("kn-book-first"); return KN.notes.list().length; });
+    const openThink = async () => {
+      await page.click("#screen-archive .js-think-new");
+      await page.waitForSelector(".sheet.is-note.is-open", { timeout: 4000 });
+      await page.waitForTimeout(700);   // 小窓が出るなら、紙が育ちきったところで出る
+    };
+    const closeNote = async () => {
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector(".sheet.is-note.is-open"), null, { timeout: 4000 });
+      await page.waitForTimeout(300);
+    };
+    await openThink();
+    const v = await page.evaluate(() => { const s = document.querySelector(".sheet.is-note.is-open"), a = document.activeElement;
+      return { nb: s.querySelector(".js-nb").textContent.trim(), pick: !!document.querySelector(".note-pop.is-pick"),
+        body: !!a && s.contains(a) && !a.classList.contains("js-title") }; });
+    t.check("思考の札：thinking の新しいノート・冊の小窓なし・本文にカーソル", v.nb === "thinking" && !v.pick && v.body, JSON.stringify(v));
+    await closeNote();
+    t.check("思考：打たずに閉じれば残らない", (await page.evaluate(() => KN.notes.list().length)) === n0);
+    await openThink();
+    await page.keyboard.insertText("考えのはじまり");
+    await closeNote();
+    const made = await page.evaluate(() => KN.notes.list().filter((n) => n.body === "考えのはじまり").map((n) => n.notebook));
+    t.check("思考：書けば thinking のノート", made.length === 1 && made[0] === "thinking", JSON.stringify(made));
+    await page.evaluate(() => sessionStorage.setItem("kn-book-first", "off"));
   }
 
   await page.click("#screen-archive .js-think-write");

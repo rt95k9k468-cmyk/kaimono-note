@@ -608,7 +608,9 @@
     living: { ico: "home" },
     archive: { ico: "tidyBox" },
   };
-  const shelfIcon = (k) => { const s = KN.iconsTodo && KN.iconsTodo.byKey(`do-${k}`); return s ? U.raw(s) : icon(k); };
+  /* 考えたことの置き場（docs/thinking.md）。daily の「思考」の札・答える紙・＋問いをつくるの新しいノートはここへ。 */
+  const THINK = "thinking";
+  const shelfIcon =(k) => { const s = KN.iconsTodo && KN.iconsTodo.byKey(`do-${k}`); return s ? U.raw(s) : icon(k); };
   const seeded = new Set();
   function seedShelf(nb, key, open) {
     if (seeded.has(nb)) return;
@@ -770,6 +772,7 @@
       if (hit || item) { dup = hit || { text: item.q, go: "yet" }; }
       else {
         const n = N().draft();
+        n.notebook = THINK;
         n.body = `？${q}`;
         if (!N().put(n)) { KN.ui.toast("ノートに保存できませんでした"); return; }
         await N().flush();
@@ -2649,6 +2652,7 @@
         return;
       }
       const n = N().draft();
+      n.notebook = THINK;
       n.body = compose(null, text);
       if (N().put(n)) wrote = { id: n.id, prev: null, body: n.body };
     };
@@ -2784,6 +2788,9 @@
   /** ほかの席・設定へ移る。右の段に据えたノートは、その画面の上に残さず閉じる（保存は閉じる道のまま）。 */
   function onLeave() { if (document.documentElement.classList.contains("notes-dock")) closePapers(); }
 
+  /** daily の「思考」の札：thinking に新しいノート。冊は決まっているので小窓を出さずに本文へ。 */
+  const think = () => openNote(null, null, { nb: THINK });
+
   KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
-    pick: pickNote, asks, answer, newBook };
+    pick: pickNote, asks, answer, newBook, think };
 })();

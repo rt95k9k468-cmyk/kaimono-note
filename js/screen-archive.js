@@ -1282,9 +1282,8 @@
     return { text: a.q || "", hint: a.hint || "", from: a.from || "" };
   }
 
-  /** daily の冒頭：日記に書く・ノートを書く・問い一覧 の三枚と、今日の問い。説明は書かない。 */
+  /** daily の冒頭：日記に書く・ノートを書く・思考 の三枚と、今日の問い。説明は書かない。 */
   function thinkHome(day) {
-    const canAsk = !!(KN.screens.notes && KN.screens.notes.asks);
     const card = (cls, tone, img, a, b) => html`
       <button type="button" class="think-card is-${tone} ${cls}">
         <img class="think-card-art" src="img/think/${img}.webp" alt="" decoding="async" draggable="false">
@@ -1295,7 +1294,7 @@
         <div class="think-cards">
           ${card("js-think-write", "sea", "diary", "日記に", "書く")}
           ${card("js-think-note", "leaf", "note", "ノートを", "書く")}
-          ${canAsk ? card("js-think-ask", "sun", "ask", "問い", "一覧") : ""}
+          ${card("js-think-new", "sun", "think", "思考", "")}
         </div>
         <section class="think-today">
           <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
@@ -1316,11 +1315,10 @@
       KN.motion.fire("select");
       if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(null);
     });
-    const ask = el.querySelector(".js-think-ask");
-    if (ask) ask.addEventListener("click", () => {
+    /* 思考：thinking に新しいノート（冊は決まっているので小窓を出さず本文へ）。問いの一覧はノートのホームから。 */
+    el.querySelector(".js-think-new").addEventListener("click", () => {
       KN.motion.fire("select");
-      KN.app.showScreen("notes");
-      KN.screens.notes.asks();
+      if (KN.screens.notes && KN.screens.notes.think) KN.screens.notes.think();
     });
     /* 今日の問いは今日だけ（利用者の頼み）。前の日・先の日は三枚の札だけ。 */
     if (day !== U.todayKey()) { el.querySelector(".think-today").remove(); return el; }

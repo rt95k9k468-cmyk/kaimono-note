@@ -117,7 +117,7 @@ const ASSETS = [
   "icons/icon-512.png",
   "img/think/diary.webp",
   "img/think/note.webp",
-  "img/think/ask.webp",
+  "img/think/think.webp",
   "img/think/today.webp",
 ];
 
