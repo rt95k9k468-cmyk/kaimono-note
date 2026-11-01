@@ -1168,7 +1168,7 @@
          題は「受け箱へ置く」だと何の行か分からなかった（2026年10月24日、利用者）——PC で入れる行だと言う。 */
       head("PC"),
       card(switchRow({
-        title: "この端末は PC", on: store.get().settings.inboxPost === true,
+        title: "この端末は職場PC", on: store.get().settings.inboxPost === true,
         onTap: (v) => { store.update((x) => { x.settings.inboxPost = v; }); },
       })),
       card(cutRow()),
