@@ -1219,15 +1219,10 @@
      （全部書いたら一周して元の並び）。三つに一つは、その日より前に自分で書いた「？」の問い（元の並びに無いもの）。
      「別の問い」は開いているあいだだけ、出た問いを避けてでたらめに飛ぶ（決まった順に回さない）。 */
   const askKey = (s) => String(s || "").normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "");
-  /** その日より前に書いた「？」の行：日記（その日より前の日）とノート（作った日がその日より前）。鍵のかかったノートは引かない。 */
+  /** その日より前に書いた「？」の行：ノート（作った日がその日より前）だけ。日記からは引かない（11月1日・利用者）。鍵のかかったノートは引かない。 */
   function pastAsks(day) {
     const F = KN.noteFormat, out = [];
     if (!F) return out;
-    if ((!KN.diaryIdb || KN.diaryIdb.body() === "ok") && !diaryShut()) {
-      (store.get().archive.days || []).forEach((d) => {
-        if (d.date < day) F.asks(d.memo || "").forEach((a) => out.push({ text: a.text, day: d.date }));
-      });
-    }
     if (KN.notes && KN.notes.state() === "on" && !(KN.lock && KN.lock.hides("notes"))) {
       KN.notes.list().forEach((n) => {
         if (U.dayKey(new Date(n.createdAt)) < day) F.asks(n.body).forEach((a) => out.push({ text: a.text, note: n.id, line: a.line }));
@@ -1355,7 +1350,7 @@
       askSaw(cur.text);
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
-       日記の紙。打つまでは書かない。自分の問いは写さず、書いたところ（そのノートの行・その日）へ。 */
+       日記の紙。打つまでは書かない。自分の問いは写さず、書いたところ（そのノートの行）へ。 */
     const go = el.querySelector(".js-think-today");
     if (go) go.addEventListener("click", () => {
       const NS = KN.screens.notes;
@@ -1364,7 +1359,6 @@
       /* 答えのノート（頭の行が「？問い」。＋でつくった問いも）は答える紙で続きを。 */
       if (cur.note && cur.line === 0 && NS && NS.answer && NS.answer(cur.text)) return;
       if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line }); }
-      else goDayTo(cur.day);
     });
     return el;
   }

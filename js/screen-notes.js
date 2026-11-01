@@ -647,11 +647,11 @@
   }
 
   /**
-   * 問い（思考のホーム。docs/thinking.md「問いの面」）：ノートの「？」で始まる行・タグ「問い」のノート・日記の「？」で
-   * 始まる行。どこにもしまわず、開くたびに引く（写さず引く）。数は出さない。
+   * 問い（思考のホーム。docs/thinking.md「問いの面」）：ノートの「？」で始まる行・タグ「問い」のノート。日記からは引かない
+   *（11月1日・利用者。問いは自分でつくる）。どこにもしまわず、開くたびに引く（写さず引く）。数は出さない。
    * 答えのノート（頭の行が「？問い」）は答える紙で続きを書く。中身があれば「続きから考える」（最後に書いた順）、
    * 頭の行だけ（＋でつくった問い）は「まだの問い」の頭。ほかの「？」の行は元のノート・その日の daily へ。
-   * 一区切り（設定 askRest。問いの字の鍵 → 時刻）は畳んだ段へ。日記は、鍵で伏せている日・本文を読めない日は引かない。
+   * 一区切り（設定 askRest。問いの字の鍵 → 時刻）は畳んだ段へ。
    */
   function askRows() {
     const F = KN.noteFormat;
@@ -664,11 +664,6 @@
         rows.push(r);
       });
     });
-    if (!(KN.lock && KN.lock.hides("daily")) && (!KN.diaryIdb || KN.diaryIdb.body() === "ok")) {
-      (KN.store.get().archive.days || []).forEach((d) => {
-        F.asks(d.memo || "").forEach((a) => rows.push({ day: d.date, text: a.text, at: d.date }));
-      });
-    }
     return rows.sort((x, y) => String(y.at).localeCompare(String(x.at)));
   }
   const askRest = () => { const m = (KN.store.get().settings || {}).askRest; return m && typeof m === "object" && !Array.isArray(m) ? m : {}; };
@@ -750,7 +745,7 @@
         more.append(yetCard(a));
       });
     }
-    if (left.length) box.append(secTitle("ノート・日記に残した問い"), listOf("is-left", left, card));
+    if (left.length) box.append(secTitle("ノートに残した問い"), listOf("is-left", left, card));
     if (resting.length || restYet.length) {
       const d = node(html`<details class="notes-rest"><summary class="notes-sec"><span class="section-title">一区切り</span>${icon("chevron")}</summary></details>`);
       d.append(listOf("is-rest", resting, card));
