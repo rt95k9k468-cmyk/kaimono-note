@@ -434,10 +434,11 @@
   }
 
   /** 「整理を戻す」：訊いてから、控えを取って戻す。 */
-  function undo(at, done) {
-    return KN.ui.confirm({ title: "整理を戻す", message: "整理する前の場所と並びに戻します。", okLabel: "戻す" }).then(async (ok) => {
+  function undo(at, done, o) {
+    const w = o || { title: "整理を戻す", message: "整理する前の場所と並びに戻します。" };
+    return KN.ui.confirm({ title: w.title, message: w.message, okLabel: "戻す" }).then(async (ok) => {
       if (!ok) return false;
-      if (!(await guard("整理を戻す前"))) return false;
+      if (!(await guard(`${w.title}前`))) return false;
       try {
         await KN.notes.reshape([], undoPlan(at));
       } catch (_) {
@@ -651,6 +652,70 @@
     return h;
   }
 
+  /* 冊なしの問いのノートを thinking へ（11月1日、利用者。docs/thinking.md「考えたことは thinking へ」）。
+     対象は冊なし・一番上・頭の行が「？問い」のノート（答える紙・＋問いをつくるの形）。中のノートも一緒に。
+     変えるのは冊だけ（本文・日時・並びの欄は動かさない）。前は org（k: "ask"）に →「戻す」は undoPlan。 */
+  const THINK = "thinking";
+  function askPlan(o) {
+    const at = (o && o.at) || U.today();
+    const t = KN.notes.tree();
+    const F = KN.noteFormat;
+    const mark = (n) => Object.assign({ at, k: "ask", nb: n.notebook }, n.org ? { prev: n.org } : {});
+    const patches = [];
+    const moved = [];
+    t.tops("").forEach((n) => {
+      if (n.parent || n.head === true) return;
+      const a = F.asks(n.body)[0];
+      if (!a || a.line !== 0) return;
+      moved.push(String(n.title || "").trim() || a.text);
+      const walk = (k) => { patches.push([k.id, { notebook: THINK, org: mark(k) }]); t.kids(k.id).forEach(walk); };
+      walk(n);
+    });
+    return { at, patches, moved };
+  }
+  async function askApply(p) {
+    if (p.patches.length) await KN.notes.reshape([], p.patches);
+    return p;
+  }
+  function askRuns() {
+    const set = new Set();
+    KN.notes.list().forEach((n) => { if (n.org && n.org.k === "ask") set.add(n.org.at); });
+    return [...set].sort().reverse();
+  }
+  const askUndo = (at, done) => undo(at, done, { title: "thinking へ移したのを戻す", message: "ノートブックなしに戻します。" });
+  function askPreview(done) {
+    const p = askPlan();
+    if (!p.moved.length) { KN.ui.toast("移すものはありません"); return null; }
+    const P = S();
+    const body = node(html`<div class="stack"></div>`);
+    body.append(P.card(p.moved.map((t) => node(html`<div class="set-row"><span class="set-title">${t}</span></div>`))));
+    const foot = node(html`<div class="stack gap-2"><button class="btn btn-primary js-tidy"><span class="js-word">移す</span></button></div>`);
+    const go = foot.querySelector(".js-tidy");
+    const word = foot.querySelector(".js-word");
+    let busy = false;
+    const h = KN.ui.sheet({ title: `${p.moved.length}件を thinking へ`, content: body, footer: foot });
+    go.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      go.disabled = true;
+      word.textContent = "控えを取っています";
+      if (!(await guard("問いを thinking へ移す前"))) { busy = false; go.disabled = false; word.textContent = "移す"; return; }
+      let q = null;
+      try {
+        q = await askApply(askPlan());
+      } catch (_) {
+        KN.ui.toast("ノートを保存できませんでした", { long: true });
+        h.close();
+        return;
+      }
+      h.close();
+      if (done) done();
+      KN.ui.toast("移しました", { action: { label: "元に戻す", onClick: () => askUndo(q.at, done) } });
+    });
+    return h;
+  }
+
   KN.noteOrganize = { plan, linkPlan, linkPreview, apply, after, undoPlan, runs, empty, preview, undo,
-    SHELVES, sixPlan, sixApply, sixRuns, sixPreview, oldPlan, oldApply, oldPreview };
+    SHELVES, sixPlan, sixApply, sixRuns, sixPreview, oldPlan, oldApply, oldPreview,
+    askPlan, askApply, askRuns, askPreview, askUndo };
 })();

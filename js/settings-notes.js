@@ -355,6 +355,10 @@
     else if (O.oldPlan().books.length) out.push(navRow({ ico: "trash", tint: TINT.cat, title: "使っていない冊を片付ける", onTap: () => O.oldPreview(render) }));
     const at = O.sixRuns()[0];
     if (at) out.push(dangerRow({ title: "6つに分けたのを戻す", onTap: () => O.undo(at, render) }));
+    /* 冊なしの問いのノートを thinking へ（docs/thinking.md「考えたことは thinking へ」）。対象が無ければ出さない。 */
+    if (O.askPlan().moved.length) out.push(navRow({ ico: "book", tint: TINT.cat, title: "問いのノートを thinking へ", onTap: () => O.askPreview(render) }));
+    const ask = O.askRuns()[0];
+    if (ask) out.push(dangerRow({ title: "thinking へ移したのを戻す", onTap: () => O.askUndo(ask, render) }));
     return out;
   }
 
