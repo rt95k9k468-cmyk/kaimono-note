@@ -67,6 +67,11 @@
     return !!(head && !head.hidden && KN.calSwipe && KN.calSwipe.flipIn(head, dir));
   }
   const press = (el) => { if (shown(el) && !el.disabled) { el.click(); return true; } return false; };
+  /** 席にカーソルを置いたのがマウス・指か（下の ←→ の分かれ目）。Tab キーで動けば偽に戻る。 */
+  let seatByPointer = false;
+  document.addEventListener("pointerdown", (e) => {
+    seatByPointer = !!(e.target && e.target.closest && e.target.closest("#tabbar [role=tab]"));
+  }, true);
 
   document.addEventListener("keydown", (e) => {
     if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
@@ -100,10 +105,12 @@
       }
       return;
     }
-    /* 席の帯にカーソルがあるとき：←→（左の列なら ↑↓ も）・Home・End は席を移る（タブの並びの決まった動き。日を送る ←→ は
-       帯の外で）。一文字の近道ではないので、近道を切っていても効く。 */
+    /* キーボード（Tab）で席の帯へ来たとき：←→（左の列なら ↑↓ も）・Home・End は席を移る（タブの並びの決まった動き）。
+       マウス・指で席を押したあとは、カーソルが席に残っても今までどおり ←→ は日を送る（押してから ← で前の日、の手つき）。
+       一文字の近道ではないので、近道を切っていても効く。 */
+    if (e.key === "Tab") seatByPointer = false;
     const seat = e.target && e.target.closest ? e.target.closest("#tabbar [role=tab]") : null;
-    if (seat && !e.shiftKey && !covered()) {
+    if (seat && !seatByPointer && !e.shiftKey && !covered()) {
       const seats = [...document.querySelectorAll("#tabbar [role=tab]")].filter(shown);
       const i = seats.indexOf(seat);
       const n = seats.length;

@@ -98,12 +98,21 @@ async function roundTrip(page, sel, same) {
       && /"KN Yu Gothic"/.test(fonts.goth), JSON.stringify(fonts));
 
     /* 席の帯：選んでいる印は true／false だけ（holds の無い席が "undefined"＝「選べない」と読まれていた）。
-       帯にカーソルがあれば ←→・↑↓・Home・End で席を移る（日は送らない）。帯の外の → は今までどおり日を送る。 */
+       マウスで席を押したあとの → は今までどおり日を送る（押してから ← で前の日、の手つき。tests/desk.js も）。
+       キーボード（Tab）で帯へ来たら ←→・↑↓・Home・End で席を移る（日は送らない）。帯の外の → は日を送る。 */
     const seats = () => page.evaluate(() => ({ scr: KN.app.activeScreen(), day: document.querySelector("#head .topbar-day").textContent.trim(),
       focus: document.activeElement.dataset.tab || "", sel: [...document.querySelectorAll("#tabbar [role=tab]")].map((b) => b.getAttribute("aria-selected")) }));
     await page.click(".tab-archive");
     await page.waitForTimeout(600);
-    await page.focus("#tabbar .tab-archive");
+    const m0 = await seats();
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(800);
+    const m1 = await seats();
+    t.check("マウスで席を押したあとの → は次の日（席は移らない）", m1.scr === "archive" && m1.day !== m0.day, JSON.stringify({ m0, m1 }));
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(800);
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
     const k0 = await seats();
     t.check("席の帯：選んでいる印は true か false だけ", k0.sel.every((v) => v === "true" || v === "false") && k0.sel.filter((v) => v === "true").length === 1, JSON.stringify(k0.sel));
     const walk = [];
