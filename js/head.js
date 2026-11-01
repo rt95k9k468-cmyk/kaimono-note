@@ -56,6 +56,7 @@
 
   let root = null;
   let owner = null;
+  let monthMo = null, monthOf = null;   // syncMonth
   const els = {};
 
   function mount() {
@@ -79,6 +80,10 @@
     els.today = root.querySelector(".js-go-today");
     els.searchBtn = root.querySelector(".js-search-btn");
     els.cal = root.querySelector(".head-cal");
+    if (monthMo) monthMo.disconnect();
+    monthMo = new MutationObserver(syncMonth);
+    monthOf = undefined;
+    syncMonth();
     /* ノートの題は日付ではなく「Notes」（docs/notes.md「五つめの席」）。
        日付の題と同じ場所に重ね、`.head.is-notes` で入れ替えます（CSS）。 */
     els.name = node(html`<span class="topbar-title head-name" aria-hidden="true">Notes</span>`);
@@ -197,6 +202,20 @@
     const tall = !!els.cal.querySelector(":scope > .cal.is-tall");
     if (!tall && els.cal.classList.contains("is-cal-resize")) return;   // 縮み終えてから（resizeCal）
     root.classList.toggle("has-tall-cal", tall);
+  }
+
+  /** 帯の暦が月で出ているかを帯の印（`is-month`）で言う。横の電話は月を右に立て、紙を題の下へ（base.css の
+      「電話を横に」）。週⇄月は席ごとに暦の class を替えるので、ここは置かれた暦の class を見張るだけ。 */
+  function syncMonth() {
+    const c = els.cal.querySelector(":scope > .cal");
+    if (c !== monthOf) {
+      monthOf = c;
+      monthMo.disconnect();
+      monthMo.observe(els.cal, { childList: true });
+      if (c) monthMo.observe(c, { attributes: true, attributeFilter: ["class"] });
+    }
+    const on = !!c && !c.classList.contains("is-week") && !c.classList.contains("is-hidden");
+    if (root.classList.contains("is-month") !== on) root.classList.toggle("is-month", on);
   }
 
   /* ---------------- 暦の出入り（ノートの席は暦を持たない） ----------------

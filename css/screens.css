@@ -8407,13 +8407,22 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   /* daily：写真の帯（desk は 260px から）を窓の半分弱に、三枚は絵を字の左へ（一枚の背 64px の絵＋字 → 48px の一行）。 */
   #screen-archive[data-season] .tl-sheet.is-daily { --season-h: 44vh; }
   /* からだ：カードを二段に（desk は中身 792px から。横の窓の中身は 670〜770px）。 */
-  .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
-  .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
+  /* やることの今日：道（左）と時間割（右）。desk の P3a（中身 792px から）より細い道——札は少し詰まる。
+     段組みはどれも、月を右に立てて紙が細いあいだ（.head.is-month。base.css）は電話と同じ一列。 */
+  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-4); align-items: start; }
+  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(340px, 100cqi - 310px, 400px); }
+  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > .day-road .road-map { max-width: none; }
+  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
+  .head:not(.is-month) ~ .panes .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
+  .head:not(.is-month) ~ .panes .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   .think-card { flex-direction: row; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
   .think-card-art { flex: none; width: 56px; height: 48px; }
   /* 買うもの・価格：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。 */
-  #screen-list .tl-sheet > .js-body, #screen-prices .prices-ground { columns: 2; column-gap: var(--sp-4); }
+  .head:not(.is-month) ~ .panes :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) { columns: 2; column-gap: var(--sp-4); }
   :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > * { break-inside: avoid; }
+  /* まとまりは割れない箱に（Safari は avoid でも棚のカードの下の端だけを右の段へ送り、影が一筋見えていた）。 */
+  :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > .cat-group {
+    display: inline-block; vertical-align: top; width: calc(100% - var(--sp-3) * 2); }
   :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > :not(.cat-group) { column-span: all; }
   /* 頭のある紙（＋の紙・品・買うものを足す）：頭を左の段、中身を右の段に（上に積むと頭が窓の四割で、行が二つしか見えなかった）。
      背は中身ぶん、窓まで（段ごとに送る）。閉じる丸と ⋯ は頭の上。 */

@@ -4,6 +4,7 @@
    - どの席も、島の下（左右 59px）に押せるものが無い。月の暦は窓に収まる（最後の週まで）
    - ＋の紙・据えたノート・設定（外観の一枚）を開いたまま縦へ回して戻す：開いたまま・島の下に押せるもの無し
    - 背の低い窓を使い切る：題と週の暦は一段（帯の背 90px まで）・からだと買うものは二段・設定は見出しごとに二段
+   - ＋は列の底・今日は道｜時間割・月は右に立てて紙は題の下の左・棚のカードは段で割れない
    - ＋の紙は頭が左・中身が右（窓に収まる）・ノートのホームは二段（左に最近直した、右に木）・日記の「保存する」は開いてすぐ見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
 const { open, checker } = require("./lib");
@@ -91,6 +92,24 @@ function under(safe) {
     await wait(600);
     t.check(`${at}：買うもののまとまりは二段`, await page.evaluate(() =>
       getComputedStyle(document.querySelector("#screen-list .tl-sheet > .js-body")).columnCount === "2"));
+    t.check(`${at}：棚のカードは段で割れない（右の段に影の切れ端を出さない）`, await page.evaluate(() =>
+      [...document.querySelectorAll("#screen-list .tl-sheet > .js-body > .cat-group")].every((e) => e.getClientRects().length === 1
+        && getComputedStyle(e).display === "inline-block")));
+    /* 1c. ＋は列の底（行の右端の丸に重ならない）。やることの今日は道（左）と時間割（右）。 */
+    const fab = await page.evaluate(() => {
+      const f = document.querySelector("#dock .add-fab").getBoundingClientRect(), r = document.querySelector(".tabbar").getBoundingClientRect();
+      return { l: Math.round(f.left), r: Math.round(f.right), rail: Math.round(r.right), b: Math.round(f.bottom), H: innerHeight };
+    });
+    t.check(`${at}：＋は列の底（島の手前・列の中）`, fab.l >= SAFE && fab.r <= fab.rail && fab.b <= fab.H - HOME, JSON.stringify(fab));
+    await page.click(".tab-todo");
+    await wait(600);
+    const road = await page.evaluate(() => {
+      const r = document.querySelector("#screen-todo .todo-day.is-tl > .day-road"), l = document.querySelector("#screen-todo .todo-day.is-tl > .tl");
+      if (!r || !l) return null;
+      const a = r.getBoundingClientRect(), b = l.getBoundingClientRect();
+      return { side: a.right <= b.left + 1 && b.top < a.bottom, road: Math.round(a.width) };
+    });
+    t.check(`${at}：今日は道の右に時間割`, road && road.side && road.road >= 340, JSON.stringify(road));
 
     /* 2. どの席も島の下に押せるもの無し。 */
     for (const seat of ["archive", "notes", "todo", "list", "diet"]) {
@@ -110,10 +129,20 @@ function under(safe) {
       return { n: days.length, b: last ? Math.round(last.getBoundingClientRect().bottom) : null, H: innerHeight };
     });
     t.check(`${at}：月の暦は窓に収まる`, cal.n >= 28 && cal.b != null && cal.b <= cal.H, JSON.stringify(cal));
+    /* 3b. 月は右に立ち、紙は題の下の左（題の下を空けない）。紙が細いあいだ、今日の道は一列。 */
+    const side = await page.evaluate(() => {
+      const p = document.getElementById("panes").getBoundingClientRect(), c = document.querySelector(".head-cal").getBoundingClientRect();
+      const t = document.querySelector(".topbar-dayrow").getBoundingClientRect();
+      return { month: document.getElementById("head").classList.contains("is-month"), left: p.right <= c.left, under: p.top >= t.bottom && p.top - t.bottom < 24,
+        road: getComputedStyle(document.querySelector("#screen-todo .todo-day.is-tl")).display };
+    });
+    t.check(`${at}：月は右・紙は題の下の左（道は一列）`, side.month && side.left && side.under && side.road === "block", JSON.stringify(side));
     const calHits = await scan();
     t.check(`${at}：月の暦でも島の下に押せるもの無し`, !calHits.length, calHits.slice(0, 6).join(" | "));
     await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
     await wait(400);
+    t.check(`${at}：週に戻せば紙は窓の幅へ`, await page.evaluate(() => !document.getElementById("head").classList.contains("is-month")
+      && document.getElementById("panes").getBoundingClientRect().top >= document.querySelector(".head-cal").getBoundingClientRect().bottom - 1));
 
     /** 縦へ回して戻す。 */
     const turn = async () => {
