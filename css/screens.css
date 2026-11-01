@@ -6166,6 +6166,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    ——それより小さいと、iOS は欄を押したときに画面ごと拡大します。
    本文の欄は高さが伸び、中では送りません（送るのは紙。screen-notes.js の grow）。 */
 .note-edit { display: flex; flex-direction: column; gap: var(--sp-3); }
+/* 本文の一行は40字まで（本文の字で数える。docs/notes.md「読み物の本文」）。題も同じ列の左に揃え、列は紙の真ん中。
+   「画面いっぱい」は広げたいときなので外す。道具の帯も同じ列の幅に（下の .note-tools）。 */
+.sheet.is-note { --note-measure: calc(var(--fs-lg) * 40); }
+.sheet.is-note:not(.is-wide) .note-edit { width: 100%; max-width: var(--note-measure); margin-inline: auto; }
 .note-title-in,
 .note-body-in {
   width: 100%;
@@ -6280,10 +6284,12 @@ textarea.note-title-in {
 .note-view,
 .note-body-in { text-align: justify; text-justify: inter-character; }
 .note-view > * { white-space: pre-wrap; }
-.nv-h { font-weight: var(--fw-bold); line-height: var(--lh-tight); margin: .5em 0 .2em; }
-.nv-h1 { font-size: 1.45em; }
-.nv-h2 { font-size: 1.25em; }
-.nv-h3 { font-size: 1.1em; }
+/* 見出しは下の段に付く：上を広く、下を詰める（空の行は 1lh のまま）。大きさは題（--fs-2xl）より下から一段ずつ。
+   行の高さは折れた二行が詰まらない 1.4（docs/notes.md「読み物の本文」）。 */
+.nv-h { font-weight: var(--fw-bold); line-height: 1.4; margin: 0 0 .15em; }
+.nv-h1 { font-size: 1.35em; margin-top: 1.1em; }
+.nv-h2 { font-size: 1.2em; margin-top: .9em; }
+.nv-h3 { font-size: 1.05em; margin-top: .7em; }
 .note-view > .nv-h:first-child { margin-top: 0; }
 /* 空の行は一行ぶん（読む姿も書く姿も。.7em だと底で改行しても少しずつしか下がらず、行も選びにくかった。2026年10月26日、利用者）。 */
 .nv-blank { height: 1lh; }
@@ -6449,6 +6455,11 @@ textarea.note-title-in {
   box-shadow: var(--shadow-2);
 }
 .sheet.is-note.is-writing .note-tools { display: flex; }
+/* 広い紙では本文の列（--note-measure）に少し足した幅で真ん中に（紙いっぱいだと道具が散らばる）。 */
+.sheet.is-note:not(.is-wide) .note-tools {
+  left: max(var(--sp-2), (100% - var(--note-measure)) / 2 - var(--sp-4));
+  right: max(var(--sp-2), (100% - var(--note-measure)) / 2 - var(--sp-4));
+}
 /* 右下の薄い「一番下へ」（screen-notes.js の toEnd）。書いているあいだは道具の帯の上。 */
 .note-to-end {
   position: absolute;

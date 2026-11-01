@@ -138,7 +138,7 @@ const BODY = [
       marks: L.textContent.includes("**") || L.textContent.includes("](") || L.textContent.includes("# "),
     };
   });
-  t.check("見出し・太字・リンク・点・番号・四角・済み・線・問いが整った姿", looks.h1 > 1.4 && looks.bold === "700" && looks.link.includes("underline")
+  t.check("見出し・太字・リンク・点・番号・四角・済み・線・問いが整った姿", looks.h1 > 1.3 && looks.bold === "700" && looks.link.includes("underline")
     && looks.dot.includes("•") && looks.num.includes("1.") && looks.box === "2px" && /url/.test(looks.check) && looks.strike.includes("line-through")
     && looks.hr && looks.ask && !looks.marks, JSON.stringify(looks));
   const caret0 = await page.evaluate(() => getSelection().focusNode.textContent);
