@@ -114,6 +114,11 @@ const { open, checker, URL } = require("./lib");
   const after = await B.evaluate(() => ({ done: KN.store.get().todos.find((x) => x.id === "t-ip1").done,
     toast: [...document.querySelectorAll(".toast")].map((e) => e.textContent).join("|") }));
   t.check("済みの丸を押しても済まない・「iPhoneで操作できます」", !after.done && after.toast.includes("iPhoneで操作できます"), JSON.stringify(after));
+  /* 右クリック：やることの行は行の小窓を出さない（直したと言って戻るだけになるので。ブラウザの小窓のまま）。 */
+  const row = await B.evaluate(() => { const e = [...document.querySelectorAll("#screen-todo .tl-row, #screen-todo .todo-wrap, #screen-todo .wk-row")].find((x) => x.getClientRects().length); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  if (row) { await B.mouse.click(row.x, row.y, { button: "right" }); await B.waitForTimeout(400); }
+  t.check("写し：やることの行を右クリックしても行の小窓は出ない", !!row && !await B.evaluate(() => !!document.querySelector(".note-pop.is-open")), JSON.stringify(row));
+  await B.keyboard.press("Escape");
   /* やることの＋は受け箱へ足す紙（段15③。tests/desk-inbox.js）なので薄くしない。からだの＋は薄い。 */
   await B.click(".tab-diet");
   await B.waitForTimeout(600);

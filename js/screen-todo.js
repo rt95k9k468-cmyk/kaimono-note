@@ -3870,7 +3870,7 @@
   /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの（しまう・消す）。言葉と戻し方は紙と同じ。 */
   function rowMenuOf(id) {
     const t = store.getTodo(id);
-    if (!t) return [];
+    if (!t || store.replica()) return [];   // 写しの端末は直さない（docs/desk.md「段15」。押しても戻るだけ）
     return [
       { icon: "download", label: t.archived ? "アーカイブから戻す" : "アーカイブする", onPick: () => {
         const cur = store.getTodo(id);

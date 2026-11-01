@@ -1650,10 +1650,12 @@
       if (!FINE || !FINE.matches) return;
       const sel = window.getSelection && window.getSelection();
       if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return;   // 選んだ字はブラウザの小窓で写す
+      const list = items();
+      if (!list.length) return;   // 出すものが無ければ（写しの端末ほか）ブラウザの小窓
       e.preventDefault();
       /* キーボードの「メニュー」キーは点を持たない（0,0）——そのときは行の下に。 */
       const at = e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : null;
-      popMenu(el, items(), at);
+      popMenu(el, list, at);
     });
   }
 

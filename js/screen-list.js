@@ -992,6 +992,7 @@
 
     /* 右クリック（パソコン。docs/desk.md の段6）：★・買った と、価格の払う二つ（リストから外す・アーカイブ）。 */
     KN.ui.rowMenu(wrap, () => {
+      if (store.replica()) return [];   // 写しの端末は直さない（docs/desk.md「段15」）
       const rec = store.get().items.find((i) => i.id === item.id) || item;
       const more = KN.screens.prices ? KN.screens.prices.menuOf(product) : [];
       return [
