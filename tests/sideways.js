@@ -3,6 +3,7 @@
    - 案内で隠さない。左の列は畳んだ形に据わる（settings.railFolded は書き換えない・‹ は出さない）
    - どの席も、島の下（左右 59px）に押せるものが無い。月の暦は窓に収まる（最後の週まで）
    - ＋の紙・据えたノート・設定（外観の一枚）を開いたまま縦へ回して戻す：開いたまま・島の下に押せるもの無し
+   - 背の低い窓を使い切る：題と週の暦は一段（帯の背 90px まで）・からだと買うものは二段・設定は見出しごとに二段
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
 const { open, checker } = require("./lib");
 
@@ -72,6 +73,23 @@ function under(safe) {
     await wait(200);
     t.check(`${at}：⌘\\ でも設定は変わらない`, await page.evaluate(() => KN.store.get().settings.railFolded === false
       && document.documentElement.classList.contains("rail-fold")));
+
+    /* 1b. 題と週の暦は一段。からだ・買うものは二段（引き伸ばさない）。 */
+    await page.click(".tab-todo");
+    await wait(600);
+    const row = await page.evaluate(() => {
+      const t = document.querySelector(".topbar-dayrow").getBoundingClientRect();
+      const c = document.querySelector(".head-cal .cal").getBoundingClientRect();
+      return { head: Math.round(document.getElementById("head").getBoundingClientRect().height), side: c.left >= t.right - 1 && c.top < t.bottom };
+    });
+    t.check(`${at}：題の右に週の暦（帯は一段）`, row.side && row.head <= 90, JSON.stringify(row));
+    await page.click(".tab-diet");
+    await wait(600);
+    t.check(`${at}：からだのカードは二段`, await page.evaluate(() => getComputedStyle(document.querySelector(".diet-day")).columnCount === "2"));
+    await page.click(".tab-list");
+    await wait(600);
+    t.check(`${at}：買うもののまとまりは二段`, await page.evaluate(() =>
+      getComputedStyle(document.querySelector("#screen-list .tl-sheet > .js-body")).columnCount === "2"));
 
     /* 2. どの席も島の下に押せるもの無し。 */
     for (const seat of ["archive", "notes", "todo", "list", "diet"]) {
@@ -144,6 +162,7 @@ function under(safe) {
     await wait(700);
     const layers = () => page.evaluate(() => document.querySelectorAll("#screen-settings .set-layer").length);
     const l0 = await layers(), e0 = await scan();
+    t.check(`${at}：設定は見出しごとに二段`, await page.evaluate(() => !!document.querySelector("#screen-settings .set-layer.is-duo")));
     await turn();
     const l1 = await layers(), e1 = await scan();
     const still = await page.evaluate(() => document.documentElement.dataset.screen === "settings");

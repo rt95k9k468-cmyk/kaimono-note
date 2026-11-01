@@ -8177,8 +8177,9 @@ button.note-when:active { opacity: var(--press-fade); }
   /* 帯の暦の用事の札は 11px（W5。電話の 10px は七つ並べるマスの幅から。マスの背 27px＝行 13px×2 は変えない）。 */
   .cal-name { font-size: calc(11px * var(--fs-k)); }
   /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
-     まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。 */
-  @media (min-width: 1280px) {
+     まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。横にした電話も（式は
+     screen-settings.js の DUO と同じ）。 */
+  @media (min-width: 1280px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
     /* 端と段の間は、ほかの席の段組みと同じ 16px（カードの外の左右を 8px に。カードの中の --set-gut は電話と同じ）。 */
     .set-layer.is-duo .set-scroll { padding-inline: max(var(--sp-2), calc((100% - var(--desk-wide)) / 2 + var(--sp-2))); }
     .set-layer.is-duo .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
@@ -8382,4 +8383,17 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   /* 月の暦は窓に収める（六週で 426px あり、最後の週が窓の外だった）：マスの名前は一段。背の高い月（fitTall）は窓が低くて付かない。 */
   .cal:not(.is-tall) .cal-dots { height: 13px; }
   .cal:not(.is-tall) .cal-name ~ .cal-name { display: none; }
+  /* 暦は題の右（base.css の同じ名前の節）。上の詰めは帯の 4px に任せる。 */
+  .head-cal .cal { padding-top: 0; }
+  /* daily：写真の帯（desk は 260px から）を窓の半分弱に、三枚は絵を字の左へ（一枚の背 64px の絵＋字 → 48px の一行）。 */
+  #screen-archive[data-season] .tl-sheet.is-daily { --season-h: 44vh; }
+  /* からだ：カードを二段に（desk は中身 792px から。横の窓の中身は 670〜770px）。 */
+  .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
+  .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
+  .think-card { flex-direction: row; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
+  .think-card-art { flex: none; width: 56px; height: 48px; }
+  /* 買うもの：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。 */
+  #screen-list .tl-sheet > .js-body { columns: 2; column-gap: var(--sp-4); }
+  #screen-list .tl-sheet > .js-body > * { break-inside: avoid; }
+  #screen-list .tl-sheet > .js-body > :not(.cat-group) { column-span: all; }
 }

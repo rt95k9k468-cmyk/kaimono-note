@@ -2448,6 +2448,14 @@ a { color: var(--c-primary); }
   .app { padding-right: var(--safe-r); }
   .has-fab .dock { right: calc(var(--sp-5) + var(--safe-r)); bottom: calc(var(--sp-3) + var(--safe-b)); }
   .toast-root { left: calc(var(--rail-w) + var(--sp-4)); bottom: calc(var(--sp-3) + var(--safe-b)); }
+  /* 窓の背が低い：題・暦・道具を一段に（題の右に週。月を開いても題は左上のまま）。帯と行の器は外し、
+     中の題とボタンを .head の格子に並べる。暦の詰めは screens.css の同じ名前の節。 */
+  .head { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-auto-columns: auto; column-gap: var(--sp-3);
+    align-items: start; padding: var(--sp-1) var(--sp-4) 0 0; }
+  .head > .topbar, .topbar-row { display: contents; }
+  .topbar-dayrow { grid-row: 1; grid-column: 1; align-self: start; margin-top: var(--sp-2); padding-left: var(--sp-4); }
+  .topbar-row > .icon-btn { grid-row: 1; margin-top: var(--sp-1); }
+  .head > .head-cal { grid-row: 1; grid-column: 2; min-width: 0; }
 }
 /* 境目（js/desk-split.js）：左の列・ノートの一覧の右の線を引く口。マウスの端末の広い幅だけ。線の上に 8px の口、
    指したとき・引くあいだ・カーソルがあるときだけ線を太く。一覧の口は screens.css の「ノートの右の段」。 */
