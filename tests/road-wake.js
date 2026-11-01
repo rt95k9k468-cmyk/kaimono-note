@@ -92,8 +92,11 @@ const DAY = "2026-10-03";
   /* 紫は薄くなった寝床と同じ薄さ（濃い寝床の色そのものではない）。 */
   const rgb = (v) => { const n = (v || "").match(/[\d.]+/g).map(Number); return v.startsWith("rgb") ? n.map((x) => x / 255) : n; };
   const [sr, sg, sb] = rgb(r.sleptStroke);
-  c.check("5:30〜7:12 と 22:05〜22:30 は薄い紫（寝ていたぶん）",
-    r.slept === 2 && r.sleptStroke !== r.bedInk && sb > sr && sb > sg && Math.min(sr, sg, sb) > 0.8, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
+  /* 寝ていたぶんは墨の淡い灰（10月22日の Y5・docs/todo-timeline.md）。前は「紫」を見ていて、字の色 #111113 の
+     わずかな青みで通っていただけだった（11月1日、地と字を温かい色相へ移したときに落ちた）。 */
+  c.check("5:30〜7:12 と 22:05〜22:30 は墨の淡い灰（寝ていたぶん）",
+    r.slept === 2 && r.sleptStroke !== r.bedInk && Math.max(sr, sg, sb) - Math.min(sr, sg, sb) < 0.04
+      && Math.min(sr, sg, sb) > 0.8 && Math.max(sr, sg, sb) < 0.94, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
   c.check("寝床の下の時刻は実際の 7:12 と 22:05", JSON.stringify(r.edge) === JSON.stringify(["7:12", "22:05"]), JSON.stringify(r.edge));
   const early = await page.evaluate(() => {
     const st = document.querySelector("#screen-todo .day-road").__road;
