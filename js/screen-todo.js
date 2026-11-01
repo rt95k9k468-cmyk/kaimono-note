@@ -5250,10 +5250,10 @@
     const L = list.__tl;
     if (!L) return;
     const ny = nowMin == null ? null : L.y(Math.min(L.to, nowMin));
-    const late = [];
+    const late = [], gap = clockGap();
     for (const li of list.children) {
       if (li.classList.contains("tl-tick")) {
-        li.classList.toggle("is-near-now", ny != null && Math.abs(Number(li.dataset.y) + 11 - ny) < CLOCK_GAP);
+        li.classList.toggle("is-near-now", ny != null && Math.abs(Number(li.dataset.y) + 11 - ny) < gap);
         continue;
       }
       if (!li.classList.contains("tl-row")) continue;
@@ -5296,7 +5296,9 @@
       ほうは、境目そのものが色で見えているので、札は近くに居れば足ります。
 
       逃がす向きは、いま居るほう（上にいるなら上へ、下なら下へ）。 */
-  const CLOCK_GAP = 17;                     // 字の高さ（16px前後）＋ひと呼吸
+  /* 札の中心どうしの間（札の半分＋時刻の半分＋ひと呼吸）。17px は字だけだった頃の値で、地のある札（22px）に
+     なってから一件目の「6:20」に4px かかっていた（2026年11月1日の撮り比べ）。字の大きさ（--fs-k）で伸びる。 */
+  function clockGap() { const B = clockBox(); return (22 / 20 * B.h + B.h) / 2 + 3; }   // 22 は .tl-now の札の高さ
   const SHORT_CARD = 50;                    // これより低い札は一行（.is-short。左の時刻も札の縦中央）
 
   /* 左の時刻の字が列の中で占める縦の幅（CSS の .tl-time と同じ置き方）。「ごろ」（.tl-about）は時刻の下に
@@ -5321,6 +5323,7 @@
 
   function clearOfClocks(sec, list, y) {
     const top0 = sec.getBoundingClientRect().top;
+    const gap = clockGap();
     let out = y;
     for (const li of list.children) {
       const el = li.querySelector(".tl-time");
@@ -5332,8 +5335,8 @@
       const about = el.querySelector(".tl-about");
       const below = about ? Math.max(0, about.getBoundingClientRect().bottom - r.bottom) : 0;
       const d = out - mid;
-      if (d <= -CLOCK_GAP || d >= CLOCK_GAP + below) continue;
-      out = mid + (d < 0 ? -CLOCK_GAP : CLOCK_GAP + below);
+      if (d <= -gap || d >= gap + below) continue;
+      out = mid + (d < 0 ? -gap : gap + below);
     }
     return out;
   }

@@ -68,9 +68,9 @@ const PX_MIN = 1.2;
   c.check("ルーティンの色は自分の進み具合（57分/120分）", Math.abs(night.pass - 57 / 120) < 0.002, JSON.stringify(night));
   c.check("テストの色は、始まったばかり（0 < pass < 1）", test.pass > 0 && test.pass < 1, JSON.stringify(test));
   c.check("二つとも、いま進んでいる（うすい地）", night.live && test.live, JSON.stringify({ night, test }));
-  /* 「いま」の札は 20:55 の時刻の字から逃げる（clearOfClocks、17px）ので、その幅で見る。 */
+  /* 「いま」の札は 20:55 の時刻の字から逃げる（clearOfClocks、札の半分＋時刻の半分＋3px＝24px）ので、その幅で見る。 */
   const nowY = night.top + 57 * PX_MIN;
-  c.check("「いま」の札は y(20:57) の近く", r.now != null && Math.abs(r.now - nowY) <= 18,
+  c.check("「いま」の札は y(20:57) の近く", r.now != null && Math.abs(r.now - nowY) <= 25,
     JSON.stringify({ now: r.now, want: nowY }));
 
   if (process.env.SHOTS) {
