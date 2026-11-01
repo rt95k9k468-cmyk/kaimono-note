@@ -35,18 +35,25 @@ const { open, checker } = require("./lib");
     const r = el.getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height };
   });
+  /** 押して離す。down と up は往復を待たずに続けて送る——重い回しでは一往復が数百msになり、押さえたまま
+      の長押し（KN.gesture.HOLD）が立って紙が開かなかった（P7）。 */
+  const tap = async (x, y) => {
+    await page.mouse.move(x, y);
+    await Promise.all([page.mouse.down(), page.mouse.up()]);
+  };
   const near = (a, b, tol = 2) => ["x", "y", "w", "h"].every((k) => Math.abs(a[k] - b[k]) <= tol);
   const fmt = (r) => r && `${r.x.toFixed(1)},${r.y.toFixed(1)} ${r.w.toFixed(1)}×${r.h.toFixed(1)}`;
 
   /* 動きの始め・終わりの箱と写しの濃さは、毎フレームの見張りで拾わず、動きそのものを
      止めて測る（`__at`。測ったら元の時刻へ戻す）。重い回し方では拾える最初のコマが動きの
      途中になり、閉じる影武者を頭の箱より 26.6px 下で拾って落ちた（毎朝の全部の #8・G1）。
-     コマがまばらなら、最後のコマも着く前になる。 */
+     コマがまばらなら、最後のコマも着く前になる。途中も同じく真ん中（0.5）に止めて測る——コマの数は
+     機械の重さで 4 にもなる（P7）。 */
   await page.evaluate(() => {
     window.__at = (g, end) => {
       const all = g.getAnimations({ subtree: true });
       const was = all.map((a) => a.currentTime);
-      all.forEach((a) => { a.currentTime = end ? a.effect.getComputedTiming().endTime - 0.5 : 0; });
+      all.forEach((a) => { const e = a.effect.getComputedTiming().endTime; a.currentTime = end === true ? e - 0.5 : end === false ? 0 : e * end; });
       const r = g.getBoundingClientRect();
       const out = { x: r.left, y: r.top, w: r.width, h: r.height, under: +getComputedStyle(g.lastElementChild).opacity };
       all.forEach((a, i) => { a.currentTime = was[i]; });
@@ -56,12 +63,12 @@ const { open, checker } = require("./lib");
 
   /* 影武者の箱を毎フレーム控える。消えたら止まる。 */
   const record = () => page.evaluate(() => new Promise((ok) => {
-    const out = { frames: [], hidden: [], colors: [], marks: [], start: null, end: null };
+    const out = { frames: [], hidden: [], colors: [], marks: [], start: null, mid: null, end: null };
     const t0 = performance.now();
     const tick = () => {
       const g = document.querySelector(".hero-node.sheet-morph");
       if (g) {
-        if (!out.start) out.start = window.__at(g, false);
+        if (!out.start) { out.start = window.__at(g, false); out.mid = window.__at(g, 0.5); }
         out.end = window.__at(g, true);
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
@@ -85,20 +92,19 @@ const { open, checker } = require("./lib");
     const box = await target.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     const rec = record();
-    await page.mouse.down();
-    await page.mouse.up();
-    const { frames, hidden, colors, marks, start, end } = await rec;
+    await Promise.all([page.mouse.down(), page.mouse.up()]);
+    const { frames, hidden, colors, marks, start, mid, end } = await rec;
     const hero = await rectOf(page.locator(".sheet.is-open .js-hero-node"));
     const heroColor = await page.locator(".sheet.is-open .js-hero-node")
       .evaluate((el) => getComputedStyle(el).color);
-    t.check(`${label}：影武者が出る`, frames.length > 5, `frames=${frames.length}`);
+    t.check(`${label}：影武者が出る`, frames.length > 0, `frames=${frames.length}`);
     if (frames.length) {
       /* 始めは動きの 0、終わりは動きの終わりで測る（上の `__at`）。許す幅は前のまま。 */
       const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.w - b.w, a.h - b.h);
       t.check(`${label}：行の丸薬の箱から出る`, d(start, from) < d(from, hero) * 0.1,
         `${fmt(start)} / ${fmt(from)}`);
       t.check(`${label}：頭の丸薬の箱に着く`, near(end, hero, 1.5), `${fmt(end)} / ${fmt(hero)}`);
-      t.check(`${label}：途中は間を通る`, frames.some((f) => !near(f, from, 3) && !near(f, hero, 3)));
+      t.check(`${label}：途中は間を通る`, !near(mid, from, 3) && !near(mid, hero, 3), `${fmt(mid)}`);
       t.check(`${label}：飛んでいるあいだ本物の二つは隠れる`, hidden.every(Boolean));
       t.check(`${label}：絵は頭と同じ色のまま（黒くならない）`,
         colors.every((c) => c === heroColor), `${colors[0]} / ${heroColor}`);
@@ -122,15 +128,23 @@ const { open, checker } = require("./lib");
   await tryOpen("丸薬を押す", row.locator(".tl-node"));
 
   /* ---- 閉じると、頭の丸薬が行の丸薬へ帰る ---- */
-  const recordBack = () => page.evaluate(() => new Promise((ok) => {
-    const out = { frames: [], rowHidden: [], start: null, end: null };
+  const recordBack = (id) => page.evaluate((id) => new Promise((ok) => {
+    const out = { frames: [], rowHidden: [], start: null, end: null, row: null };
+    const box = (el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
     const t0 = performance.now();
     const tick = () => {
       const g = document.querySelector(".hero-node.sheet-morph");
       if (g) {
-        /* 終わりは毎フレーム測り直す：行き先は行を追って書き換わる（morphBack の follow）。 */
+        /* 終わりは毎フレーム測り直す：行き先は行を追って書き換わる（morphBack の follow）。follow はこのコマで
+           この見張りより後に走るので、そのコマの描き終わりにもう一度（重いとコマの間に行が 2px 動いた。P7）。 */
         if (!out.start) out.start = window.__at(g, false);
         out.end = window.__at(g, true);
+        setTimeout(() => {
+          if (!g.isConnected) return;
+          out.end = window.__at(g, true);
+          const n = document.querySelector(`.screen.is-active .tl-row[data-todo-id="${id}"] .tl-node`);
+          out.row = n && box(n);
+        }, 0);
         const r = g.getBoundingClientRect();
         out.frames.push({ x: r.left, y: r.top, w: r.width, h: r.height });
         const n = document.querySelector(".screen.is-active .tl-row[data-todo-id] .tl-node[style*='hidden']");
@@ -142,12 +156,12 @@ const { open, checker } = require("./lib");
       else ok(out);
     };
     requestAnimationFrame(tick);
-  }));
+  }), id);
   const idOf = await row.getAttribute("data-todo-id");
   const nodeOf = () => page.locator(`.screen.is-active .tl-row[data-todo-id="${idOf}"] .tl-node`);
   async function openAndSettle() {
     const box = await row.locator(".tl-open").boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await tap(box.x + box.width / 2, box.y + box.height / 2);
     /* 開き終わるまで：紙が開き、開く影武者が消えている。決め打ちの 700ms では、混むと
        開く影武者がまだ飛んでいるうちに閉じる記録が始まり、その一コマ目を「頭から出た」
        と測って落ちた（R19）。
@@ -161,17 +175,19 @@ const { open, checker } = require("./lib");
   async function tryBack(label, before) {
     await openAndSettle();
     const hero = await rectOf(page.locator(".sheet.is-open .js-hero-node"));
-    const rec = recordBack();
+    const rec = recordBack(idOf);
     if (before) await page.evaluate(before, idOf);
     await page.keyboard.press("Escape");
-    const { frames, rowHidden, start, end } = await rec;
+    const { frames, rowHidden, start, end, row: at } = await rec;
     const home = await rectOf(nodeOf());
-    t.check(`${label}：影武者が出る`, frames.length > 5, `frames=${frames.length}`);
-    if (frames.length > 5) {
+    t.check(`${label}：影武者が出る`, frames.length > 0, `frames=${frames.length}`);
+    if (frames.length) {
       const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.w - b.w, a.h - b.h);
       t.check(`${label}：頭の丸薬の箱から出る`, d(start, hero) < d(hero, home) * 0.15,
         `${fmt(start)} / ${fmt(hero)}`);
-      t.check(`${label}：行の丸薬の箱に着く`, near(end, home, 1.5), `${fmt(end)} / ${fmt(home)}`);
+      /* 着いた先は、着いたときの行の箱（行がまだ滑っていれば、そのときの場所。重い回しでは行の FLIP が遅れて
+         始まり、影武者のほうが先に着く——そのあと行は自分で滑り終える）。 */
+      t.check(`${label}：行の丸薬の箱に着く`, near(end, at || home, 1.5), `${fmt(end)} / ${fmt(at || home)}`);
       t.check(`${label}：色は頭から行へ薄めて移る`, start.under < 0.2 && end.under > 0.9,
         `${start.under} → ${end.under}`);
       t.check(`${label}：飛んでいるあいだ行の丸薬は隠れる`, rowHidden.every(Boolean));
@@ -208,7 +224,7 @@ const { open, checker } = require("./lib");
   /* パレットの丸は無く、頭の粒そのものが絵選びを開く。 */
   {
     const box = await row.locator(".tl-open").boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await tap(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(700);
     t.check("パレットの丸は無い", (await page.locator(".sheet.is-open .hero-paint").count()) === 0);
     const sheets = await page.locator(".sheet.is-open").count();
@@ -225,11 +241,16 @@ const { open, checker } = require("./lib");
   /* 途中で閉じる。 */
   {
     const box = await row.locator(".tl-open").boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await page.waitForTimeout(60);
-    const flying = await page.locator(".hero-node.sheet-morph").count();
+    await tap(box.x + box.width / 2, box.y + box.height / 2);
+    /* 飛びはじめたら止めておく——決め打ちの 60ms では、重い回しで出る前か着いたあとを数えた。止めてあるので、
+       消えるのは閉じたから（ひとりでに着いたからではない）。 */
+    const flying = await page.waitForFunction(() => {
+      const g = document.querySelector(".hero-node.sheet-morph");
+      if (g) g.getAnimations({ subtree: true }).forEach((a) => a.pause());
+      return !!g;
+    }, null, { timeout: 3000 }).then(() => 1, () => 0);
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(80);
+    await page.waitForFunction(() => !document.querySelector(".hero-node.sheet-morph"), null, { timeout: 2000 }).catch(() => {});
     t.check("途中で閉じる：飛んでいた", flying === 1);
     t.check("途中で閉じる：影武者は消える", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     t.check("途中で閉じる：行の丸薬は戻る",
@@ -250,7 +271,7 @@ const { open, checker } = require("./lib");
   {
     await page.emulateMedia({ reducedMotion: "reduce" });
     const box = await row.locator(".tl-open").boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await tap(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(60);
     t.check("動きを減らす設定では出ない", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     await page.keyboard.press("Escape");
@@ -263,7 +284,7 @@ const { open, checker } = require("./lib");
     await page.setViewportSize({ width: 900, height: 844 });
     await page.waitForTimeout(500);
     const box = await row.locator(".tl-open").boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await tap(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForTimeout(60);
     t.check("広い画面では出ない", (await page.locator(".hero-node.sheet-morph").count()) === 0);
     await page.keyboard.press("Escape");

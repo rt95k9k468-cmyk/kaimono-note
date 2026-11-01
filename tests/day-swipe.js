@@ -14,12 +14,15 @@
    - 週をまたぐと、週の帯が送った向きから滑り込む（Web Animations が一つ走る）
    - 滑っている途中の覗き見の紙を押しても、押したことにならない
    払いのあとは決め打ちの ms ではなく `settled()`（止まった印）を待つ。払いの検査は `at()` で始めの日を
-   置き直してから——一つ落ちても、あとの検査が前の日を引き継いで連鎖して落ちない。 */
+   置き直してから——一つ落ちても、あとの検査が前の日を引き継いで連鎖して落ちない。
+   指の時刻は機械の重さに左右させない（P7。全部の回しで時々落ちた）：どの事象にも思い描いた時刻を CDP の
+   timestamp で添え、頁はそれを e.timeStamp で読む（`open({ stamps })`）。置いてから 10px 動くまでは
+   往復を待たずに続けて送る——一往復が 300ms かかる回しでは、向きが決まる前に長押し（500ms）が立った。 */
 const { open, checker } = require("./lib");
 
 (async () => {
   const c = checker("day-swipe");
-  const { browser, ctx, page, errors } = await open({
+  const { browser, ctx, page, errors } = await open({ stamps: true,
     before: async (cx, pg) => { await pg.clock.setFixedTime(new Date(2026, 8, 15, 10, 0)); },
   });
   await page.evaluate(() => {
@@ -59,14 +62,21 @@ const { open, checker } = require("./lib");
     document.querySelector("#head .js-day-title").textContent.replace(/\s+/g, ""));
   const cdp = await ctx.newCDPSession(page);
   const pts = (x, y) => [{ x, y, radiusX: 12, radiusY: 12, force: 1 }];
-  /** 本物のタッチで、点の列をなぞる。 [[dx, dy], ...] は始点からの位置。 */
+  /** 本物のタッチ。type と点、指を置いてからの ms（その時刻を事象に添える）。 */
+  const touch = (t0, type, ms, x, y) => cdp.send("Input.dispatchTouchEvent",
+    { type, touchPoints: type === "touchEnd" ? [] : pts(x, y), timestamp: t0 + ms / 1000 });
+  /** 本物のタッチで、点の列を gap ms おきになぞる。 [[dx, dy], ...] は始点からの位置。 */
   const trace = async (p, path, gap = 16, settle = true) => {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(p.x, p.y) });
-    for (const [dx, dy] of path) {
-      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(p.x + dx, p.y + dy) });
+    const t0 = Date.now() / 1000;
+    const head = Math.max(0, path.findIndex(([dx, dy]) => Math.hypot(dx, dy) >= 10)) + 1;
+    await Promise.all([touch(t0, "touchStart", 0, p.x, p.y),
+      ...path.slice(0, head).map(([dx, dy], i) => touch(t0, "touchMove", (i + 1) * gap, p.x + dx, p.y + dy))]);
+    for (let i = head; i < path.length; i++) {
       await page.waitForTimeout(gap);
+      await touch(t0, "touchMove", (i + 1) * gap, p.x + path[i][0], p.y + path[i][1]);
     }
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(gap);
+    await touch(t0, "touchEnd", (path.length + 1) * gap);
     if (settle === true) await settled();
     else if (settle) await page.waitForTimeout(settle);
   };
@@ -130,18 +140,14 @@ const { open, checker } = require("./lib");
   p = await onCar("todo");
   c.check("縦の送りは日を動かさない", (await title()).includes("9月15日"), await title());
 
-  /* 短く速く弾く：置いて 40ms 留まってから、24px を続けざまの二回で。CDP の
-     往復は一回ごとに数十msかかるので、二つの動きは待たずに続けて送る
-     （待つと、試験の中だけ指が遅く読まれる）。時計を止めた頁では e.timeStamp が
-     配った時刻になるので、隣の紙を組む間（混むと60ms）が速さに入らないよう、先に組ませておく（`at`）。 */
+  /* 短く速く弾く：置いて 40ms 留まってから、24px を 10ms で（時刻は添えるので、続けて送っても
+     重い回しでも同じ速さに読まれる）。 */
   await at("2026-09-15");
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(p.x, p.y) });
-  await page.waitForTimeout(40);
-  await Promise.all([
-    cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(p.x + 8, p.y) }),
-    cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(p.x + 24, p.y) }),
-    cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }),
-  ]);
+  {
+    const t0 = Date.now() / 1000;
+    await Promise.all([touch(t0, "touchStart", 0, p.x, p.y), touch(t0, "touchMove", 40, p.x + 8, p.y),
+      touch(t0, "touchMove", 50, p.x + 24, p.y), touch(t0, "touchEnd", 54)]);
+  }
   await settled();
   c.check("短く速く弾けば行く", (await title()).includes("9月14日"), await title());
   /* 引いてから逆へ弾き返す：右へ 120px 引いて、最後に左へ速く戻す。 */

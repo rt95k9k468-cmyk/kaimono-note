@@ -8311,7 +8311,7 @@ button.note-when:active { opacity: var(--press-fade); }
     width: auto; height: auto;
     border-radius: 0;
     box-shadow: -1px 0 0 var(--c-border);
-    transform: translateX(var(--sp-6));
+    transform: translateX(var(--desk-shift)); /* desk のずらす幅は一つ（席の移り・「›」と同じ。docs/desk.md） */
   }
   :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide).is-open, :root.notes-dock .sheet.is-note.is-docked:not(.is-wide).is-open { transform: none; }
   :root.notes-dock[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }

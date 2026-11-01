@@ -74,8 +74,10 @@ function clockAt(hms) {
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。
-    unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false, unfold = [], scrollbars = false } = {}) {
+    unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。
+    stamps：時計を止めても、事象の時刻（e.timeStamp）は本物のまま（CDP の timestamp が届く）。playwright の時計は
+    e.timeStamp を「頁が初めて読んだ時刻」にすり替えるので、重い機械では指の速さが読み違えられる（tests/README.md）。 */
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false, unfold = [], scrollbars = false, stamps = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
@@ -123,8 +125,17 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (process.env.KN_IOS_FOCUS) await ctx.addInitScript(iosFocus);
   /* KN_CLOCK=23:59:55：今日のその時刻から時計を進めて回す（日付の境目で落ちる台本を洗う。
      roadmap-seamless の N10）。台本が自分で時計を止めていれば、そちらが勝つ。 */
+  if (stamps) await ctx.addInitScript(() => { window.__knStamp = [Object.getOwnPropertyDescriptor(Event.prototype, "timeStamp"), performance.now.bind(performance)]; });
   if (process.env.KN_CLOCK) await page.clock.install({ time: clockAt(process.env.KN_CLOCK) });
   if (before) await before(ctx, page);
+  /* 時計が差し替えたあとで本物へ戻す。頁の performance.now（作り物）との差は最初に一度だけ測って足す。 */
+  if (stamps) await ctx.addInitScript(() => {
+    const [d, now] = window.__knStamp || [];
+    if (!d || !d.get) return;
+    let off = null;
+    Object.defineProperty(Event.prototype, "timeStamp", { configurable: true, enumerable: d.enumerable,
+      get() { if (off === null) off = performance.now() - now(); return d.get.call(this) + off; } });
+  });
   if (process.env.KN_CSS_COVER) await coverCSS(browser, page, process.env.KN_CSS_COVER);
   await page.goto(URL);
   await page.waitForFunction(() => window.KN && KN.store && KN.app);

@@ -262,7 +262,7 @@
   function swap(top, under, dir) {
     const ms = KN.motion.ms("--m-nav");
     const easing = KN.motion.ease("--ease-out", "cubic-bezier(.2,.8,.2,1)");
-    const d = 32 * dir;
+    const d = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--desk-shift")) || 32) * dir;
     const show = [{ opacity: 0, transform: `translate3d(${d}px,0,0)`, offset: 0 },
       { opacity: 0, transform: `translate3d(${d}px,0,0)`, offset: .25 }, { opacity: 1, transform: "none" }];
     const hide = [{ opacity: 1, transform: "none" },
