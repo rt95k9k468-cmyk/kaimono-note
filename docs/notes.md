@@ -356,7 +356,7 @@ Notion・Evernote からの一元化（同期・階層・取り込み・見た�
   `popOver`。ノートブックは左そろえ、タグは右そろえ）。中身・打ったまま閉じても
   付く、は段3のまま。キーボードが出ても見えている高さ（`--vvh`）に収め、中で送る。
 - **上の帯（時刻・電池）の灰。**（`tintBar` は段4.3で外した。）`apple-mobile-web-app-status-bar-style` は `default`
-  なので、あの帯はページの外で theme-color（`#f0eff3`）に塗られる。書く紙を開いて
+  なので、あの帯はページの外で theme-color（`--c-bg` と同じ `#f7f6f2`）に塗られる。書く紙を開いて
   いるあいだだけ theme-color を `--c-surface` にし、閉じたら戻す（`tintBar`）。
   iOS が theme-color の差し替えを帯に映さない版なら効かない——そのときは
   `black-translucent` で帯の下まで描く案（全画面に響くので、先に相談）。

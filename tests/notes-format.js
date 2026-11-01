@@ -200,7 +200,7 @@ const { open, checker } = require("./lib");
   t.check("道具の帯は底から少し浮く、丸いガラスの一本", bar.gap === 8 && bar.side === 8 && bar.round && bar.glass && bar.over, JSON.stringify(bar));
   t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
     !document.documentElement.classList.contains("is-note-full")
-    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f0eff3,#121216"));
+    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f7f6f2,#121216"));
 
   /* ---- 欄から出る（キーボードを閉じる）→ 整えた姿 ---- */
   await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());

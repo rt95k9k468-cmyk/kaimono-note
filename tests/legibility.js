@@ -209,8 +209,8 @@ function waited(bad, where) {
     await page.waitForTimeout(1500);
     const on = await page.evaluate(probe);
     const opaque = (s) => !/rgba|\/ ?0?\.\d|transparent/.test(s) || /\/ ?1\)/.test(s);
-    t.check(`${theme}：オフの灰の字は既定（${theme === "dark" ? "#a6a6ab・#92929a" : "#636363・#686870"}）`,
-      off.t2 === (theme === "dark" ? "#a6a6ab" : "#636363") && off.t3 === (theme === "dark" ? "#92929a" : "#686870"), JSON.stringify(off));
+    t.check(`${theme}：オフの灰の字は既定（${theme === "dark" ? "#a6a6ab・#92929a" : "#615e58・#64615b"}）`,
+      off.t2 === (theme === "dark" ? "#a6a6ab" : "#615e58") && off.t3 === (theme === "dark" ? "#92929a" : "#64615b"), JSON.stringify(off));
     t.check(`${theme}：オフのガラスは透けている`, !opaque(off.glass), off.glass);
     t.check(`${theme}：オンでガラスが塞がる`, opaque(on.glass), on.glass);
     t.check(`${theme}：オンで灰の字が変わる`, on.t2 !== off.t2 && on.t3 !== off.t3, JSON.stringify(on));
