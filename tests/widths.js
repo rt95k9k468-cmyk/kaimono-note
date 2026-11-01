@@ -208,12 +208,13 @@ async function seed(page) {
     await browser.close();
   }
 
-  /* 3. 電話を横にした案内は指の端末だけ（マウスの 720×450 は 1. で席を押せている）。 */
-  {
-    const { browser, page } = await open({ viewport: { width: 852, height: 393 }, touch: true });
+  /* 3. 電話を横にしても使える（840px から。中は tests/sideways.js）。案内は横で 840px 未満（375 幅の機種）の指の端末だけ
+     （マウスの 720×450 は 1. で席を押せている）。 */
+  for (const [w, h, want] of [[852, 393, false], [667, 375, true]]) {
+    const { browser, page } = await open({ viewport: { width: w, height: h }, touch: true });
     const shown = await page.evaluate(() => getComputedStyle(document.querySelector(".rotate-note")).display !== "none"
       && getComputedStyle(document.querySelector(".app")).visibility === "hidden");
-    t.check("電話を横にすると案内が出る（指の端末）", shown);
+    t.check(want ? `電話を横にすると案内が出る（${w}×${h}・指の端末）` : `電話を横にしても使える（${w}×${h}・案内で隠さない）`, shown === want);
     await browser.close();
   }
 

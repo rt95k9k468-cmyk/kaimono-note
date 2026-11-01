@@ -229,14 +229,20 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(100);
   t.check("ふつうにキーボードを閉じれば整えた姿へ", await page.$eval(".sheet.is-note .note-view", (e) => !e.hidden));
 
-  /* 書いている途中で横にする（「縦にして」の案内が覆う）→ 戻す：書く姿・カーソルはそのまま。 */
+  /* 書いている途中で横にする（840px からは横でも使える。docs/desk.md「電話を横に」）→ 戻す：書く姿・カーソルはそのまま。
+     回した直後の blur（WebKit が送ることがある）は離れた拍と読み、欄へ戻す（screen-notes.js の turnAt）。 */
   await page.click(".sheet.is-note .note-view > *");
   await page.waitForTimeout(200);
   await page.$eval(".sheet.is-note .js-text", (ta) => ta.setSelectionRange(7, 7));
   const vp = page.viewportSize();
-  await page.setViewportSize({ width: 844, height: 390 });
-  await page.waitForTimeout(300);
-  const side = await page.$eval(".sheet.is-note .note-view", (e) => e.hidden);
+  await page.setViewportSize({ width: 852, height: 393 });
+  await page.waitForTimeout(50);
+  await page.$eval(".sheet.is-note .js-text", (ta) => ta.blur());
+  await page.waitForFunction(() => document.activeElement === document.querySelector(".sheet.is-note .js-text"), null, { timeout: 3000 }).catch(() => {});
+  const side = await page.evaluate(() => {
+    const ta = document.querySelector(".sheet.is-note .js-text");
+    return document.querySelector(".sheet.is-note .note-view").hidden && document.activeElement === ta && ta.selectionStart === 7;
+  });
   await page.setViewportSize(vp);
   await page.waitForFunction(() => document.activeElement === document.querySelector(".sheet.is-note .js-text"), null, { timeout: 3000 }).catch(() => {});
   const turned = await page.evaluate(() => {

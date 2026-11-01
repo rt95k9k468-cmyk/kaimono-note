@@ -1,0 +1,157 @@
+/* 電話を横にして使う（docs/desk.md の「電話を横に」）。852×393（iPhone 15 など）・956×440（Pro Max）を指の端末で。
+   島とその向かいは --safe-l/--safe-r を 59px、ホームの棒は --safe-b を 21px にして見る（試験のブラウザに env() は無い）。
+   - 案内で隠さない。左の列は畳んだ形に据わる（settings.railFolded は書き換えない・‹ は出さない）
+   - どの席も、島の下（左右 59px）に押せるものが無い。月の暦は窓に収まる（最後の週まで）
+   - ＋の紙・据えたノート・設定（外観の一枚）を開いたまま縦へ回して戻す：開いたまま・島の下に押せるもの無し
+   走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
+const { open, checker } = require("./lib");
+
+const SAFE = 59, HOME = 21;
+const SIZES = [[852, 393], [956, 440]];
+
+/* 頁の中で：島の下（左右 SAFE px）に見えている押せるもの。切る箱（overflow）の外へ出たぶんは数えない。 */
+function under(safe) {
+  const W = innerWidth, H = innerHeight;
+  const hits = [];
+  const sel = "button, a[href], input:not([type=hidden]), textarea, select, [role=button], [role=tab], [contenteditable=true], [tabindex]:not([tabindex='-1'])";
+  for (const e of document.querySelectorAll(sel)) {
+    if (!e.getClientRects().length || e.closest("[inert], [aria-hidden=true]")) continue;
+    const cs = getComputedStyle(e);
+    if (cs.visibility === "hidden" || cs.pointerEvents === "none" || +cs.opacity < 0.05) continue;
+    let r = e.getBoundingClientRect();
+    let l = r.left, t = r.top, ri = r.right, b = r.bottom;
+    for (let a = e.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const s = getComputedStyle(a);
+      if (+s.opacity < 0.05 || s.visibility === "hidden") { l = ri; break; }
+      if (s.overflowX !== "visible" || s.overflowY !== "visible") {
+        const q = a.getBoundingClientRect();
+        l = Math.max(l, q.left); ri = Math.min(ri, q.right); t = Math.max(t, q.top); b = Math.min(b, q.bottom);
+      }
+    }
+    l = Math.max(l, 0); ri = Math.min(ri, W); t = Math.max(t, 0); b = Math.min(b, H);
+    if (ri - l < 1 || b - t < 1) continue;
+    if (l < safe - 0.5 || ri > W - safe + 0.5) {
+      const name = (e.getAttribute("aria-label") || e.textContent || e.className || e.tagName).trim().slice(0, 20);
+      hits.push(`${name}@${Math.round(l)}-${Math.round(ri)}`);
+    }
+  }
+  return hits;
+}
+
+(async () => {
+  const t = checker("sideways");
+  for (const [w, h] of SIZES) {
+    const at = `${w}×${h}`;
+    const { browser, page, errors } = await open({ viewport: { width: w, height: h }, touch: true,
+      before: (ctx) => ctx.addInitScript(([s, b]) => {
+        const sh = new CSSStyleSheet();
+        sh.replaceSync(`:root { --safe-l: ${s}px !important; --safe-r: ${s}px !important; --safe-b: ${b}px !important; }`);
+        document.adoptedStyleSheets = [...document.adoptedStyleSheets, sh];
+      }, [SAFE, HOME]) });
+    const wait = (ms) => page.waitForTimeout(ms);
+    const scan = () => page.evaluate(under, SAFE);
+    await page.evaluate(async () => {
+      const S = KN.store, d = KN.util.todayKey();
+      S.addTodo({ title: "試しの予定", due: d, time: "10:00", minutes: 30 });
+      S.addTodo({ title: "二つめの予定", due: d });
+      await KN.notes.addMany(["一つめ", "二つめ"].map((title, i) => ({ id: `n-s${i}`, title, body: "本文", notebook: "private",
+        tags: [], fav: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null })));
+    });
+
+    /* 1. 案内で隠さない・列は畳んだ形に据わる。 */
+    const look = await page.evaluate(() => ({
+      note: getComputedStyle(document.querySelector(".rotate-note")).display,
+      app: getComputedStyle(document.querySelector(".app")).visibility,
+      fold: document.documentElement.classList.contains("rail-fold"),
+      saved: KN.store.get().settings.railFolded,
+      btn: (() => { const b = document.getElementById("rail-fold"); return !!b && b.getClientRects().length > 0; })(),
+    }));
+    t.check(`${at}：横でも使える（案内で隠さない）`, look.note === "none" && look.app === "visible", JSON.stringify(look));
+    t.check(`${at}：左の列は畳んだ形・設定は書き換えない・‹ を出さない`, look.fold && look.saved === false && !look.btn, JSON.stringify(look));
+    await page.keyboard.press("Meta+Backslash");
+    await wait(200);
+    t.check(`${at}：⌘\\ でも設定は変わらない`, await page.evaluate(() => KN.store.get().settings.railFolded === false
+      && document.documentElement.classList.contains("rail-fold")));
+
+    /* 2. どの席も島の下に押せるもの無し。 */
+    for (const seat of ["archive", "notes", "todo", "list", "diet"]) {
+      await page.click(`.tab-${seat}`);
+      await wait(700);
+      const hits = await scan();
+      t.check(`${at} ${seat}：島の下に押せるもの無し`, !hits.length, hits.slice(0, 6).join(" | "));
+    }
+
+    /* 3. 月の暦は窓に収まる（最後の週まで）。 */
+    await page.click(".tab-todo");
+    await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: true }));
+    await wait(700);
+    const cal = await page.evaluate(() => {
+      const days = [...document.querySelectorAll(".head-cal .cal-grid > .cal-day")].filter((e) => e.getClientRects().length);
+      const last = days[days.length - 1];
+      return { n: days.length, b: last ? Math.round(last.getBoundingClientRect().bottom) : null, H: innerHeight };
+    });
+    t.check(`${at}：月の暦は窓に収まる`, cal.n >= 28 && cal.b != null && cal.b <= cal.H, JSON.stringify(cal));
+    const calHits = await scan();
+    t.check(`${at}：月の暦でも島の下に押せるもの無し`, !calHits.length, calHits.slice(0, 6).join(" | "));
+    await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
+    await wait(400);
+
+    /** 縦へ回して戻す。 */
+    const turn = async () => {
+      await page.setViewportSize({ width: h, height: w });
+      await wait(500);
+      await page.setViewportSize({ width: w, height: h });
+      await wait(600);
+    };
+
+    /* 4. ＋の紙を開いたまま回す。 */
+    await page.click("#dock .add-fab");
+    await page.waitForSelector(".sheet.is-open", { timeout: 3000 }).catch(() => {});
+    await wait(400);
+    const s0 = await scan();
+    await turn();
+    const s1 = await page.evaluate(() => document.querySelectorAll(".sheet.is-open").length);
+    const s2 = await scan();
+    t.check(`${at}：＋の紙は島の下に出ない（回して戻しても開いたまま）`, !s0.length && s1 > 0 && !s2.length,
+      JSON.stringify({ s0: s0.slice(0, 4), open: s1, s2: s2.slice(0, 4) }));
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+    await wait(300);
+
+    /* 5. ノートの席で開いたノート（右の段に据わる）を開いたまま回す。 */
+    await page.click(".tab-notes");
+    await wait(600);
+    await page.locator("#screen-notes .nt-row", { hasText: "一つめ" }).first().click();
+    await page.waitForSelector(".sheet.is-note.is-open.is-docked", { timeout: 3000 }).catch(() => {});
+    await wait(500);
+    const dock = async () => page.evaluate(() => {
+      const e = document.querySelector(".sheet.is-note.is-open");
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { docked: e.classList.contains("is-docked"), r: Math.round(r.right), l: Math.round(r.left) };
+    });
+    const d0 = await dock(), n0 = await scan();
+    await turn();
+    const d1 = await dock(), n1 = await scan();
+    t.check(`${at}：据えたノートは島の手前まで（回して戻しても開いたまま）`,
+      d0 && d0.docked && d0.r <= w - SAFE && !n0.length && d1 && d1.r <= w - SAFE && !n1.length,
+      JSON.stringify({ d0, d1, n0: n0.slice(0, 4), n1: n1.slice(0, 4) }));
+
+    /* 6. 設定の一枚（外観）を開いたまま回す。 */
+    await page.evaluate(() => KN.app.showScreen("settings"));
+    await wait(600);
+    await page.locator("#screen-settings .set-row", { hasText: "外観" }).first().click();
+    await wait(700);
+    const layers = () => page.evaluate(() => document.querySelectorAll("#screen-settings .set-layer").length);
+    const l0 = await layers(), e0 = await scan();
+    await turn();
+    const l1 = await layers(), e1 = await scan();
+    const still = await page.evaluate(() => document.documentElement.dataset.screen === "settings");
+    t.check(`${at}：設定の一枚は回して戻しても同じ所・島の下に押せるもの無し`, l0 >= 2 && l1 === l0 && still && !e0.length && !e1.length,
+      JSON.stringify({ l0, l1, still, e0: e0.slice(0, 4), e1: e1.slice(0, 4) }));
+
+    t.check(`${at}：エラーなし`, !errors.length, errors.join(" | "));
+    await browser.close();
+  }
+  t.done();
+})().catch((e) => { console.error(e); process.exit(1); });

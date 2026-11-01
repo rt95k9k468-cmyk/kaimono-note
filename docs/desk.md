@@ -9,7 +9,12 @@
   `@media (min-width: 840px)`（base.css・screens.css の「幅の広い画面」）と `screen-notes.js`・`keys.js` の `WIDE`・`edge-back.js` の `DESK` にある。変えるなら全部。
 - **640〜839px（iPad の縦・並べた窓）**：地・帯・写真は窓いっぱい、中身は読む幅 680px へ内側の余白で（screens.css の
   640px の「読む幅」。840px から 760px）。下の帯のカプセルは 600px で真ん中、＋はその右端（base.css の `--bar-x`）。
-  電話を横にした案内は `pointer: coarse` だけ（200% の窓 720×450 でアプリが隠れていた）。幅の物差しは `tests/widths.js`。
+  電話を横にした案内は `pointer: coarse` で 840px 未満だけ（200% の窓 720×450 でアプリが隠れていた）。幅の物差しは `tests/widths.js`。
+- **電話を横に**（11月1日、iPhone 14 Plus の利用者）：840px からは desk の形で使う（852×393 など。375 幅の機種は案内のまま）。
+  左の列は畳んだ形に据える（`app.js` の `SIDEWAYS`。`railFolded` は書き換えない・‹ と ⌘\ は効かない）。島とその向かい
+  （`--safe-l/-r`）の下に押せるものを置かない：列は島のぶん太く・`.app` の右を空ける・＋・トースト・書く紙・据えたノートは内へ、
+  底はホームの棒（`--tabbar-space` に `--safe-b`）。月の暦はマスの名前を一段にして窓に収める。規則は base.css・screens.css の
+  「電話を横に」（式は三か所で同じ）。ノートの書く紙は回した直後の blur だけを離れた拍と読む（`turnAt`）。見張りは `tests/sideways.js`。
 - **電話の見た目は一画素も変えない。** desk の規則はどれも @media の中。iPhone 幅で撮り比べてから流す。
 - **下の帯は窓の背いっぱいの平らな左の列**（段5。Notion・Things の形。段1〜4 の浮いたカプセルは iPad に見えた）。幅
   `--rail-w` 232px・地は `--c-bg`・右に線一本。席は絵の右に名前の横長の行（36px）、いま居る席は滑る一枚（`tab-lens.js`：

@@ -642,6 +642,9 @@
   --maxw: 620px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
+  /* 横にした電話の島とその向かい（iPhone は左右同じ幅）。使うのは「電話を横に」の規則だけ。 */
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
 }
 /* マウスの端末（パソコン）は弾みと光を控えめに（design-review 10節の P7。docs/motion.md）。指の下で返す手ごたえは
    指の端末のもの。曲線と材の札を替えるだけ（動きは足さない・消さない）。暗い面の札より前に置く（あとの規則が夜の一組を選ぶ）。 */
@@ -2047,18 +2050,13 @@ a { color: var(--c-primary); }
 
 /* ---------------- portrait only ---------------- */
 
-/* The manifest asks for `orientation: portrait`, which settles Android and
-   anything else that honours it. iOS ignores it in a home-screen app and
-   offers no way to lock the screen from a web page, so the app says so rather
-   than laying a one-column shopping list out sideways.
-
-   Scoped to a phone held sideways: a short landscape viewport with a wide
-   aspect. A desktop window and an iPad are landscape too, and both are fine
-   as they are. 指の端末だけ（`pointer: coarse`）——パソコンを 200% に拡大した窓（1440×900 → 720×450）や背の低い窓も
-   同じ形になり、アプリが隠れていた（design-review の P1）。 */
+/* 横にした電話のうち、幅が 840px に届かないもの（375 幅の機種）だけ「縦に」の案内で覆う。840px からは desk の形で
+   使える（下の「電話を横に」。docs/desk.md）。iOS は manifest の向きを聞かず、頁から向きも止められない。
+   指の端末だけ（`pointer: coarse`）——パソコンを 200% に拡大した窓（1440×900 → 720×450）や背の低い窓も
+   同じ形になり、アプリが隠れていた（design-review の P1）。式は screen-notes.js の `covered` にもある。 */
 .rotate-note { display: none; }
 
-@media (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse) {
+@media (max-width: 839.98px) and (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse) {
   /* display: none にしない——WebKit は消した器の送りを捨て、縦に戻すと紙も一覧も頭からだった
      （2026年10月26日、利用者）。見えなくするだけにして、案内が上から覆う。 */
   .app, #sheet-root, .toast-root { visibility: hidden; }
@@ -2438,6 +2436,18 @@ a { color: var(--c-primary); }
   .rail-fold .tab { justify-content: center; padding: 0; gap: 0; }
   .rail-fold .tab-label { display: none; }
   .rail-fold .tab-badge { position: absolute; top: 1px; right: 4px; margin: 0; }
+}
+/* 電話を横に（852×393 など。docs/desk.md）：desk の形のまま、左の列は畳んだ形に据える（app.js の applyRail。設定は
+   書き換えず、‹ は出さない）。島とその向かい（--safe-l/r）・ホームの棒（--safe-b）の下に押せるものを置かない——
+   列は島のぶん太く、中身は右を空け、＋とトーストは内へ。紙は screens.css の終わり。式は app.js の SIDEWAYS にもある。 */
+@media (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  :root { --tabbar-space: var(--safe-b); }
+  :root.rail-fold { --rail-w: calc(64px + var(--safe-l)); }
+  .tabbar { padding-left: calc(var(--sp-2) + var(--safe-l)); }
+  .rail-fold-btn { display: none; }
+  .app { padding-right: var(--safe-r); }
+  .has-fab .dock { right: calc(var(--sp-5) + var(--safe-r)); bottom: calc(var(--sp-3) + var(--safe-b)); }
+  .toast-root { left: calc(var(--rail-w) + var(--sp-4)); bottom: calc(var(--sp-3) + var(--safe-b)); }
 }
 /* 境目（js/desk-split.js）：左の列・ノートの一覧の右の線を引く口。マウスの端末の広い幅だけ。線の上に 8px の口、
    指したとき・引くあいだ・カーソルがあるときだけ線を太く。一覧の口は screens.css の「ノートの右の段」。 */

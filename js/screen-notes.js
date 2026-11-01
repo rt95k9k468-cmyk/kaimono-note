@@ -45,8 +45,10 @@
     if (r.contains("notes-three") !== w >= THREE_W) r.toggle("notes-three", w >= THREE_W);
   }
   const docked = () => { seatMarks(); return document.documentElement.classList.contains("notes-dock") && document.documentElement.dataset.screen === "notes"; };
-  /* 電話を横にした（base.css の「portrait only」と同じ式）。 */
-  const sideways = window.matchMedia("(orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse)");
+  /* 「縦に」の案内が覆っている（base.css の「portrait only」と同じ式。横にした 375 幅の機種だけ）。840px からの横は使える。 */
+  const covered = window.matchMedia("(max-width: 839.98px) and (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse)");
+  /* 向きが変わった（回した直後の blur を離れた拍と読むため。書く紙の turnAt）。 */
+  const turning = window.matchMedia("(orientation: landscape)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
   let treeEl = null;
   let seeking = false;             // さがす窓に指が入っている
@@ -1456,15 +1458,15 @@
     /* ほかのアプリへ移った拍の blur は、キーボードを閉じたのではない。書く姿・カーソル・送りを
        そのまま持っておき、戻ったら欄へ戻す（読む姿へ替えると、隠した欄から焦点が消えて画面も動く）。 */
     let away = null;
-    /* 横にしたときも（base.css の「portrait only」が隠す）。 */
-    /* 縦へ戻した直後に、横のあいだの blur が遅れて届くことがある（重い拍）。それも離れた拍と読む。 */
+    /* 横にして案内が覆っているあいだ（covered）と、回した直後（turnAt）も離れた拍——回した拍に WebKit が blur を
+       送ることがあり、縦へ戻した直後にも横のあいだの blur が遅れて届く（重い拍）。 */
     let turnAt = -1e9;
-    const leaving = () => document.hidden || !document.hasFocus() || sideways.matches || performance.now() - turnAt < 800;
+    const leaving = () => document.hidden || !document.hasFocus() || covered.matches || performance.now() - turnAt < 800;
     const hold = () => {
       const sc = scroller();
       away = { sel: selNow(), top: sc ? sc.scrollTop : null };
       /* もう前に居る（戻った直後の遅れた blur）なら、すぐ欄へ。 */
-      if (!document.hidden && !sideways.matches) requestAnimationFrame(onBack);
+      if (!document.hidden && !covered.matches) requestAnimationFrame(onBack);
     };
     [textIn, liveEl].forEach((x) => x.addEventListener("focusout", () => {
       if (writing && !closed && leaving()) { hold(); return; }
@@ -1477,7 +1479,7 @@
     }));
     const onTurn = () => { turnAt = performance.now(); onBack(); };
     const onBack = () => {
-      if (!away || document.hidden || sideways.matches || !document.hasFocus()) return;
+      if (!away || document.hidden || covered.matches || !document.hasFocus()) return;
       const a = away;
       away = null;
       if (closed || !writing || inEd()) return;
@@ -1489,7 +1491,7 @@
     document.addEventListener("visibilitychange", onBack);
     window.addEventListener("pageshow", onBack);
     window.addEventListener("focus", onBack);
-    sideways.addEventListener("change", onTurn);
+    turning.addEventListener("change", onTurn);
 
     /* ---- やり直し（道具の帯の ↶ ↷）。前の版とは別で、紙を開いているあいだだけ ---- */
     const hist = F.history(
@@ -1840,7 +1842,7 @@
       document.removeEventListener("visibilitychange", onBack);
       window.removeEventListener("pageshow", onBack);
       window.removeEventListener("focus", onBack);
-      sideways.removeEventListener("change", onTurn);
+      turning.removeEventListener("change", onTurn);
       document.removeEventListener("selectionchange", onSel);
       sync();
       offKids();

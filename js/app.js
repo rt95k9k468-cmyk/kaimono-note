@@ -1370,8 +1370,12 @@
 
   /* ---------------- 左の列を畳む（幅の広い画面。docs/desk.md の段6） ----------------
      ⌘\（js/keys.js）か、列の下の ‹。畳むと絵だけの細い列で、席の名前は指したときの札に。 */
+  /* 電話を横にした（指の端末・背の低い横長）。列は畳んだ形に据える——設定（railFolded）は書き換えず、‹ も出さない
+     （base.css の「電話を横に」。docs/desk.md）。 */
+  const SIDEWAYS = window.matchMedia ? window.matchMedia("(orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
+  const railOn = () => store.get().settings.railFolded === true || !!(SIDEWAYS && SIDEWAYS.matches);
   function applyRail() {
-    const on = store.get().settings.railFolded === true;
+    const on = railOn();
     const moved = document.documentElement.classList.contains("rail-fold") !== on;
     document.documentElement.classList.toggle("rail-fold", on);
     const btn = document.getElementById("rail-fold");
@@ -1387,6 +1391,7 @@
     if (moved) requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
   }
   KN.app.foldRail = function foldRail() {
+    if (SIDEWAYS && SIDEWAYS.matches) return;
     store.update((s) => { s.settings.railFolded = s.settings.railFolded !== true; });
   };
 
@@ -1407,6 +1412,7 @@
     fold.addEventListener("click", KN.app.foldRail);
     document.getElementById("tabbar").after(fold);
     applyRail();
+    if (SIDEWAYS && SIDEWAYS.addEventListener) SIDEWAYS.addEventListener("change", applyRail);
     watchGlass();
     watchFabAway();
     watchWriting();
@@ -1523,7 +1529,7 @@
       /* 組む前の支度のあいだは、何もしません——show() がこのあと組んで、席も塗ります。 */
       if (preparing) return;
       /* 左の列を畳んだ・ひらいた（控えを戻したときも）。組む前に——輪や印は組むときに測るので、新しい幅で。 */
-      if (document.documentElement.classList.contains("rail-fold") !== (store.get().settings.railFolded === true)) applyRail();
+      if (document.documentElement.classList.contains("rail-fold") !== railOn()) applyRail();
       if (KN.screens[active]) {
         /* 紙の中で打っているあいだは、組み直しを預かります（上の behindStale）。 */
         if (typingInSheet()) behindStale = true;
