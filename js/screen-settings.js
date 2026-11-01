@@ -311,9 +311,10 @@
     paintNav(L);
   }
 
-  /* 広い幅（1280px〜。docs/desk.md）は、見出しごとのまとまりを二段に組む。まとまりが一つなら一列のまま。
-     電話の DOM は今までどおり（まとめるのは広い幅のときだけ。幅をまたいだら組み直す）。 */
-  const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px)") : null;
+  /* 広い幅（1280px〜。docs/desk.md）と横にした電話（840px〜の背の低い窓）は、見出しごとのまとまりを二段に組む。
+     まとまりが一つなら一列のまま。電話の DOM は今までどおり（まとめるのは広い幅のときだけ。幅をまたいだら組み直す）。
+     式は screens.css の「1280px から、見出しごとのまとまり」と同じ。 */
+  const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px), (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
   function duo(L) {
     const groups = [];
     if (DUO && DUO.matches) {
