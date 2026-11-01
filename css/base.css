@@ -34,15 +34,17 @@
 
   /* --- surfaces ---
 
-     参考にした画面（Structured）から実測した数字です。もとは緑を混ぜた
-     生成りでしたが、あちらの地は**うっすら紫がかった灰**で、その上に
-     まっ白な紙が乗ります。地と紙の差がこの一段だけなので、紙のふちを
-     線で囲わなくても「一枚乗っている」と読めます。 */
-  --c-bg:          #f0eff3;   /* 実測 */
+     地は**白に近い、わずかに温かいニュートラル**（OKLCH の色相 約90・彩度 .005）。
+     その上にまっ白な紙が乗ります。前は参考画面（Structured）の**うっすら紫がかった
+     灰**（#f0eff3）で、画面がくすんで見えた（2026年11月1日に変えた。docs/look.md の
+     「明るい面の地」）。灰と線と字も同じ色相へ揃え、明るさは前のまま——緑や紫へ
+     寄せない。地と紙の差がこの一段だけなので、紙のふちを線で囲わなくても
+     「一枚乗っている」と読めます。 */
+  --c-bg:          #f7f6f2;
   --c-bg-elev:     #ffffff;
-  --c-surface:     #ffffff;   /* 実測 */
-  --c-surface-2:   #e8e8e8;   /* 実測（手順の丸薬の地） */
-  --c-surface-3:   #dcdce0;
+  --c-surface:     #ffffff;
+  --c-surface-2:   #ebe9e4;   /* 手順の丸薬・選ぶ札の地。紙との差 1.12 を保つ */
+  --c-surface-3:   #dfddd6;
 
   /* --- 紙の地と、そのふち ---
 
@@ -57,24 +59,23 @@
 
      暗いほうは、逆に地より**明るい**灰でなぞります。暗い面に純白を引くと
      線だけが浮き上がって、紙のふちではなく別の部品に見えます。 */
-  --c-sheet:       #f5f5f5;
+  --c-sheet:       #f7f6f2;   /* 地と同じ */
   --c-sheet-edge:  #ffffff;
 
   /* --- text ---
 
-     字も緑を抜いて、ニュートラルな灰にします。副題と左の時刻は実測の
-     #636363——本文とのあいだが一段しかないので、読む順が「題 → その他」
-     の二段でまとまります。 */
-  --c-text:        #111113;
-  --c-text-2:      #636363;   /* 実測（副題・時刻） */
-  --c-text-3:      #686870;
+     字も地と同じ色相の灰。副題と左の時刻は --c-text-2——本文とのあいだが
+     一段しかないので、読む順が「題 → その他」の二段でまとまります。 */
+  --c-text:        #1c1b19;
+  --c-text-2:      #615e58;   /* 副題・時刻 */
+  --c-text-3:      #64615b;
   /* 塗った札（下の帯の数の札・選んだ札）の上の字。明るい面は白、暗い面は地の黒
      （roadmap-seamless の N15。暗い面の塗りは明るいので、白では 2.2:1 しか出ない）。 */
   --c-text-on:     #ffffff;
 
   /* --- lines --- */
-  --c-border:      #e4e4e8;
-  --c-border-2:    #cdcdd3;
+  --c-border:      #e7e4de;
+  --c-border-2:    #d0cdc8;
 
   /* --- brand ---
 
@@ -89,11 +90,10 @@
      設定の札の id は "orange" のまま置いてあります——保存してある値を
      変えずに済み、`reconcile()` も触らずに色だけが入れ替わるので。
 
-     **字の色なので、アプリの地（--c-bg #f0eff3）の上で 4.50 に揃えて
-     あります。** もとの #bf4f49 は白の上で 4.74 でしたが、地の上では
-     4.14 で、小さい字の 4.5 に届いていませんでした。OKLCH で色相と彩度を
-     保ったまま、明るさだけを届くところまで下げた値です（紙 #f5f5f5 で
-     4.73）。灰の札（#e8e8e8）の上では 4.21 なので、そこに乗る字は
+     **字の色なので、アプリの地の上で 4.5 に届く濃さにしてあります**（前の地
+     #f0eff3 で 4.50、いまの地 #f7f6f2 で 4.77）。もとの #bf4f49 は前の地で
+     4.14 でした。OKLCH で色相と彩度を保ったまま、明るさだけを下げた値です。
+     灰の札（--c-surface-2）の上では 4.25 なので、そこに乗る字は
      --c-primary-ink を使います（.low-add）。暗い面は別の値で、変えていません。 */
   --c-primary:     #b84944;
   --c-primary-2:   #a84240;
@@ -253,18 +253,18 @@
      `--glass-blur` の `brightness(1.06)` がその白を 255 まで押し上げる
      ので、白の上に白を 52% 重ねることになっていました。
 
-     だからガラスの側に色を持たせます。差すのは**地と同じ寒色**（地は
-     #f0eff3）をもう一段深くしたもの——主色（コーラル）ではありません。
+     だからガラスの側に色を持たせます。差すのは**地と同じ色相**の灰を
+     もう一段深くしたもの——主色（コーラル）ではありません。
      あれは＋が `--glass-tint` で差している色で、帯まで同じ色にすると
      ＋が帯に埋もれます。 */
-  --glass-cast:  #cfcdd9;
+  --glass-cast:  #d1cfc9;
   /* 押した／指を乗せたときの姿。「ガラスが、より多くの光を拾った」を
      言うので、**色は薄いほうへ**振ります。
      **ここを一つの札で持つ理由**：`--glass-base` は `:root` で組まれる
      ので、`.add-fab:active` 側で「白をひとさじ足す」と書いても効きません
      （自分を参照する循環になる）。使う側は `--glass-base` を組み直す
      ことになるので、そのときの色をここから引けるようにしてあります。 */
-  --glass-cast-lit: #e9e7f1;
+  --glass-cast-lit: #ebe8e2;
   /* 地の濃さ（透けていることが見える濃さ）。**一つの札で持つ**のは、
      「後ろが暗い」と分かったときに、材ぜんぶを夜のほうへ差し替える
      から（下の --glass-night-*）。 */
@@ -1186,11 +1186,11 @@ a { color: var(--c-primary); }
 .head[data-sky] ~ .panes > .screen[data-screen="todo"].is-query:not(.is-face-front, .is-face-parked) { background: var(--c-bg); }
 .head[data-sky] > .topbar,
 .head[data-sky] .cal { background: transparent; }
-.head[data-sky="dawn"]    { --sky-a: #b9d5f0; --sky-c: #eff6fc; --sky-d: #fdf4ec; }
-.head[data-sky="morning"] { --sky-a: #b3dbee; --sky-c: #ecf7f8; --sky-d: #f4faf3; }
-.head[data-sky="day"]     { --sky-a: #abd0f4; --sky-c: #eaf4fd; --sky-d: #f1f8fe; }
-.head[data-sky="evening"] { --sky-a: #d4c8ec; --sky-c: #fdf1f0; --sky-d: #fef2e6; }
-.head[data-sky="night"]   { --sky-a: #c3cbe8; --sky-c: #f2f3fb; --sky-d: #f4f3f9; }
+.head[data-sky="dawn"]    { --sky-a: #b9d5f0; --sky-c: #f3f8fd; --sky-d: #fdf7f0; }
+.head[data-sky="morning"] { --sky-a: #b3dbee; --sky-c: #f1f9fa; --sky-d: #f4faf3; }
+.head[data-sky="day"]     { --sky-a: #abd0f4; --sky-c: #f3f9fe; --sky-d: #f2f9fe; }
+.head[data-sky="evening"] { --sky-a: #d4c8ec; --sky-c: #fef6f5; --sky-d: #fef6ef; }
+.head[data-sky="night"]   { --sky-a: #c3cbe8; --sky-c: #f7f7fc; --sky-d: #f8f7fb; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .head[data-sky="dawn"]    { --sky-a: #2a4766; --sky-c: #101b29; --sky-d: #1c1719; }
   :root:not([data-theme="light"]) .head[data-sky="morning"] { --sky-a: #1f5470; --sky-c: #0e1e28; --sky-d: #11201f; }
@@ -1857,8 +1857,8 @@ a { color: var(--c-primary); }
    持っている要素の明るさを見ます。**行きつ戻りつしないよう、境目は二つ**
    （暗いと決めるのは .42 未満、明るいへ戻すのは .52 超え）。
 
-   **いまの明るい面では、まず立ちません。** 帯の裏に来るのは紙（#f5f5f5）
-   か地（#f0eff3）で、どちらも明るいので。暗い面と、これから暗いものが
+   **いまの明るい面では、まず立ちません。** 帯の裏に来るのは紙か地
+   （どちらも #f7f6f2）で、明るいので。暗い面と、これから暗いものが
    帯の裏を通るようになったときのための仕掛けです——**仕掛けだけ先に
    置いておくのではなく**、暗い面ではいま現に効きます（夜のテーマでも、
    帯の裏が明るい紙のことがあるので）。
@@ -2670,19 +2670,19 @@ a { color: var(--c-primary); }
 /* ---- iPhone の「コントラストを上げる」（roadmap-seamless の N15 (b)・X19） ----
    設定 → アクセシビリティ → 画面表示とテキストサイズ。オフの人には何も変わらない。
    ガラスは不透明の面に（地の濃さは `--glass-a` / `--glass-night-a` の二つから。@supports の受け皿と同じ手）、
-   灰の字と線は一段濃く。明るい面のガラスの色は、いま透けて見えている明るさに寄せる（#cfcdd9 のまま塞ぐと沈む）。
+   灰の字と線は一段濃く。明るい面のガラスの色は、いま透けて見えている明るさに寄せる（--glass-cast のまま塞ぐと沈む）。
    夜のガラスは紙（#1c1c22）と同じ色なので、一段明るくして境目を残す。
    「透明度を下げる」は Safari では読めない（prefers-reduced-transparency は iOS で未対応）。 */
 @media (prefers-contrast: more) {
   :root {
-    --c-text-2:   #48484c;
-    --c-text-3:   #4c4c54;
-    --c-border:   #c4c4cc;
-    --c-border-2: #a8a8b2;
+    --c-text-2:   #4a4843;
+    --c-text-3:   #4f4d47;
+    --c-border:   #c7c5bf;
+    --c-border-2: #aba9a3;
     --glass-a:              100%;
     --glass-night-a:        100%;
-    --glass-cast:           #e6e5ec;
-    --glass-cast-lit:       #f3f2f7;
+    --glass-cast:           #e8e6e0;
+    --glass-cast-lit:       #f5f3ed;
     --glass-night-cast:     #2a2a32;
     --glass-night-cast-lit: #3a3a44;
   }

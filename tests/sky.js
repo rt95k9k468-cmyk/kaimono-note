@@ -137,7 +137,7 @@ function rgbOf(s) {
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   c.check("戻ってきたら測り直す（17時は夕方）", await attr() === "evening", String(await attr()));
   const bar = () => page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content).join());
-  c.check("時計の帯（theme-color）は空に合わせて変えない（iPhone に映らなかった。docs/sky.md）", await bar() === "#f0eff3,#121216", await bar());
+  c.check("時計の帯（theme-color）は空に合わせて変えない（iPhone に映らなかった。docs/sky.md）", await bar() === "#f7f6f2,#121216", await bar());
 
   await page.evaluate(() => KN.store.update((s) => { s.settings.sky = false; }));
   await wait(150);
