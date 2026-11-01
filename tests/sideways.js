@@ -163,6 +163,18 @@ function under(safe) {
       return { side: hr.right <= br.left + 1 && Math.abs(hr.top - br.top) < 2, top: Math.round(r.top), bot: Math.round(r.bottom), H: innerHeight };
     });
     t.check(`${at}：＋の紙は頭が左・中身が右、窓に収まる`, hero.side && hero.top >= 0 && hero.bot <= hero.H, JSON.stringify(hero));
+    /* 4b. 右の段が窓より背が高くても、ボタンの帯（追加）は段の底に留まり、開いてすぐ押せる（送らない。11月1日）。 */
+    const foot = await page.evaluate(() => {
+      const e = document.querySelector(".sheet.is-open"), b = e.querySelector(".sheet-foot .btn-primary"), body = e.querySelector(".sheet-body");
+      const at = () => { const r = b.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; };
+      const r0 = at();
+      body.scrollTop = body.scrollHeight;
+      const r1 = at();
+      body.scrollTop = 0;
+      return { long: body.scrollHeight > body.clientHeight + 1, r0, r1, sb: Math.round(e.getBoundingClientRect().bottom), H: innerHeight };
+    });
+    t.check(`${at}：＋の紙の「追加」は開いてすぐ見え、段を送っても同じ所`,
+      foot.r0[1] <= foot.sb && foot.sb <= foot.H && foot.r0[0] === foot.r1[0], JSON.stringify(foot));
     await turn();
     const s1 = await page.evaluate(() => document.querySelectorAll(".sheet.is-open").length);
     const s2 = await scan();

@@ -8443,4 +8443,13 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   /* 頭の中は印の下に題（題の欄に段の幅を渡す）。 */
   .sheet.has-hero > .sheet-hero { flex-direction: column; gap: var(--sp-3); }
   .sheet.has-hero > .sheet-hero > :not(.hero-mark) { align-self: stretch; }
+  /* ボタンの帯（追加・保存）は右の段の底に留める。縦の紙は中身の最後に並べるだけ（components.css の .sheet-foot）だが、
+     横は右の段が窓より背が高く、左で題を打ったあと段を送らないと「追加」を押せなかった（11月1日）。 */
+  .sheet.has-hero > .sheet-body > .sheet-foot {
+    position: sticky; bottom: calc(var(--sp-5) * -1); z-index: 1;
+    margin: auto calc(var(--sp-5) * -1) calc(var(--sp-5) * -1);   /* 上は auto：中身が短い紙でも段の底に */
+    padding: var(--sp-3) var(--sp-5) var(--sp-5);
+    background: var(--c-sheet);
+    border-bottom-right-radius: var(--r-xl);
+  }
 }

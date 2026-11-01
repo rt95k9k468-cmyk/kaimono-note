@@ -97,6 +97,34 @@ async function roundTrip(page, sel, same) {
     t.check("游ゴシックは 400＝Medium・700＝Bold の面", fonts.faces.length === 2 && fonts.faces.some((x) => /^(400|normal) .*Medium/.test(x)) && fonts.faces.some((x) => /^(700|bold) .*Bold/.test(x))
       && /"KN Yu Gothic"/.test(fonts.goth), JSON.stringify(fonts));
 
+    /* 席の帯：選んでいる印は true／false だけ（holds の無い席が "undefined"＝「選べない」と読まれていた）。
+       帯にカーソルがあれば ←→・↑↓・Home・End で席を移る（日は送らない）。帯の外の → は今までどおり日を送る。 */
+    const seats = () => page.evaluate(() => ({ scr: KN.app.activeScreen(), day: document.querySelector("#head .topbar-day").textContent.trim(),
+      focus: document.activeElement.dataset.tab || "", sel: [...document.querySelectorAll("#tabbar [role=tab]")].map((b) => b.getAttribute("aria-selected")) }));
+    await page.click(".tab-archive");
+    await page.waitForTimeout(600);
+    await page.focus("#tabbar .tab-archive");
+    const k0 = await seats();
+    t.check("席の帯：選んでいる印は true か false だけ", k0.sel.every((v) => v === "true" || v === "false") && k0.sel.filter((v) => v === "true").length === 1, JSON.stringify(k0.sel));
+    const walk = [];
+    for (const k of ["ArrowRight", "ArrowDown", "End", "ArrowRight", "ArrowLeft", "Home", "ArrowUp"]) {
+      await page.keyboard.press(k);
+      await page.waitForTimeout(450);
+      const s = await seats();
+      walk.push(`${s.scr}/${s.focus}/${s.day === k0.day ? "同じ日" : s.day}`);
+    }
+    t.check("席の帯：←→・↑↓・Home・End で席を移り、カーソルも付いてくる（日は送らない）",
+      walk.join(" ") === "notes/notes/同じ日 todo/todo/同じ日 diet/diet/同じ日 archive/archive/同じ日 diet/diet/同じ日 archive/archive/同じ日 diet/diet/同じ日", walk.join(" "));
+    await page.click(".tab-archive");
+    await page.waitForTimeout(600);
+    await page.evaluate(() => document.activeElement.blur());
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(800);
+    const k1 = await seats();
+    t.check("帯の外の → は今までどおり次の日", k1.scr === "archive" && k1.day !== k0.day, JSON.stringify(k1));
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(800);
+
     /* 強制配色。 */
     await page.emulateMedia({ forcedColors: "active" });
     await page.click(".tab-todo");

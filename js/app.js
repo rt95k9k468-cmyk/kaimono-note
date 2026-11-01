@@ -67,7 +67,8 @@
   };
 
   /** その席が、いまの画面を受け持っているか。 */
-  const holdsId = (t, id) => t.id === id || (t.holds && t.holds.indexOf(id) >= 0);
+  /* 真か偽だけを返す（holds の無い席で undefined を返し、aria-selected="undefined"＝「選べない」と読まれていた）。 */
+  const holdsId = (t, id) => t.id === id || (!!t.holds && t.holds.indexOf(id) >= 0);
 
   /* 引き出し（価格・設定）を、どこから開けたか。**一つの変数ではなく積み木**
      です——買うもの → 価格 → 設定 と潜れるようになったので、「戻る」は

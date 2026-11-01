@@ -3,7 +3,7 @@
 
    打っていないとき（欄・本文の外）だけ効きます：
      1〜5        席（daily・notes・tasks・shopping・health）
-     ← →         前・次の日（日を持つ画面）。日を持たない画面は暦を一つ送る
+     ← →         前・次の日（日を持つ画面）。日を持たない画面は暦を一つ送る。席の帯の上では席を移る（↑↓・Home・End も）
      Shift+← →   前・次の週（暦）
      t           今日へ
      /・⌘K       さがす（⌘K・Ctrl+K は打っている欄の中でも）
@@ -99,6 +99,23 @@
         requestAnimationFrame(toGear);
       }
       return;
+    }
+    /* 席の帯にカーソルがあるとき：←→（左の列なら ↑↓ も）・Home・End は席を移る（タブの並びの決まった動き。日を送る ←→ は
+       帯の外で）。一文字の近道ではないので、近道を切っていても効く。 */
+    const seat = e.target && e.target.closest ? e.target.closest("#tabbar [role=tab]") : null;
+    if (seat && !e.shiftKey && !covered()) {
+      const seats = [...document.querySelectorAll("#tabbar [role=tab]")].filter(shown);
+      const i = seats.indexOf(seat);
+      const n = seats.length;
+      const to = e.key === "Home" ? 0 : e.key === "End" ? n - 1
+        : (e.key === "ArrowRight" || e.key === "ArrowDown") ? (i + 1) % n
+        : (e.key === "ArrowLeft" || e.key === "ArrowUp") ? (i - 1 + n) % n : -1;
+      if (i >= 0 && to >= 0) {
+        e.preventDefault();
+        seats[to].focus();
+        if (seats[to].getAttribute("aria-selected") !== "true") seats[to].click();
+        return;
+      }
     }
     if (!on()) return;
     if (typing(e.target) || typing(document.activeElement)) return;
