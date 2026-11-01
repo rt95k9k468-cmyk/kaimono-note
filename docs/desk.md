@@ -161,7 +161,7 @@
   `writeGone` に門。薄くする操作は済みの丸・★・＋（ノートの＋は除く）、`replica.js` の `ONLY` と screens.css が同じ並び。
 - **写しの印**（P6c。`tests/replica-mark.js`）：困ったときだけ歯車の点＋設定の頭に一行（読めない＝すぐ・届かない＝
   確かめられないまま3日・古い＝元が置かれて3日。数は出さない）。確かめた時刻は `kn-replica-ok`（`kn-replica` は store が
-  書き直すので別）。iPhone は記録が変わらない日は今の控えを書き直さないので、使わない日が3日続いても「古い」が出る。
+  書き直すので別）。iPhone は中身が同じでも日が変われば今の控えを置き直す（11月1日）。「古い」は iPhone を3日開いていないか、送れていないとき。
 - **③で決めたこと**（`js/desk-inbox.js`＝`KN.deskInbox`。`tests/desk-inbox.js`＝門）：入れ物は `inbox/desk-<8桁>/`
   （職場の受け箱は inbox 直下のファイルだけ読むので交わらない。端末の名は localStorage `kn-desk-id`）、済みは
   `inbox/.done/desk-…/`。依頼の `at` は置いた時刻（順に使う）、時刻の行は `was` の頭に入っている（別の欄にしない）、

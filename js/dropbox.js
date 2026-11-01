@@ -47,6 +47,7 @@
   const MONTHS = 12;                 // 月の背骨（2026年10月8日、docs/log/data-check.md の案A）
   const SOON = 2 * 60 * 1000;        // 書き換えてから送るまで（その間の書き換えはまとめて一度）
   const FIRST = 8 * 1000;            // 開いてすぐは起動の邪魔をしない
+  const CALL_WAIT = 2 * 60 * 1000;   // 一つの問い合わせを待つ長さ（大きな控えを遅いつながりで送っても足りる長さ）
 
   const API = "https://api.dropboxapi.com";
   const CONTENT = "https://content.dropboxapi.com";
@@ -233,14 +234,26 @@
       } else if (json) {
         headers["Content-Type"] = "application/json";
       }
-      const res = await fetch(host + path, {
-        method: "POST", headers,
-        body: arg ? body : json ? JSON.stringify(json) : undefined,
-      });
-      if (res.status === 401 && tries === 0) continue;
-      if (raw && res.ok) return { res, body: null };
+      /* 返事が来ないまま待ち続けない（11月1日）：iPhone で閉じた拍に出た問い合わせが戻らないと、送る回が
+         終わらず、あとの送る回が全部その後ろで待って、控えが黙って止まっていた。切れば失敗として覚え、次の回で送る。 */
+      const ctl = typeof AbortController === "function" ? new AbortController() : null;
+      const cut = ctl ? setTimeout(() => ctl.abort(), CALL_WAIT) : 0;
+      let res;
+      try {
+        res = await fetch(host + path, {
+          method: "POST", headers, signal: ctl ? ctl.signal : undefined,
+          body: arg ? body : json ? JSON.stringify(json) : undefined,
+        });
+      } catch (err) {
+        clearTimeout(cut);
+        if (ctl && ctl.signal.aborted) throw new Error("Dropbox から返事が来ませんでした");
+        throw err;
+      }
+      if (res.status === 401 && tries === 0) { clearTimeout(cut); continue; }
+      if (raw && res.ok) return { res, body: null };   // 中身を読み終えるまで切る時計は残す
       let out = null;
       try { out = await res.json(); } catch (err) { out = null; }
+      clearTimeout(cut);
       return { res, body: out };
     }
     return { res: { ok: false, status: 401 }, body: null };
@@ -397,15 +410,6 @@
     return v.latestRev;
   }
 
-  /** 前と同じ中身で日だけ変わったとき。置かれている版が覚えたものか（ほかの端末が置いていないか）。 */
-  async function stillMine() {
-    if (!cfg.latestRev) return true;
-    const m = await call(API, "/2/files/get_metadata", { json: { path: LATEST } });
-    if (m.res.ok) return !!(m.body && (m.body.rev === cfg.latestRev || siblingRev(cfg.latestRev) === m.body.rev));
-    if (/not_found/.test(summary(m))) return true;
-    throw new Error(summary(m));
-  }
-
   /** この端末から控えを送る（設定で押したとき）。次に送るとき上書きして役を取る。 */
   function claim() {
     cfg.sender = true;
@@ -492,7 +496,9 @@
     const at = new Date().toISOString();
     const text = store.exportJSON(at, extra);
     try {
-      const ok = same ? await stillMine() : await putLatest(text, mine === "first");
+      /* 中身が同じでも日が変われば置き直す（11月1日）：写しの端末は置いた時刻で古さを見るので、iPhone が
+         動いていることが毎日届く。置くのは覚えた版への update なので、ほかの端末が置いていれば前と同じく降りる。 */
+      const ok = await putLatest(text, mine === "first");
       if (!ok) { await sendImages(); return stepDown(); }
       if (cfg.lastDay !== day) {
         await upload(`${DAILY_DIR}/kurashi-${day}.json`, text, "add");

@@ -172,8 +172,9 @@ const { open, checker } = require("./lib");
   const before = uploads().length;
   const r4 = await page.evaluate(() => KN.dropbox.sync());
   const dailyNames = [...files.keys()].filter((p) => /^\/daily\/kurashi-/.test(p)).sort();
-  t.check("日が変わると日付の控えを足す（最新は同じなので送らない）",
-    r4 === "sent" && uploads().length === before + 1 && uploads()[before].arg.mode === "add", `${r4} ${uploads().length - before}`);
+  t.check("日が変わると、中身が同じでも最新を置き直し（覚えた版へ update）、日付の控えを足す",
+    r4 === "sent" && uploads().length === before + 2 && uploads()[before].arg.path === "/kurashi-latest.json"
+      && uploads()[before].arg.mode[".tag"] === "update" && uploads()[before + 1].arg.mode === "add", `${r4} ${uploads().length - before}`);
   const has = (d) => files.has(`/daily/kurashi-${d}.json`);
   const recent = [];
   for (let i = 5; i < 34; i++) recent.push(new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10));
