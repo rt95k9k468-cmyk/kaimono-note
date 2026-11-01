@@ -2453,7 +2453,7 @@ a { color: var(--c-primary); }
   .head { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-auto-columns: auto; column-gap: var(--sp-3);
     align-items: start; padding: var(--sp-1) var(--sp-4) 0 0; }
   .head > .topbar, .topbar-row { display: contents; }
-  .topbar-dayrow { grid-row: 1; grid-column: 1; align-self: start; margin-top: var(--sp-2); padding-left: var(--sp-4); }
+  .topbar-dayrow { grid-row: 1; grid-column: 1; align-self: start; margin-top: var(--sp-2); margin-left: var(--sp-4); }
   .topbar-row > .icon-btn { grid-row: 1; margin-top: var(--sp-1); }
   .head > .head-cal { grid-row: 1; grid-column: 2; min-width: 0; }
 }

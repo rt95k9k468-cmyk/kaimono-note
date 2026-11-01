@@ -8327,6 +8327,11 @@ button.note-when:active { opacity: var(--press-fade); }
   :root.notes-dock[data-screen="notes"]:is(.notes-three, :not(.rail-fold)).has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
   :root.notes-dock[data-screen="notes"]:not(.rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 1); }
 }
+/* ノートのホームを二段に（screen-notes.js の homeBody。広い幅で列を畳んだとき・横にした電話）：左に入口・★・最近直した、右に木。 */
+@media (min-width: 840px) {
+  .nt-home-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-4); align-items: start; }
+  .nt-home-two > .notes-books[role="tree"] { margin-top: var(--sp-2); }
+}
 /* 1280px から、買うもの｜価格を左右に（app.js の duo）。 */
 @media (min-width: 1280px) {
   /* めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
@@ -8378,6 +8383,9 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* ---- 電話を横に（base.css の同じ名前の節。docs/desk.md）：紙も島とその向かい（--safe-l/r）の下へ出さない ---- */
 @media (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   .sheet.is-note:not(.is-wide), .sheet.is-card { width: min(100% - var(--safe-l) - var(--safe-r) - var(--sp-8) * 2, var(--desk-read)); }
+  /* 背は上下 12px を空けて窓いっぱい（desk の 32px では日記の「保存する」が送らないと見えなかった）。 */
+  .sheet.is-note:not(.is-wide), .sheet.is-card { height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--sp-3) - max(var(--sp-3), var(--safe-b))); }
+  .sheet.is-card .arc-memo-field > .textarea { min-height: 4lh; height: 4lh; }
   .sheet.is-note.is-wide { width: calc(100% - var(--safe-l) - var(--safe-r) - var(--note-gap) * 2); }
   :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide), :root.notes-dock .sheet.is-note.is-docked:not(.is-wide) { right: var(--safe-r); }
   /* 月の暦は窓に収める（六週で 426px あり、最後の週が窓の外だった）：マスの名前は一段。背の高い月（fitTall）は窓が低くて付かない。 */
@@ -8392,8 +8400,27 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   .think-card { flex-direction: row; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
   .think-card-art { flex: none; width: 56px; height: 48px; }
-  /* 買うもの：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。 */
-  #screen-list .tl-sheet > .js-body { columns: 2; column-gap: var(--sp-4); }
-  #screen-list .tl-sheet > .js-body > * { break-inside: avoid; }
-  #screen-list .tl-sheet > .js-body > :not(.cat-group) { column-span: all; }
+  /* 買うもの・価格：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。 */
+  #screen-list .tl-sheet > .js-body, #screen-prices .prices-ground { columns: 2; column-gap: var(--sp-4); }
+  :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > * { break-inside: avoid; }
+  :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > :not(.cat-group) { column-span: all; }
+  /* 頭のある紙（＋の紙・品・買うものを足す）：頭を左の段、中身を右の段に（上に積むと頭が窓の四割で、行が二つしか見えなかった）。
+     背は中身ぶん、窓まで（段ごとに送る）。閉じる丸と ⋯ は頭の上。 */
+  .sheet.has-hero {
+    --hero-w: 300px;
+    --side-h: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--sp-3) - max(var(--sp-3), var(--safe-b)));
+    display: grid; grid-template-columns: var(--hero-w) minmax(0, 1fr); grid-template-rows: auto;
+    width: min(100% - var(--safe-l) - var(--safe-r) - var(--sp-4) * 2, 880px);
+    max-height: var(--side-h); padding-bottom: 0;
+  }
+  .sheet.has-hero > :is(.sheet-hero, .sheet-body) { max-height: var(--side-h); }
+  .sheet.has-hero > .sheet-hero {
+    grid-area: 1 / 1; align-items: flex-start; overflow-y: auto; overscroll-behavior: contain;
+    border-radius: inherit; border-top-right-radius: 0; border-bottom-right-radius: 0;
+  }
+  .sheet.has-hero > .sheet-body { grid-area: 1 / 2; min-height: 0; overflow-y: auto; }
+  .sheet.has-hero > .sheet-head { right: auto; width: calc(var(--hero-w) - var(--sp-3) * 2); }
+  /* 頭の中は印の下に題（題の欄に段の幅を渡す）。 */
+  .sheet.has-hero > .sheet-hero { flex-direction: column; gap: var(--sp-3); }
+  .sheet.has-hero > .sheet-hero > :not(.hero-mark) { align-self: stretch; }
 }

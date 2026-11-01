@@ -4,6 +4,7 @@
    - どの席も、島の下（左右 59px）に押せるものが無い。月の暦は窓に収まる（最後の週まで）
    - ＋の紙・据えたノート・設定（外観の一枚）を開いたまま縦へ回して戻す：開いたまま・島の下に押せるもの無し
    - 背の低い窓を使い切る：題と週の暦は一段（帯の背 90px まで）・からだと買うものは二段・設定は見出しごとに二段
+   - ＋の紙は頭が左・中身が右（窓に収まる）・ノートのホームは二段（左に最近直した、右に木）・日記の「保存する」は開いてすぐ見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
 const { open, checker } = require("./lib");
 
@@ -127,6 +128,12 @@ function under(safe) {
     await page.waitForSelector(".sheet.is-open", { timeout: 3000 }).catch(() => {});
     await wait(400);
     const s0 = await scan();
+    const hero = await page.evaluate(() => {
+      const e = document.querySelector(".sheet.is-open"), h = e.querySelector(".sheet-hero"), b = e.querySelector(".sheet-body");
+      const r = e.getBoundingClientRect(), hr = h.getBoundingClientRect(), br = b.getBoundingClientRect();
+      return { side: hr.right <= br.left + 1 && Math.abs(hr.top - br.top) < 2, top: Math.round(r.top), bot: Math.round(r.bottom), H: innerHeight };
+    });
+    t.check(`${at}：＋の紙は頭が左・中身が右、窓に収まる`, hero.side && hero.top >= 0 && hero.bot <= hero.H, JSON.stringify(hero));
     await turn();
     const s1 = await page.evaluate(() => document.querySelectorAll(".sheet.is-open").length);
     const s2 = await scan();
@@ -139,6 +146,12 @@ function under(safe) {
     /* 5. ノートの席で開いたノート（右の段に据わる）を開いたまま回す。 */
     await page.click(".tab-notes");
     await wait(600);
+    const home = await page.evaluate(() => {
+      const two = document.querySelector("#screen-notes .nt-home-two");
+      const l = two && two.querySelector(".nt-home-l"), tr = two && two.querySelector('.notes-books[role="tree"]');
+      return { two: !!two, side: !!(l && tr) && tr.getBoundingClientRect().left >= l.getBoundingClientRect().right };
+    });
+    t.check(`${at}：ノートのホームは二段（左に最近直した、右に木）`, home.two && home.side, JSON.stringify(home));
     await page.locator("#screen-notes .nt-row", { hasText: "一つめ" }).first().click();
     await page.waitForSelector(".sheet.is-note.is-open.is-docked", { timeout: 3000 }).catch(() => {});
     await wait(500);
@@ -168,6 +181,20 @@ function under(safe) {
     const still = await page.evaluate(() => document.documentElement.dataset.screen === "settings");
     t.check(`${at}：設定の一枚は回して戻しても同じ所・島の下に押せるもの無し`, l0 >= 2 && l1 === l0 && still && !e0.length && !e1.length,
       JSON.stringify({ l0, l1, still, e0: e0.slice(0, 4), e1: e1.slice(0, 4) }));
+
+    /* 7. 日記の書く紙：「保存する」は開いてすぐ見える（送らない）。 */
+    await page.evaluate(() => KN.app.showScreen("archive"));
+    await wait(600);
+    await page.locator(".think-card").first().click();
+    await page.waitForSelector(".sheet.is-card.is-open", { timeout: 3000 }).catch(() => {});
+    await wait(600);
+    const ok = await page.evaluate(() => {
+      const e = document.querySelector(".sheet.is-card.is-open"), b = e && e.querySelector(".js-ok");
+      return b ? { b: Math.round(b.getBoundingClientRect().bottom), s: Math.round(e.getBoundingClientRect().bottom), H: innerHeight } : null;
+    });
+    t.check(`${at}：日記の「保存する」は開いてすぐ見える`, ok && ok.b <= ok.s && ok.s <= ok.H, JSON.stringify(ok));
+    await page.keyboard.press("Escape");
+    await wait(500);
 
     t.check(`${at}：エラーなし`, !errors.length, errors.join(" | "));
     await browser.close();

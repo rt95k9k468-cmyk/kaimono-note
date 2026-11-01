@@ -274,6 +274,7 @@
 
   /** 面 p の中身を box へ。探しているあいだは、どの面からでも今の一覧（平らに全部）。 */
   function fill(box, t, p, keepX) {
+    box.classList.remove("nt-home-two");
     if (query || p.k === "list") listBody(box, t, keepX);
     else if (p.k === "ask") askBody(box);
     else homeBody(box, t);
@@ -306,6 +307,11 @@
     const all = N().list();
     /* 左の列に木がある幅では、ホームは最近直したノートの札（木と同じものを二度出さない。docs/desk.md 段7・P2）。 */
     if (deskHome()) { box.append(recentCards(recentOf(all, 12))); return; }
+    /* 広い幅で列を畳んだ（横にした電話はいつも）ときは、入口・★・最近直したを左の段、木を右の段に
+       （一列のまま窓の幅に伸ばさない。docs/desk.md「電話を横に」）。 */
+    const two = window.matchMedia(WIDE).matches;
+    const home = box;
+    if (two) { home.classList.add("nt-home-two"); box = node(html`<div class="nt-home-l"></div>`); home.append(box); }
     const gates = node(html`<div class="notes-books nt-gates" role="list"></div>`);
     const gate = (label, mark, to, cls) => {
       const b = node(html`<button type="button" class="nt-gate notes-book ${cls}" role="listitem">${mark}<span class="nt-name">${label}</span></button>`);
@@ -318,7 +324,7 @@
     const favs = all.filter((n) => n.fav);
     if (favs.length) { box.append(secTitle("★")); box.append(flatRows(favs)); }
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
-    const recent = recentOf(all);
+    const recent = recentOf(all, two ? 6 : 3);
     if (recent.length) { box.append(secTitle("最近直した")); box.append(flatRows(recent)); }
     /* 6つの棚があれば、棚ごとに色のカード。 */
     const shelves = N().notebooks().some((nb) => SHELF[nb]);
@@ -331,7 +337,7 @@
       onNote: (n, el) => openNote(n.id, el, { tree: true, back: TREE_ROW }),
       redraw: () => renderBody(),
     });
-    box.append(tree);
+    home.append(tree);
     carry(tree, { scope: "books", open: treeOpen, scroller: () => KN.app.scrollerOf(root),
       root: () => root && root.querySelector(TREE_ROW.replace(" .nt-row", "")) });
   }
