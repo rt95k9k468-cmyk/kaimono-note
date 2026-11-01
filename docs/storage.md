@@ -13,7 +13,7 @@
 | IndexedDB `kaimono-note`（**大きな保存場所**） | `diary`（日記の本文の写し。一日一件、キーは日付）・`snaps`（控えの見出し）・`snapBodies`（控えの中身と、B3 からノート）・`meta`（移し替えの記録・番号・外した記録 `diaryOut`・**記録の写し `live`・開いた記録 `journal`**） | `diary-idb.js`・`backup.js`・`live-idb.js` |
 
 - ほかに別の入れ物が三つ：ノート `kaimono-note-notes`（docs/notes.md）・ノートの画像 `kaimono-note-images`
-  （段5。版1の決め打ち。自動の控え・「バックアップを保存」には載せず、端末の外は Dropbox の `images/` だけ。
+  （段5。版1の決め打ち。自動の控え・「バックアップを保存」には載せず、端末の外は Dropbox の `images/` と、ノートの zip（人が読む形）だけ。
   docs/image-design.md）・鳴らす役 `kaimono-note-bell`（下）。
 - 記録の外の小さな控え：消した直後の控え `kaimono-note-gone`・**変換の読み `kaimono-note-yomi`**
   （`js/yomi.js`。`data-yomi` の欄で打った変換の組。控え・書き出しに乗せない。消えても候補が漢字に当たりにくくなるだけ）。
@@ -40,11 +40,11 @@
 | 同 `snaps`・`snapBodies` | 自動の控え（ノートつき） | 無い（端末の外が代わり）。いちばん新しくない控えへも戻せる | break 2、restore-drill 2 |
 | localStorage `kaimono-note-snapshots` | 大きな保存場所を使えない日の控え | 無い | （無し） |
 | idb `kaimono-note-notes` | ノート・前の版・同期の覚え | 自動の控え（設定の頭に一行）・Dropbox の `notes/`・書き出し | break 3、notes-restore、notes-sync |
-| idb `kaimono-note-images`・`-files` | ノートの画像・PDF | Dropbox の `images/`・`files/` だけ（控え・書き出しに載らない） | note-files |
+| idb `kaimono-note-images`・`-files` | ノートの画像・PDF | Dropbox の `images/`・`files/`（戻したあと `pullMissing`）。自動の控え・`exportJSON` には載らない。ノートの書き出し「1件ずつ（zip）」には入るが、**zip から戻す道は無い** | note-files |
 | meta `replica`・`kn-replica`・`kn-desk-held` | 写しの端末の写し・印・置く前の受け箱 | 写しは Dropbox から読み直す。置く前の受け箱は失う | desk-replica、desk-inbox |
 | idb `kaimono-note-bell` | 鳴らす予定 | 次に開いたとき作り直す（記録ではない） | bell |
 | Dropbox（App folder） | `kurashi-latest.json`・`daily/`（30日＋月の背骨12）・ノート・画像・受け箱 | Dropbox 側の版の履歴。外したら手の書き出しだけ | dropbox、offdevice-watch、restore-drill 1・2 |
-| 手の書き出し（ファイル） | `exportJSON`（画像・PDF は入らない） | — | restore-practice |
+| 手の書き出し（ファイル） | `exportJSON`（画像・PDF は入らない）・ノートの zip（画像・PDF 入り。人が読む形） | — | restore-practice |
 | 中継所（Cloudflare） | ヘルスケアの便（受け取ると消える・一週間） | 記録ではない | relay/worker.test.mjs |
 
 ## 日記の本文：「二重に持つ時期」（外すまで）
