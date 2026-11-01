@@ -2477,6 +2477,7 @@
       <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
                data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}"></article>
     `);
+    KN.ui.rowMenu(wrap, () => rowMenuOf(t.id));
 
     /* Tiles put the same three facts in a square: what it is, when it is, and
        whether it is done. No memo — a third of a screen wide has no room for a
@@ -3185,6 +3186,7 @@
         </div>
       `);
       r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
+      KN.ui.rowMenu(r, () => rowMenuOf(t.id));
       return r;
     };
     const list = (rows) => { const box = node(html`<div class="wk-list"></div>`); rows.forEach((r) => box.append(r)); return box; };
@@ -3381,6 +3383,7 @@
         </div>
       `);
       r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
+      KN.ui.rowMenu(r, () => rowMenuOf(t.id));
       return r;
     };
     const byDay = (a, b) => ((a.due || a.deadline || "~") < (b.due || b.deadline || "~") ? -1
@@ -3862,6 +3865,29 @@
     if (KN.util.weekOf(today).to > today) items.push({ label: "今週", onPick: () => go("week") });
     items.push({ label: "これから", onPick: () => go("later") }, { label: "やめる", onPick: () => go("stop") });
     KN.ui.popMenu(anchor, items);
+  }
+
+  /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの（しまう・消す）。言葉と戻し方は紙と同じ。 */
+  function rowMenuOf(id) {
+    const t = store.getTodo(id);
+    if (!t) return [];
+    return [
+      { icon: "download", label: t.archived ? "アーカイブから戻す" : "アーカイブする", onPick: () => {
+        const cur = store.getTodo(id);
+        if (!cur) return;
+        const back = !!cur.archived;
+        const undo = store.archiveTodo(id, !back);
+        if (back && cur.done) store.toggleTodo(id);
+        haptic(14);
+        KN.ui.toast(`「${cur.title}」を${back ? "戻しました" : "アーカイブしました"}`, { action: { label: "元に戻す", onClick: undo } });
+      } },
+      { icon: "trash", label: "このやることを消す", danger: true, onPick: () => {
+        const undo = store.removeTodo(id);
+        store.keepGone(undo);
+        haptic(14);
+        KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: undo } });
+      } },
+    ];
   }
 
   /** 一行を入れる（受け箱の取り込み・dropbox.js）。時刻があれば予定。日が今週なら今週の印、日が無ければこれから。 */
@@ -6197,6 +6223,7 @@
       </li>
     `);
     li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id, null));
+    KN.ui.rowMenu(li, () => rowMenuOf(t.id));
     const at = li.querySelector("button.tl-doneat");
     if (at) at.addEventListener("click", (e) => { e.stopPropagation(); editDoneAt(t.id, at); });
     li.querySelector("button.check").addEventListener("click", (e) => {
@@ -6324,6 +6351,7 @@
     `);
     li.querySelector(".tl-open").addEventListener("click",
       () => openSheet(t.id, li.querySelector(".tl-node")));
+    KN.ui.rowMenu(li, () => rowMenuOf(t.id));
     /* 絵（レールの丸）も、押せば詳細が開きます。行の中で絵だけが「押しても
        何も起きないところ」でした——見た目には題と同じ一つの行なので、
        どちらを押しても同じ場所へ行くのが素直です。

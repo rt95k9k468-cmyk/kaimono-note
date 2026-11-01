@@ -3,6 +3,8 @@
    - 設定の画面は Esc で一枚ずつ戻り、出たら歯車へ
    - 強制配色（ハイコントラスト）で ＋・今日｜週｜月 に縁、選んでいる席と札は Highlight
    - 丸ゴの無い端末はゴシックの顔（sans-serif 任せにしない）・游ゴシックは 400＝Medium／700＝Bold の面を束ねる
+   - 右クリックは買うもの・やること・ノートの行で行の小窓／やることの紙と小窓（⋯）も閉じたら押したものへ／Tab は 帯→中身→＋→列
+   - Windows（Win32）で近道の一覧は Ctrl／強制配色で形の無い押せるものが無い／時刻・値段・目方は等幅の数字
    - 指の端末（電話）は今までどおり：閉じてもカーソルを置き直さない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-hand.js */
 const { open, checker } = require("./lib");
@@ -110,6 +112,112 @@ async function roundTrip(page, sel, same) {
     t.check("強制配色：選んでいる札と席は Highlight（ほかと違う地）", !!fc.on && !!fc.tab && fc.on === fc.tab && fc.tab !== fc.plain, JSON.stringify(fc));
 
     t.check("エラーなし", !errors.length, errors.join(" | "));
+    await browser.close();
+  }
+
+  /* 点検の続き（Windows の端末のつもりで：navigator.platform を Win32 に）。 */
+  {
+    const win = (ctx) => ctx.addInitScript(() => Object.defineProperty(Navigator.prototype, "platform", { get: () => "Win32" }));
+    const { browser, page, errors } = await open({ viewport: { width: 1440, height: 900 }, before: win });
+    await seed(page);
+    const shownMenu = () => page.evaluate(() => !!document.querySelector(".note-pop.is-open"));
+    const escMenu = async () => { await page.keyboard.press("Escape"); await page.waitForTimeout(400); };
+
+    /* 1 右クリック：買うもの・やること・ノートの行で、ブラウザの小窓でなく行の小窓。 */
+    const rightClick = async (sel) => {
+      const box = await page.evaluate((sel) => { const e = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + 12, y: r.top + r.height / 2 }; }, sel);
+      if (!box) return { found: false };
+      await page.mouse.click(box.x, box.y, { button: "right" });
+      await page.waitForTimeout(400);
+      const r = { found: true, menu: await shownMenu(), items: await page.evaluate(() => [...document.querySelectorAll(".note-pop.is-open [role=menuitem], .note-pop.is-open button")].map((b) => b.textContent.trim()).filter(Boolean)) };
+      if (r.menu) await escMenu();
+      return r;
+    };
+    await page.click(".tab-list");
+    await page.waitForTimeout(600);
+    let rc = await rightClick("#screen-list .item-wrap");
+    t.check("右クリック：買うものの行は行の小窓", rc.menu, JSON.stringify(rc));
+    await page.click(".tab-todo");
+    await page.waitForTimeout(700);
+    rc = await rightClick("#screen-todo .tl-open");
+    t.check("右クリック：やることの行も行の小窓（しまう・消す）", rc.menu && rc.items.some((x) => /アーカイブする/.test(x)) && rc.items.some((x) => /消す/.test(x)), JSON.stringify(rc));
+    await page.click(".tab-notes");
+    await page.waitForTimeout(700);
+    rc = await rightClick("#screen-notes .nt-card");
+    t.check("右クリック：ノートの行も行の小窓（★・移す・消す）", rc.menu && ["★を付ける", "移す", "消す"].every((w) => rc.items.some((x) => x.includes(w))), JSON.stringify(rc));
+
+    /* 2 閉じたら押したものへ：やることの行・小窓（⋯）。 */
+    await page.click(".tab-todo");
+    await page.waitForTimeout(700);
+    const r = await roundTrip(page, "#screen-todo .tl-open", () => document.activeElement.matches("#screen-todo .tl-open"));
+    t.check("やることの紙を Esc で閉じると、カーソルは押した行へ", r.ok && r.opened && r.back, JSON.stringify(r));
+    /* 3 Tab の順：帯 → 中身 → ＋ → 左の列（電話と同じ DOM の順）。 */
+    const seq = [];
+    for (let i = 0; i < 70; i++) {
+      await page.keyboard.press("Tab");
+      seq.push(await page.evaluate(() => { const e = document.activeElement;
+        return e.closest("#head") ? "帯" : e.closest("#dock .add-fab") ? "＋" : e.closest("#tabbar") ? "列" : e.closest(".screen") ? "中身" : null; }));
+    }
+    const order = seq.filter(Boolean).filter((x, i, a) => x !== a[i - 1]).join("→");
+    t.check("Tab は 帯→中身→＋→列 の順で回る", /帯→中身→＋→列→帯/.test(order) && !/中身→帯|＋→中身|列→＋/.test(order), order);
+
+    await page.click(".tab-notes");
+    await page.waitForTimeout(700);
+    await page.locator("#screen-notes .nt-card").first().click();
+    await page.waitForSelector(".js-note-more", { timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    let popBack = null;
+    if (await page.evaluate(() => { const e = document.querySelector(".js-note-more"); if (e) e.focus(); return !!e && document.activeElement === e; })) {
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(400);
+      const opened = await shownMenu();
+      await escMenu();
+      popBack = { opened, back: await page.evaluate(() => document.activeElement.matches(".js-note-more")), sheet: await page.evaluate(() => !!document.querySelector(".sheet.is-open")) };
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(500);
+    }
+    t.check("小窓（⋯）を Esc で閉じると、カーソルは ⋯ へ", !!popBack && popBack.opened && popBack.back, JSON.stringify(popBack));
+
+    /* 4 近道の一覧：Windows では Ctrl（⌘ を出さない）。 */
+    await page.keyboard.press("?");
+    await page.waitForTimeout(500);
+    const keys = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .keys-list kbd")].map((k) => k.textContent));
+    t.check("近道の一覧は Ctrl（⌘ は出さない）", keys.includes("Ctrl") && !keys.includes("⌘"), keys.join(" "));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+
+    /* 5 強制配色：見えている押せるものはどれも、字・絵・縁のどれかで形がある（地だけで言わない）。 */
+    await page.emulateMedia({ forcedColors: "active" });
+    const blind = [];
+    for (const tab of ["archive", "notes", "todo", "list", "diet"]) {
+      await page.click(`.tab-${tab}`);
+      await page.waitForTimeout(700);
+      blind.push(...await page.evaluate(() => [...document.querySelectorAll("button, [role=button], [role=switch], [role=tab], a[href], input[type=checkbox], input[type=radio]")]
+        .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 4 && r.height > 4 && getComputedStyle(e).visibility !== "hidden"; })
+        .filter((e) => { const cs = getComputedStyle(e);
+          if ((e.innerText || e.value || "").trim()) return false;
+          if (e.querySelector("svg, img, canvas") || /input/i.test(e.tagName)) return false;
+          if (cs.borderStyle !== "none" && parseFloat(cs.borderWidth) > 0) return false;
+          if (cs.outlineStyle !== "none" && parseFloat(cs.outlineWidth) > 0) return false;
+          return !["::before", "::after"].some((p) => { const s = getComputedStyle(e, p); return s.content !== "none" && s.content !== "normal" && (s.borderStyle !== "none" || /url|"[^"]+"/.test(s.content + s.maskImage + s.backgroundImage)); });
+        }).map((e) => `${e.closest(".screen, #head, #tabbar, #dock")?.id || "?"} ${e.tagName}.${[...e.classList].join(".")}`)));
+    }
+    await page.emulateMedia({ forcedColors: "none" });
+    t.check("強制配色：形の無い押せるものが無い", !blind.length, [...new Set(blind)].join(" | "));
+
+    /* 6 数字の揃え：時刻・値段・目方の並ぶ所は等幅の数字（Windows の游ゴシックは数字の幅がまちまち）。 */
+    const loose = [];
+    for (const tab of ["todo", "list", "diet"]) {
+      await page.click(`.tab-${tab}`);
+      await page.waitForTimeout(700);
+      loose.push(...await page.evaluate(() => [...document.querySelectorAll(`.screen[data-screen="${document.documentElement.dataset.screen}"] *`)]
+        .filter((e) => e.children.length === 0 && e.getClientRects().length && /^[¥￥]?\s?\d{1,3}(,\d{3})*([.:]\d{1,2})?\s?(kg|円)?$/.test(e.textContent.trim()) && /\d.*\d/.test(e.textContent))
+        .filter((e) => !/tabular-nums/.test(getComputedStyle(e).fontVariantNumeric))
+        .map((e) => `${e.tagName}.${[...e.classList].join(".") || (e.parentElement && "^" + [...e.parentElement.classList].join("."))}「${e.textContent.trim()}」`)));
+    }
+    t.check("数字の並ぶ所は等幅の数字", !loose.length, [...new Set(loose)].join(" | "));
+
+    t.check("Windows のつもり：エラーなし", !errors.length, errors.join(" | "));
     await browser.close();
   }
 

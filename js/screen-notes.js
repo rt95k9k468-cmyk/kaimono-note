@@ -369,6 +369,7 @@
           <span class="nt-card-when">${n.notebook ? book(n.notebook) : ""}${editedOf(n)}</span>
         </button>`);
       c.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, c, { back: ".nt-cards .nt-card" }); });
+      KN.ui.rowMenu(c, () => rowMenuOf(n.id));
       box.append(c);
     });
     return box;
@@ -940,7 +941,23 @@
       U.haptic();
       N().setFav(n.id, !n.fav);
     });
+    KN.ui.rowMenu(el, () => rowMenuOf(n.id));
     return el;
+  }
+
+  /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの。開いているノートは★だけ
+      （移す・消すは開いた紙の ⋯ から——書きかけと食い違わないように）。 */
+  function rowMenuOf(id) {
+    const n = N().get(id);
+    if (!n) return [];
+    const items = [{ icon: "star", label: n.fav ? "★を外す" : "★を付ける", onPick: () => N().setFav(id, !n.fav) }];
+    if (N().isOpen(id)) return items;
+    return items.concat(
+      { icon: "indent", label: "移す", onPick: () => pickPlace(n, (to, nb) => { if (N().move(id, to, nb)) KN.ui.toast("移しました"); }) },
+      { icon: "trash", label: "消す", danger: true, onPick: () => {
+        N().remove(id);
+        KN.ui.toast("最近削除した項目へ移しました", { action: { label: "元に戻す", onClick: () => N().restore(id) } });
+      } });
   }
 
   /* ---------------- 書く紙 ----------------
