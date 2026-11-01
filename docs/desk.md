@@ -5,6 +5,8 @@
 
 ## 決めごと
 
+- **マウスの「戻る」ボタン**（11月1日、Edge の利用者）：Esc と同じ一歩（`keys.js` が body に Escape を投げる）。ブラウザの戻るはいつも止める
+  （履歴を積まないので、通すと頁の外へ出る）。「進む」は取らない（閉じた紙を開き直す考えが無い）。`tests/mouse-back.js`。
 - **境目は 840px**（Material の expanded。iPad の縦は電話と同じ、iPad の横とパソコンが desk）。数は CSS の
   `@media (min-width: 840px)`（base.css・screens.css の「幅の広い画面」）と `screen-notes.js`・`keys.js` の `WIDE`・`edge-back.js` の `DESK` にある。変えるなら全部。
 - **640〜839px（iPad の縦・並べた窓）**：地・帯・写真は窓いっぱい、中身は読む幅 680px へ内側の余白で（screens.css の

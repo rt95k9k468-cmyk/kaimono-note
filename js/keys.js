@@ -14,6 +14,8 @@
    ⌘・Ctrl・Alt 付き（⌘K のほか）、変換中、覆いのある紙・小窓が開いているあいだは何もしません（右の段に据えたノートは覆いが無いので効く）。
    一文字の近道（矢印も）は 外観 → キーボード で切れる（WCAG 2.1.4。この端末だけ・記録の外）。⌘K・⌘\ は切らない。
 
+   マウスの「戻る」ボタン：Esc と同じ一歩（ブラウザの戻るは止める。「進む」は取らない）。
+
    トラックパッドの二本指の横払い（wheel の deltaX）：暦の上なら週、画面の上なら日を一つ送る（払う向きは指で
    払うのと同じ——左へ払えば次）。一回の払いで一度だけ（指を離したあとの慣性の続きは待つ）。横に送れる中身
    （表・チップの列）の上では取りません。送るのは指で払いきったのと同じ道（day-swipe・cal-swipe の flip）。
@@ -194,6 +196,16 @@
     if (onCal) cal(dir);
     else if (!day(dir)) cal(dir);
   }, { passive: false });
+
+  /* マウスの「戻る」ボタン（button 3。Edge・Chrome）：Esc と同じ一歩——いちばん上の小窓・紙を閉じる、設定は一枚もどる。
+     ブラウザの戻る（頁の外へ出る）はいつも止める（アプリは履歴を積まない）。「進む」（4）は取らない。 */
+  const mouseBack = (e) => e.button === 3;
+  document.addEventListener("mousedown", (e) => { if (mouseBack(e)) e.preventDefault(); }, true);
+  document.addEventListener("mouseup", (e) => {
+    if (!mouseBack(e)) return;
+    e.preventDefault();
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true, cancelable: true }));
+  }, true);
 
   KN.keys = { TABS, on, setOn, help };
 })();
