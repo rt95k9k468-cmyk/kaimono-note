@@ -37,6 +37,15 @@
 
   const top = () => stack[stack.length - 1];
 
+  /** 進む（マウスの「進む」ボタン・keys.js）：戻るでめくった「›」の先を、めくった逆の順に開き直す。
+      覚えるのは PAGES の一枚だけ（押しのけた紙・noteLabel は中身が呼んだ側・選んだものなので開き直せない）。
+      ほかへ進んだ・紙を押しのけた・設定に入り直したら忘れる。 */
+  let ahead = [];
+  const remember = (L, under) => {
+    if (L.id && L.id !== "noteLabel" && !L.handle) ahead.push({ id: L.id, under });
+    else ahead = [];
+  };
+
   /** 動いている最中は、次の一手を取らない（重ねて押されると紙が迷子になる）。 */
   let moving = false;
 
@@ -131,6 +140,7 @@
         top: leaving.el, under: under.el,
         commit: () => {
           if (!leaving.handle) {
+            remember(leaving, under);
             stack.pop(); leaving.el.remove(); KN.edgeBack.clear(under.el);
             return;
           }
@@ -192,13 +202,29 @@
        下へ払ったときと違う結果になります。 */
     if (L && L.handle) { KN.motion.fire("nav"); L.handle.tryClose(); return; }
     KN.motion.fire("nav");
-    if (stack.length <= 1) { KN.app.backScreen(); return; }
+    if (stack.length <= 1) { ahead = []; KN.app.backScreen(); return; }
+    remember(L, stack[stack.length - 2]);
     popLayer(L);
   }
 
+  function canForward() {
+    const a = ahead[ahead.length - 1];
+    return !!a && !!root && KN.app.activeScreen() === "settings" && a.under === top() && !!PAGES[a.id];
+  }
+  /** 進めたら真（動いている最中は覚えたまま、押したことだけ受ける）。 */
+  function forward() {
+    if (!canForward()) return false;
+    if (moving) return true;
+    go(ahead.pop().id, true);
+    /* 開き直した一枚は新しく組んだもの。次の進む先は、その上に重ねる。 */
+    if (ahead.length) ahead[ahead.length - 1].under = top();
+    return true;
+  }
+
   /** 「›」の先へ。右から一枚入ってきて、下の一枚は控えへ下がります。 */
-  function go(id) {
+  function go(id, keep) {
     if (moving || !PAGES[id]) return;
+    if (!keep) ahead = [];
     const under = top();
     const L = makeLayer(id);
     stack.push(L);
@@ -223,6 +249,7 @@
      押しても左端から引いても保存されます。二か所に書くと、片方だけ直した日に
      「下へ払うと消えるが、左端から引くと残る」が起きます。 */
   function openAsPage(opts) {
+    ahead = [];
     const under = top();
     const L = makeLayer(null, { title: opts.title, bar: opts.footer });
     /* 中身は**紙のつもりで組まれたもの**（`.field` や `.diet-note` が、器の
@@ -605,6 +632,7 @@
   function onEnter() {
     const from = KN.app.openedFrom && KN.app.openedFrom();
     fromTab = TAB[from] ? from : "archive";
+    ahead = [];
     /* 重なりは畳んで、根っこ一枚に戻します——前に開いたときの「›」の先が
        残っていると、歯車を押した人が、押した覚えのない紙を見ることになる。 */
     while (stack.length > 1) {
@@ -794,5 +822,5 @@
   Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, timeRow, choose, render, copyText, fieldCard });
 
   KN.screens = KN.screens || {};
-  KN.screens.settings = { mount, render, onEnter, where, goTo };
+  KN.screens.settings = { mount, render, onEnter, where, goTo, canForward, forward };
 })();
