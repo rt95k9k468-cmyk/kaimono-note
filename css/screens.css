@@ -433,9 +433,10 @@
 
    変わった字だけを包みます。新しい字（.roll-in）は下から浮かび、古い字
    （::before の attr(data-old)）は上へ抜けていく。前の日へ戻るときは
-   逆向き（.is-down）。どちらも少しぼかして薄めるので、数字が「書き換わる」
+   逆向き（.is-down）。薄めて（古い字は少しぼかして）、数字が「書き換わる」
    のではなく「移り変わる」に見えます。動くのは transform・opacity・
-   filter だけ（題の幅や高さは動かさない）。 */
+   filter だけ（題の幅や高さは動かさない）。.roll-in の keyframes に filter を
+   入れない：WebKit（Linux 26.6）のコンポジタが落ちる（docs/traps.md）。 */
 .topbar-title .roll {
   position: relative;
   display: inline-block;
@@ -457,8 +458,8 @@
 .topbar-title .roll.is-up   { --roll-from: .5em;  --roll-to: -.5em; }
 .topbar-title .roll.is-down { --roll-from: -.5em; --roll-to: .5em; }
 @keyframes roll-in {
-  from { transform: translateY(var(--roll-from)); opacity: 0; filter: blur(2.5px); }
-  to   { transform: none; opacity: 1; filter: none; }
+  from { transform: translateY(var(--roll-from)); opacity: 0; }
+  to   { transform: none; opacity: 1; }
 }
 @keyframes roll-out {
   from { transform: none; opacity: 1; filter: none; }

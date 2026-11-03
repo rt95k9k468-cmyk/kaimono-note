@@ -1,0 +1,41 @@
+# DIAG（一時）：roll-in の filter を抜いて、WebKit で scroll-anchor の「暦を払う」が通るか。main に入れる前に消す。
+name: DIAG roll-in webkit
+on:
+  push:
+    branches: [claude/webkit-segfault-keyframes-filter-qs3n4l]
+permissions: {}
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps webkit
+      - name: scroll-anchor 暦を払う ×3
+        env:
+          TZ: Asia/Tokyo
+          KN_TZ: Asia/Tokyo
+          KN_BROWSER: webkit
+          KN_SCENE: 暦を払う
+        run: |
+          set -o pipefail; ok=0
+          for i in 1 2 3; do
+            echo "== try $i"
+            if timeout 600 node tests/scroll-anchor.js 2>&1 | cut -c1-300; then ok=$((ok+1)); fi
+          done
+          echo "== passed $ok/3"
+          [ "$ok" = 3 ]
+      - name: dmesg
+        if: always()
+        run: sudo dmesg | grep -i segfault | cut -c1-200 | tail -20 || true
