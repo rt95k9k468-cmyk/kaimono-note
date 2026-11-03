@@ -91,6 +91,18 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await page.waitForFunction(() => !document.querySelector("#sheet-root .sheet"), null, { timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(150);
   };
+  /* 閉じたときの一言は、閉じた瞬間に出て 3.6 秒で消える（ui.js の TOAST_MS）。紙が片づくのを待ってから見ると、
+     混んだ機械では消えたあとだった（2026年11月3日、-j 3）。閉じる前に耳を付け、出た一言をそこで聞き取る。 */
+  const listen = () => page.evaluate(() => {
+    window.__said = [];
+    if (window.__ear) return;
+    window.__ear = new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => {
+      const msg = n.nodeType === 1 && (n.matches(".toast-msg") ? n : n.querySelector(".toast-msg"));
+      if (msg) window.__said.push(msg.textContent);
+    })));
+    window.__ear.observe(document.body, { childList: true, subtree: true });
+  });
+  const said = () => page.evaluate(() => (window.__said || []).join("|"));
   const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")]
     .map((p) => ({ at: (p.querySelector(".arc-post-at") || {}).textContent || null, text: p.querySelector(".arc-post-text").textContent })));
 
@@ -184,8 +196,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.keyboard.insertText("一件目の字");
   await page.waitForTimeout(800);
   const m1 = await memo();
-  const said = () => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((x) => x.textContent).join("|"));
   t.check("打った先から残る（頭に日付の行・時刻の行）", /^2026\.10\.06（火）\n/.test(m1) && m1.endsWith(tag("\n\n12:34\n一件目の字")), JSON.stringify(m1));
+  await listen();
   await closeSheet();
   t.check("新しい一件を閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
@@ -226,6 +238,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.press("End");
   await page.keyboard.insertText("を直した");
+  await listen();
   await closeSheet();
   t.check("直して閉じたら「更新しました」", /更新しました/.test(await said()), await said());
   const m3 = await memo();

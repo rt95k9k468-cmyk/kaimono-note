@@ -27,9 +27,12 @@ const { open, checker, URL, fakeDropbox } = require("./lib");
   await B.goto(URL);
   await booted(B);
 
+  /* 読み直しは「新しい文書が開いた回数」で数える。framenavigated は同じ文書の中の移動（replaceState）も数え、
+     Playwright 1.56 では読み直す窓の pagehide が印を外す一回（app.js）まで拾い、一回の読み直しを二回に見せていた。 */
+  const reloads = (p, box, k) => p.on("domcontentloaded", () => { box[k]++; });
   const navs = { A: 0, B: 0 };
-  A.on("framenavigated", (f) => { if (f === A.mainFrame()) navs.A++; });
-  B.on("framenavigated", (f) => { if (f === B.mainFrame()) navs.B++; });
+  reloads(A, navs, "A");
+  reloads(B, navs, "B");
   await A.waitForTimeout(2500);
   t.check("二つ開いて何もしなければ、どちらも読み直さない", navs.A === 0 && navs.B === 0, JSON.stringify(navs));
 
@@ -169,8 +172,8 @@ const { open, checker, URL, fakeDropbox } = require("./lib");
     await booted(Q);
     await ready(Q);
     const nav = { P: 0, Q: 0 };
-    P.page.on("framenavigated", (f) => { if (f === P.page.mainFrame()) nav.P++; });
-    Q.on("framenavigated", (f) => { if (f === Q.mainFrame()) nav.Q++; });
+    reloads(P.page, nav, "P");
+    reloads(Q, nav, "Q");
     await Q.evaluate(() => { KN.notes.put({ ...KN.notes.get("n-same"), body: "はじめ＋Q の追記", updatedAt: new Date().toISOString() }); return KN.notes.flush(); });
     for (let i = 0; i < 40 && !nav.P; i++) await P.page.waitForTimeout(100);
     await booted(P.page);
