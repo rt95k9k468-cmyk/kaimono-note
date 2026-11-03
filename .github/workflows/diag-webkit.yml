@@ -29,7 +29,7 @@ jobs:
           TZ: Asia/Tokyo
           KN_TZ: Asia/Tokyo
           KN_BROWSER: webkit
-          KN_TRIES: "2"
+          KN_TRIES: "3"
         run: |
           python3 -m http.server 8765 --directory . 2> /dev/null > /dev/null &
           sleep 1
