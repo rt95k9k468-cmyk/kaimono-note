@@ -241,6 +241,38 @@ const { open, checker, ASKS } = require("./lib");
     const mb = await page.evaluate(() => KN.notes.list().filter((n) => n.body.startsWith("？試験でつくった問い")).map((n) => n.body));
     t.check("つくった問いに答えると同じノートの終わりへ・続きの一番上", mb.length === 1 && mb[0] === "？試験でつくった問い\n\n10月6日(火) 12:36\nつくった問いの答え"
       && (await goText())[0] === "試験でつくった問い" && !(await madeText()).length, JSON.stringify([mb, await goText(), await madeText()]));
+
+    /* ---- 考えない：まだの問いの×で畳んだ段へ（字と系統を覚える）・戻すで戻る・答えのノートは消さない ---- */
+    const it5 = await page.evaluate(() => KN.store.get().asks[5]);
+    const nBefore = await page.evaluate(() => KN.notes.list().length);
+    await page.locator("#screen-notes .notes-asks.is-yet .note-row", { hasText: it5.q }).first().locator(".js-ask-no").click();
+    await page.waitForTimeout(400);
+    const noIn = () => page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-rest.is-no .note-t")].map((x) => x.textContent.trim()));
+    const noSet = await page.evaluate(() => Object.values(KN.store.get().settings.askNo || {}));
+    t.check("考えない：まだの問いから外れ、畳んだ段「考えない」へ（字と系統を覚える）", !(await yetText()).includes(it5.q) && (await noIn()).includes(it5.q)
+      && noSet.length === 1 && noSet[0].q === it5.q && noSet[0].g === it5.g, JSON.stringify(noSet));
+    t.check("考えない：ノートは増えも減りもしない", (await page.evaluate(() => KN.notes.list().length)) === nBefore);
+    await page.click("#screen-notes .notes-rest.is-no > summary");
+    await page.locator("#screen-notes .notes-rest.is-no .note-row", { hasText: it5.q }).locator(".js-ask-back").click();
+    await page.waitForTimeout(400);
+    t.check("戻すと、まだの問いへ戻る", (await yetText()).includes(it5.q) && !(await noIn()).length
+      && (await page.evaluate(() => Object.keys(KN.store.get().settings.askNo || {}).length)) === 0);
+
+    /* ---- 問いの答えは thinking の中で一行「問いの答え」に畳み、最近直したにも出さない（見せ方だけ） ---- */
+    const home = await page.evaluate(async () => {
+      KN.screens.notes.again();
+      await new Promise((r) => setTimeout(r, 400));
+      const s = document.querySelector('#screen-notes .nt-shelf[data-shelf="thinking"]');
+      const names = s ? [...s.querySelectorAll(".nt-row .nt-name")].map((x) => x.textContent.trim()) : [];
+      const recent = [...document.querySelectorAll("#screen-notes .notes-flat .nt-name")].map((x) => x.textContent.trim());
+      const ans = KN.notes.list().filter((n) => n.notebook === "thinking" && /^？/.test(n.body)).length;
+      return { names, recent, ans };
+    });
+    t.check("thinking：答えのノートは並べず「問いの答え」の一行", home.ans > 0 && home.names.includes("問いの答え") && !home.names.some((x) => /^？/.test(x)), JSON.stringify(home));
+    t.check("最近直したに問いの答えは出ない", !home.recent.some((x) => /^？/.test(x)), JSON.stringify(home.recent));
+    await page.click('#screen-notes .nt-shelf[data-shelf="thinking"] .js-answers');
+    await page.waitForSelector("#screen-notes .notes-asks.is-go", { timeout: 4000 });
+    t.check("「問いの答え」を押すと問いの面", (await goText()).length > 0);
   }
 
   /* ---- 今日の問い：前の日に「？問い」を書いた問いは引かない・自分で書いた問いも混ざる ---- */
@@ -279,6 +311,24 @@ const { open, checker, ASKS } = require("./lib");
       big: parseFloat(getComputedStyle(document.querySelector("#screen-archive .js-think-q")).fontWeight) >= 600 };
   });
   t.check("今日の問い：問いは太く、下に出典と文脈（畳まない）", ctx.shown && ctx.from && ctx.hint && ctx.big, JSON.stringify(ctx));
+
+  /* 今日の問いの×（考えない）：別の問いに替わり、二度と引かない。元に戻せる（ほかを押すと「元に戻す」は下がる）。 */
+  const q0 = await page.textContent("#screen-archive .js-think-q");
+  const noCount = () => page.evaluate(() => Object.keys(KN.store.get().settings.askNo || {}).length);
+  await page.click("#screen-archive .js-think-no");
+  await page.waitForTimeout(400);
+  const n1 = await noCount();
+  const undone = await page.evaluate(() => { const b = [...document.querySelectorAll(".toast .toast-action")].pop(); if (b) b.click(); return b ? b.textContent : null; });
+  await page.waitForTimeout(300);
+  t.check("今日の問いの×のあと「元に戻す」で外れる", n1 === 1 && (await noCount()) === 0, JSON.stringify([n1, undone]));
+  for (let i = 0; i < 20 && (await page.textContent("#screen-archive .js-think-q")) !== q0; i++) await page.click("#screen-archive .js-think-other");
+  await page.click("#screen-archive .js-think-no");
+  await page.waitForTimeout(400);
+  const qn = [await page.textContent("#screen-archive .js-think-q")];
+  for (let i = 0; i < 6; i++) { await page.click("#screen-archive .js-think-other"); qn.push(await page.textContent("#screen-archive .js-think-q")); }
+  const noKeys = await page.evaluate(() => Object.values(KN.store.get().settings.askNo || {}).map((x) => x.q));
+  t.check("今日の問いの×：その問いは二度と引かない（覚える）", q0 === left && !qn.includes(q0) && noKeys.join() === q0, JSON.stringify([q0, qn, noKeys]));
+  /* 設定の「考えない問いをコピー」は、この考えない問いのまま確かめる（あとで）。 */
 
   /* 日記の「？」の行は「あなたの問い」に混ざらない。 */
   await page.evaluate((y) => { KN.store.setDayLog(y, { memo: "12:00\n？ 試験の日記の問い" }); }, yest);
@@ -333,6 +383,8 @@ const { open, checker, ASKS } = require("./lib");
   await page.waitForTimeout(600);
   const got = await page.evaluate(() => KN.store.get().asks.map((a) => a.q));
   t.check("取り込むと入れ替わる（空・同じ本文は落とす）", got.join("|") === ASKS.slice(0, 3).map((a) => a.q).join("|"), JSON.stringify(got));
+  const copyRow = await page.locator(".set-layer:last-child .set-row", { hasText: "考えない問いをコピー" }).count();
+  t.check("設定 → バックアップに「考えない問いをコピー」（考えない問いがあるとき）", copyRow === 1, String(copyRow));
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();

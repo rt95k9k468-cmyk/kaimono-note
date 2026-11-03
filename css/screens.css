@@ -3891,6 +3891,9 @@ a.btn { text-decoration: none; }
   color: var(--c-primary); font-size: var(--fs-sm); transition: opacity var(--m-state) var(--ease);
 }
 .think-today-other svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+/* 考えない（×）と別の問い。×は字なしで小さく、薄い色（押す前に目立たせない）。 */
+.think-today-acts { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.think-today-other.js-think-no { margin-right: 0; min-width: 36px; justify-content: center; color: var(--c-text-3); }
 .think-today-q { position: relative; margin: var(--sp-2) 0 var(--sp-3); color: var(--c-text); font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: 1.5; }
 /* 問いの文脈：出典（日付とノート）と、そのときのこと。思い出すきっかけなので畳まず、問いの下に小さく（今日の問い・答える紙）。 */
 .ask-ctx { position: relative; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); color: var(--c-text-2); font-size: var(--fs-sm); line-height: var(--lh-ui); }
@@ -6040,6 +6043,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-rest[open] > summary svg { transform: rotate(90deg); }
 .notes-rest > summary::-webkit-details-marker { display: none; }
 .notes-rest:not([open]) > summary .section-title { color: var(--c-text-3); }
+/* 問いの「考えない」（×）と、考えない段の「戻す」：カードの縦の真ん中に、★と同じ大きさ（押せる広さは 44px）。 */
+.note-row.is-card .note-side { position: relative; flex: none; align-self: center; width: 24px; height: 24px; display: grid; place-items: center; color: var(--c-text-3); }
+.note-row.is-card .note-side::after { content: ""; position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+.note-row.is-card .note-side svg { width: var(--ico-sm); height: var(--ico-sm); }
+.note-row.is-card .note-side:active { opacity: var(--press-fade); }
+.note-row.is-no .note-t { color: var(--c-text-2); }
 .ask-past { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--c-text-2); font-size: var(--fs-md); line-height: var(--lh-body, 1.7);
   padding-left: var(--sp-3); border-left: 2px solid var(--c-border); }
 .ask-foot { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2); width: 100%; }

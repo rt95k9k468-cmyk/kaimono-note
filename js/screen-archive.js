@@ -1260,12 +1260,15 @@
     askAway = 0;
   });
   function askOf(day, past, turn) {
-    const all = store.get().asks || [];
-    const known = new Set(all.map((a) => askKey(a.q)));
+    const known = new Set((store.get().asks || []).map((a) => askKey(a.q)));
     const done = new Set(past.map((a) => askKey(a.text)));
     /* 一区切りにした問い（設定 askRest）は引かない。 */
     const rm = (store.get().settings || {}).askRest;
     const rest = rm && typeof rm === "object" ? rm : {};
+    /* 考えない問い（設定 askNo。問いの面・今日の問いの「考えない」）は、どこにも引かない。 */
+    const nm = (store.get().settings || {}).askNo;
+    const no = nm && typeof nm === "object" ? nm : {};
+    const all = (store.get().asks || []).filter((a) => !no[askKey(a.q)]);
     const fresh = all.filter((a) => !done.has(askKey(a.q)) && !rest[askKey(a.q)]);
     /* 重さは引く日を選ぶだけ（平日は重い問いを外し、休みの日は軽い問いを外す）。出さない。 */
     const dt = U.dayDate(day), off = dt && (dt.getDay() === 0 || dt.getDay() === 6);
@@ -1300,7 +1303,10 @@
           <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
           <div class="think-today-head">
             <span class="think-today-t">${icon("thought")}<span class="js-think-t"></span></span>
-            <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
+            <span class="think-today-acts">
+              <button type="button" class="think-today-other js-think-no" aria-label="考えない">${icon("close")}</button>
+              <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
+            </span>
           </div>
           <p class="think-today-q js-think-q"></p>
           <div class="ask-ctx js-think-ctx" hidden><p class="ask-ctx-from js-think-from"></p><p class="ask-ctx-t js-think-hint"></p></div>
@@ -1330,11 +1336,13 @@
     let cur;
     /* 問いの下に出典と文脈（そのときのこと）。思い出すきっかけなので畳まない。自分の問いには無い。 */
     const ctx = el.querySelector(".js-think-ctx"), from = el.querySelector(".js-think-from"), hint = el.querySelector(".js-think-hint");
+    const noBtn = el.querySelector(".js-think-no");
     const paint = () => {
       cur = askOf(day, past); q.textContent = cur.text; qt.textContent = cur.mine ? "あなたの問い" : "今日の問い";
       from.textContent = cur.from || ""; from.hidden = !cur.from;
       hint.textContent = cur.hint || ""; hint.hidden = !cur.hint;
       ctx.hidden = !cur.from && !cur.hint;
+      noBtn.hidden = !!cur.mine;
     };
     paint();
     if (fresh) askSaw(cur.text);
@@ -1346,6 +1354,23 @@
       askTurns.set(day, askPick(day, past, cur.text));
       paint();
       askSaw(cur.text);
+    });
+    /* 考えない：この問いを二度と引かない（設定 askNo。字と系統も持つ。問いの面の畳んだ段から戻せる）。 */
+    if (cur.text) noBtn.addEventListener("click", () => {
+      if (cur.mine) return;
+      KN.motion.fire("select");
+      const a = (store.get().asks || []).find((x) => askKey(x.q) === askKey(cur.text)) || { q: cur.text };
+      const k = askKey(a.q);
+      const put = (on) => store.update((s) => {
+        const m = { ...(s.settings.askNo && typeof s.settings.askNo === "object" ? s.settings.askNo : {}) };
+        if (on) m[k] = { t: new Date().toISOString(), q: a.q, g: a.g || "" }; else delete m[k];
+        s.settings.askNo = m;
+      });
+      askTurns.set(day, askPick(day, past, cur.text));
+      put(true);
+      KN.ui.toast("考えない問いにしました", { action: { label: "元に戻す", onClick: () => put(false) } });
+      if (el.isConnected) { paint(); askSaw(cur.text); }
+      if (!cur.text && el.isConnected) { const t = el.querySelector(".think-today"); if (t) t.remove(); }
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
        日記の紙。打つまでは書かない。自分の問いは写さず、書いたところ（そのノートの行）へ。 */

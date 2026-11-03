@@ -352,7 +352,9 @@
     });
   }
 
-  const recentOf = (all, k) => all.filter((n) => !n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)).slice(0, k || 3);
+  /* 問いの答えのノート（頭の行が「？問い」）は最近直したに出さない（答えるたびに積もる。11月3日・利用者。入口は「問い」）。 */
+  const isAnswer = (n) => { const a = KN.noteFormat && KN.noteFormat.asks(n.body)[0]; return !!a && a.line === 0; };
+  const recentOf = (all, k) => all.filter((n) => (!n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)) && !isAnswer(n)).slice(0, k || 3);
 
   /* 左の列に木が出ている（広い幅で、列を畳んでいない）。木の出し入れは css の「左の木」と同じ条件。 */
   const deskHome = () => window.matchMedia(WIDE).matches && !document.documentElement.classList.contains("rail-fold");
@@ -521,9 +523,12 @@
         if (tops.length) slide(r, () => { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); });
       });
       g.append(r);
-      const fold = shelf && FOLD[nb] ? splitOld(tops, t, FOLD[nb]) : null;
-      const shown = fold ? fold.keep : tops;
-      const tail = () => { if (fold && fold.old.length) foldRows(g, nb, fold.old, o); };
+      /* thinking の問いの答え（★でも枝のあるものでもない）は一行「問いの答え」に畳み、押せば問いの面へ。見せ方だけ。 */
+      const ans = nb === THINK ? tops.filter((n) => !n.fav && !t.kids(n.id).length && isAnswer(n)) : [];
+      const own = ans.length ? tops.filter((n) => !ans.includes(n)) : tops;
+      const fold = shelf && FOLD[nb] ? splitOld(own, t, FOLD[nb]) : null;
+      const shown = fold ? fold.keep : own;
+      const tail = () => { if (ans.length) g.append(answersRow()); if (fold && fold.old.length) foldRows(g, nb, fold.old, o); };
       if (open) { treeRows(g, shown, 1, sub); tail(); }
       else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, shown, 1, sub); tail(); });
       (shelf ? box : rest).append(g);
@@ -584,6 +589,17 @@
         fold(g, `${key}:${m.key}`, 2, m.label, "is-month", (mg) => m.list.forEach((n) => mg.append(oldRow(n, o))));
       });
     });
+  }
+  function answersRow() {
+    const look = rowLook(1, false, false);
+    const r = node(html`
+      <button type="button" class="nt-row is-fold js-answers" role="treeitem" data-d="1" style="${look.style}">
+        <span class="nt-ico">${icon("thought")}</span><span class="nt-name">問いの答え</span>
+      </button>`);
+    r.addEventListener("click", () => { KN.motion.fire("select"); go({ k: "ask" }); });
+    const g = node(html`<div class="nt-grp" role="none"></div>`);
+    g.append(r);
+    return g;
   }
   function oldRow(n, o) {
     const look = rowLook(3, false, false);
@@ -669,6 +685,17 @@
     return rows.sort((x, y) => String(y.at).localeCompare(String(x.at)));
   }
   const askRest = () => { const m = (KN.store.get().settings || {}).askRest; return m && typeof m === "object" && !Array.isArray(m) ? m : {}; };
+  /* 考えない（11月3日・利用者）：問いの元の問いを引かない。設定 askNo（問いの字の鍵 → { t, q, g }。reconcile に足さず
+     読むところで既定）。字と系統も持つ——問いの元を作り直すとき、この系統を避けるため（設定 → バックアップで写す）。 */
+  const askNo = () => { const m = (KN.store.get().settings || {}).askNo; return m && typeof m === "object" && !Array.isArray(m) ? m : {}; };
+  function setNo(a, on) {
+    KN.store.update((s) => {
+      const m = { ...askNo() };
+      if (on) m[askKey(a.q)] = { t: new Date().toISOString(), q: a.q, g: a.g || "" }; else delete m[askKey(a.q)];
+      s.settings.askNo = m;
+    });
+  }
+  const askRedraw = () => { if (root && page().k === "ask") renderBody(); };
   function setRest(q, on) {
     KN.store.update((s) => {
       const m = { ...askRest() };
@@ -690,13 +717,15 @@
       else (r.go === "go" ? go : r.go === "new" ? made : left).push(r);
     });
     made.sort((x, y) => String(y.n.createdAt).localeCompare(String(x.n.createdAt)));
-    const yet = askItems().filter((a) => !seen.has(askKey(a.q)) && !rest[askKey(a.q)]);
-    const restYet = askItems().filter((a) => !seen.has(askKey(a.q)) && rest[askKey(a.q)]);
+    const no = askNo();
+    const yet = askItems().filter((a) => !seen.has(askKey(a.q)) && !rest[askKey(a.q)] && !no[askKey(a.q)]);
+    const restYet = askItems().filter((a) => !seen.has(askKey(a.q)) && rest[askKey(a.q)] && !no[askKey(a.q)]);
+    const noYet = Object.values(no).filter((x) => x && x.q).sort((x, y) => String(y.t).localeCompare(String(x.t)));
 
     const add = node(html`<div class="notes-list notes-asks is-new"><div class="note-row is-card is-ask"><button class="note-open notes-ask-new js-ask-new">${icon("plus")}<span class="note-t">問いをつくる</span></button></div></div>`);
     add.querySelector(".js-ask-new").addEventListener("click", () => { KN.motion.fire("select"); makeAsk(); });
     box.append(add);
-    if (!rows.length && !yet.length && !restYet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
+    if (!rows.length && !yet.length && !restYet.length && !noYet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
 
     const card = (r) => {
       const where = r.n ? (headOf(r.n) || "ノート") : `${U.formatDate(`${r.day}T00:00`)} の日記`;
@@ -724,9 +753,27 @@
       const el = node(html`
         <div class="note-row is-card is-ask is-yet">
           <button class="note-open js-answer"><span class="note-t">${a.q}</span>${a.from ? html`<span class="note-foot"><span class="note-d">${a.from}</span></span>` : ""}</button>
+          <button type="button" class="note-side js-ask-no" aria-label="考えない">${icon("close")}</button>
         </div>
       `);
       el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(a.q); });
+      el.querySelector(".js-ask-no").addEventListener("click", () => {
+        KN.motion.fire("select");
+        setNo(a, true);
+        askRedraw();
+        KN.ui.toast("考えない問いにしました", { action: { label: "元に戻す", onClick: () => { setNo(a, false); askRedraw(); } } });
+      });
+      return el;
+    };
+    /* 考えない問い：畳んだ段に、押せば戻す（字だけ。答えの紙は開かない）。 */
+    const noCard = (x) => {
+      const el = node(html`
+        <div class="note-row is-card is-ask is-no">
+          <span class="note-open"><span class="note-t">${x.q}</span></span>
+          <button type="button" class="note-side js-ask-back" aria-label="戻す">${icon("undo")}</button>
+        </div>
+      `);
+      el.querySelector(".js-ask-back").addEventListener("click", () => { KN.motion.fire("select"); setNo(x, false); askRedraw(); });
       return el;
     };
     const listOf = (cls, items, fn) => { const l = node(html`<div class="notes-list notes-asks ${cls}"></div>`); items.forEach((x) => l.append(fn(x))); return l; };
@@ -752,6 +799,11 @@
       const d = node(html`<details class="notes-rest"><summary class="notes-sec"><span class="section-title">一区切り</span>${icon("chevron")}</summary></details>`);
       d.append(listOf("is-rest", resting, card));
       restYet.forEach((a) => d.lastElementChild.append(yetCard(a)));
+      box.append(d);
+    }
+    if (noYet.length) {
+      const d = node(html`<details class="notes-rest is-no"><summary class="notes-sec"><span class="section-title">考えない</span>${icon("chevron")}</summary></details>`);
+      d.append(listOf("is-no", noYet, noCard));
       box.append(d);
     }
   }

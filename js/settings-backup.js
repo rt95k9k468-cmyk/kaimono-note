@@ -514,6 +514,18 @@
     return file;
   }
 
+  /* 考えない問いを写す（11月3日・利用者）：問いの元を作り直すとき、その問いと系統（g）を避けるために渡す字。
+     { kind: "askNo", asks: [{ q, g }] }。リポジトリには置かない。無ければ口を出さない。 */
+  function askNoRow() {
+    const m = (KN.store.get().settings || {}).askNo;
+    const list = m && typeof m === "object" ? Object.values(m).filter((x) => x && x.q) : [];
+    if (!list.length) return null;
+    return navRow({ ico: "copy", tint: TINT.sub, title: "考えない問いをコピー", act: true, onTap: () => {
+      const text = JSON.stringify({ kind: "askNo", asks: list.map((x) => ({ q: x.q, g: x.g || "" })) }, null, 1);
+      KN.util.copy(text, { show: true }).then((ok) => KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした"));
+    } });
+  }
+
   function diaryImportInput() {
     const file = node(html`<input type="file" accept="application/json,.json" class="js-diary-file" hidden>`);
     file.addEventListener("change", async () => {
@@ -1034,7 +1046,8 @@
         diaryOutRows(),
         todoOutRows(),
         navRow({ ico: "thought", tint: TINT.sub, title: "問いの元を取り込む", act: true,
-          value: KN.store.get().asks.length ? `${KN.store.get().asks.length}問` : "なし", onTap: () => asksFile.click() })
+          value: KN.store.get().asks.length ? `${KN.store.get().asks.length}問` : "なし", onTap: () => asksFile.click() }),
+        askNoRow()
       ),
       foot(`日記は、本文の無い日と書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
       file,
