@@ -2,12 +2,12 @@
 name: DIAG webkit hang
 on:
   push:
-    branches: [claude/webkit-scroll-anchor-crash-s2tuat]
+    branches: [claude/webkit-compositor-segfault-diag-uwp4na]
 permissions: {}
 jobs:
   diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -24,25 +24,16 @@ jobs:
           npx playwright install --with-deps webkit
           sudo apt-get install -y -q gdb > /dev/null
           echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope || true
-      - name: Run scene with tracer
+      - name: Bisect CSS
         env:
           TZ: Asia/Tokyo
           KN_TZ: Asia/Tokyo
           KN_BROWSER: webkit
-          KN_SCENE: 暦を払う
-          KN_VERBOSE: "1"
+          KN_TRIES: "2"
         run: |
-          python3 -m http.server 8765 --directory . 2> /tmp/server.log > /dev/null &
+          python3 -m http.server 8765 --directory . 2> /dev/null > /dev/null &
           sleep 1
-          ( while :; do echo "$(date -u +%T) $(ps -eo pid,rss,pcpu,comm | grep -iE 'web|wpe' | tr '\n' ';')"; sleep 1; done ) > /tmp/rss.log 2>&1 &
-          for i in 1 2; do
-            echo "##### try $i $(date -u +%T)"
-            node tests/diag/run.js 2>&1 | cut -c1-400 | tail -60 || true
-          done
-      - name: Show diag
+          node tests/diag/bisect.js 2>&1 | cut -c1-300 || true
+      - name: dmesg
         if: always()
-        run: |
-          echo "##### worker beacons (last 40)"; grep '__diag' /tmp/server.log | python3 -c 'import sys,urllib.parse as u; [print(u.unquote_plus(l.rstrip())) for l in sys.stdin]' | tail -40 | cut -c1-700
-          echo "##### stacks"; cat /tmp/diag-stacks.log 2>/dev/null | cut -c1-300 | head -400
-          echo "##### rss (last 40)"; tail -40 /tmp/rss.log | cut -c1-400
-          echo "##### dmesg"; sudo dmesg | tail -20
+        run: sudo dmesg | grep -i segfault | cut -c1-200 | tail -40

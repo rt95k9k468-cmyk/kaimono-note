@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- DIAG（一時）：アプリを使わない最小の頁。暦の盤（中に mask-image の字）を translateX＋opacity で動かし、組み直す。
+     ?mask=0|1 &op=0|1 &tr=0|1 で一つずつ外す。終わると window.__done。 -->
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; overflow: hidden; height: 100%; font: 14px sans-serif; }
+  #head { position: relative; }
+  .cal { position: sticky; top: 0; background: #fff; }
+  .clip { overflow: hidden; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+  .day { position: relative; height: 64px; min-width: 0; border: 0; background: none; padding: 0;
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,.1), inset -1px 0 0 rgba(0,0,0,.1); }
+  .day.out { opacity: .42; }
+  .dots { display: flex; flex-direction: column; overflow: hidden; gap: 1px; padding: 0 2px; }
+  .name { display: block; font-style: normal; font-size: 10px; line-height: 13px; background: #dfe; box-shadow: inset 2px 0 0 #7b9; }
+  .name b { display: block; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: normal; }
+  .mask .name b { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 5px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 5px), transparent); }
+  .ring { position: absolute; left: 0; top: 0; width: 40px; height: 40px; box-shadow: inset 0 0 0 2px #933; }
+  .list { position: absolute; inset: 380px 0 0; overflow: auto; }
+  .list p { margin: 0; padding: 12px; border-bottom: 1px solid #ddd; }
+</style>
+<div id="head"><section class="cal"><div class="clip"><div class="grid"></div></div></section></div>
+<div class="list"></div>
+<script>
+  const q = new URLSearchParams(location.search), on = (k) => q.get(k) !== "0";
+  if (on("mask")) document.documentElement.className = "mask";
+  const grid = document.querySelector(".grid");
+  const list = document.querySelector(".list");
+  for (let i = 0; i < 40; i++) list.insertAdjacentHTML("beforeend", `<p>予定 ${i}</p>`);
+  const fill = (m) => {
+    grid.textContent = "";
+    for (let d = 0; d < 35 + (m % 2) * 7; d++) {
+      const b = document.createElement("button");
+      b.className = "day" + (d < 3 || d > 31 ? " out" : "");
+      b.innerHTML = `<span>${d + 1}</span><span class="dots">${(d + m) % 3 ? "" : `<i class="name"><b>ながいよていのなまえ ${d}</b></i><i class="name"><b>もうひとつのよてい</b></i>`}</span>`;
+      grid.appendChild(b);
+    }
+    const r = document.createElement("i"); r.className = "ring"; r.style.transform = `translate(${(m * 53) % 300}px, ${(m * 64) % 200}px)`;
+    grid.appendChild(r);
+  };
+  const frame = () => new Promise((ok) => requestAnimationFrame(ok));
+  (async () => {
+    fill(0);
+    await new Promise((ok) => setTimeout(ok, 300));
+    for (let m = 1; m <= 12; m++) {
+      const dir = m % 2 ? 1 : -1;
+      for (let k = 1; k <= 12; k++) {
+        const dx = dir * 220 * k / 12;
+        if (on("tr")) grid.style.transform = `translateX(${dx}px)`;
+        if (on("op")) grid.style.opacity = String(Math.max(.35, 1 - Math.abs(dx) / 260));
+        list.firstChild.getBoundingClientRect();
+        await frame();
+      }
+      grid.style.transform = ""; grid.style.opacity = "";
+      fill(m);
+      await new Promise((ok) => setTimeout(ok, 250));
+    }
+    window.__done = true;
+  })();
+</script>
