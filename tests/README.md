@@ -62,9 +62,10 @@
 2026年9月29日に CLAUDE.md から移した全文（CLAUDE.md は毎回の会話に丸ごと載るので、
 あちらには要点だけ残した）。
 
-- **読み直しは `framenavigated` で数えない。** 同じ文書の中の移動（`replaceState`）も数え、CI の Playwright 1.56 は
-  読み直す窓の `pagehide`（`app.js` が印を外す）まで拾って一回を二回に見せる（手元の 1.63 では出ない）。
+- **読み直しは `framenavigated` で数えない。** 同じ文書の中の移動（`replaceState`）も数え、Playwright 1.56 は
+  読み直す窓の `pagehide`（`app.js` が印を外す）まで拾って一回を二回に見せた（1.63 では出ない）。
   `domcontentloaded` で数える（tests/desk-windows.js）。
+- **Playwright の版は CI と手元で揃える**（`tests/package.json` を手元の版に。版の差で数え方が変わる）。
 - **一言（トースト）は出たところで聞き取る。** 3.6 秒で消えるので、紙が片づくのを待ってから `.toast-msg` を
   見ると、混んだ機械では消えたあと。前に MutationObserver を付ける（tests/diary-chat.js の `listen`）。
 - **localStorage に直に書いてから `reload()` するなら、立ち上げを待つこと。**

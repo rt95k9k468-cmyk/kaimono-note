@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   all:
-    runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
+    runs-on: ubuntu-latest   # Playwright は手元と同じ版（tests/package.json）。1.56 は 26.04 に入らなかった（2026年11月）
     timeout-minutes: 45
     permissions:
       contents: read
@@ -52,7 +52,7 @@ jobs:
   # Linux の WebKit は iOS の Safari と同じではない。ここで落ちても、iPhone で確かめるまでアプリは直さない。
   # CDP・page.coverage を使う台本は入れない（Chromium だけ）。
   webkit:
-    runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
+    runs-on: ubuntu-latest   # Playwright は手元と同じ版（tests/package.json）。1.56 は 26.04 に入らなかった（2026年11月）
     timeout-minutes: 20
     permissions:
       contents: read
@@ -82,7 +82,7 @@ jobs:
   # 西の時間帯の列（総点検 2026-10-27 の P2-5）：日付の台本だけを America/Los_Angeles で。知らせるだけ——門にも配るのにも入れない。
   # 日本の祝日・節気・雑節は日本時間で決まり、端末の時間帯で変わってはいけない（js/season.js・js/holiday.js）。
   west:
-    runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
+    runs-on: ubuntu-latest   # Playwright は手元と同じ版（tests/package.json）。1.56 は 26.04 に入らなかった（2026年11月）
     timeout-minutes: 20
     permissions:
       contents: read

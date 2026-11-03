@@ -20,7 +20,7 @@ jobs:
   # `node tests/run-all.js`。門で一度でも揺れた試験は GATE から外して手元へ戻し、
   # 直してから戻す（飛ばす・消すのではない）。
   test:
-    runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
+    runs-on: ubuntu-latest   # Playwright は手元と同じ版（tests/package.json）。1.56 は 26.04 に入らなかった（2026年11月）
     timeout-minutes: 15
     permissions:
       contents: read
@@ -53,7 +53,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
+    runs-on: ubuntu-latest   # Playwright は手元と同じ版（tests/package.json）。1.56 は 26.04 に入らなかった（2026年11月）
     steps:
       - name: Checkout
         uses: actions/checkout@v6
