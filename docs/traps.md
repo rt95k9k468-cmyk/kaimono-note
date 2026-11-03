@@ -49,3 +49,5 @@
 - **送る器を一時に隠すのに `display: none` を使わない。** WebKit は送りを捨て、戻すと頭から（電話を横にした案内
   `base.css` の「portrait only」で起きた。`visibility: hidden` で隠す）。回した拍に文書が 0 へ戻るのも上のきわの
   一押しと読まない（app.js `watchTopTap` の `turned`）。（2026年10月26日）
+- **入ってくる inline-block の `@keyframes` に `filter` を入れない。** WebKit 26.6（Linux）のコンポジタが null を
+  読んで落ちる（題の字 `.roll-in`。去る `::before` のぼかしは落ちない）。（2026年11月3日）

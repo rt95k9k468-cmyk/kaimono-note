@@ -2876,9 +2876,9 @@
         b.addEventListener("mousedown", (e) => e.preventDefault());
         b.addEventListener("click", () => {
           const c = typing();
-          ta.value = ta.value.slice(0, c.from) + w + " " + ta.value.slice(c.to);
-          const at = c.from + w.length + 1;
-          ta.setSelectionRange(at, at);
+          /* value を丸ごと入れ替えると iOS のキーボードが中身を見失い、直後の「一字消す」が
+             効かない。打ちかけの範囲だけ setRangeText で差し替える（カーソルも末尾へ）。 */
+          ta.setRangeText(w + " ", c.from, c.to, "end");
           U.haptic();
           grow(ta);
           paint();
