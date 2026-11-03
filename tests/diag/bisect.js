@@ -4,26 +4,30 @@
    走らせ方：KN_BROWSER=webkit node tests/diag/bisect.js [名前…]（既定は全部・各 KN_TRIES 回） */
 const { open, URL } = require("../lib");
 
-/* 1回目（run #2）：見た目の CSS をどれ外しても落ち、動き（transition・animation）を全部止めたときだけ落ちない。
-   指を離さなければ落ちない。→ 離したあと（月の組み直し）に走る動きを一つずつ外す／一つだけ残す。 */
-const OFF = "*,*::before,*::after{transition:none!important;animation:none!important}";
-const SDA = ".tl-sheet:not(.is-bare)>.tl-grip::after,.wk-faces::after{animation:edge-in linear both!important;animation-timeline:scroll(nearest block)!important;animation-range:0 var(--sp-6)!important}";
+/* run #2：見た目の CSS をどれ外しても落ち、動きを全部止めたときだけ落ちない。指を離さなければ落ちない。
+   run #3：題の字が転がる動き（.topbar-title .roll・js/util.js の rollText）を外すと落ちず、それだけ残すと落ちる。
+   → その @keyframes の中の性質と、::before／.roll-in のどちらかを絞る（同じ名前の @keyframes は後に書いたほうが勝つ）。 */
+const KF = (body) => `@keyframes roll-in{from{${body("from")}}to{${body("to-in")}}}@keyframes roll-out{from{${body("to-in")}}to{${body("out")}}}`;
+const P = {
+  t: { from: "transform:translateY(var(--roll-from))", "to-in": "transform:none", out: "transform:translateY(var(--roll-to))" },
+  o: { from: "opacity:0", "to-in": "opacity:1", out: "opacity:0" },
+  f: { from: "filter:blur(2.5px)", "to-in": "filter:none", out: "filter:blur(2.5px)" },
+};
+const only = (...ks) => KF((at) => ks.map((k) => P[k][at]).join(";"));
 const V = [
   ["base", ""],
-  ["no-anim", OFF],
-  ["no-sda", ".tl-grip::after,.wk-faces::after{animation:none!important}"],
   ["no-roll", ".topbar-title .roll>.roll-in,.topbar-title .roll::before{animation:none!important}"],
-  ["no-sheet", ".tl-sheet{transition:none!important}"],
-  ["no-row", ".tl-row{transition:none!important}"],
-  ["no-ring", ".cal-ring{transition:none!important}"],
-  ["no-road", ".road-bead{animation:none!important}"],
-  ["no-color", ".day-d,.cal-day{transition:none!important}"],
-  ["only-sda", OFF + SDA],
-  ["only-roll", OFF + ".topbar-title .roll>.roll-in{animation:roll-in var(--m-roll) var(--ease-out) var(--roll-d) both!important}.topbar-title .roll::before{animation:roll-out var(--m-roll) var(--ease-out) var(--roll-d) both!important}"],
-  ["only-sheet", OFF + ".tl-sheet{transition:transform var(--dur) var(--ease-out),opacity var(--dur) var(--ease-out)!important}.tl-sheet.is-from-left,.tl-sheet.is-from-right{transition:none!important}"],
-  ["repro-sda", "sda=1&sheet=1"],
-  ["repro-sda-nosheet", "sda=1&sheet=0"],
-  ["repro-sda-off", "sda=0&sheet=1"],
+  ["kf-no-filter", only("t", "o")],
+  ["kf-filter", only("f")],
+  ["kf-transform", only("t")],
+  ["kf-opacity", only("o")],
+  ["kf-t+f", only("t", "f")],
+  ["kf-o+f", only("o", "f")],
+  ["only-before", ".topbar-title .roll>.roll-in{animation:none!important}"],
+  ["only-in", ".topbar-title .roll::before{animation:none!important}"],
+  ["no-delay", ".topbar-title .roll{--roll-d:0s!important}"],
+  ["repro-roll", "f=1"],
+  ["repro-roll-nof", "f=0"],
 ];
 
 const T0 = Date.now();
@@ -82,7 +86,7 @@ async function attempt([name, arg, mode]) {
   let res;
   try {
     if (repro) {
-      await page.goto(URL.replace("index.html", `tests/diag/${name.startsWith("repro-sda") ? "repro-sda" : "repro"}.html?${arg}`));
+      await page.goto(URL.replace("index.html", `tests/diag/${name.startsWith("repro-roll") ? "repro-roll" : name.startsWith("repro-sda") ? "repro-sda" : "repro"}.html?${arg}`));
       const t = Date.now();
       res = "OK";
       while (Date.now() - t < 20000) {

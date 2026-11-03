@@ -1,0 +1,67 @@
+<!doctype html>
+<!-- DIAG（一時）：アプリを使わない最小の頁。上の帯の題の字を、js/util.js の rollText と同じ形で転がし続ける
+     （変わった字だけ span.roll[data-old] > span.roll-in に包み、::before で去る字。終われば素の字に戻す）。
+     ?f=0 で filter: blur を外す。終わると window.__done。 -->
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; overflow: hidden; height: 100%; font: 17px sans-serif; }
+  .topbar { position: sticky; top: 0; display: flex; padding: 12px; background: #fff; }
+  .day { position: relative; border: 0; background: none; font: inherit; }
+  .title { display: block; overflow: hidden; white-space: nowrap; }
+  .roll { position: relative; display: inline-block; --roll-d: calc(var(--roll-i, 0) * .035s); }
+  .roll.is-up { --roll-from: .5em; --roll-to: -.5em; }
+  .roll.is-down { --roll-from: -.5em; --roll-to: .5em; }
+  .roll > .roll-in { display: inline-block; animation: roll-in .44s ease-out var(--roll-d) both; }
+  .roll::before { content: attr(data-old); position: absolute; left: 0; top: 0; white-space: nowrap; pointer-events: none;
+    animation: roll-out .44s ease-out var(--roll-d) both; }
+  @keyframes roll-in { from { transform: translateY(var(--roll-from)); opacity: 0; filter: blur(2.5px); } to { transform: none; opacity: 1; filter: none; } }
+  @keyframes roll-out { from { transform: none; opacity: 1; filter: none; } to { transform: translateY(var(--roll-to)); opacity: 0; filter: blur(2.5px); } }
+  .nof .roll > .roll-in, .nof .roll::before { animation-name: roll-in-nof; }
+  .nof .roll::before { animation-name: roll-out-nof; }
+  @keyframes roll-in-nof { from { transform: translateY(var(--roll-from)); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes roll-out-nof { from { transform: none; opacity: 1; } to { transform: translateY(var(--roll-to)); opacity: 0; } }
+  .list { position: absolute; inset: 60px 0 0; overflow: auto; }
+  .list p { margin: 0; padding: 12px; border-bottom: 1px solid #ddd; }
+</style>
+<header class="topbar"><button class="day"><span class="title"><span class="d">2026年9月15日</span><span class="w">(火)</span></span></button></header>
+<div class="list"></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  if (q.get("f") === "0") document.documentElement.className = "nof";
+  const list = document.querySelector(".list");
+  for (let i = 0; i < 40; i++) list.insertAdjacentHTML("beforeend", `<p>予定 ${i}</p>`);
+  function rollText(el, text, dir, order) {
+    const old = el.textContent;
+    if (old === text) return;
+    if (el._rollT) { clearTimeout(el._rollT); el._rollT = 0; }
+    let a = 0; while (a < old.length && a < text.length && old[a] === text[a]) a++;
+    let b = 0; while (b < old.length - a && b < text.length - a && old[old.length - 1 - b] === text[text.length - 1 - b]) b++;
+    const r = document.createElement("span");
+    r.className = `roll ${dir > 0 ? "is-up" : "is-down"}`;
+    r.dataset.old = old.slice(a, old.length - b);
+    r.style.setProperty("--roll-i", String(order));
+    const inner = document.createElement("span"); inner.className = "roll-in"; inner.textContent = text.slice(a, text.length - b);
+    r.append(inner);
+    el.textContent = text.slice(0, a);
+    el.append(r, text.slice(text.length - b));
+    el._rollT = setTimeout(() => { el._rollT = 0; if (el.textContent === text) el.textContent = text; }, 440 + order * 35 + 60);
+  }
+  const W = "日月火水木金土";
+  const show = (dt, dir) => {
+    rollText(document.querySelector(".d"), `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日`, dir, 0);
+    rollText(document.querySelector(".w"), `(${W[dt.getDay()]})`, dir, 1);
+  };
+  const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  (async () => {
+    let dt = new Date(2026, 8, 15);
+    await wait(300);
+    for (let m = 1; m <= 24; m++) {
+      const dir = m % 2 ? -1 : 1;
+      dt = new Date(dt.getFullYear(), dt.getMonth() + dir, 1);
+      show(dt, dir);
+      list.firstChild.getBoundingClientRect();
+      await wait(m % 3 ? 650 : 200);   // 転がり終わってから・途中で、の両方
+    }
+    window.__done = true;
+  })();
+</script>
