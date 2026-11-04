@@ -1025,6 +1025,10 @@
         value: dropboxValue(KN.dropbox.status()),
         onTap: () => go("dropbox"),
       })) : null,
+      /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
+      KN.sync && KN.sync.status().phase !== "off" ? card(navRow({
+        ico: "upload", tint: TINT.data, title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync"),
+      })) : null,
       head("この端末の控え"),
       card(
         navRow({

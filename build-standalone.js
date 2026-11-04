@@ -100,6 +100,7 @@ const JS = [
   "js/bell.js",
   "js/replica.js",
   "js/desk-inbox.js",
+  "js/sync.js",
   "js/due-sheet.js",
   "js/product-sheet.js",
   "js/screen-archive.js",
@@ -121,6 +122,7 @@ const JS = [
   "js/settings-notes.js",
   "js/settings-diet.js",
   "js/settings-relay.js",
+  "js/settings-sync.js",
   "js/settings-backup.js",
   "js/lock.js",
   "js/tab-lens.js",
@@ -197,7 +199,7 @@ ${shell}
 const sha = (code) => `'sha256-${crypto.createHash("sha256").update(code, "utf8").digest("base64")}'`;
 const cspFor = (scripts) => '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'; '
   + `script-src ${scripts.map(sha).join(" ")}; object-src 'none'; base-uri 'self'; img-src 'self' data: blob:; `
-  + "style-src 'self' 'unsafe-inline'; connect-src 'self' https:; form-action 'none'; worker-src 'self'; "
+  + "style-src 'self' 'unsafe-inline'; connect-src 'self' https: wss://*.workers.dev; form-action 'none'; worker-src 'self'; "
   + "manifest-src 'self' data:\">";
 
 const fullDoc = `<!DOCTYPE html>

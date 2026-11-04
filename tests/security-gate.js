@@ -14,7 +14,8 @@ const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 const { open, checker, ROOT } = require("./lib");
 
-/* index.html の CSP。connect-src の https: は中継所（利用者が URL を入れる）と Dropbox のため。 */
+/* index.html の CSP。connect-src の https: は中継所（利用者が URL を入れる）・同期の部屋・Dropbox のため。
+   wss://*.workers.dev は同期の部屋の知らせ（WebSocket。docs/sync.md）。 */
 const INDEX_CSP = {
   "default-src": ["'self'"],
   "script-src": ["'self'"],
@@ -22,7 +23,7 @@ const INDEX_CSP = {
   "base-uri": ["'self'"],
   "img-src": ["'self'", "data:", "blob:"],
   "style-src": ["'self'", "'unsafe-inline'"],
-  "connect-src": ["'self'", "https:"],
+  "connect-src": ["'self'", "https:", "wss://*.workers.dev"],
   "form-action": ["'none'"],
   "worker-src": ["'self'"],
   "manifest-src": ["'self'"],

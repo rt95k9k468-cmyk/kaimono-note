@@ -221,8 +221,8 @@ SETTINGS SCREEN に表がある。
   入口まで・組み終わりまで・読み直したか。鍵 `kaimono-note-launches`、時間だけで日付・回数は持たない）。
 - **二つ目の鍵（CSP）**（R29、2026年9月29日）：`index.html` の meta。`script-src 'self'`
   （直書きのスクリプトは無い）・`object-src 'none'`・`base-uri 'self'`・`img-src 'self' data:
-  blob:`・`style-src 'self' 'unsafe-inline'`（style 属性）・`connect-src 'self' https:`（中継所・
-  Dropbox は利用者が決める URL）。**`connect-src` に data: は無い**——data: の
+  blob:`・`style-src 'self' 'unsafe-inline'`（style 属性）・`connect-src 'self' https: wss://*.workers.dev`（中継所・
+  同期の部屋・Dropbox は利用者が決める URL。wss は部屋の知らせ）。**`connect-src` に data: は無い**——data: の
   URL を fetch すると止まる（写真は FileReader → Image なので当たらない）。単体版
   （build-standalone.js）は自分の頭を組むので、この meta は写らない（写ると直書きの
   スクリプトが止まる）。`tools/diary-import.html` は別の頁で、まだ入れていない。

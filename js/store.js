@@ -672,6 +672,8 @@
   const SHRINK_MIN = 10;
   const SHRINK_KEEP = 0.7;
   let bulk = false;
+  /* 丸ごと入れ替えた回数（復元・すべて削除・サンプル・写しから戻す）。3台の同期が「送る前に訊く」に使う（js/sync.js）。 */
+  let replacedN = 0;
   let lastTotal = null;
   let wroteLive = false;
 
@@ -1494,6 +1496,7 @@
     let wrote = true;
     try { localStorage.setItem(KEY, raw); } catch (_) { wrote = false; }
     state = loadFrom(raw);
+    replacedN++;
     try { lastTotal = totalOf(state); } catch (_) { lastTotal = null; }
     version++;
     if (!wrote) { bulk = true; persist(); }
@@ -5280,6 +5283,7 @@
 
   function applyBackup(next) {
     bulk = true;
+    replacedN++;
     update((s) => {
       fillMemoOut(next, s);
       fillTodoOut(next, s);
@@ -5310,6 +5314,7 @@
 
   function reset() {
     bulk = true;
+    replacedN++;
     update((s) => {
       const fresh = emptyState();
       Object.keys(s).forEach((k) => delete s[k]);
@@ -5368,6 +5373,7 @@
     T("写真を整理する", null, null);
 
     bulk = true;
+    replacedN++;
     update((s) => {
       Object.keys(s).forEach((k) => delete s[k]);
       Object.assign(s, fresh);
@@ -5379,6 +5385,7 @@
     /* 読めなかったかどうか。画面はこれを見て「保存を止めています」と
        言えます（黙って動かないのが、いちばん困るので）。 */
     loadError: () => loadError,
+    replaced: () => replacedN,
     // 写しの端末か（docs/desk.md「段15」。js/replica.js）。
     replica: () => !!replica, showReplica, REPLICA_KEY,
     // 書いた回数と、読んだときの様子。日記の写し（js/diary-idb.js）が使います。

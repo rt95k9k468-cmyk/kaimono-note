@@ -621,6 +621,7 @@
     birthHow: { title: "誕生日のショートカット", build: () => S.birthHowRows() },
     relay:    { title: "中継所",   build: () => S.relayRows() },
     relayHow: { title: "建てかた", build: () => S.relayHowRows() },
+    sync:     { title: "同期の部屋", build: () => S.syncRows() },
     notesBooks: { title: "ノートブック", build: () => S.notesLabelList("nb") },
     notesTags:  { title: "タグ",         build: () => S.notesLabelList("tag") },
     /* 一つのノートブック・タグ。題はその名前なので、付け替えたら追いかけます
@@ -698,6 +699,7 @@
       onTap: () => go("data"),
     })));
     if (S.notesSyncAlert) put([S.notesSyncAlert()]);
+    if (S.syncAlert) put([S.syncAlert()]);
     /* 写しの端末が困ったとき（js/replica.js の trouble）。数は出さない。押すと Dropbox（最後の控えの時刻はそこ）。 */
     const rep = KN.replica && KN.replica.trouble && KN.replica.trouble();
     if (rep) L.body.append(card(navRow({

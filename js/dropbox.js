@@ -783,6 +783,29 @@
   /* `soon` はノートを書いたとき（js/notes-idb.js）。ノートは store を通らないので。 */
   /* `api` はノートの同期（js/notes-sync.js）が呼ぶ口。鍵の取り直しはこちらに任せる。 */
   const api = { call, summary, API, CONTENT, ready: () => recovered.then(() => connected() && !!cfg.appKey) };
+
+  /* 3台の同期の鍵（js/sync.js。docs/sync.md「鍵」）。`sync-key.json` を一度置いたら上書きしない（"add"）。
+     読む：字 / 置いていない null / つながっていない undefined。置く："ok" / 先に在った "exists"。 */
+  const SYNC_KEY = "/sync-key.json";
+  async function syncKeyGet() {
+    await recovered;
+    if (!connected() || !cfg.appKey) return undefined;
+    const r = await call(CONTENT, "/2/files/download", { arg: { path: SYNC_KEY }, raw: true });
+    if (r.res.ok) return r.res.text();
+    if (r.res.status === 409 && /not_found/.test(summary(r))) return null;
+    throw new Error(summary(r));
+  }
+  async function syncKeyPut(text) {
+    await recovered;
+    if (!connected() || !cfg.appKey) return undefined;
+    const r = await call(CONTENT, "/2/files/upload", {
+      arg: { path: SYNC_KEY, mode: "add", autorename: false, mute: true },
+      body: new Blob([text], { type: "application/octet-stream" }),
+    });
+    if (r.res.ok) return "ok";
+    if (r.res.status === 409 && /conflict/.test(summary(r))) return "exists";
+    throw new Error(summary(r));
+  }
   /** 取り込んだ元のファイル（.enex・zip）を `imports/<日>/<名前>` へそのまま。同じ名前で中身が違えば
       Dropbox が番号を足す（同じ中身なら置いた扱い）。大きいものは分けて送る。429 は retry_after だけ待つ。 */
   async function putImport(day, file) {
@@ -808,5 +831,5 @@
     await post("/2/files/upload_session/finish", { cursor: { session_id, offset: at }, commit }, file.slice(at));
   }
 
-  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, glanceRead, inboxPut, inboxOp, inboxDrop, inboxTake, KEEP, api };
+  KN.dropbox = { status, putImport, setAppKey, authUrl, prepare, finish, disconnect, sync, soon, claim, onChange, backups, download, glance, glanceRead, inboxPut, inboxOp, inboxDrop, inboxTake, KEEP, api, syncKeyGet, syncKeyPut };
 })();

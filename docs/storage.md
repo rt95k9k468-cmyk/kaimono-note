@@ -43,6 +43,7 @@
 | idb `kaimono-note-notes` | ノート・前の版・同期の覚え | 自動の控え（設定の頭に一行）・Dropbox の `notes/`・書き出し | break 3、notes-restore、notes-sync |
 | idb `kaimono-note-images`・`-files` | ノートの画像・PDF | Dropbox の `images/`・`files/`（戻したあと `pullMissing`）。自動の控え・`exportJSON` には載らない。ノートの書き出し「1件ずつ（zip）」には入るが、**zip から戻す道は無い** | note-files |
 | meta `replica`・`kn-replica`・`kn-desk-held` | 写しの端末の写し・印・置く前の受け箱 | 写しは Dropbox から読み直す。置く前の受け箱は失う | desk-replica、desk-inbox |
+| idb `kaimono-note-sync` | 3台の同期：鍵の元・部屋の鍵と URL・前に合わせた中身・送り待ち（docs/sync.md） | 鍵の元は Dropbox の `sync-key.json`。ほかは部屋から作り直せる写し（記録ではない） | sync-device |
 | idb `kaimono-note-bell` | 鳴らす予定 | 次に開いたとき作り直す（記録ではない） | bell |
 | Dropbox（App folder） | `kurashi-latest.json`・`daily/`（30日＋月の背骨12）・ノート・画像・受け箱 | Dropbox 側の版の履歴。外したら手の書き出しだけ | dropbox、offdevice-watch、restore-drill 1・2 |
 | 手の書き出し（ファイル） | `exportJSON`（画像・PDF は入らない）・ノートの zip（画像・PDF 入り。人が読む形） | — | restore-practice |

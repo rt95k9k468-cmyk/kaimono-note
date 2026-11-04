@@ -662,6 +662,7 @@
     const rep = KN.replica && KN.replica.trouble ? KN.replica.trouble() : null;
     const why = rep ? "replica-" + rep
       : KN.notesSync && KN.notesSync.stale() ? "notes"
+      : KN.sync && (KN.sync.trouble() || (KN.sync.status().ask && KN.sync.status().ask.kind !== "first")) ? "sync"
       : !(KN.store && KN.store.replica()) && KN.backup.offDeviceStale() ? "backup" : "";
     if (btn.dataset.dot === why) return;
     btn.classList.toggle("has-dot", !!why);
@@ -671,7 +672,7 @@
   const DOT_SAY = {
     notes: "ノートを合わせられていません", backup: "端末の外の控えが古くなっています",
     "replica-fail": "iPhone の写しを読めませんでした", "replica-far": "iPhone の写しが届いていません",
-    "replica-old": "iPhone の写しが古いままです",
+    "replica-old": "iPhone の写しが古いままです", sync: "同期の部屋へ送れていません",
   };
   function queueDot() {
     if (dotQueued) return;
@@ -708,7 +709,7 @@
   if (KN.store) KN.store.subscribe(queueDot);
   if (KN.notesSync) KN.notesSync.onChange(queueDot);
   /* replica.js は head.js よりあとに読む（index.html）ので、読み終えてから。 */
-  const late = () => { if (KN.replica) KN.replica.onChange(queueDot); queueDot(); };
+  const late = () => { if (KN.replica) KN.replica.onChange(queueDot); if (KN.sync) KN.sync.onChange(queueDot); queueDot(); };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", late, { once: true });
   else late();
   document.addEventListener("visibilitychange", () => {

@@ -84,7 +84,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - **Actions の権限はジョブごと**：上は `permissions: {}`、試験は `contents: read` だけ、deploy に `pages: write`・`id-token: write`。
   checkout は `persist-credentials: false`（試験が走る間、書ける鍵を残さない）。
 - **CSP は `tests/security-gate.js`（門）が形ごと見張る**。index.html の CSP を変えるなら、台本の `INDEX_CSP` も一緒に直す。
-  `connect-src` の `https:` は中継所（利用者の入れる URL）のため。
+  `connect-src` の `https:` は中継所（利用者の入れる URL）・同期の部屋のため、`wss://*.workers.dev` は部屋の知らせ（docs/sync.md）。
 - 道具の頁（`tools/calendar.html`・`diary-import.html`）は `default-src 'none'`。直書きのスクリプトは sha256 で許す——
   **中身を一字でも直したら meta の値も直す**（門が落ちて、入れる値を出す）。
 - 見本（`tools/notes-proto*.html`・`todo-proto.html`）は配らない（deploy が消す）。手元のサーバーで開く。
