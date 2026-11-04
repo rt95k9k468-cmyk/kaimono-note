@@ -1,0 +1,21 @@
+{
+  // くらしノートの同期の部屋（docs/sync.md・README.md）。中継所（relay/）とは別の Worker。
+  //
+  // 合言葉（ROOM_SETUP）は .dev.vars.example に名前だけ。配置の途中で Secret として
+  // 尋ねられます。ここ（設計図）に書かないのは、設計図が公開のリポジトリに入っているからです。
+  "name": "kurashi-sync",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+
+  // 本文（暗号文）も端末の鍵も、ログに残さない。
+  "observability": { "enabled": false },
+
+  // 部屋は Durable Object 一つ（SQLite）。無料の枠で使えるのは SQLite の形だけ。
+  "durable_objects": {
+    "bindings": [{ "name": "ROOM", "class_name": "Room" }]
+  },
+  // 一度出した tag は書き換えない（足すときは v2 を後ろに）。
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room"] }
+  ]
+}
