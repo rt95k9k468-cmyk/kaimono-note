@@ -36,6 +36,8 @@ const { open, checker } = require("./lib");
   /* カードは「すべてのノート」に（③）。 */
   await page.click("#screen-notes .notes-books .js-all");
   await page.waitForSelector("#screen-notes .notes-list .note-row:nth-child(2)");
+  /* 面が移る一拍（faceIn：寄って入る）が終わってから測る。 */
+  await page.evaluate(() => Promise.all(document.querySelector("#screen-notes .js-body").getAnimations().map((a) => a.finished)));
   const lsBefore = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length);
 
   const first = ".notes-list .note-row";
