@@ -1,6 +1,6 @@
-/* 設定の主な筋（R20）と、困ったときの記録（R23）・使用量の内訳（R24）。
+/* 設定の主な筋（R20）と、エラーの記録（R23。11月5日まで「困ったときの記録」）・使用量の内訳（R24）。
 
-   主な筋：やることの歯車から開くとその画面の設定と「一般」が並ぶ・スイッチを切ると
+   主な筋：どの歯車からも全部の席が一枚に並ぶ（押した席 → general → 残り）・スイッチを切ると
    記録に入り読み直しても残る・外観で「ダーク」が効いて残る・「›」で潜って戻る。
    困ったときの記録：投げたエラー・約束の断り・保存の失敗が控えに入る（store の外の鍵）・
    続けて同じものは一件にまとめて数える・日記の道のものは種類だけ・50件まで・
@@ -125,8 +125,13 @@ const { open, checker } = require("./lib");
   await openSettings("todo");
   const T0 = await page.locator(top).innerText();
   const notifyOn = await page.evaluate(() => KN.notify.enabled());
-  t.check("tasks の根っこに「通知 ›」といまの状態、スイッチ二つは出ない",
-    new RegExp(`通知\\s*${notifyOn ? "オン" : "オフ"}`).test(T0) && !T0.includes("やることの時刻を知らせる"), T0.slice(0, 200));
+  t.check("通知 › は general に一つ（いまの状態）・スイッチ二つは出ない（2026年11月5日まで tasks）",
+    new RegExp(`通知\\s*${notifyOn ? "オン" : "オフ"}`).test(T0) && !T0.includes("やることの時刻を知らせる")
+      && T0.indexOf("general") < T0.indexOf("通知"), T0.slice(0, 200));
+  /* 根っこは一枚に全部の席（2026年11月5日）：歯車を押した席 → general → 残りの席（下の帯の順）。 */
+  const heads = () => page.locator(`${top} .set-head.is-seat`).allInnerTexts().then((a) => a.map((x) => x.trim()).join());
+  t.check("tasks の歯車：tasks → general → daily・notes・shopping・health", (await heads()) === "tasks,general,daily,notes,shopping,health", await heads());
+  t.check("ロックは根っこに一つ（前は daily と notes の二か所）", (await page.locator(`${top} .set-row`, { hasText: "ロック" }).count()) === 1);
   t.check("「カレンダー ›」はショートカット App のある端末だけ",
     T0.includes("カレンダー") === (await page.evaluate(() => !!(KN.ics && KN.ics.apple()))));
   const T1 = await into("通知");
@@ -135,12 +140,13 @@ const { open, checker } = require("./lib");
 
   await openSettings("archive");
   const D0 = await page.locator(top).innerText();
-  t.check("daily の根っこは「あの日」・表示 ›・書き出し ›",
-    D0.includes("「あの日」を出す") && /表示/.test(D0) && /書き出し/.test(D0)
+  t.check("daily の根っこは 表示 ›・書き出し ›（「あの日」は表示の先へ）",
+    !D0.includes("「あの日」を出す") && /表示/.test(D0) && /書き出し/.test(D0)
       && !D0.includes("出す範囲") && !D0.includes("月ぶんを書き出す"), D0.slice(0, 200));
+  t.check("daily の歯車：daily → general → notes・tasks・shopping・health", (await heads()) === "daily,general,notes,tasks,shopping,health", await heads());
   const D1 = await into("表示");
-  t.check("表示の先に見え方の行（出す範囲・季節のひとこと・月のまとめ）",
-    ["日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "月のまとめ"]
+  t.check("表示の先に見え方の行（あの日・出す範囲・季節のひとこと・月のまとめ）",
+    ["「あの日」を出す", "日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "季節の絵", "月のまとめ"]
       .every((x) => D1.includes(x)) && !/積み上げ/.test(D1), D1.slice(0, 200));
   /* 「見せ方」（全文・3行・5行）は一枚の紙のときだけ効くので、時刻ごと（既定）では出さない（docs/thinking.md）。 */
   t.check("日記は時刻ごと（既定）・見せ方は一枚のときだけ", /日記\s*時刻ごと/.test(D1) && !D1.includes("見せ方"), D1.slice(0, 200));
@@ -159,9 +165,10 @@ const { open, checker } = require("./lib");
 
   await openSettings("diet");
   const H0 = await page.locator(top).innerText();
-  t.check("health の根っこに「記録を書き出す」（説明は置かない）・「取り込み ›」",
-    H0.includes("記録を書き出す") && !H0.includes("日ごとの表") && H0.includes("取り込み")
+  t.check("health の根っこに「書き出し」（説明は置かない）・「取り込み ›」",
+    /health[\s\S]*書き出し[\s\S]*general/.test(H0) && !H0.includes("日ごとの表") && H0.includes("取り込み")
       && !H0.includes("ヘルスケアから取り込む"), H0.slice(0, 300));
+  t.check("health の歯車：health → general → daily・notes・tasks・shopping", (await heads()) === "health,general,daily,notes,tasks,shopping", await heads());
   const H1 = await into("取り込み");
   t.check("取り込みの先にヘルスケア・中継所（AIの窓口は外した）",
     H1.includes("ヘルスケアから取り込む") && H1.includes("中継所") && !H1.includes("AIの窓口"), H1.slice(0, 200));
@@ -236,8 +243,8 @@ const { open, checker } = require("./lib");
   t.check("文は200字で切る", await page.evaluate(() => KN.errlog.list()[0].msg.length === 200));
 
   await openSettings("list");
-  const errRow = rowOf("困ったときの記録");
-  t.check("一般に「困ったときの記録」と件数", /2件/.test(await errRow.innerText()), await errRow.innerText());
+  const errRow = rowOf("エラーの記録");
+  t.check("general に「エラーの記録」と件数", /2件/.test(await errRow.innerText()), await errRow.innerText());
   await errRow.click();
   await page.waitForSelector(`${top} .js-err-row`);
   const E2 = await page.locator(top).innerText();
@@ -266,7 +273,7 @@ const { open, checker } = require("./lib");
   t.check("起動の控えは最後の5回だけ・読み直しを覚える・書き出しに乗らない", L2.n === 5 && L2.last && L2.last.reload === true && !L2.ex,
     JSON.stringify(L2));
   await openSettings("list");
-  await rowOf("困ったときの記録").click();
+  await rowOf("エラーの記録").click();
   await page.waitForSelector(`${top} .js-err-row`);
   t.check("上限（50件）だけを一行で言う", E2.includes("50件まで"));
   await back();

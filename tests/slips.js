@@ -94,10 +94,10 @@ const YEST = "2026-10-05";
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await wait(300);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "置き直しの控え" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "置き直しの記録" }).first().click();
   await wait(600);
   const facts = await page.locator(".set-layer:last-child").innerText();
-  c.check("設定の奥に「置き直しの控え」：件数・置いていた時刻・決めていた長さ",
+  c.check("設定の奥に「置き直しの記録」（11月5日まで「置き直しの控え」）：件数・置いていた時刻・決めていた長さ",
     /この4週間に置き直したもの/.test(facts) && /置いていた時刻/.test(facts) && /決めていた長さ/.test(facts) && /朝/.test(facts), facts.slice(0, 200));
   c.check("並べるだけ（多い・少ない・原因・平均を言わない）", !/多い|少ない|原因|平均|傾向|改善|!|！/.test(facts), facts);
   c.check("表：3回以上・置き直し方・0 の行は出さない（昼・夕・15分まで は 0）",

@@ -115,9 +115,11 @@ const { open, checker } = require("./lib");
   await page.click("#head .js-settings");
   await settled("settings");
   await page.waitForTimeout(700);
-  t.check("ノートの設定は notes の見出しだけ（daily の行は出ない）", await page.evaluate(() => {
+  /* 根っこは全部の席が一枚（2026年11月5日）。ノートの歯車からは notes の見出しが先。 */
+  t.check("ノートの歯車：notes の見出しが先（並びは表示の先・ロックは general）", await page.evaluate(() => {
+    const heads = [...document.querySelectorAll("#screen-settings .set-layer:last-child .set-head.is-seat")].map((h) => h.textContent.trim());
     const t = document.getElementById("screen-settings").innerText;
-    return /notes/.test(t) && /並び/.test(t) && /ロック/.test(t) && !/「あの日」を出す/.test(t);
+    return heads[0] === "notes" && heads[1] === "general" && /表示/.test(t) && /ロック/.test(t) && !/並び/.test(t) && !/「あの日」を出す/.test(t);
   }));
   await page.evaluate(() => KN.app.backScreen());
   await settled("notes");

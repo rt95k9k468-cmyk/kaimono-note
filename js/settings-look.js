@@ -42,7 +42,7 @@
         ? card(...rows)
         : foot("ありません。"),
       card(navRow({ ico: "copy", tint: TINT.data, title: "コピー", act: true,
-        onTap: () => copyText([KN.errlog.text(), journal, KN.todoPast ? KN.todoPast.text() : ""].filter(Boolean).join("\n\n"), "困ったときの記録") })),
+        onTap: () => copyText([KN.errlog.text(), journal, KN.todoPast ? KN.todoPast.text() : ""].filter(Boolean).join("\n\n"), "エラーの記録") })),
       foot("新しい50件まで。日記の中身は残しません。"),
     ];
   }
@@ -164,15 +164,7 @@
     `);
     paintAccents(accents.querySelector(".js-accents"));
 
-    /* ホーム画面の絵に数を出せる端末でだけ。ブラウザのタブでは API その
-       ものが無く、**何も起きないスイッチは、無いより悪い**ので。 */
-    const badge = KN.app.appBadge;
-    const canBadge = badge && badge.supported();
-    const badgeOn = canBadge && badge.enabled();
-    /* 「オン」なのに出ていない、が三つのうちいちばん悪い状態です。iOS は
-       許可を自分で落とすことがあり（設定を触った・端末を戻した）、その
-       ことをページには何も言いません。だからスイッチ側が言います。 */
-    const badgeBlocked = canBadge && badgeOn && badge.blocked && badge.blocked();
+    /* ホーム画面のアイコンの数は、通知の一枚へ移した（2026年11月5日。settings-todo.js の badgeRows）。 */
 
     /* 文字の大きさ。明るさと同じで、動かしたその場で画面ぜんぶが変わる
        ——いま読んでいるこの一枚の字で、大きさを確かめられるように。 */
@@ -256,20 +248,6 @@
         title: "一文字の近道", on: KN.keys.on(),
         onTap: (v) => { KN.keys.setOn(v); render(); },
       })), foot("? で一覧")] : []),
-      canBadge ? head("ホーム画面") : null,
-      canBadge ? card(
-        switchRow({
-          title: "アイコンに数を出す", on: badgeOn,
-          onTap: async (v) => {
-            haptic();
-            if (!v) { badge.disable(); render(); return; }
-            const ok = await badge.enable();
-            render();
-            if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
-          },
-        })
-      ) : null,
-      badgeBlocked ? foot("端末の設定で通知を許可してください。") : null,
     ];
   }
 

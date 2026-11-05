@@ -350,11 +350,11 @@ const TODAY = "2026-10-06";
   await wait(450);
   c.check("指が動いた（スクロール）ときは開かない", (await openTitle()) === null, await openTitle());
 
-  /* K3 の設定：tasks の「見直す日 ›」の先、三つの日数の下にスイッチ（2026年10月24日に根っこから移した）。
+  /* K3 の設定：tasks の「見直す間隔 ›」（11月5日まで「見直す日」）の先、三つの日数の下にスイッチ（2026年10月24日に根っこから移した）。
      オンで、いま入れたら付く日を一行。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await wait(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "見直す日" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "見直す間隔" }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
   await page.waitForFunction(() => !document.querySelector(".set-layer.is-edge-lift"));
   await wait(300);

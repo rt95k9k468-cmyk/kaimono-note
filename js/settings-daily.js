@@ -24,24 +24,13 @@
     render();
   };
 
-  /* 根っこには「あの日」だけを置き、見え方の十行は「表示 ›」、書き出しの
-     二行は「書き出し ›」へ。十行を根っこに並べると、daily の歯車から開いた
-     一枚が daily の設定だけで埋まり、一般まで遠くなります。 */
+  /* 根っこは「表示 ›」と「書き出し ›」の二行だけ（2026年11月5日）。根っこに全部の席が並ぶように
+     なったので、見え方の行（「あの日」も）は表示の一枚へ。ロックは general へ（ノートと同じ一つの鍵）。 */
   function dailyRows() {
-    const s = store.get().settings;
     return [
       card(
-        switchRow({
-          title: "「あの日」を出す", on: s.showThen !== false,
-          onTap: (v) => dailySet("showThen", v),
-        })
-      ),
-      foot("何年か前の同じ日に書いたものを、暦の下に出します。"),
-      card(
         navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
-        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") }),
-        navRow({ ico: "lock", tint: TINT.data, title: "ロック",
-          value: KN.lock && (KN.lock.covers("daily") || KN.lock.covers("diary")) ? "オン" : "オフ", onTap: () => go("lock") })
+        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") })
       ),
     ];
   }
@@ -90,6 +79,14 @@
     const lines = s.logLines === 3 ? 3 : 5;
     const page = s.diaryView === "page";
     return [
+      /* 「あの日」は根っこから移した（2026年11月5日）。何が出るかは題だけでは分からないので一文。 */
+      card(
+        switchRow({
+          title: "「あの日」を出す", on: s.showThen !== false,
+          onTap: (v) => dailySet("showThen", v),
+        })
+      ),
+      foot("何年か前の同じ日に書いたものを、暦の下に出します。"),
       card(
         /* 日記の見せ方（思考のホーム。docs/thinking.md）。本文の形はどちらも同じ一つの文字。 */
         pickRow({
@@ -146,21 +143,20 @@
           onTap: (v) => dailySet("showStamps", v),
         })
       ),
+      /* 季節の二行は一枚のカードに（前は一行ずつ二枚）。
+         季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
+         出典は畳んで——CC BY／BY-SA は作者・ライセンス・URL の表示が要る（docs/season-art.md）。広重はノートの設定へ。 */
       card(
         switchRow({
           title: "季節のひとこと", on: s.showSeason !== false,
           onTap: (v) => dailySet("showSeason", v),
-        })
-      ),
-      foot("二十四節気と七十二候を一行。"),
-      /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
-         出典は畳んで——CC BY／BY-SA は作者・ライセンス・URL の表示が要る（docs/season-art.md）。広重はノートの設定へ。 */
-      card(
+        }),
         switchRow({
           title: "季節の絵", on: s.seasonArt !== false,
           onTap: (v) => dailySet("seasonArt", v),
         })
       ),
+      foot("ひとことは、二十四節気と七十二候を一行。"),
       KN.seasonArt && KN.seasonArt.credits("daily").length ? S.more("写真の出典", "Wikimedia Commons ／ " + KN.seasonArt.credits("daily")
         .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
       card(

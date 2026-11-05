@@ -1,7 +1,7 @@
 /* ノートの設定（docs/notes.md の「設定」）。
 
-   ノートの席の歯車で notes の見出しだけ（daily の歯車には出ない。2026年10月11日から五つめの席）で
-   並び・ノートブック・タグ・書き出し・ロック／「並び」は daily の表示から移った（鍵は
+   根っこは全部の席が一枚（2026年11月5日）：ノートの席の歯車なら notes が先、daily の歯車なら daily が先。
+   notes にノートブック・タグ・表示 ›（並び・季節の絵・「道に置く」）・書き出し、ロックは general に一つ（鍵は
    notesOrder のまま）／ノートブックの名前を付け替える（最近削除のノートも・
    更新日は動かない・題が追いかける）／色を選ぶと一覧のカードもその色／もうある
    名前へ付け替えると訊いてからまとめる（色はまとめ先）／タグを外してもノートは
@@ -102,8 +102,8 @@ print(json.dumps(out, ensure_ascii=False))
   await page.evaluate(() => KN.app.showScreen("archive"));
   await settled("archive");
   await openSettings();
-  t.check("daily の歯車：daily → general（notes は出ない）", (await heads()).join() === "daily,general", (await heads()).join());
-  t.check("daily の歯車にノートの並びは出ない", !/並び/.test(await topText()));
+  t.check("daily の歯車：daily → general → 残りの席", (await heads()).join() === "daily,general,notes,tasks,shopping,health", (await heads()).join());
+  t.check("根っこにノートの並びは出ない（notes の表示の先）", !/並び/.test(await topText()));
   await into("表示");
   t.check("daily の表示に「ノートの並び」はもう無い", !(await topText()).includes("ノートの並び"));
   await back();
@@ -111,11 +111,15 @@ print(json.dumps(out, ensure_ascii=False))
   await page.click('.tab[data-tab="notes"]');
   await settled("notes");
   await openSettings();
-  t.check("ノートの席の歯車：notes → general", (await heads()).join() === "notes,general", (await heads()).join());
+  t.check("ノートの席の歯車：notes → general → 残りの席", (await heads()).join() === "notes,general,daily,tasks,shopping,health", (await heads()).join());
   const R0 = await topText();
-  t.check("notes に並び・ノートブック・タグ・書き出し・ロック（daily の行は出ない）",
-    ["並び", "ノートブック", "タグ", "書き出し", "ロック"].every((x) => R0.includes(x)) && !R0.includes("「あの日」を出す"), R0.slice(0, 300));
-  t.check("並びの右に「直した日」", /並び\s*直した日/.test(R0));
+  t.check("notes にノートブック・タグ・表示・書き出し・general にロック（並び・「あの日」は表示の先）",
+    ["ノートブック", "タグ", "表示", "書き出し", "ロック"].every((x) => R0.includes(x))
+      && !R0.includes("「あの日」を出す") && !/並び/.test(R0), R0.slice(0, 300));
+  await into("表示");
+  const V0 = await topText();
+  t.check("notes の表示に並び（右に「直した日」）・季節の絵・「道に置く」を出す",
+    /並び\s*直した日/.test(V0) && V0.includes("季節の絵") && V0.includes("「道に置く」を出す"), V0.slice(0, 200));
 
   /* ---- 並び ---- */
   /* 二択は行の値のところに小窓（一枚は重ねない。2026年10月24日）。 */
@@ -124,8 +128,9 @@ print(json.dumps(out, ensure_ascii=False))
   await page.locator(".note-pop.set-menu.is-open [role=menuitemradio]", { hasText: "作った日" }).click();
   await page.waitForTimeout(400);
   t.check("並びを作った日に（鍵は notesOrder）", (await page.evaluate(() => KN.store.get().settings.notesOrder)) === "created");
-  t.check("根っこの値も作った日", /並び\s*作った日/.test(await topText()));
+  t.check("表示の値も作った日", /並び\s*作った日/.test(await topText()));
   await page.evaluate(() => { KN.store.update((s) => { delete s.settings.notesOrder; }); });
+  await back();
 
   /* ---- ノートブック ---- */
   await into("ノートブック");
@@ -223,7 +228,8 @@ print(json.dumps(out, ensure_ascii=False))
   t.check("1つにまとめる：題の無いノートは一行目を見出しに", ex.one.includes("# 献立の一行目\n"));
 
   /* ---- 書き出し：画面から zip ---- */
-  await into("書き出し", true);
+  /* ノートの歯車からは notes の節が先（根っこは全部の席が一枚。daily・health にも「書き出し」がある）。 */
+  await into("書き出し");
   t.check("書き出しの一枚", (await navTitle()) === "ノートを書き出す");
   const chips = await page.$$eval(`${top} .chip`, (c) => c.map((x) => x.getAttribute("aria-label") || x.textContent.trim()));
   t.check("何を書き出すかのチップ（すべて・★・ノートブック・タグ）", chips.join() === "すべて,★,仕事,料理", chips.join());

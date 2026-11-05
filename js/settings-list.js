@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, foot, navRow, switchRow, dangerRow } = S;
+  const { go, TINT, card, navRow, switchRow, dangerRow } = S;
 
   /* ---------------- 買うもの ----------------
 
@@ -38,8 +38,8 @@
           value: store.learnedList().length ? `${store.learnedList().length}件` : "なし", onTap: () => go("learned"),
         })
       ),
-      /* 店の数は「お店」の行がもう言っているので、ここは商品の数だけ。 */
-      foot(`${s.products.length}商品`),
+      /* カードの下の「◯商品」は外した（2026年11月5日）。何の数かを言わない数だけの一行で、
+         根っこに全部の席が並ぶと、ほかの席の見出しの添え書きにも読めた。 */
       /* 既定で畳む（roadmap-3.1 の S4）。 */
       card(
         switchRow({

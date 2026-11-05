@@ -355,25 +355,20 @@
     if (on) groups.forEach((g) => { const sec = node(html`<div class="set-sec"></div>`); g[0].before(sec); sec.append(...g); });
   }
 
-  /* ---------------- 一枚で済ませる ----------------
+  /* ---------------- 一枚に、全部の席 ----------------
 
-     二段でした。**目次**（外観・バックアップ・「画面ごと」…の行き先だけが
-     並ぶ一枚）と、**その中**。歯車を押すとその画面の設定がいきなり開き、
-     戻るを押すと目次が出てくる、という順です。
+     根っこは一枚で、**五つの席と general が全部並びます**（2026年11月5日）。歯車を押した
+     席が先、general が次、残りの席は下の帯の順。前は押した席と general だけで、ほかの席の
+     設定はそのタブへ移って歯車を押し直さないと出ませんでした——「タブをわざわざ選ぶ」手間。
+     目次（席を選ぶだけの一枚）には戻しません。選ばずに、送れば見える。
 
-     目次をやめました。歯車を押した指は「**この画面のことを直したい**」と
-     言っているので、開いた一枚に、その画面の設定と「一般」が両方並びます。
-     ほかのタブの設定は、そのタブの歯車から。「画面ごと」というまとまりは、
-     もうどこにもありません。
+     **一画面ぶんある中身だけは「›」の先です**（お店・カテゴリ・外観・バックアップ…）。
+     参考画面（Structured）の `通知設定 ›` と同じ**詳細**——行の右にいまの値が出ていて、
+     押すと続きが開く、というものです。 */
 
-     **一画面ぶんある中身だけは、これまでどおり「›」の先です**（お店10件・
-     カテゴリ9件・外観・バックアップ・アイコン）。あれは「目次の目次」では
-     なく、参考画面（Structured）の `通知設定 ›` と同じ**詳細**——行の右に
-     いまの値が出ていて、押すと続きが開く、というものです。 */
-
-  /* 歯車を押したのはどの画面か。**入ったときに一度だけ**読みます——store が
+  /* 歯車を押したのはどの画面か（その席を先に並べる）。**入ったときに一度だけ**読みます——store が
      動くたびに render() が走るので、そのつど聞くと、設定を見ているあいだに
-     根っこの中身が入れ替わる余地を残すことになります。 */
+     根っこの並びが入れ替わる余地を残すことになります。 */
   let fromTab = null;
 
   /* 絵の四角の色。**基調色とは別の軸**です（からだの四つの輪と同じ理由
@@ -409,6 +404,8 @@
   }
 
   const head = (text) => node(html`<h2 class="set-head">${text}</h2>`);
+  /** 根っこの節の見出し：席の名前と、下の帯と同じ絵。 */
+  const seatHead = (t) => node(html`<h2 class="set-head is-seat">${icon(t.icon)}<span>${t.label}</span></h2>`);
 
   /** カードの**下**に置く説明。行の中に入れると、行の高さを説明が決めて
       しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
@@ -587,15 +584,18 @@
 
      中身の関数は、このファイルより後に読まれる settings-*.js にあります。
      読み込んだ時点ではまだ居ないので、組むときに `S` から引きます。 */
-  /* ノートは五つめの席（2026年10月11日まで daily の裏で、daily の下に並べていた）。 */
+  /* ノートは五つめの席（2026年10月11日まで daily の裏で、daily の下に並べていた）。
+     絵は下の帯と同じもの（app.js の FACES）——見出しの絵で、どのタブの設定かを帯と結ぶ。 */
   const TAB = {
-    todo:    { label: "tasks",    rows: () => S.todoRows() },
-    list:    { label: "shopping", rows: () => S.listRows() },
-    prices:  { label: "shopping", rows: () => S.listRows() },
-    archive: { label: "daily",    rows: () => S.dailyRows() },
-    notes:   { label: "notes",    rows: () => S.notesRows() },
-    diet:    { label: "health",   rows: () => S.dietRows() },
+    todo:    { label: "tasks",    icon: "checklist", rows: () => S.todoRows() },
+    list:    { label: "shopping", icon: "cart",      rows: () => S.listRows() },
+    prices:  { label: "shopping", icon: "cart",      rows: () => S.listRows(), seat: "list" },
+    archive: { label: "daily",    icon: "book",      rows: () => S.dailyRows() },
+    notes:   { label: "notes",    icon: "notes",     rows: () => S.notesRows() },
+    diet:    { label: "health",   icon: "heart",     rows: () => S.dietRows() },
   };
+  /** 下の帯の順。歯車を押した席のあとに、残りをこの順で並べる。 */
+  const SEATS = ["archive", "notes", "todo", "list", "diet"];
 
   /** 「›」の先。ここに載るのは**一画面ぶんある中身**だけです。 */
   const PAGES = {
@@ -603,19 +603,20 @@
     data:   { title: "バックアップ",          build: () => S.dataRows() },
     notify:    { title: "通知",     build: () => S.notifyRows() },
     cal:       { title: "カレンダー", build: () => S.calRows() },
-    slips:     { title: "置き直しの控え", build: () => S.slipRows() },
+    slips:     { title: "置き直しの記録", build: () => S.slipRows() },
     slipsFine: { title: "細かく",   build: () => S.slipFineRows() },
-    review:    { title: "見直す日", build: () => S.reviewRows() },
+    review:    { title: "見直す間隔", build: () => S.reviewRows() },
     dailyView: { title: "表示",     build: () => S.dailyViewRows() },
+    notesView: { title: "表示",     build: () => S.notesViewRows() },
     dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
     lock:      { title: "ロック",   build: () => S.lockRows() },
     intake:    { title: "取り込み", build: () => S.intakeRows() },
-    errors: { title: "困ったときの記録",      build: () => S.errorRows() },
+    errors: { title: "エラーの記録",          build: () => S.errorRows() },
     dropbox: { title: "Dropbox へ送る",       build: () => S.dropboxRows() },
     stores: { title: "お店",                 build: () => [S.storesGroup()] },
     cats:   { title: "カテゴリ",              build: () => [S.categoriesGroup()] },
     learned: { title: "おぼえた振り分け",     build: () => S.learnedRows() },
-    icons:  { title: "アイコンについて",       build: () => [S.iconGapsGroup(), S.iconReportsGroup()] },
+    icons:  { title: "アイコンの報告",         build: () => [S.iconGapsGroup(), S.iconReportsGroup()] },
     calHow:   { title: "ショートカットの組み方", build: () => S.calHowRows() },
     glanceHow: { title: "小窓の組み方", build: () => S.glanceHowRows() },
     birthHow: { title: "誕生日のショートカット", build: () => S.birthHowRows() },
@@ -726,13 +727,15 @@
       ico: "undo", tint: TINT.warn, alert: true, onTap: () => go("data"),
       title: P.status().phase === "off" ? "過去のやることを読めません" : "過去のやることが見つかりませんでした",
     })));
-    const tab = TAB[fromTab] || TAB.archive;
-    L.body.append(head(tab.label));
-    put(tab.rows());
-    /* 上の見出しは席の名前（tab.label ＝ shopping など）。その続きなので、
-       ここも同じ系列の言葉・同じ小文字にします。 */
-    L.body.append(head("general"));
+    /* 歯車を押した席 → general → 残りの席（下の帯の順）。general を二番目に置くのは、外観・
+       バックアップがどの歯車からも今までと同じ近さにあるように。見出しは席の名前と下の帯の絵
+       （general も同じ系列の小文字）。 */
+    const from = (TAB[fromTab] && TAB[fromTab].seat) || (TAB[fromTab] ? fromTab : "archive");
+    const section = (id) => { L.body.append(seatHead(TAB[id])); put(TAB[id].rows()); };
+    section(from);
+    L.body.append(seatHead({ label: "general", icon: "gear" }));
     put(generalRows());
+    SEATS.filter((id) => id !== from).forEach(section);
   }
 
   function stampOf(iso) {
@@ -759,14 +762,18 @@
     return `端末の外の控えが${x.days}日前のままです`;
   }
 
-  /** どの画面から開いても、下半分はこれ。 */
+  /** general：どのタブにも効くもの。 */
   function generalRows() {
     const s = store.get();
     const a = store.ACCENTS.find((x) => x.id === (s.settings.accent || "orange"));
     const notes = S.collectIconGaps().length + (s.iconReports || []).length;
-    /* 二つの束：毎日の暮らしに効くもの（外観・バックアップ）と、困ったときに開くもの
-       （アイコンの報告・エラーの控え）。一つのカードに混ぜると、めったに開かない二行が
-       ふだんの二行と同じ重さに見える。 */
+    /* 通知（やることの時刻・アイコンの数）とロック（日記・daily・ノート）は、前は tasks・daily・
+       notes の中にあり、同じロックが二か所に出ていた。どれも端末とアプリ全体の話なので、ここに一つ。 */
+    const notify = KN.notify && KN.notify.supported() ? KN.notify : null;
+    const badge = KN.app.appBadge && KN.app.appBadge.supported() ? KN.app.appBadge : null;
+    const lock = KN.lock;
+    /* 二つの束：ふだんに効くもの（外観・通知・ロック・バックアップ）と、困ったときに開くもの
+       （エラー・アイコンの報告）。一つのカードに混ぜると、めったに開かない二行が同じ重さに見える。 */
     return [
       card(
         navRow({
@@ -775,24 +782,31 @@
           value: a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null,
           onTap: () => go("look"),
         }),
-        /* 前は「バックアップと書き出し」。書き出しの三つがタブへ移ったので、
-           名前を中身に合わせました。 */
+        notify || badge ? navRow({
+          ico: "bell", tint: TINT.goal, title: "通知",
+          value: (notify && notify.enabled()) || (badge && badge.enabled()) ? "オン" : "オフ",
+          onTap: () => go("notify"),
+        }) : null,
+        lock ? navRow({
+          ico: "lock", tint: TINT.sync, title: "ロック",
+          value: lock.supported() && lock.enabled() ? "オン" : "オフ", onTap: () => go("lock"),
+        }) : null,
         navRow({
           ico: "download", tint: TINT.data, title: "バックアップ",
           onTap: () => go("data"),
         })
       ),
       card(
-        navRow({
-          ico: "tag", tint: TINT.icons, title: "アイコンについて",
-          value: notes ? `${notes}件` : "",
-          onTap: () => go("icons"),
-        }),
         KN.errlog ? navRow({
-          ico: "copy", tint: TINT.sub, title: "困ったときの記録",
+          ico: "copy", tint: TINT.sub, title: "エラーの記録",
           value: S.errCount() ? `${S.errCount()}件` : "なし",
           onTap: () => go("errors"),
-        }) : null
+        }) : null,
+        navRow({
+          ico: "tag", tint: TINT.icons, title: "アイコンの報告",
+          value: notes ? `${notes}件` : "",
+          onTap: () => go("icons"),
+        })
       ),
     ];
   }

@@ -746,7 +746,7 @@
     let t = liveCopyText() + diaryCopyText(u.diary);
     if ((u.where === "idb" ? u.liveChars : u.liveChars + (u.snapChars || 0)) / IPHONE_CHARS >= 0.6) t += "記録が大きくなってきました。";
     if (u.tight) t += `自動バックアップは${u.fits}件まで。こまめに「バックアップを保存」を。`;
-    return [head("この端末の中"), card(rows), foot(t)];
+    return [card(rows), foot(t)];
   }
 
   /* 記録の写し（js/live-idb.js。B1）：いつの状態か。書くたびに追うので、ふだんは
@@ -1020,16 +1020,20 @@
         navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", act: true, onTap: () => file.click() })
       ),
       foot(exportSub()),
-      KN.dropbox ? card(navRow({
-        ico: "upload", tint: TINT.data, title: "Dropbox へ自動で送る",
-        value: dropboxValue(KN.dropbox.status()),
-        onTap: () => go("dropbox"),
-      })) : null,
-      /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
-      KN.sync && KN.sync.status().phase !== "off" ? card(navRow({
-        ico: "upload", tint: TINT.data, title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync"),
-      })) : null,
-      head("この端末の控え"),
+      /* Dropbox と同期の部屋は一つの束（2026年11月5日。前は一行ずつ二枚）。 */
+      card(
+        KN.dropbox ? navRow({
+          ico: "upload", tint: TINT.data, title: "Dropbox へ自動で送る",
+          value: dropboxValue(KN.dropbox.status()),
+          onTap: () => go("dropbox"),
+        }) : null,
+        /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
+        KN.sync && KN.sync.status().phase !== "off" ? navRow({
+          ico: "upload", tint: TINT.data, title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync"),
+        }) : null
+      ),
+      /* 「この端末の控え」と「この端末の中」（使用量）は一つの見出しに（2026年11月5日。同じ場所の話が二つに割れていた）。 */
+      head("この端末の中"),
       card(
         navRow({
           ico: "undo", tint: TINT.sub, title: "自動バックアップ", off: !snaps.length,
@@ -1043,8 +1047,9 @@
       ),
       ...usageRows(KN.backup.usage()),
       /* 日記の取り込み（D7）。取り込み道具の README が「設定 → general → バックアップ → 日記を取り込む」
-         と案内している口。一度きりの作業なので、毎日使う列には混ぜません。 */
-      head("取り込み"),
+         と案内している口。一度きりの作業なので、毎日使う列には混ぜません。
+         見出しは「記録の出し入れ」（11月5日。前は「取り込み」で、「記録から外す」二行が名に合っていなかった）。 */
+      head("記録の出し入れ"),
       card(
         navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", act: true, onTap: () => diaryFile.click() }),
         diaryOutRows(),

@@ -34,8 +34,28 @@
      `settings.notesOrder` のまま。ノートブック・タグは、一つも無ければ行ごと
      出しません（中身の無い一枚になるので。絞り込みのチップと同じ）。
      数は出しません——ノートも daily と同じく評価しない（tests/daily-rules.js）。
-     鍵の番号は daily と一つ（js/lock.js）なので、ここからも同じ一枚へ。かけるかは場所ごと。 */
+
+     2026年11月5日に組み直した：根っこは「›」の一つの束と、同期。並び・季節の絵・「道に置く」は
+     daily と同じく「表示 ›」の先へ（根っこに全部の席が並ぶので、一つの席は短く。出典の畳みも根っこから
+     消える）。ロックは general へ（鍵の番号は daily と一つ。js/lock.js）。 */
   function notesRows() {
+    return [
+      card(
+        names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
+        names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
+        navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("notesView") }),
+        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
+        navRow({ ico: "copy", tint: TINT.sub, title: "目次をコピー", act: true, onTap: copyTitles }),
+        ...sixRows(),
+        /* 「取り込む」は10月14日に外し、10月29日に戻した（利用者：別のアカウントの Evernote を取り込む）。 */
+        KN.noteImport ? navRow({ ico: "download", tint: TINT.sub, title: "取り込む", onTap: () => KN.noteImport.open() }) : null
+      ),
+      syncCard(),
+    ];
+  }
+
+  /** 表示（notes の「›」の先）：並び・季節の絵・「道に置く」を出す。 */
+  function notesViewRows() {
     const created = store.get().settings.notesOrder === "created";
     return [
       card(
@@ -53,23 +73,9 @@
               repaintNotes();
             },
           }),
-        })
-      ),
-      card(
-        names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
-        names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
-        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
-        navRow({ ico: "copy", tint: TINT.sub, title: "目次をコピー", act: true, onTap: copyTitles }),
-        ...sixRows(),
-        /* 「取り込む」は10月14日に外し、10月29日に戻した（利用者：別のアカウントの Evernote を取り込む）。 */
-        KN.noteImport ? navRow({ ico: "download", tint: TINT.sub, title: "取り込む", onTap: () => KN.noteImport.open() }) : null,
-        navRow({ ico: "lock", tint: TINT.data, title: "ロック",
-          value: KN.lock && KN.lock.covers("notes") ? "オン" : "オフ", onTap: () => go("lock") })
-      ),
-      syncCard(),
-      /* 季節の絵（3.0 の E1）。ノートの地の後ろの、今日の候の色と広重『名所江戸百景』。既定は入。
-         出典は NDL の求める一行を頭に、畳んで（daily は写真。docs/season-art.md）。 */
-      card(
+        }),
+        /* 季節の絵（3.0 の E1）。ノートの地の後ろの、今日の候の色と広重『名所江戸百景』。既定は入。
+           出典は NDL の求める一行を頭に、畳んで（daily は写真。docs/season-art.md）。 */
         switchRow({
           title: "季節の絵", on: store.get().settings.notesSeasonArt !== false,
           onTap: (v) => { store.update((s) => { s.settings.notesSeasonArt = v; }); render(); repaintNotes(); },
@@ -763,7 +769,7 @@
     KN.ui.toast("ノートを書き出しました");
   }
 
-  Object.assign(S, { notesRows, notesSyncAlert, notesLabelList, noteLabelTitle, noteLabelRows });
+  Object.assign(S, { notesRows, notesViewRows, notesSyncAlert, notesLabelList, noteLabelTitle, noteLabelRows });
   /* 試験が中身を確かめるための口（画面からは使いません）。 */
   KN.notesExport = { notesIn, noteFile, oneFile, zipNotes, printNotes, titleTree };
 })();

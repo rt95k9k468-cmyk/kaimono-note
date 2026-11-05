@@ -1,5 +1,5 @@
 /* =========================================================
-   くらしノート — settings screen：tasks の行（通知・カレンダー）
+   くらしノート — settings screen：tasks の行（時間割・見直す間隔・カレンダー）と、general の通知
    土台（紙の重なり・行の部品・PAGES）は screen-settings.js。分け方は
    docs/settings.md の「ファイルの分け方」。
    ========================================================= */
@@ -7,7 +7,7 @@
   "use strict";
 
   const KN = window.KN;
-  const { html, node } = KN.util;
+  const { html, node, haptic } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
   const { go, TINT, card, head, foot, navRow, switchRow, pickRow, timeRow, choose, render, copyText } = S;
@@ -23,7 +23,7 @@
   };
   const daysLabel = (key, n) => ((REVIEW_PICKS[key].find((p) => p[0] === n) || [n, `${n}日`])[1]);
 
-  /** 見直す日（tasks の「›」の先）。三つの棚の日数は、行の値のところで選ぶ（前は札を並べた紙）。
+  /** 見直す間隔（tasks の「›」の先。前の名は「見直す日」）。三つの棚の日数は、行の値のところで選ぶ（前は札を並べた紙）。
       節気に揃える（roadmap-3.1 の K3）も、日数と同じ話なのでここに。オンのときだけ、いま入れたら付く日を下に
       （説明の代わりの事実）。 */
   function reviewRows() {
@@ -112,8 +112,6 @@
      一日の始まりと終わりが居たので、道の設定に見えていた。 */
   function todoRows() {
     const s = store.get().settings;
-    const notify = KN.notify;
-    const canNotify = notify && notify.supported();
     const timeline = s.todoTimeline !== false;
     const d = store.reviewDays();
     const batches = store.googleBatches();
@@ -130,46 +128,36 @@
         timeline ? roadRow(s) : null,
         ...spanRows(s)
       ),
+      /* 「›」の行は一つの束に（2026年11月5日。前は一、二行ずつ四枚のカードに割れていた）。通知は general へ。
+         見直す間隔 → カレンダー → 取り込み（Google・誕生日・取り消し）→ 置き直しの記録。 */
       card(
         navRow({
-          ico: "clock", tint: TINT.cat, title: "見直す日",
+          ico: "clock", tint: TINT.cat, title: "見直す間隔",
           value: `${daysLabel("next", d.next)}・${daysLabel("wait", d.wait)}・${daysLabel("someday", d.someday)}`,
           onTap: () => go("review"),
-        })
-      ),
-      /* 通知とカレンダーは、どちらもスイッチ二つ（か、スイッチと手順）に
-         それぞれの説明が付いて、一画面ぶんあります。根っこに並べると tasks の
-         列が説明で埋まるので「›」の先へ（docs/settings.md の「二段の一覧」）。 */
-      card(
-        canNotify ? navRow({
-          ico: "bell", tint: TINT.goal, title: "通知",
-          value: notify.enabled() ? "オン" : "オフ", onTap: () => go("notify"),
-        }) : null,
+        }),
         KN.ics && KN.ics.apple() && !(KN.util.folded("calShortcut") && s.calShortcut !== true) ? navRow({
           ico: "calendar", tint: TINT.sync, title: "カレンダー",
           value: s.calShortcut === true ? "オン" : "オフ", onTap: () => go("cal"),
-        }) : null
-      ),
-      /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。三行とも四角を付ける
-         （前は四角の無い行と有る行が一枚に混ざり、字の頭が揃っていなかった）。 */
-      KN.util.folded("googleImport") ? null : card(
-        navRow({ ico: "download", tint: TINT.sync, title: "外部アプリから取り込む", onTap: () => KN.googleImport.open() }),
-        navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
-        batches.length
-          ? navRow({ ico: "undo", tint: TINT.sub, title: "取り込みを取り消す", value: `${batches[0].n}件`, act: true,
-            onTap: () => KN.googleImport.undo().then(render) })
-          : null
-      ),
-      /* 崩れ方の事実（3.0 の D1）。並べるだけ。 */
-      KN.util.folded("slips") ? null : card(
-        navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの控え",
-                 value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
-                 onTap: () => go("slips") })
+        }) : null,
+        /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。 */
+        ...(KN.util.folded("googleImport") ? [] : [
+          navRow({ ico: "download", tint: TINT.sync, title: "外部アプリから取り込む", onTap: () => KN.googleImport.open() }),
+          navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
+          batches.length
+            ? navRow({ ico: "undo", tint: TINT.sub, title: "取り込みを取り消す", value: `${batches[0].n}件`, act: true,
+              onTap: () => KN.googleImport.undo().then(render) })
+            : null,
+        ]),
+        /* 崩れ方の事実（3.0 の D1）。並べるだけ。前の名は「置き直しの控え」（控えはバックアップの言葉と重なった）。 */
+        KN.util.folded("slips") ? null : navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの記録",
+          value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
+          onTap: () => go("slips") })
       ),
     ];
   }
 
-  /** 通知（tasks の「›」の先）。 */
+  /** 通知（general の「›」の先。11月5日まで tasks に）。 */
   function notifyRows() {
     const s = store.get().settings;
     /* 時刻のお知らせ。何をするかは**カードの下**で言います——「通知」と
@@ -220,6 +208,29 @@
       bellCan && bellOn ? foot(notifyBlocked
         ? "端末の設定で通知を許可してください。"
         : "7日開かないと止まります。") : null,
+      ...badgeRows(),
+    ];
+  }
+
+  /* ホーム画面のアイコンの数（2026年11月5日に 外観 →「ホーム画面」から移した。iPhone でも「通知」の中）。
+     出せる端末でだけ——ブラウザのタブでは API そのものが無く、**何も起きないスイッチは、無いより悪い**。
+     「オン」なのに出ていない（iOS は許可を黙って落とすことがある）ときは、カードの下で言う。 */
+  function badgeRows() {
+    const badge = KN.app.appBadge;
+    if (!badge || !badge.supported()) return [];
+    const on = badge.enabled();
+    return [
+      card(switchRow({
+        title: "アイコンに数を出す", on,
+        onTap: async (v) => {
+          haptic();
+          if (!v) { badge.disable(); render(); return; }
+          const ok = await badge.enable();
+          render();
+          if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
+        },
+      })),
+      on && badge.blocked && badge.blocked() ? foot("端末の設定で通知を許可してください。") : null,
     ];
   }
 

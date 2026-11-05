@@ -355,8 +355,11 @@ const { open, checker } = require("./lib");
   await wait(500);
   const secs = await page.evaluate(() => [...document.querySelectorAll("#screen-settings .set-layer.is-duo .set-sec > .set-head")]
     .map((h) => { const r = h.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top) }; }));
-  t.check("設定：1280px〜は見出しごとに二段（二つ目の見出しは右の段の頭に揃う）", secs.length >= 2 && secs[1].l > secs[0].l + 300 && secs[1].t === secs[0].t,
-    JSON.stringify(secs));
+  /* 根っこは全部の席が一枚（2026年11月5日）なので、まとまりは六つ。段は上から詰め、右の段の頭の見出しが左の段の頭に揃う。 */
+  const rightSecs = secs.filter((x) => x.l > secs[0].l + 300);
+  t.check("設定：1280px〜は見出しごとに二段（右の段の頭の見出しは左の段の頭に揃う）",
+    secs.length >= 2 && rightSecs.length >= 1 && rightSecs[0].t === secs[0].t
+      && secs.every((x) => x.l === secs[0].l || x.l === rightSecs[0].l), JSON.stringify(secs));
   await page.locator("#screen-settings .set-row", { hasText: "外観" }).first().click();
   await wait(60);
   const mid = await page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();

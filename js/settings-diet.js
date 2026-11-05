@@ -138,15 +138,10 @@
       : `${d.goal.targetKg}kg${d.goal.targetDay
           ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`;
 
+    /* 「開いたときに自動で読む」は取り込みの一枚へ移した（2026年10月24日。読むのは中継所と
+       コピーした歩数——取り込みの話で、何を読むのかは、あちらの並びが言う）。
+       並びは shopping と同じ：「›」の束が先、「「〜」を出す」のスイッチはあと（2026年11月5日）。 */
     return [
-      /* 「開いたときに自動で読む」は取り込みの一枚へ移した（2026年10月24日。読むのは中継所と
-         コピーした歩数——取り込みの話で、何を読むのかは、あちらの並びが言う）。 */
-      card(
-        switchRow({
-          title: "「気づいたこと」を出す", on: s.settings.showInsight === true,
-          onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); },
-        })
-      ),
       /* 「›」の四行は一つの束に（一行ずつのカードだと一画面ぶん長かった。2026年10月21日）。
          記録を書き出すはバックアップの一枚から移したもの（中身はダイエットの記録だけ）。
          取り込みの二行（ヘルスケア・中継所）は、建てたあとはめったに開かないので「›」の先へ。 */
@@ -159,8 +154,15 @@
           ico: "chart", tint: TINT.ai, title: "AIに分析してもらう",
           onTap: openAiAnalyze,
         }),
-        navRow({ ico: "copy", tint: TINT.sub, title: "記録を書き出す", onTap: openRecordExport }),
+        /* 行の名は daily・notes と同じ「書き出し」（2026年11月5日。紙の題は「記録を書き出す」のまま）。 */
+        navRow({ ico: "copy", tint: TINT.sub, title: "書き出し", onTap: openRecordExport }),
         navRow({ ico: "download", tint: TINT.sync, title: "取り込み", onTap: () => go("intake") })
+      ),
+      card(
+        switchRow({
+          title: "「気づいたこと」を出す", on: s.settings.showInsight === true,
+          onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); },
+        })
       ),
     ];
   }
