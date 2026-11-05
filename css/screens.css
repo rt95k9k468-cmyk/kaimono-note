@@ -2023,11 +2023,17 @@
   --set-fs-foot: calc(15px * var(--fs-k));
   --set-line: rgba(60, 60, 67, .1);
   --set-chev: #c4c4c8;
+  /* 明るく（2026年11月5日、利用者が ChatGPT の画面案を添えて頼んだ）：地は灰ではなく、
+     黄みの生成りに基調色をひとしずく。カードは白に、影をうすく一枚。 */
+  --set-bg: color-mix(in srgb, var(--c-primary) 4%, #fcf9f4);
+  --set-card-shadow: 0 1px 2px rgba(110, 70, 30, .05), 0 6px 18px rgba(110, 70, 30, .06);
+  --set-art-op: 1;
+  --set-art-mask: radial-gradient(closest-side, #000 56%, transparent 100%);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; }
+  :root:not([data-theme="light"]) { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; --set-bg: var(--c-bg); --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
 }
-:root[data-theme="dark"] { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; }
+:root[data-theme="dark"] { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; --set-bg: var(--c-bg); --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
 
 /* ---- 一段は、紙の重なり ----
 
@@ -2050,7 +2056,7 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--c-bg);
+  background: var(--set-bg);
 }
 
 /* 送るのは、帯と帯のあいだだけ。**帯を送る箱の外へ出した**ので、貼りつける
@@ -2126,7 +2132,7 @@
   min-height: 44px;
   /* **透かしません。**下を白いカードが流れるので（base.css の上の帯と
      同じ理由）。地と同じ色なので、透かして得るものがありません。 */
-  background: var(--c-bg);
+  background: var(--set-bg);
   border-bottom: 1px solid transparent;
   transition: border-color var(--dur) var(--ease);
 }
@@ -2174,11 +2180,51 @@
 .set-hero {
   margin: var(--sp-2) 0 var(--sp-4);
   padding: 0 calc(var(--set-gut) + 2px);
+  position: relative;
   font-size: calc(34px * var(--fs-k));
   font-weight: var(--fw-bold);
   letter-spacing: -.02em;
   line-height: var(--lh-tight);
 }
+
+/* ---- 頭の挿絵（根っこは題の右、入口の先はまん中）----
+   素材は透けない四角（淡い地と光が付いている）ので、縁を丸くぼかして地に溶かす。
+   後ろに基調色のうすい光をひとつ。字の説明は足さない（docs/settings.md「頭の挿絵」）。 */
+.set-top {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 112px;
+  padding-right: var(--set-gut);
+  isolation: isolate;
+}
+.set-top::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 -8px 30%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c-primary) 13%, transparent), transparent);
+  pointer-events: none;
+}
+.set-top.is-page { justify-content: center; min-height: 0; padding: var(--sp-1) 0 0; }
+.set-top.is-page::before { inset: 0 15% -20px; }
+.set-art {
+  display: block;
+  flex: none;
+  height: 116px;
+  width: auto;
+  opacity: var(--set-art-op);
+  -webkit-mask-image: var(--set-art-mask);
+  mask-image: var(--set-art-mask);
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+/* 暗いときは、素材の淡い地がぼやけた光の塊に見えるので、丸い札に切って「置いた絵」にする。 */
+:root { --set-art-mask-dk: radial-gradient(circle closest-side, #000 93%, transparent 100%); }
+.set-top:not(.is-page) .set-art { height: 120px; margin: var(--sp-1) -4px 0 0; }
+.set-top .set-hero { margin-bottom: var(--sp-3); }
 
 /* ---- 節の見出しと、カードの下の説明 ---- */
 
@@ -2224,7 +2270,8 @@
 .set-card {
   margin: 0 var(--set-gut);
   background: var(--c-surface);
-  border-radius: 18px;
+  border-radius: 20px;
+  box-shadow: var(--set-card-shadow);
   overflow: hidden;
 }
 /* 行ではないもの（明るさの札・基調色の丸）を入れるカード。 */
@@ -2284,6 +2331,20 @@
   color: var(--c-primary);
 }
 .set-lead svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
+/* 根っこの入口（題の下に中身の名前がある行）は、絵をうすい丸に入れ、題を少し太く——入口だと一目で分かるように。
+   丸の色は絵の色から（知らせの行は知らせの色になる）。色は一色のまま。 */
+.set-row.has-lead.has-sub { --set-lead-d: 38px; }
+.set-row.has-lead.has-sub .set-lead {
+  width: var(--set-lead-d); height: var(--set-lead-d);
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, currentColor 13%, transparent);
+}
+.set-row.has-lead.has-sub .set-title { font-weight: var(--fw-bold); }
+.set-row.has-lead.has-sub .set-sub { font-weight: var(--fw-regular); }
+.set-row + .set-row.has-lead.has-sub::before,
+.set-row.has-lead.has-sub + .set-row::before {
+  left: calc(var(--set-pad) + var(--set-lead-d, 38px) + var(--set-gap));
+}
 /* 入口の題の下の一行（中身の名前）。題より一段小さく、薄くしすぎない。 */
 .set-sub {
   margin-top: 2px;

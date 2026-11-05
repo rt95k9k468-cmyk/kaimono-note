@@ -121,6 +121,16 @@ const ASSETS = [
   "img/think/note.webp",
   "img/think/think.webp",
   "img/think/today.webp",
+  "img/set/root.webp",
+  "img/set/look.webp",
+  "img/set/privacy.webp",
+  "img/set/daily.webp",
+  "img/set/notes.webp",
+  "img/set/tasks.webp",
+  "img/set/shopping.webp",
+  "img/set/health.webp",
+  "img/set/data.webp",
+  "img/set/help.webp",
 ];
 
 /* 入口をネットで待つのはここまで。来なければ控えの入口で開く（roadmap-seamless の N2。

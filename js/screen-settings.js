@@ -49,6 +49,9 @@
   /** 動いている最中は、次の一手を取らない（重ねて押されると紙が迷子になる）。 */
   let moving = false;
 
+  /* 根っこと入口の先の頭に置く挿絵（img/set/。2026年11月5日、利用者の素材）。飾りなので読み上げない。 */
+  const art = (id) => html`<img class="set-art" src="img/set/${id}.webp" alt="" aria-hidden="true" decoding="async">`;
+
   /** 一枚を組む。`opts.title` を渡すと、`PAGES` に載っていない一枚
       （紙のかわりに押しのけるもの）になります。`opts.bar` は下の帯。 */
   function makeLayer(pageId, opts) {
@@ -67,7 +70,8 @@
           <span class="set-nav-pad" aria-hidden="true"></span>
         </header>
         <div class="set-scroll js-scroll">
-          ${root2 ? html`<h1 class="set-hero js-hero">Settings</h1>` : ""}
+          ${root2 ? html`<div class="set-top"><h1 class="set-hero js-hero">Settings</h1>${art("root")}</div>`
+            : page && page.art ? html`<div class="set-top is-page">${art(page.art)}</div>` : ""}
           <div class="js-body"></div>
         </div>
       </div>
@@ -93,6 +97,8 @@
       bar.append(opts.bar);
       el.append(bar);
     }
+    /* 絵が読めない（一つにまとめた版は img/ を持たない）なら、空きごと外す。 */
+    el.querySelectorAll(".set-art").forEach((im) => im.addEventListener("error", () => (im.parentNode.classList.contains("is-page") ? im.parentNode : im).remove(), { once: true }));
     el.querySelector(".js-back").addEventListener("click", back);
     L.scroll.addEventListener("scroll", () => paintNav(L), { passive: true });
     return L;
@@ -592,17 +598,17 @@
 
   /** 「›」の先。入口の一枚と、その先の詳細。 */
   const PAGES = {
-    look:     { title: "表示・操作",         build: () => S.lookRows() },
-    privacy:  { title: "通知・プライバシー", build: () => privacyRows() },
-    daily:    { title: "daily",    build: () => S.dailyPageRows() },
-    notes:    { title: "notes",    build: () => S.notesPageRows() },
-    tasks:    { title: "tasks",    build: () => S.tasksPageRows() },
-    shopping: { title: "shopping", build: () => S.shoppingPageRows() },
-    health:   { title: "health",   build: () => S.healthPageRows() },
-    data:     { title: "データ・同期", build: () => S.dataRows() },
+    look:     { title: "表示・操作",         art: "look", build: () => S.lookRows() },
+    privacy:  { title: "通知・プライバシー", art: "privacy", build: () => privacyRows() },
+    daily:    { title: "daily",    art: "daily", build: () => S.dailyPageRows() },
+    notes:    { title: "notes",    art: "notes", build: () => S.notesPageRows() },
+    tasks:    { title: "tasks",    art: "tasks", build: () => S.tasksPageRows() },
+    shopping: { title: "shopping", art: "shopping", build: () => S.shoppingPageRows() },
+    health:   { title: "health",   art: "health", build: () => S.healthPageRows() },
+    data:     { title: "データ・同期", art: "data", build: () => S.dataRows() },
     dataOut:  { title: "書き出し",     build: () => S.dataOutRows() },
     dataIn:   { title: "取り込み",     build: () => S.dataInRows() },
-    help:     { title: "連携・ヘルプ", build: () => helpRows() },
+    help:     { title: "連携・ヘルプ", art: "help", build: () => helpRows() },
     cal:       { title: "カレンダー", build: () => S.calRows() },
     slips:     { title: "置き直しの記録", build: () => S.slipRows() },
     slipsFine: { title: "細かく",   build: () => S.slipFineRows() },
