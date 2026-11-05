@@ -107,8 +107,8 @@ const t = checker("fold");
     return S[f]().flat().filter(Boolean).map((r) => r.textContent).join(" ");
   }, fn);
   const T = await textOf("todoRows");
-  t.check("tasks に Google・誕生日・カレンダーが出ない（他は出る。置き直しの控えは D1 の見直しで戻した）",
-    !/Google から取り込む|誕生日のショートカット|カレンダー/.test(T) && T.includes("通知") && T.includes("置き直しの控え"), T.slice(0, 200));
+  t.check("tasks にカレンダーが出ない（他は出る。置き直しの控えは D1 の見直しで、Google・誕生日は11月5日に戻した）",
+    !/カレンダー/.test(T) && T.includes("Google から取り込む") && T.includes("通知") && T.includes("置き直しの控え"), T.slice(0, 200));
   const R = await textOf("reviewRows");
   t.check("見直すに「節気の初日に揃える」が出ない", !R.includes("節気") && R.includes("いつか"), R.slice(0, 120));
   const O = await textOf("dailyOutRows");
