@@ -2206,7 +2206,7 @@
   font-size: var(--set-fs);
   color: var(--c-text);
 }
-.set-head.is-seat svg { flex: none; width: 20px; height: 20px; stroke-width: 2; color: var(--c-text-2); }
+.set-head.is-seat svg { flex: none; width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); color: var(--c-text-2); }
 
 /* **説明はカードの外・下**。行の中に入れると、行の高さを説明が決めて
    しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
