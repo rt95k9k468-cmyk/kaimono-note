@@ -37,7 +37,7 @@ const { open, checker } = require("./lib");
   /* 設定 → 外観。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "表示・操作" }).first().click();
   await page.waitForTimeout(600);
   t.check("書体のボタンが三つ", (await page.locator(".set-layer:last-child .seg-btn[data-font]").count()) === 3);
   t.check("ゴシックが選ばれている", (await btn("gothic").getAttribute("aria-pressed")) === "true");
@@ -62,7 +62,7 @@ const { open, checker } = require("./lib");
   /* 丸ゴ → ゴシックへ戻す（ボタンから）。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "表示・操作" }).first().click();
   await page.waitForTimeout(600);
   await btn("maru").click();
   await page.waitForTimeout(200);

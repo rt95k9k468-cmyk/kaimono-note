@@ -64,9 +64,10 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   /* ---- 設定でパスコードを決める ---- */
   await show("settings");
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
-  const lockRow = page.locator(`${top} .set-row`, { hasText: "ロック" }).first();
-  t.check("daily の設定に「ロック」が出る", (await lockRow.count()) === 1);
-  t.check("「ロック」の右はオフ", (await lockRow.innerText()).includes("オフ"));
+  /* ロックは根っこの入口「通知・プライバシー」の先（2026年11月5日まで daily と notes の二か所）。 */
+  const lockRow = page.locator(`${top} .set-row`, { hasText: "通知・プライバシー" }).first();
+  t.check("根っこに「通知・プライバシー」が出る", (await lockRow.count()) === 1);
+  t.check("入口の下の一行が「ロック オフ」", (await lockRow.innerText()).includes("ロック オフ"));
   await lockRow.click();
   await page.waitForTimeout(400);
   await page.locator(`${top} .set-row.is-sw`, { hasText: "ロック" }).click();
@@ -155,7 +156,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   t.check("猶予は既定ですぐ", await page.evaluate(() => KN.lock.grace() === 0));
   await show("archive");
   await show("settings");
-  await page.locator(`${top} .set-row`, { hasText: "ロック" }).first().click();
+  await page.locator(`${top} .set-row`, { hasText: "通知・プライバシー" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(`${top} .set-row`, { hasText: "ロックするまで" }).click();
   await page.waitForTimeout(400);
@@ -203,7 +204,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   /* ---- 外す ---- */
   await show("archive");
   await show("settings");
-  await page.locator(`${top} .set-row`, { hasText: "ロック" }).first().click();
+  await page.locator(`${top} .set-row`, { hasText: "通知・プライバシー" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(`${top} .set-row.is-sw`, { hasText: "ロック" }).click();
   await answer("9999");

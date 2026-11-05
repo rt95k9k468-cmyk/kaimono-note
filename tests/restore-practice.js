@@ -207,7 +207,7 @@ window.__diff = function (a, b, p) {
   await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "データ・同期" }).first().click();
   await page.waitForTimeout(500);
   await page.locator(".js-file").setInputFiles({ name: "kurashi.json", mimeType: "application/json", buffer: Buffer.from(fileText) });
   await page.waitForSelector(".sheet .js-ok, .dialog .js-ok, .js-ok", { timeout: 4000 });

@@ -60,10 +60,12 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "書き出し" }).first().click();
+  /* 根っこの入口「daily」の先の一枚に、書き出しの行（2026年11月5日。前は daily →「書き出し ›」の一枚）。 */
+  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(400);
   const out = await page.locator(".set-layer:last-child").innerText();
-  t.check("書き出しの先に「期間を選んで書き出す」", out.includes("月ぶんを書き出す") && out.includes("期間を選んで書き出す") && out.includes("年の本"), out.slice(0, 200));
+  t.check("daily の一枚に「期間を選んで書き出す」", out.includes("月ぶんを書き出す") && out.includes("期間を選んで書き出す") && out.includes("年の本"), out.slice(0, 200));
   await page.locator(".set-layer:last-child .set-row", { hasText: "期間を選んで書き出す" }).first().click();
   await page.waitForTimeout(500);
 

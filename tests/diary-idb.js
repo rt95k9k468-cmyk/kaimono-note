@@ -150,13 +150,13 @@ const holdIdb = (ctx) => ctx.addInitScript(() => {
   };
 });
 
-/* 設定（daily の歯車）→ 書き出し →「月ぶんを書き出す」を押す。押したあと、その紙が出ているか。 */
+/* 設定 → daily →「月ぶんを書き出す」を押す（2026年11月5日まで daily →「書き出し ›」の先）。押したあと、その紙が出ているか。 */
 async function tapMonthExport(page) {
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "書き出し" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "月ぶんを書き出す" }).first().click();
   await page.waitForTimeout(400);

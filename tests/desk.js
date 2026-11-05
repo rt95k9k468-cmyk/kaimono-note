@@ -353,20 +353,24 @@ const { open, checker } = require("./lib");
   t.check("設定：電話の幅はまとめない（一列のまま）", await page.evaluate(() => !document.querySelector("#screen-settings .set-sec, #screen-settings .is-duo")));
   await page.setViewportSize({ width: 1440, height: 900 });
   await wait(500);
-  const secs = await page.evaluate(() => [...document.querySelectorAll("#screen-settings .set-layer.is-duo .set-sec > .set-head")]
-    .map((h) => { const r = h.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top) }; }));
-  /* 根っこは全部の席が一枚（2026年11月5日）なので、まとまりは六つ。段は上から詰め、右の段の頭の見出しが左の段の頭に揃う。 */
-  const rightSecs = secs.filter((x) => x.l > secs[0].l + 300);
-  t.check("設定：1280px〜は見出しごとに二段（右の段の頭の見出しは左の段の頭に揃う）",
-    secs.length >= 2 && rightSecs.length >= 1 && rightSecs[0].t === secs[0].t
-      && secs.every((x) => x.l === secs[0].l || x.l === rightSecs[0].l), JSON.stringify(secs));
-  await page.locator("#screen-settings .set-row", { hasText: "外観" }).first().click();
+  /* 根っこは入口だけの一枚（2026年11月5日）：広い幅でも一列（入口の順を崩さない）・読む幅の列。
+     二段に組むのは入口の先の、見出しのまとまりが二つ以上ある一枚（表示・操作など）。 */
+  const rootLook = await page.evaluate(() => { const L = document.querySelector("#screen-settings .set-layer");
+    return { duo: L.classList.contains("is-duo"), w: Math.round(L.querySelector(".js-body").getBoundingClientRect().width) }; });
+  t.check("設定：根っこ（入口だけ）は 1280px〜でも一列・読む幅", !rootLook.duo && rootLook.w <= 760, JSON.stringify(rootLook));
+  await page.locator("#screen-settings .set-row", { hasText: "表示・操作" }).first().click();
   await wait(60);
   const mid = await page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();
     return { l: Math.round(L.getBoundingClientRect().left), o: +getComputedStyle(L).opacity, n: document.querySelectorAll("#screen-settings .set-layer").length }; });
   t.check("設定：「›」は一面ぶん滑らせず、少しずらして薄く入れ替える", mid.n === 2 && mid.l >= 232 && mid.l <= 232 + 32 && mid.o < 1, JSON.stringify(mid));
   await wait(600);
-  t.check("設定の外観に「一文字の近道」（指の細かい端末）", await page.locator("#screen-settings .set-layer:last-child .set-row", { hasText: "一文字の近道" }).count() === 1);
+  const secs = await page.evaluate(() => [...document.querySelectorAll("#screen-settings .set-layer:last-child.is-duo .set-sec > .set-head")]
+    .map((h) => { const r = h.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top) }; }));
+  const rightSecs = secs.filter((x) => x.l > secs[0].l + 300);
+  t.check("設定：1280px〜は入口の先の一枚を見出しごとに二段（右の段の頭の見出しは左の段の頭に揃う）",
+    secs.length >= 2 && rightSecs.length >= 1 && rightSecs[0].t === secs[0].t
+      && secs.every((x) => x.l === secs[0].l || x.l === rightSecs[0].l), JSON.stringify(secs));
+  t.check("設定の表示・操作に「一文字の近道」（指の細かい端末）", await page.locator("#screen-settings .set-layer:last-child .set-row", { hasText: "一文字の近道" }).count() === 1);
   await page.locator("#screen-settings .set-layer:last-child .set-back").click();
   await wait(600);
   t.check("設定：戻ると根っこ一枚が素の姿で残る", await page.evaluate(() => { const L = document.querySelectorAll("#screen-settings .set-layer");

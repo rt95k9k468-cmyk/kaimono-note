@@ -15,7 +15,7 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, back, card, navRow, dangerRow, pickRow, switchRow, choose, render, TINT } = S;
+  const { go, back, card, head, navRow, dangerRow, pickRow, switchRow, choose, render, TINT } = S;
 
   const N = () => KN.notes;
   const NS = () => KN.screens.notes;
@@ -35,29 +35,17 @@
      出しません（中身の無い一枚になるので。絞り込みのチップと同じ）。
      数は出しません——ノートも daily と同じく評価しない（tests/daily-rules.js）。
 
-     2026年11月5日に組み直した：根っこは「›」の一つの束と、同期。並び・季節の絵・「道に置く」は
-     daily と同じく「表示 ›」の先へ（根っこに全部の席が並ぶので、一つの席は短く。出典の畳みも根っこから
-     消える）。ロックは general へ（鍵の番号は daily と一つ。js/lock.js）。 */
-  function notesRows() {
-    return [
-      card(
-        names("nb").length ? navRow({ ico: "book", tint: TINT.cat, title: "ノートブック", onTap: () => go("notesBooks") }) : null,
-        names("tag").length ? navRow({ ico: "tag", tint: TINT.icons, title: "タグ", onTap: () => go("notesTags") }) : null,
-        navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("notesView") }),
-        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: openExport }),
-        navRow({ ico: "copy", tint: TINT.sub, title: "目次をコピー", act: true, onTap: copyTitles }),
-        ...sixRows(),
-        /* 「取り込む」は10月14日に外し、10月29日に戻した（利用者：別のアカウントの Evernote を取り込む）。 */
-        KN.noteImport ? navRow({ ico: "download", tint: TINT.sub, title: "取り込む", onTap: () => KN.noteImport.open() }) : null
-      ),
-      syncCard(),
-    ];
-  }
-
-  /** 表示（notes の「›」の先）：並び・季節の絵・「道に置く」を出す。 */
-  function notesViewRows() {
+     notes の一枚（根っこの入口「notes」の先。2026年11月5日）：表示 → 整理（ノートブック・タグ・分け直し）→
+     書き出しと取り込み。同期は「データ・同期」へ、ロックは「通知・プライバシー」へ（鍵の番号は daily と一つ）。 */
+  function notesPageRows() {
     const created = store.get().settings.notesOrder === "created";
+    const organize = [
+      names("nb").length ? navRow({ title: "ノートブック", onTap: () => go("notesBooks") }) : null,
+      names("tag").length ? navRow({ title: "タグ", onTap: () => go("notesTags") }) : null,
+      ...sixRows(),
+    ].filter(Boolean);
     return [
+      head("表示"),
       card(
         pickRow({
           title: "並び", value: created ? "作った日" : "直した日",
@@ -89,7 +77,23 @@
       ),
       KN.seasonArt && KN.seasonArt.credits("notes").length ? S.more("絵の出典", `${KN.seasonArt.SOURCE} ／ ` + KN.seasonArt.credits("notes")
         .map((c) => `${c.kou}：${c.author}『${c.title}』（${c.holder}）`).join(" ／ ")) : null,
+      ...(organize.length ? [head("整理"), card(organize)] : []),
+      head("書き出しと取り込み"),
+      card(...notesExportRows(), ...notesImportRows()),
     ];
+  }
+
+  /** ノートの書き出しの行（notes の一枚と「書き出し」の一枚の両方に出す）。 */
+  function notesExportRows() {
+    return [
+      navRow({ title: "ノートを書き出す", onTap: openExport }),
+      navRow({ title: "目次をコピー", act: true, onTap: copyTitles }),
+    ];
+  }
+
+  /** 取り込む（10月14日に外し、10月29日に戻した。利用者：別のアカウントの Evernote を取り込む）。 */
+  function notesImportRows() {
+    return KN.noteImport ? [navRow({ title: "ノートを取り込む", onTap: () => KN.noteImport.open() })] : [];
   }
 
   /* ---------------- ノートブック・タグ ----------------
@@ -100,8 +104,9 @@
 
   function notesLabelList(kind) {
     const list = names(kind);
+    /* 色の四角は残す（`lead: "tile"`）——ここでは色そのものが中身（一覧のカード・チップと同じ色）。 */
     const rows = card(list.map((name) => navRow({
-      ico: KIND[kind].ico, tint: NS().colorOf(kind, name), title: name,
+      lead: "tile", ico: KIND[kind].ico, tint: NS().colorOf(kind, name), title: name,
       onTap: () => { editing = { kind, name }; go("noteLabel"); },
     })));
     if (kind !== "nb") return [rows];
@@ -205,13 +210,14 @@
   /* ---------------- 同期（js/notes-sync.js。docs/notes-unify.md「同期」） ----------------
      既定は切り。入れた端末だけ合わせる。合わせている最中は、取る・送るの数だけを値に（`onStep`）。
      Dropbox につないでいなければ、つなぐ紙へ。 */
-  function syncCard() {
+  /** ノートの同期の行（「データ・同期」の「同期」の束に、同期の部屋と並べる）。 */
+  function syncRowList() {
     const Y = KN.notesSync;
-    if (!Y || !KN.dropbox) return null;
+    if (!Y || !KN.dropbox) return [];
     const s = Y.status();
     if (!KN.dropbox.status().connected) {
       /* 値は短く（前は「Dropbox につなぐ」で、行の右に入りきらず切れていた）。押せばつなぐ一枚へ。 */
-      return card(navRow({ ico: "upload", tint: TINT.data, title: "同期", value: "オフ", onTap: () => go("dropbox") }));
+      return [navRow({ title: "ノートの同期", value: "オフ", onTap: () => go("dropbox") })];
     }
     const when = (iso) => {
       const d = new Date(iso);
@@ -230,11 +236,11 @@
         val.textContent = valueOf(p);
       });
     }
-    return card(
-      switchRow({ title: "同期", on: s.on, onTap: (v) => { Y.setOn(v).then(render, render); render(); } }),
+    return [
+      switchRow({ title: "ノートの同期", on: s.on, onTap: (v) => { Y.setOn(v).then(render, render); render(); } }),
       s.on && s.halt ? pickRow({ title: "合わせ直す", value: "止めています", onTap: askRestart }) : null,
-      now
-    );
+      now,
+    ].filter(Boolean);
   }
 
   function askRestart() {
@@ -769,7 +775,7 @@
     KN.ui.toast("ノートを書き出しました");
   }
 
-  Object.assign(S, { notesRows, notesViewRows, notesSyncAlert, notesLabelList, noteLabelTitle, noteLabelRows });
+  Object.assign(S, { notesPageRows, notesExportRows, notesImportRows, notesSyncRowList: syncRowList, notesSyncAlert, notesLabelList, noteLabelTitle, noteLabelRows });
   /* 試験が中身を確かめるための口（画面からは使いません）。 */
   KN.notesExport = { notesIn, noteFile, oneFile, zipNotes, printNotes, titleTree };
 })();

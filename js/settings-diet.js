@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, navRow, switchRow } = S;
+  const { go, card, head, navRow, switchRow } = S;
 
   /* ---------------- 記録の書き出し ----------------
 
@@ -130,67 +130,59 @@
      目標や中継所と同じ列に、同じ高さで並んでいたからです。消す口そのものも
      いまは持ちません（docs/settings.md）。 */
 
-  function dietRows() {
+  /** health の一枚（根っこの入口「health」の先。2026年11月5日）。前は根っこの「›」四つと、取り込みの別の一枚。
+      目標 → 表示 → 取り込み → 書き出し。「AIに分析してもらう」は設定を変えるものではないが、記録を AI に
+      渡す文にする**書き出しの一つ**なので、書き出しの束に置く（health の画面には入口を足さない。docs/settings.md）。 */
+  function healthPageRows() {
     const s = store.get();
     const d = s.diet;
     const goal = d.goal.targetKg == null
       ? "未設定"
       : `${d.goal.targetKg}kg${d.goal.targetDay
           ? " ・ " + KN.util.formatDay(d.goal.targetDay) + "まで" : ""}`;
-
-    /* 「開いたときに自動で読む」は取り込みの一枚へ移した（2026年10月24日。読むのは中継所と
-       コピーした歩数——取り込みの話で、何を読むのかは、あちらの並びが言う）。
-       並びは shopping と同じ：「›」の束が先、「「〜」を出す」のスイッチはあと（2026年11月5日）。 */
     return [
-      /* 「›」の四行は一つの束に（一行ずつのカードだと一画面ぶん長かった。2026年10月21日）。
-         記録を書き出すはバックアップの一枚から移したもの（中身はダイエットの記録だけ）。
-         取り込みの二行（ヘルスケア・中継所）は、建てたあとはめったに開かないので「›」の先へ。 */
+      head("目標と表示"),
       card(
-        navRow({
-          ico: "target", tint: TINT.goal, title: "目標", value: goal,
-          onTap: () => KN.screens.diet && KN.screens.diet.openGoalSheet(),
-        }),
-        navRow({
-          ico: "chart", tint: TINT.ai, title: "AIに分析してもらう",
-          onTap: openAiAnalyze,
-        }),
-        /* 行の名は daily・notes と同じ「書き出し」（2026年11月5日。紙の題は「記録を書き出す」のまま）。 */
-        navRow({ ico: "copy", tint: TINT.sub, title: "書き出し", onTap: openRecordExport }),
-        navRow({ ico: "download", tint: TINT.sync, title: "取り込み", onTap: () => go("intake") })
-      ),
-      card(
+        navRow({ title: "目標", value: goal, onTap: () => KN.screens.diet && KN.screens.diet.openGoalSheet() }),
         switchRow({
           title: "「気づいたこと」を出す", on: s.settings.showInsight === true,
           onTap: (v) => { store.update((x) => { x.settings.showInsight = v; }); },
         })
       ),
-    ];
-  }
-
-  /** 取り込み（health の「›」の先）。 */
-  function intakeRows() {
-    const s = store.get();
-    const d = s.diet;
-    return [
+      head("取り込み"),
       /* 開いたときに、中継所とコピーした記録を読む（health-relay.js・screen-diet.js の onEnter）。 */
       card(
         switchRow({
           title: "開いたら自動で取り込む", on: s.settings.dietAutoSync !== false,
           onTap: (v) => { store.update((x) => { x.settings.dietAutoSync = v; }); },
-        })
-      ),
-      card(
-        navRow({
-          ico: "download", tint: TINT.sync, title: "ヘルスケアから取り込む",
-          value: d.sync.lastAt ? KN.util.formatStamp(d.sync.lastAt) : "",
-          onTap: () => KN.screens.diet && KN.screens.diet.openSyncSheet(),
         }),
-        navRow({
-          ico: "route", tint: TINT.relay, title: "中継所",
-          value: KN.healthRelay.configured() ? KN.healthRelay.host() : "未設定",
-          onTap: () => go("relay"),
-        })
+        ...healthImportRows()
       ),
+      head("書き出し"),
+      card(...healthExportRows()),
+    ];
+  }
+
+  /** 取り込みの行（health の一枚と「取り込み」の一枚の両方に出す）。中継所の一枚は「連携・ヘルプ」にもある。 */
+  function healthImportRows() {
+    const d = store.get().diet;
+    return [
+      navRow({
+        title: "ヘルスケアから取り込む", value: d.sync.lastAt ? KN.util.formatStamp(d.sync.lastAt) : "",
+        onTap: () => KN.screens.diet && KN.screens.diet.openSyncSheet(),
+      }),
+      navRow({
+        title: "中継所", value: KN.healthRelay.configured() ? KN.healthRelay.host() : "未設定",
+        onTap: () => go("relay"),
+      }),
+    ];
+  }
+
+  /** 書き出しの行（health の一枚と「書き出し」の一枚の両方に出す）。紙の題は「記録を書き出す」。 */
+  function healthExportRows() {
+    return [
+      navRow({ title: "記録を書き出す", onTap: openRecordExport }),
+      navRow({ title: "AIに分析してもらう", onTap: openAiAnalyze }),
     ];
   }
 
@@ -302,5 +294,5 @@
     });
   }
 
-  Object.assign(S, { dietRows, intakeRows });
+  Object.assign(S, { healthPageRows, healthImportRows, healthExportRows });
 })();

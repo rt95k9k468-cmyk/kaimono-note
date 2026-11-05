@@ -368,11 +368,13 @@ const { open, checker, ASKS } = require("./lib");
   });
   t.check("前の日は三枚の札だけ（今日の問いは今日だけ）", !!past && past.home && !past.ask, JSON.stringify(past));
 
-  /* ---- 設定 → バックアップ →「問いの元を取り込む」：違うファイルは何も変えない・入れ替える前に聞く ---- */
+  /* ---- 設定 → daily →「問いの元を取り込む」（2026年11月5日まで バックアップの一枚。同じ行が データ・同期 → 取り込み にも）：
+     違うファイルは何も変えない・入れ替える前に聞く ---- */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(400);
   const pick = (obj) => page.locator(".js-asks-file").setInputFiles({ name: "asks.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(obj)) });
   await pick({ app: "kaimono-note", days: [] });
@@ -384,7 +386,7 @@ const { open, checker, ASKS } = require("./lib");
   const got = await page.evaluate(() => KN.store.get().asks.map((a) => a.q));
   t.check("取り込むと入れ替わる（空・同じ本文は落とす）", got.join("|") === ASKS.slice(0, 3).map((a) => a.q).join("|"), JSON.stringify(got));
   const copyRow = await page.locator(".set-layer:last-child .set-row", { hasText: "考えない問いをコピー" }).count();
-  t.check("設定 → バックアップに「考えない問いをコピー」（考えない問いがあるとき）", copyRow === 1, String(copyRow));
+  t.check("設定 → daily に「考えない問いをコピー」（考えない問いがあるとき）", copyRow === 1, String(copyRow));
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();

@@ -121,7 +121,8 @@ const { open, checker } = require("./lib");
 
   /* 設定の行：やることの紙に「外部アプリから取り込む」。取り消しは束のあるときだけ。 */
   await page.evaluate(() => { document.querySelector('[data-tab="settings"], #tab-settings, .tab-settings'); });
-  const rows = await page.evaluate(() => KN.settingsParts.todoRows().flatMap((c) => [...(c ? c.querySelectorAll(".set-title") : [])].map((e) => e.textContent)));
+  /* tasks の一枚（2026年11月5日。根っこの入口「tasks」の先）。同じ行は「データ・同期 → 取り込み」にもある。 */
+  const rows = await page.evaluate(() => KN.settingsParts.tasksPageRows().flatMap((c) => [...(c ? c.querySelectorAll(".set-title") : [])].map((e) => e.textContent)));
   t.check("設定に取り込みの行（束があれば取り消しも）", rows.includes("外部アプリから取り込む") && rows.includes("取り込みを取り消す"), rows.join());
 
   /* 枠に収まるぶんだけ：先のものを残し、古い過去から省く。 */
@@ -182,7 +183,8 @@ const { open, checker } = require("./lib");
   });
   const gm = Object.fromEntries(tx.got);
   t.check(".txt の一覧：七人だけ・年が一桁（1/10/18）も月日を取り違えない・日付なしと名前なしは読まない", tx.kind === "contacts" && tx.got.length === 7 && gm["テスト太郎の誕生日"] === "04-12" && gm["テスト 花子の誕生日"] === "07-05" && gm["年なしの誕生日"] === "12-25" && gm["月日だけの誕生日"] === "03-09" && gm["引用の誕生日"] === "11-30" && gm["年一桁の誕生日"] === "10-18" && gm["月日の順の誕生日"] === "04-12", JSON.stringify(tx));
-  const how = await page.evaluate(() => KN.settingsParts.todoRows().flatMap((c) => [...(c ? c.querySelectorAll(".set-title") : [])].map((e) => e.textContent)));
+  /* 誕生日のショートカットは「連携・ヘルプ」の連携の束（2026年11月5日）。 */
+  const how = await page.evaluate(() => KN.settingsParts.helpRows().flatMap((c) => [...(c ? c.querySelectorAll(".set-title") : [])].map((e) => e.textContent)));
   t.check("設定に誕生日のショートカットの行", how.includes("誕生日のショートカット"), how.join());
   t.check("組み方の紙が開く", (await page.evaluate(() => KN.settingsParts.birthHowRows().length)) >= 2);
 

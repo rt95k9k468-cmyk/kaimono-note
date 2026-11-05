@@ -503,7 +503,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.diaryView; }));
   const row = await page.evaluate(() => {
     const box = document.createElement("div");
-    KN.settingsParts.dailyViewRows().filter(Boolean).forEach((r) => box.append(r));
+    KN.settingsParts.dailyPageRows().filter(Boolean).forEach((r) => box.append(r));
     return box.textContent.replace(/\s+/g, " ");
   });
   t.check("設定がなければ時刻ごと（設定の行にも）", /日記\s*時刻ごと/.test(row), row.slice(0, 80));

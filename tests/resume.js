@@ -73,7 +73,7 @@ const { open, checker, URL } = require("./lib");
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "表示・操作" }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length === 2
     && !document.querySelector(".set-layer.is-edge-lift"));
   const y2 = await scrollTo(200);
@@ -89,7 +89,7 @@ const { open, checker, URL } = require("./lib");
       from: KN.app.openedFrom(),
     };
   });
-  t.check("2 読み直しても、設定の同じ奥（外観）", s2.seat === "settings" && s2.n === 2 && s2.title === "外観",
+  t.check("2 読み直しても、設定の同じ奥（表示・操作）", s2.seat === "settings" && s2.n === 2 && s2.title === "表示・操作",
     JSON.stringify(s2));
   t.check("2 下の一枚は控えの位置に", /translate3d\(-/.test(s2.under || ""), s2.under);
   t.check("2 潜ってきたタブ（買うもの）も戻る", s2.from === "list", s2.from);

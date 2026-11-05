@@ -212,7 +212,7 @@ function under(safe) {
     /* 6. 設定の一枚（外観）を開いたまま回す。 */
     await page.evaluate(() => KN.app.showScreen("settings"));
     await wait(600);
-    await page.locator("#screen-settings .set-row", { hasText: "外観" }).first().click();
+    await page.locator("#screen-settings .set-row", { hasText: "表示・操作" }).first().click();
     await wait(700);
     const layers = () => page.evaluate(() => document.querySelectorAll("#screen-settings .set-layer").length);
     const l0 = await layers(), e0 = await scan();

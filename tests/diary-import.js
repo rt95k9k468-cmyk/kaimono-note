@@ -74,13 +74,14 @@ async function run(choice) {
   t.check("replace を渡さなければ、本文のある日には触れない（これまでどおり）",
     plain.replaced === 0 && plain.kept === 3, JSON.stringify(plain));
 
-  /* 画面から：設定 → バックアップ → 控えを選ぶ。 */
+  /* 画面から：設定 → daily → 日記を取り込む（2026年11月5日まで バックアップの一枚。同じ行が データ・同期 → 取り込み にも）。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(400);
-  await page.locator(".js-diary-file").setInputFiles({ name: "kurashi-diary.json", mimeType: "application/json", buffer: Buffer.from(sealed) });
+  await page.locator(".set-layer:last-child .js-diary-file").setInputFiles({ name: "kurashi-diary.json", mimeType: "application/json", buffer: Buffer.from(sealed) });
   await page.locator(".js-input").waitFor();
   await page.locator(".js-input").fill(PW);
   await page.locator(".sheet .js-ok, .js-ok").last().click();

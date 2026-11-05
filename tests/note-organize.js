@@ -78,12 +78,15 @@ const importBtn = (page) => page.evaluate(() => {
   await page.click('.tab[data-tab="notes"]');
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
+  /* ノートの行は根っこの入口「notes」の先（2026年11月5日）。 */
+  await page.evaluate(() => KN.settingsParts.go("notes"));
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(300);
   const takes = [];
   await page.exposeFunction("tookSnap", (r) => takes.push(r));
   await page.evaluate(() => { const was = KN.backup.take; KN.backup.take = (r, o) => { window.tookSnap(r); return was(r, o); }; });
   const rows = () => page.evaluate(() => [...document.querySelectorAll(".set-layer:last-child .set-row, .sheet.is-open .set-row")].map((r) => r.textContent.replace(/\s+/g, "")));
-  t.check("設定に「取り込む」が出る（10月29日に戻した）", await page.$$eval(".set-layer .set-row", (xs) => xs.some((x) => x.textContent.trim() === "取り込む")));
+  t.check("設定に「ノートを取り込む」が出る（10月29日に戻した）", await page.$$eval(".set-layer .set-row", (xs) => xs.some((x) => x.textContent.trim() === "ノートを取り込む")));
   await importBtn(page);
   await page.waitForSelector('.set-layer:last-child .set-row:has-text("取り込んだノートを整理する")');
   await page.waitForTimeout(300);
@@ -185,6 +188,8 @@ const importBtn = (page) => page.evaluate(() => {
   t.check("戻せる整理が一つ", JSON.stringify(await page.evaluate(() => KN.noteOrganize.runs())) === JSON.stringify([at]));
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings");
+  await page.evaluate(() => KN.settingsParts.go("notes"));
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(300);
   await importBtn(page);
   await page.waitForSelector('.set-layer:last-child .set-row:has-text("の整理を戻す")');

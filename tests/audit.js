@@ -97,7 +97,7 @@ const { open, checker } = require("./lib");
   const before = await page.evaluate(() => JSON.stringify(KN.store.get()));
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings");
-  await page.locator(".set-layer:last-child .set-row", { hasText: "バックアップ" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "データ・同期" }).first().click();
   await page.locator(".set-layer:last-child .set-row", { hasText: "記録を点検する" }).first().click();
   await page.waitForSelector(".js-audit");
   const S1 = await page.evaluate(() => {

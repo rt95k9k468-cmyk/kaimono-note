@@ -54,7 +54,7 @@ const { open, checker } = require("./lib");
   /* 設定 → 外観 → 特大 を指で押す。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "表示・操作" }).first().click();
   await page.waitForTimeout(600);
   /* 文字の大きさは段のある滑り棒（2026年10月24日。前は四つの札）。右端の段へ動かして離す。 */
   const range = page.locator(".set-layer:last-child .js-size");

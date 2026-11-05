@@ -998,72 +998,116 @@
     render();
   }
 
+  /** データ・同期（根っこの入口。2026年11月5日に組み直した）。五つを**別の束**に分け、それぞれ一言で
+      何をするかを言う（利用者が取り違えやすい五つ）：バックアップ＝複製を残す／復元＝それで戻す／
+      同期＝ほかの端末と同じ記録／書き出し＝ファイルで取り出す／取り込み＝外のデータを入れる。
+      書き出しと取り込みは「›」の先の一枚ずつ（タブごとに並ぶ。同じ行は各タブの一枚にもある）。
+      保存・復元・点検の中身（saveBackup・restoreText・openAudit…）は一つも変えていない。 */
   function dataRows() {
     /* 写しの端末（js/replica.js）：この端末の記録は隠れているので、控えの行は出さない。切る口だけ。 */
     if (KN.replica && KN.replica.on()) {
-      return [card(navRow({ ico: "upload", tint: TINT.data, title: "Dropbox", value: "iPhone の写し", onTap: () => go("dropbox") }))];
+      return [card(navRow({ title: "Dropbox", value: "iPhone の写し", onTap: () => go("dropbox") }))];
     }
     const file = importInput();
     const verify = verifyInput();
-    const diaryFile = diaryImportInput();
-    const asksFile = asksImportInput();
     const snaps = KN.backup.list();
     const gone = store.goneList();
-    /* 2026年10月24日：束ごとに見出し（端末の外の控え・この端末の控え・この端末の中・取り込み）。その場で
-       済む行（保存・ファイルを選ぶ・点検）には「›」を付けない。題は一行に収まる長さに（前は
-       「保存したバックアップを確かめる」「自動バックアップから戻す」が二行に割れていた）。 */
+    const room = !!(KN.sync && KN.sync.status().phase !== "off");
+    const notesSync = S.notesSyncRowList ? S.notesSyncRowList() : [];
+    const last = exportSub();
     return [
-      head("端末の外の控え"),
+      head("バックアップ"),
       card(
-        navRow({ ico: "download", tint: TINT.data, title: "バックアップを保存", act: true, onTap: saveBackup }),
-        navRow({ ico: "check", tint: TINT.data, title: "バックアップを確かめる", act: true, onTap: () => verify.click() }),
-        navRow({ ico: "upload", tint: TINT.data, title: "バックアップから復元", act: true, onTap: () => file.click() })
-      ),
-      foot(exportSub()),
-      /* Dropbox と同期の部屋は一つの束（2026年11月5日。前は一行ずつ二枚）。 */
-      card(
+        navRow({ title: "バックアップを保存", act: true, onTap: saveBackup }),
         KN.dropbox ? navRow({
-          ico: "upload", tint: TINT.data, title: "Dropbox へ自動で送る",
-          value: dropboxValue(KN.dropbox.status()),
-          onTap: () => go("dropbox"),
+          title: "Dropbox へ自動で送る", value: dropboxValue(KN.dropbox.status()), onTap: () => go("dropbox"),
         }) : null,
-        /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
-        KN.sync && KN.sync.status().phase !== "off" ? navRow({
-          ico: "upload", tint: TINT.data, title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync"),
-        }) : null
+        navRow({ title: "バックアップを確かめる", act: true, onTap: () => verify.click() })
       ),
-      /* 「この端末の控え」と「この端末の中」（使用量）は一つの見出しに（2026年11月5日。同じ場所の話が二つに割れていた）。 */
-      head("この端末の中"),
+      foot(`記録の複製を残します。${last ? `${last}。` : ""}`),
+      head("復元"),
       card(
+        navRow({ title: "バックアップから復元", act: true, onTap: () => file.click() }),
+        /* この端末の中の控え（自動）。一覧の紙から、選んで戻す。 */
         navRow({
-          ico: "undo", tint: TINT.sub, title: "自動バックアップ", off: !snaps.length,
+          title: "自動バックアップから戻す", off: !snaps.length,
           value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
         }),
-        gone.length ? navRow({ ico: "undo", tint: TINT.sub, title: "さっき消したもの", value: `${gone.length}件`, onTap: openGone }) : null,
-        /* 記録を書き出す（→ health）・年の本（→ daily の書き出し）・おぼえた
-           振り分け（→ shopping）は、中身の持ち主のタブへ移しました。ここに
-           残すのは、全部の記録にかかわるものだけ。 */
-        navRow({ ico: "check", tint: TINT.sub, title: "記録を点検する", act: true, onTap: openAudit })
+        gone.length ? navRow({ title: "さっき消したもの", value: `${gone.length}件`, onTap: openGone }) : null
       ),
-      ...usageRows(KN.backup.usage()),
-      /* 日記の取り込み（D7）。取り込み道具の README が「設定 → general → バックアップ → 日記を取り込む」
-         と案内している口。一度きりの作業なので、毎日使う列には混ぜません。
-         見出しは「記録の出し入れ」（11月5日。前は「取り込み」で、「記録から外す」二行が名に合っていなかった）。 */
-      head("記録の出し入れ"),
+      foot("いまの記録を、バックアップの中身に戻します。"),
+      ...(notesSync.length || room ? [
+        head("同期"),
+        card(
+          ...notesSync,
+          /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
+          room ? navRow({ title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync") }) : null
+        ),
+        foot("ほかの端末と、同じ記録を使います。"),
+      ] : []),
+      head("書き出しと取り込み"),
       card(
-        navRow({ ico: "book", tint: TINT.sub, title: "日記を取り込む", act: true, onTap: () => diaryFile.click() }),
-        diaryOutRows(),
-        todoOutRows(),
-        navRow({ ico: "thought", tint: TINT.sub, title: "問いの元を取り込む", act: true,
-          value: KN.store.get().asks.length ? `${KN.store.get().asks.length}問` : "なし", onTap: () => asksFile.click() }),
-        askNoRow()
+        navRow({ title: "書き出し", sub: "ファイルとして取り出す", onTap: () => go("dataOut") }),
+        navRow({ title: "取り込み", sub: "外のデータを入れる", onTap: () => go("dataIn") })
       ),
-      foot(`日記は、本文の無い日と書き足した日に入れます。${outReadyNow() ? "書き出せたら外します。" : ""}`),
+      head("この端末の中"),
+      ...usageRows(KN.backup.usage()),
+      /* 点検（数えるだけ）と、記録を軽くする二つ（日記・過去のやることを記録から外す。段2の2b・R26）。 */
+      card(
+        navRow({ title: "記録を点検する", act: true, onTap: openAudit }),
+        ...diaryOutRows(),
+        ...todoOutRows()
+      ),
+      outReadyNow() || pastReadyNow() ? foot("書き出せたら外します。") : null,
       file,
       verify,
+    ];
+  }
+
+  /** 書き出し（データ・同期の「›」の先）：タブごとに。どの行も、そのタブの一枚にもある同じもの。 */
+  function dataOutRows() {
+    return [
+      head("すべての記録"),
+      card(navRow({ title: "バックアップを保存", act: true, onTap: saveBackup })),
+      head("daily"),
+      card(...S.dailyExportRows()),
+      head("notes"),
+      card(...S.notesExportRows()),
+      head("health"),
+      card(...S.healthExportRows()),
+    ];
+  }
+
+  /** 取り込み（データ・同期の「›」の先）：タブごとに。 */
+  function dataInRows() {
+    const tasks = S.tasksImportRows();
+    const notes = S.notesImportRows();
+    return [
+      head("daily"),
+      card(...dailyImportRows()),
+      foot(DIARY_IN_NOTE),
+      ...(notes.length ? [head("notes"), card(...notes)] : []),
+      ...(tasks.length ? [head("tasks"), card(...tasks)] : []),
+      head("health"),
+      card(...S.healthImportRows()),
+    ];
+  }
+
+  /* 日記の取り込み（D7）。取り込み道具の README が「設定 → データ・同期 → 取り込み → 日記を取り込む」と
+     案内している口。daily の一枚と「取り込み」の一枚の両方に出す。ファイルを選ぶ欄は行のあと（行どうしの
+     仕切りを切らないように）。 */
+  const DIARY_IN_NOTE = "日記は、本文の無い日と書き足した日に入れます。";
+  function dailyImportRows() {
+    const diaryFile = diaryImportInput();
+    const asksFile = asksImportInput();
+    const asks = KN.store.get().asks.length;
+    return [
+      navRow({ title: "日記を取り込む", act: true, onTap: () => diaryFile.click() }),
+      navRow({ title: "問いの元を取り込む", act: true, value: asks ? `${asks}問` : "なし", onTap: () => asksFile.click() }),
+      askNoRow(),
       diaryFile,
       asksFile,
-    ];
+    ].filter(Boolean);
   }
 
   /* ---------------- Dropbox へ送る（js/dropbox.js） ----------------
@@ -1303,5 +1347,5 @@
     if (document.visibilityState === "visible") soon(2);
   });
 
-  Object.assign(S, { dataRows, dropboxRows, nudge });
+  Object.assign(S, { dataRows, dataOutRows, dataInRows, dailyImportRows, DIARY_IN_NOTE, dropboxRows, nudge });
 })();

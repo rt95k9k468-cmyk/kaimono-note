@@ -1,5 +1,5 @@
 /* =========================================================
-   くらしノート — settings screen：daily の行（表示・書き出し・年の本）
+   くらしノート — settings screen：daily の一枚（見せ方・表示・季節・月のまとめ・書き出し）とロック
    土台（紙の重なり・行の部品・PAGES）は screen-settings.js。分け方は
    docs/settings.md の「ファイルの分け方」。
    ========================================================= */
@@ -24,69 +24,52 @@
     render();
   };
 
-  /* 根っこは「表示 ›」と「書き出し ›」の二行だけ（2026年11月5日）。根っこに全部の席が並ぶように
-     なったので、見え方の行（「あの日」も）は表示の一枚へ。ロックは general へ（ノートと同じ一つの鍵）。 */
-  function dailyRows() {
-    return [
-      card(
-        navRow({ ico: "list", tint: TINT.look, title: "表示", onTap: () => go("dailyView") }),
-        navRow({ ico: "download", tint: TINT.sub, title: "書き出し", onTap: () => go("dailyOut") })
-      ),
-    ];
-  }
-
-  /** ロック（日記・daily・ノートの鍵。番号は一つ、かけるかは場所ごと。中身は js/lock.js）。 */
+  /** ロック（日記・daily・ノートの鍵。番号は一つ、かけるかは場所ごと。中身は js/lock.js）。
+      「通知・プライバシー」の一枚の後半（2026年11月5日。前は一行だけの一枚に、入れると一行ずつのカードが続いた）。
+      鍵そのものの行（入・ロックするまで・顔と指・番号）を一つの束に、かける場所をもう一つに。 */
   function lockRows() {
     const L = KN.lock;
     if (!L || !L.supported()) return [foot("この端末では使えません。")];
     const done = () => render();
-    const rows = [card(switchRow({
-      title: "ロック", on: L.enabled(),
-      onTap: (v) => (v ? L.turnOn() : L.turnOff()).then(done),
-    }))];
-    if (!L.enabled()) return rows;
-    const place = (p, title) => switchRow({ title, on: L.covers(p), onTap: (v) => { L.setPlace(p, v); done(); } });
-    rows.push(head("ロックするもの"), card(place("diary", "日記"), place("daily", "daily"), place("notes", "ノート")));
-    const bio = switchRow({
+    const on = L.enabled();
+    const label = (g) => (g ? `${g / 60}分` : "すぐ");
+    /* 顔・指はこの端末で使えるときだけ（分かるまで隠しておく）。 */
+    const bio = on ? switchRow({
       title: "Face ID・Touch ID", on: L.hasBio(),
       onTap: (v) => { if (v) L.bioOn().then(done); else { L.bioOff(); done(); } },
-    });
-    /* 顔・指はこの端末で使えるときだけ。スイッチ（四角なし）と「番号を変える」（四角あり）は別のカードに。 */
-    const bioCard = card(bio);
-    bioCard.hidden = true;
-    L.bioAvailable().then((ok) => { bioCard.hidden = !ok && !L.hasBio(); });
-    rows.push(bioCard, card(
-      navRow({ ico: "lock", tint: TINT.sub, title: "番号を変える", act: true, onTap: () => L.changeCode().then(done) })
-    ));
-    /* 前は「閉じるまで」。何が閉じるのかが言えていなかった（iPhone の「パスコードを要求」と同じ話）。 */
-    const label = (g) => (g ? `${g / 60}分` : "すぐ");
-    rows.push(card(pickRow({
-      title: "ロックするまで", value: label(L.grace()),
-      onTap: () => choose({
-        title: "ほかのアプリへ移ってからロックするまで", value: String(L.grace()),
-        options: L.GRACES.map((g) => ({ id: String(g), label: label(g) })),
-        onPick: (v) => { store.update((s) => { s.settings.lockGrace = Number(v); }); render(); },
-      }),
-    })));
+    }) : null;
+    if (bio) { bio.hidden = true; L.bioAvailable().then((ok) => { bio.hidden = !ok && !L.hasBio(); }); }
+    const rows = [card(
+      switchRow({ title: "ロック", on, onTap: (v) => (v ? L.turnOn() : L.turnOff()).then(done) }),
+      /* 前は「閉じるまで」。何が閉じるのかが言えていなかった（iPhone の「パスコードを要求」と同じ話）。 */
+      on ? pickRow({
+        title: "ロックするまで", value: label(L.grace()),
+        onTap: () => choose({
+          title: "ほかのアプリへ移ってからロックするまで", value: String(L.grace()),
+          options: L.GRACES.map((g) => ({ id: String(g), label: label(g) })),
+          onPick: (v) => { store.update((s) => { s.settings.lockGrace = Number(v); }); render(); },
+        }),
+      }) : null,
+      bio,
+      on ? navRow({ title: "番号を変える", act: true, onTap: () => L.changeCode().then(done) }) : null
+    )];
+    if (!on) return rows;
+    const place = (p, title) => switchRow({ title, on: L.covers(p), onTap: (v) => { L.setPlace(p, v); done(); } });
+    rows.push(head("ロックするもの"), card(place("diary", "日記"), place("daily", "daily"), place("notes", "ノート")));
     rows.push(foot("中身は暗号化されません。"));
     return rows;
   }
 
-  /** 表示（daily の「›」の先）。 */
-  function dailyViewRows() {
+  /** daily の一枚（根っこの入口「daily」の先。2026年11月5日）。前は 根っこ →「表示 ›」「書き出し ›」の二枚に
+      分かれていた。見せ方 → 表示 → 季節 → 月のまとめ → 書き出しと取り込み。daily は評価しないので、
+      行の右に数を出さない（docs/settings.md）。 */
+  function dailyPageRows() {
     const s = store.get().settings;
     const full = s.logFull !== false;
     const lines = s.logLines === 3 ? 3 : 5;
     const page = s.diaryView === "page";
     return [
-      /* 「あの日」は根っこから移した（2026年11月5日）。何が出るかは題だけでは分からないので一文。 */
-      card(
-        switchRow({
-          title: "「あの日」を出す", on: s.showThen !== false,
-          onTap: (v) => dailySet("showThen", v),
-        })
-      ),
-      foot("何年か前の同じ日に書いたものを、暦の下に出します。"),
+      head("見せ方"),
       card(
         /* 日記の見せ方（思考のホーム。docs/thinking.md）。本文の形はどちらも同じ一つの文字。 */
         pickRow({
@@ -115,7 +98,7 @@
         /* 数行は終わりから。行数は logLines（3／5、無ければ5）。logFull はそのまま使う。一枚のときだけ効くので、
            時刻ごとのときは出さない（値は消さない）。 */
         !page ? null : pickRow({
-          title: "見せ方", value: full ? "全文" : `${lines}行`,
+          title: "行数", value: full ? "全文" : `${lines}行`,
           onTap: () => choose({
             title: "Daily Log の見せ方", value: full ? "full" : String(lines),
             options: [
@@ -133,7 +116,12 @@
           }),
         })
       ),
+      head("表示"),
       card(
+        switchRow({
+          title: "「あの日」を出す", on: s.showThen !== false,
+          onTap: (v) => dailySet("showThen", v),
+        }),
         switchRow({
           title: "起床・就寝の時刻", on: s.showDayTimes !== false,
           onTap: (v) => dailySet("showDayTimes", v),
@@ -143,8 +131,10 @@
           onTap: (v) => dailySet("showStamps", v),
         })
       ),
-      /* 季節の二行は一枚のカードに（前は一行ずつ二枚）。
-         季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
+      /* 何が出るかが題だけでは分からないのは「あの日」だけ。 */
+      foot("「あの日」は、何年か前の同じ日に書いたものを暦の下に出します。"),
+      head("季節"),
+      /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
          出典は畳んで——CC BY／BY-SA は作者・ライセンス・URL の表示が要る（docs/season-art.md）。広重はノートの設定へ。 */
       card(
         switchRow({
@@ -159,6 +149,7 @@
       foot("ひとことは、二十四節気と七十二候を一行。"),
       KN.seasonArt && KN.seasonArt.credits("daily").length ? S.more("写真の出典", "Wikimedia Commons ／ " + KN.seasonArt.credits("daily")
         .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
+      head("月のまとめ"),
       card(
         switchRow({
           title: "月のまとめ", on: s.showDigest !== false,
@@ -178,23 +169,20 @@
           }),
         })
       ),
+      head("書き出しと取り込み"),
+      card(...dailyExportRows(), ...S.dailyImportRows()),
+      foot(S.DIARY_IN_NOTE),
     ];
   }
 
-  /** 書き出し（daily の「›」の先）。年の本はバックアップの一枚から移しました
-      ——中身の大半が daily の積み上げと日記なので。置き場は設定のままで、
-      daily の画面は変わりません（docs/daily.md の「年の本」）。 */
-  function dailyOutRows() {
+  /** daily の書き出しの行（daily の一枚と「書き出し」の一枚の両方に出す）。年の本はバックアップの一枚から
+      移したもの——中身の大半が daily の積み上げと日記なので（docs/daily.md の「年の本」）。 */
+  function dailyExportRows() {
     return [
-      card(
-        KN.util.folded("monthExport") ? null : navRow({
-          ico: "download", tint: TINT.sub, title: "月ぶんを書き出す",
-          onTap: openMonthExport,
-        }),
-        navRow({ ico: "download", tint: TINT.sub, title: "期間を選んで書き出す", onTap: openRangeExport }),
-        navRow({ ico: "book", tint: TINT.sub, title: "年の本", onTap: openYearbook })
-      ),
-    ];
+      KN.util.folded("monthExport") ? null : navRow({ title: "月ぶんを書き出す", onTap: openMonthExport }),
+      navRow({ title: "期間を選んで書き出す", onTap: openRangeExport }),
+      navRow({ title: "年の本", onTap: openYearbook }),
+    ].filter(Boolean);
   }
 
   /* 月の書き出しには日記の本文が入ります。日記の写し（js/diary-idb.js）の
@@ -383,5 +371,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  Object.assign(S, { dailyRows, dailyViewRows, dailyOutRows, lockRows });
+  Object.assign(S, { dailyPageRows, dailyExportRows, lockRows });
 })();

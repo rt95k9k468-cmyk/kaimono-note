@@ -60,7 +60,7 @@ async function openBackup(page) {
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await tapRow(page, "バックアップ");
+  await tapRow(page, "データ・同期");
   await page.waitForTimeout(400);
 }
 
@@ -76,9 +76,22 @@ const sealed = (page, days) => page.evaluate(async ({ days, PW }) => {
   return JSON.stringify({ app: "kaimono-note", kind: "diary-sealed", v: 1, lock: made.lock, days: out, at: new Date().toISOString() });
 }, { days, PW });
 
-/* 設定 → バックアップ →「日記を取り込む」で合言葉まで。 */
+/* 設定 → daily →「日記を取り込む」で合言葉まで（2026年11月5日まで バックアップの一枚。日記を記録から外す行は
+   データ・同期の「この端末の中」のまま）。いま居る一枚にファイルの欄が無ければ、根っこへ戻って daily を開く。 */
 async function pickDiary(page, text) {
-  await page.locator(".js-diary-file").setInputFiles({ name: "kurashi-diary.json", mimeType: "application/json", buffer: Buffer.from(text) });
+  if (!(await page.locator(".set-layer:last-child .js-diary-file").count())) {
+    await page.evaluate(() => KN.app.showScreen("settings"));
+    await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
+    while ((await page.locator(".set-layer").count()) > 1) {
+      await page.waitForFunction(() => !document.querySelector(".set-layer.is-edge-lift"));
+      await page.locator(".set-layer:last-child .set-back").click();
+      await page.waitForTimeout(400);
+    }
+    await tapRow(page, "daily");
+    await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
+    await page.waitForTimeout(300);
+  }
+  await page.locator(".set-layer:last-child .js-diary-file").setInputFiles({ name: "kurashi-diary.json", mimeType: "application/json", buffer: Buffer.from(text) });
   await page.locator(".js-input").waitFor();
   await page.locator(".js-input").fill(PW);
   await page.locator(".sheet .js-ok, .js-ok").last().click();

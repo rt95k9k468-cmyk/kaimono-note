@@ -115,11 +115,11 @@ const { open, checker } = require("./lib");
   await page.click("#head .js-settings");
   await settled("settings");
   await page.waitForTimeout(700);
-  /* 根っこは全部の席が一枚（2026年11月5日）。ノートの歯車からは notes の見出しが先。 */
-  t.check("ノートの歯車：notes の見出しが先（並びは表示の先・ロックは general）", await page.evaluate(() => {
-    const heads = [...document.querySelectorAll("#screen-settings .set-layer:last-child .set-head.is-seat")].map((h) => h.textContent.trim());
+  /* 根っこは入口だけの一枚（2026年11月5日）。ノートの歯車からも同じ入口で、notes の行はその先。 */
+  t.check("ノートの歯車：入口だけの根っこ（notes の入口がある・ノートの行は先の一枚）", await page.evaluate(() => {
+    const titles = [...document.querySelectorAll("#screen-settings .set-layer:last-child .set-row.has-lead .set-title")].map((x) => x.firstChild.textContent.trim());
     const t = document.getElementById("screen-settings").innerText;
-    return heads[0] === "notes" && heads[1] === "general" && /表示/.test(t) && /ロック/.test(t) && !/並び/.test(t) && !/「あの日」を出す/.test(t);
+    return titles.length === 9 && titles.includes("notes") && !/目次をコピー/.test(t) && !/「あの日」を出す/.test(t);
   }));
   await page.evaluate(() => KN.app.backScreen());
   await settled("notes");

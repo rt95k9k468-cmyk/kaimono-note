@@ -344,7 +344,8 @@
   const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px), (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
   function duo(L) {
     const groups = [];
-    if (DUO && DUO.matches) {
+    /* 根っこ（入口だけの一枚）は一列のまま——入口を二段に割ると、並びの順（表示 → タブ → データ）が崩れる。 */
+    if (DUO && DUO.matches && L !== stack[0]) {
       for (const n of [...L.body.children]) {
         if (!groups.length || n.matches(".set-head, .settings-group")) groups.push([]);
         groups[groups.length - 1].push(n);
@@ -355,21 +356,16 @@
     if (on) groups.forEach((g) => { const sec = node(html`<div class="set-sec"></div>`); g[0].before(sec); sec.append(...g); });
   }
 
-  /* ---------------- 一枚に、全部の席 ----------------
+  /* ---------------- 入口と中身（2026年11月5日に作り直した） ----------------
 
-     根っこは一枚で、**五つの席と general が全部並びます**（2026年11月5日）。歯車を押した
-     席が先、general が次、残りの席は下の帯の順。前は押した席と general だけで、ほかの席の
-     設定はそのタブへ移って歯車を押し直さないと出ませんでした——「タブをわざわざ選ぶ」手間。
-     目次（席を選ぶだけの一枚）には戻しません。選ばずに、送れば見える。
+     根っこは**入口だけの一枚**：表示・操作／通知・プライバシー／五つのタブ／データ・同期／連携・ヘルプ。
+     どの歯車から開いても同じ並び（どこに何があるかを、開くたびに探し直させない）。入口の下の一行は
+     中身の名前（説明ではなく、何が入っているか）。中身は入口の先の一枚に**全部並べる**——一、二行だけの
+     一枚は作らない。深さは 根っこ → 入口 → 詳細（お店の一覧・中継所…）まで。
 
-     **一画面ぶんある中身だけは「›」の先です**（お店・カテゴリ・外観・バックアップ…）。
-     参考画面（Structured）の `通知設定 ›` と同じ**詳細**——行の右にいまの値が出ていて、
-     押すと続きが開く、というものです。 */
-
-  /* 歯車を押したのはどの画面か（その席を先に並べる）。**入ったときに一度だけ**読みます——store が
-     動くたびに render() が走るので、そのつど聞くと、設定を見ているあいだに
-     根っこの並びが入れ替わる余地を残すことになります。 */
-  let fromTab = null;
+     前の二つの形と、なぜやめたか：歯車を押した席と「一般」だけ（9月30日〜）は、ほかの席の設定が
+     そのタブへ移らないと出なかった。全部の席を一枚に並べた形（11月5日の朝）は、縦に長く、データ・同期・
+     書き出し・取り込みが席ごとに散ったままだった。 */
 
   /* 絵の四角の色。**基調色とは別の軸**です（からだの四つの輪と同じ理由
      ——ここの色は「どの設定か」を言うもので、その人の好きな色の話では
@@ -404,8 +400,6 @@
   }
 
   const head = (text) => node(html`<h2 class="set-head">${text}</h2>`);
-  /** 根っこの節の見出し：席の名前と、下の帯と同じ絵。 */
-  const seatHead = (t) => node(html`<h2 class="set-head is-seat">${icon(t.icon)}<span>${t.label}</span></h2>`);
 
   /** カードの**下**に置く説明。行の中に入れると、行の高さを説明が決めて
       しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
@@ -416,18 +410,26 @@
   const more = (title, text) => node(html`
     <details class="set-more"><summary>${title}</summary><p>${text}</p></details>`);
 
-  /** 先へ進む行。**色の付いた四角が付くのは、ここだけ**です——あれは
-      「押すと続きがある」の合図で、その場で切り替わるスイッチの行には
-      要りません（参考画面もそうなっています）。
-      `act` … その場で済む操作（コピー・保存・ファイルを選ぶ）。「›」は先がある印なので付けない。
+  /** 押す行。行の種類は**形と色**で言う（2026年11月5日の作り直し。前は全部の行に色の四角）：
+      先へ進む行は「›」、その場で済む操作（`act`：保存・コピー・ファイルを選ぶ）は基調色の字、
+      切り替えはスイッチ、選ぶ行は上下の山、戻せない操作は赤い字。
+      絵は**根っこの入口だけ**（`lead`）。中の行に一つずつ色の四角を付けると、色が字より先に読まれ、
+      どれが大事かが言えなくなった。
+      `lead` … "icon"＝基調色の線の絵（根っこの入口・知らせ）／"tile"＝色の四角（ノートブック・タグの色など、
+               色そのものが中身のとき。`tint` がその色）。
+      `sub` … 題の下の一行（根っこの入口の中身の名前）。
       `off` … まだ押しても始まらない行（App key が無い、など）。薄く出し、押せば onTap が理由を言う。
-      `alert` … 根っこの頭の知らせ。四角は知らせの色、二行になるときは釣り合いよく折る。 */
-  function navRow({ ico, tint, title, value, onTap, act, off, alert }) {
+      `alert` … 根っこの頭の知らせ。絵は知らせの色、二行になるときは釣り合いよく折る。 */
+  function navRow({ ico, tint, title, value, onTap, act, off, alert, lead, sub }) {
+    if (alert && !lead) lead = "icon";
+    const mark = lead === "tile"
+      ? html`<span class="set-tile" style="background:${tint || TINT.data}">${icon(ico || "gear")}</span>`
+      : lead ? html`<span class="set-lead"${alert ? html` style="color:${TINT.warn}"` : ""}>${icon(ico || "gear")}</span>` : "";
     const row = node(html`
-      <button type="button" class="set-row is-nav ${act ? "is-act" : ""} ${off ? "is-off" : ""} ${alert ? "is-alert-row" : ""}"
+      <button type="button" class="set-row is-nav ${lead ? "has-lead" : ""} ${sub ? "has-sub" : ""} ${act ? "is-act" : ""} ${off ? "is-off" : ""} ${alert ? "is-alert-row" : ""}"
               ${off ? html`aria-disabled="true"` : ""}>
-        <span class="set-tile" style="background:${tint || TINT.data}">${icon(ico || "gear")}</span>
-        <span class="set-title">${title}</span>
+        ${mark}
+        <span class="set-title">${title}${sub ? html`<span class="set-sub">${sub}</span>` : ""}</span>
         <span class="set-val"></span>
         ${act ? "" : html`<span class="set-chev">${icon("chevron")}</span>`}
       </button>
@@ -439,13 +441,11 @@
     return row;
   }
 
-  /** 戻せない操作の行。**四角ではなく、赤い絵と赤い字**（参考画面の
-      「アプリを初期化」と同じ）——色の付いた四角は「行き先」の印なので、
-      そのまま着せると、消す操作が普通の行き先と同じ顔になります。 */
-  function dangerRow({ ico, title, onTap }) {
+  /** 戻せない操作の行。**赤い字だけ**（iPhone の設定の「〜を消す」と同じ）。その場で済む操作が基調色の字
+      なので、色だけで「押すと何かが起きる・戻せない」が言える（2026年11月5日。前は赤い絵も添えていた）。 */
+  function dangerRow({ title, onTap }) {
     const row = node(html`
       <button type="button" class="set-row is-danger">
-        <span class="set-glyph">${icon(ico || "trash")}</span>
         <span class="set-title">${title}</span>
       </button>
     `);
@@ -577,40 +577,35 @@
     return wrap;
   }
 
-  /* ---------------- どの画面の設定か ----------------
-
-     歯車を押した画面 → その席の名前と中身。価格は席を持たない画面
-     （買うものの紙の裏）なので、その席——買うもの——の設定を出します。
+  /* ---------------- 入口と、その先の一枚 ----------------
 
      中身の関数は、このファイルより後に読まれる settings-*.js にあります。
-     読み込んだ時点ではまだ居ないので、組むときに `S` から引きます。 */
-  /* ノートは五つめの席（2026年10月11日まで daily の裏で、daily の下に並べていた）。
-     絵は下の帯と同じもの（app.js の FACES）——見出しの絵で、どのタブの設定かを帯と結ぶ。 */
-  const TAB = {
-    todo:    { label: "tasks",    icon: "checklist", rows: () => S.todoRows() },
-    list:    { label: "shopping", icon: "cart",      rows: () => S.listRows() },
-    prices:  { label: "shopping", icon: "cart",      rows: () => S.listRows(), seat: "list" },
-    archive: { label: "daily",    icon: "book",      rows: () => S.dailyRows() },
-    notes:   { label: "notes",    icon: "notes",     rows: () => S.notesRows() },
-    diet:    { label: "health",   icon: "heart",     rows: () => S.dietRows() },
-  };
-  /** 下の帯の順。歯車を押した席のあとに、残りをこの順で並べる。 */
-  const SEATS = ["archive", "notes", "todo", "list", "diet"];
+     読み込んだ時点ではまだ居ないので、組むときに `S` から引きます。
+     タブの入口の名前と絵は下の帯と同じ（app.js の FACES）——帯で毎日見ている字と絵で探せるように。 */
+  const SEATS = [
+    { id: "daily",    label: "daily",    icon: "book",      sub: "日記・あの日・季節・月のまとめ" },
+    { id: "notes",    label: "notes",    icon: "notes",     sub: "並び・季節の絵・ノートブック" },
+    { id: "tasks",    label: "tasks",    icon: "checklist", sub: "時間割・一日の道・見直す間隔" },
+    { id: "shopping", label: "shopping", icon: "cart",      sub: "お店・カテゴリ・おぼえた振り分け" },
+    { id: "health",   label: "health",   icon: "heart",     sub: "目標・取り込み・書き出し" },
+  ];
 
-  /** 「›」の先。ここに載るのは**一画面ぶんある中身**だけです。 */
+  /** 「›」の先。入口の一枚と、その先の詳細。 */
   const PAGES = {
-    look:   { title: "外観",                 build: () => S.lookRows() },
-    data:   { title: "バックアップ",          build: () => S.dataRows() },
-    notify:    { title: "通知",     build: () => S.notifyRows() },
+    look:     { title: "表示・操作",         build: () => S.lookRows() },
+    privacy:  { title: "通知・プライバシー", build: () => privacyRows() },
+    daily:    { title: "daily",    build: () => S.dailyPageRows() },
+    notes:    { title: "notes",    build: () => S.notesPageRows() },
+    tasks:    { title: "tasks",    build: () => S.tasksPageRows() },
+    shopping: { title: "shopping", build: () => S.shoppingPageRows() },
+    health:   { title: "health",   build: () => S.healthPageRows() },
+    data:     { title: "データ・同期", build: () => S.dataRows() },
+    dataOut:  { title: "書き出し",     build: () => S.dataOutRows() },
+    dataIn:   { title: "取り込み",     build: () => S.dataInRows() },
+    help:     { title: "連携・ヘルプ", build: () => helpRows() },
     cal:       { title: "カレンダー", build: () => S.calRows() },
     slips:     { title: "置き直しの記録", build: () => S.slipRows() },
     slipsFine: { title: "細かく",   build: () => S.slipFineRows() },
-    review:    { title: "見直す間隔", build: () => S.reviewRows() },
-    dailyView: { title: "表示",     build: () => S.dailyViewRows() },
-    notesView: { title: "表示",     build: () => S.notesViewRows() },
-    dailyOut:  { title: "書き出し", build: () => S.dailyOutRows() },
-    lock:      { title: "ロック",   build: () => S.lockRows() },
-    intake:    { title: "取り込み", build: () => S.intakeRows() },
     errors: { title: "エラーの記録",          build: () => S.errorRows() },
     dropbox: { title: "Dropbox へ送る",       build: () => S.dropboxRows() },
     stores: { title: "お店",                 build: () => [S.storesGroup()] },
@@ -632,8 +627,6 @@
   const titleOf = (page) => (typeof page.title === "function" ? page.title() : page.title);
 
   function onEnter() {
-    const from = KN.app.openedFrom && KN.app.openedFrom();
-    fromTab = TAB[from] ? from : "archive";
     ahead = [];
     /* 重なりは畳んで、根っこ一枚に戻します——前に開いたときの「›」の先が
        残っていると、歯車を押した人が、押した覚えのない紙を見ることになる。 */
@@ -727,15 +720,7 @@
       ico: "undo", tint: TINT.warn, alert: true, onTap: () => go("data"),
       title: P.status().phase === "off" ? "過去のやることを読めません" : "過去のやることが見つかりませんでした",
     })));
-    /* 歯車を押した席 → general → 残りの席（下の帯の順）。general を二番目に置くのは、外観・
-       バックアップがどの歯車からも今までと同じ近さにあるように。見出しは席の名前と下の帯の絵
-       （general も同じ系列の小文字）。 */
-    const from = (TAB[fromTab] && TAB[fromTab].seat) || (TAB[fromTab] ? fromTab : "archive");
-    const section = (id) => { L.body.append(seatHead(TAB[id])); put(TAB[id].rows()); };
-    section(from);
-    L.body.append(seatHead({ label: "general", icon: "gear" }));
-    put(generalRows());
-    SEATS.filter((id) => id !== from).forEach(section);
+    put(rootRows());
   }
 
   function stampOf(iso) {
@@ -762,51 +747,78 @@
     return `端末の外の控えが${x.days}日前のままです`;
   }
 
-  /** general：どのタブにも効くもの。 */
-  function generalRows() {
+  /** 根っこの入口。どの歯車から開いても同じ並び。右の値は、入口を開かずに分かる「いま」だけ
+      （基調色の粒・エラーの数）。オン/オフは入口の下の一行が言う（通知・ロック）。
+      下の一行は電話の幅で一行に収まる長さ（16字まで。二行に割れると入口の背がばらつく）。 */
+  function rootRows() {
     const s = store.get();
     const a = store.ACCENTS.find((x) => x.id === (s.settings.accent || "orange"));
-    const notes = S.collectIconGaps().length + (s.iconReports || []).length;
-    /* 通知（やることの時刻・アイコンの数）とロック（日記・daily・ノート）は、前は tasks・daily・
-       notes の中にあり、同じロックが二か所に出ていた。どれも端末とアプリ全体の話なので、ここに一つ。 */
-    const notify = KN.notify && KN.notify.supported() ? KN.notify : null;
-    const badge = KN.app.appBadge && KN.app.appBadge.supported() ? KN.app.appBadge : null;
-    const lock = KN.lock;
-    /* 二つの束：ふだんに効くもの（外観・通知・ロック・バックアップ）と、困ったときに開くもの
-       （エラー・アイコンの報告）。一つのカードに混ぜると、めったに開かない二行が同じ重さに見える。 */
+    const entry = (o) => navRow({ lead: "icon", ...o });
     return [
       card(
-        navRow({
-          ico: "palette", tint: TINT.look, title: "外観",
+        entry({
+          ico: "palette", title: "表示・操作", sub: "明るさ・基調色・文字・上の帯",
           /* 参考画面と同じで、いまの色をひと粒で。 */
           value: a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null,
           onTap: () => go("look"),
         }),
-        notify || badge ? navRow({
-          ico: "bell", tint: TINT.goal, title: "通知",
-          value: (notify && notify.enabled()) || (badge && badge.enabled()) ? "オン" : "オフ",
-          onTap: () => go("notify"),
-        }) : null,
-        lock ? navRow({
-          ico: "lock", tint: TINT.sync, title: "ロック",
-          value: lock.supported() && lock.enabled() ? "オン" : "オフ", onTap: () => go("lock"),
-        }) : null,
-        navRow({
-          ico: "download", tint: TINT.data, title: "バックアップ",
-          onTap: () => go("data"),
+        entry({ ico: "bell", title: "通知・プライバシー", sub: privacySub(), onTap: () => go("privacy") })
+      ),
+      head("タブごと"),
+      card(...SEATS.map((t) => entry({ ico: t.icon, title: t.label, sub: t.sub, onTap: () => go(t.id) }))),
+      head("データとヘルプ"),
+      card(
+        entry({ ico: "download", title: "データ・同期", sub: "バックアップ・同期・出し入れ", onTap: () => go("data") }),
+        entry({
+          ico: "route", title: "連携・ヘルプ", sub: "ショートカット・中継所・エラー",
+          value: KN.errlog && S.errCount() ? `${S.errCount()}件` : "", onTap: () => go("help"),
         })
       ),
+    ];
+  }
+
+  /* ---- 通知・プライバシー（前は「通知」と「ロック」の、一、二行ずつの二枚） ---- */
+  const notifyCan = () => !!(KN.notify && KN.notify.supported());
+  const badgeCan = () => !!(KN.app.appBadge && KN.app.appBadge.supported());
+  function privacySub() {
+    const on = (notifyCan() && KN.notify.enabled()) || (badgeCan() && KN.app.appBadge.enabled());
+    const lock = KN.lock && KN.lock.supported() && KN.lock.enabled();
+    return `通知 ${on ? "オン" : "オフ"}・ロック ${lock ? "オン" : "オフ"}`;
+  }
+  function privacyRows() {
+    return [
+      notifyCan() || badgeCan() ? head("通知") : null,
+      ...S.notifyRows(),
+      head("ロック"),
+      ...S.lockRows(),
+    ];
+  }
+
+  /* ---- 連携・ヘルプ：外の道具とのつなぎ方と、困ったときの記録。ふだんの設定とは分ける ---- */
+  function helpRows() {
+    const s = store.get();
+    const notes = S.collectIconGaps().length + (s.iconReports || []).length;
+    const apple = KN.ics && KN.ics.apple();
+    return [
+      head("連携"),
+      card(
+        navRow({
+          title: "中継所", value: KN.healthRelay && KN.healthRelay.configured() ? KN.healthRelay.host() : "未設定",
+          onTap: () => go("relay"),
+        }),
+        /* カレンダーはショートカット App のある端末だけ。畳んだ面（calShortcut）は、入れているあいだは出す。 */
+        apple && !(KN.util.folded("calShortcut") && s.settings.calShortcut !== true) ? navRow({
+          title: "カレンダー", value: s.settings.calShortcut === true ? "オン" : "オフ", onTap: () => go("cal"),
+        }) : null,
+        KN.util.folded("googleImport") ? null : navRow({ title: "誕生日のショートカット", onTap: () => go("birthHow") }),
+        navRow({ title: "小窓の組み方", onTap: () => go("glanceHow") })
+      ),
+      head("困ったとき"),
       card(
         KN.errlog ? navRow({
-          ico: "copy", tint: TINT.sub, title: "エラーの記録",
-          value: S.errCount() ? `${S.errCount()}件` : "なし",
-          onTap: () => go("errors"),
+          title: "エラーの記録", value: S.errCount() ? `${S.errCount()}件` : "なし", onTap: () => go("errors"),
         }) : null,
-        navRow({
-          ico: "tag", tint: TINT.icons, title: "アイコンの報告",
-          value: notes ? `${notes}件` : "",
-          onTap: () => go("icons"),
-        })
+        navRow({ title: "アイコンの報告", value: notes ? `${notes}件` : "", onTap: () => go("icons") })
       ),
     ];
   }
@@ -835,7 +847,7 @@
      立ち上げたときの面が済ませていますし、保存先の話はバックアップの中で
      もう一度、必要な文脈と一緒に出てきます。 */
 
-  Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, timeRow, choose, render, copyText, fieldCard });
+  Object.assign(S, { back, go, TINT, card, head, foot, more, navRow, dangerRow, switchRow, pickRow, timeRow, choose, render, copyText, fieldCard, rootRows, privacyRows, helpRows, PAGES });
 
   KN.screens = KN.screens || {};
   KN.screens.settings = { mount, render, onEnter, where, goTo, canForward, forward };

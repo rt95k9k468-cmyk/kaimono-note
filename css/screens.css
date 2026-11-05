@@ -2017,6 +2017,7 @@
   --set-gap: 10px;   /* 絵と題のあいだ */
   --set-fs: calc(17px * var(--fs-k));
   --set-fs-head: calc(15px * var(--fs-k));
+  --set-fs-sub: calc(14px * var(--fs-k));   /* 根っこの入口の下の一行 */
   /* 説明は少なく、大きく（2026年9月30日）。13px の薄い字で長く書くのを
      やめて、残した一行を 15px で読めるように。 */
   --set-fs-foot: calc(15px * var(--fs-k));
@@ -2195,18 +2196,6 @@
 .js-body > .settings-group:first-child { margin-top: var(--sp-4); }
 /* 紙の中・節の中では、外側の余白をそちらが持っている。 */
 .set-head.is-flush { padding-left: var(--sp-5); padding-right: var(--sp-5); }
-/* 根っこの節（五つの席と general。2026年11月5日から一枚に全部並ぶ）。下の帯と同じ絵を添え、
-   行の題と同じ大きさ・地の字の色で——灰の小見出しのままだと、長い一枚のどこで席が替わるかが
-   見えなかった。「›」の先の小見出し（明るさ・基調色…）は灰のまま。 */
-.set-head.is-seat {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-top: var(--sp-8);
-  font-size: var(--set-fs);
-  color: var(--c-text);
-}
-.set-head.is-seat svg { flex: none; width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); color: var(--c-text-2); }
 
 /* **説明はカードの外・下**。行の中に入れると、行の高さを説明が決めて
    しまい、設定の一覧が読み物になります（参考画面も外に出しています）。 */
@@ -2261,8 +2250,8 @@
   position: relative;
   transition: background var(--m-state) var(--ease);
 }
-/* 絵の付く行だけ、左を少し詰める（絵の左端がカードから18px）。 */
-.set-row.is-nav { padding-left: var(--set-pad); }
+/* 絵の付く行（根っこの入口・知らせ・ノートブックの色）だけ、左を少し詰める（絵の左端がカードから18px）。 */
+.set-row.has-lead { padding-left: var(--set-pad); }
 .set-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
 @media (hover: hover) {
   .set-row:hover { background: var(--c-surface-2); }
@@ -2278,10 +2267,34 @@
   height: 1px;
   background: var(--set-line);
 }
-.set-row.is-nav + .set-row::before,
-.set-row + .set-row.is-nav::before {
+.set-row.has-lead + .set-row::before,
+.set-row + .set-row.has-lead::before {
   left: calc(var(--set-pad) + var(--set-tile) + var(--set-gap));
 }
+
+/* ---- 行の種類は形と色で（2026年11月5日の作り直し） ----
+   中の行には絵を付けない。押して先へ＝「›」、その場で済む操作＝基調色の字、戻せない操作＝赤い字、
+   切り替え＝スイッチ、選ぶ＝上下の山。色の四角を一行ずつ付けていたころは、色が字より先に読まれた。
+   絵は根っこの入口だけ：基調色の線の絵ひとつ（色を何色も使わない）。 */
+.set-lead {
+  flex: none;
+  width: var(--set-tile);
+  display: grid;
+  place-items: center;
+  color: var(--c-primary);
+}
+.set-lead svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
+/* 入口の題の下の一行（中身の名前）。題より一段小さく、薄くしすぎない。 */
+.set-sub {
+  margin-top: 2px;
+  font-size: var(--set-fs-sub);
+  line-height: var(--lh-ui);
+  color: var(--c-text-2);
+  white-space: normal;
+}
+.set-row.has-sub { min-height: var(--row-h-two); padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
+.set-row.is-act .set-title { color: var(--c-primary); }
+.set-row.is-act.is-off .set-title { color: var(--c-text); }
 
 .set-title {
   flex: 1;
@@ -2342,7 +2355,7 @@
 /* 戻せない操作。**四角ではなく、赤い絵と赤い字**（参考画面の「アプリを
    初期化」と同じ）——色の付いた四角は「行き先」の印なので、そのまま
    着せると、消す操作が普通の行き先と同じ顔になります。 */
-.set-row.is-danger { color: var(--c-danger); padding-left: var(--set-pad); }
+.set-row.is-danger { color: var(--c-danger); }
 .set-glyph {
   flex: none;
   display: grid;
@@ -2388,6 +2401,7 @@
 .set-row.is-act .set-val { margin-right: 2px; }
 /* まだ始められない行（App key が無い・URL が無い）。押せば理由を言うので、指は受ける。 */
 .set-row.is-off .set-tile,
+.set-row.is-off .set-lead,
 .set-row.is-off .set-title { opacity: .45; }
 /* 根っこの頭の知らせ。二行になるなら、釣り合いのよいところで折る（「まだあり／ません」と割らない）。 */
 .set-row.is-alert-row .set-title { text-wrap: balance; }

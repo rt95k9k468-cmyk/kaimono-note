@@ -93,12 +93,12 @@ const FORBIDDEN = [
     !empty.includes("## ") && !/ありません|なし/.test(empty), empty);
 
   /* ================= 画面 ================= */
-  // 年の本は daily の設定の「書き出し ›」の先（docs/settings.md の「二段の一覧」）
+  // 年の本は 設定 → daily の一枚の「書き出しと取り込み」（2026年11月5日。同じ行が データ・同期 → 書き出し にも）
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(400);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "書き出し" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "年の本" }).first().click();
   await page.waitForTimeout(500);

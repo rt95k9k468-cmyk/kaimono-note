@@ -27,7 +27,7 @@ const { open, checker } = require("./lib");
 
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "外観" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "表示・操作" }).first().click();
   await page.waitForTimeout(600);
   const look = await page.evaluate(() => document.querySelector(".set-layer:last-child").textContent);
   t.check("外観に「試す」も「2.0 の見た目」も無い", !/2\.0 の見た目/.test(look) && !/試す/.test(look));

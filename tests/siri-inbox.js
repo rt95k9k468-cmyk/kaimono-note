@@ -109,12 +109,12 @@ const SEP = "\u001E";
   t.check("健康の便はいつもどおり入る（受け箱と混ざらない）", Number(steps) === 5000, String(steps));
 
   // 7. 設定の中継所の紙に、Siri 用のURLの行がある
-  // 設定の中身は歯車を押した画面で決まる（ダイエットから開くと health の設定）
+  // 設定 → health（根っこの入口）→ 中継所（2026年11月5日。同じ一枚が 連携・ヘルプ にもある）
   await page.evaluate(() => KN.app.showScreen("diet"));
   await page.waitForTimeout(400);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "取り込み" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "health" }).first().click();
   await page.waitForTimeout(500);
   await page.locator(".set-layer:last-child .set-row", { hasText: "中継所" }).first().click();
   await page.waitForTimeout(500);

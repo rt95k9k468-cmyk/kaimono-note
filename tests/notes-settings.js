@@ -102,24 +102,25 @@ print(json.dumps(out, ensure_ascii=False))
   await page.evaluate(() => KN.app.showScreen("archive"));
   await settled("archive");
   await openSettings();
-  t.check("daily の歯車：daily → general → 残りの席", (await heads()).join() === "daily,general,notes,tasks,shopping,health", (await heads()).join());
-  t.check("根っこにノートの並びは出ない（notes の表示の先）", !/並び/.test(await topText()));
-  await into("表示");
-  t.check("daily の表示に「ノートの並び」はもう無い", !(await topText()).includes("ノートの並び"));
+  /* 根っこは入口だけの一枚で、どの歯車からも同じ並び（2026年11月5日）。 */
+  const entries = () => page.$$eval(`${top} .set-row.has-lead .set-title`, (ts) => ts.map((x) => x.firstChild.textContent.trim()).join());
+  const ENTRIES = "表示・操作,通知・プライバシー,daily,notes,tasks,shopping,health,データ・同期,連携・ヘルプ";
+  t.check("daily の歯車：入口だけの根っこ", (await entries()) === ENTRIES, await entries());
+  t.check("根っこにノートの並びは出ない（notes の一枚に）", !/並び/.test(await topText()));
+  await into("daily");
+  t.check("daily の一枚に「ノートの並び」は無い", !(await topText()).includes("並び"));
   await back();
 
   await page.click('.tab[data-tab="notes"]');
   await settled("notes");
   await openSettings();
-  t.check("ノートの席の歯車：notes → general → 残りの席", (await heads()).join() === "notes,general,daily,tasks,shopping,health", (await heads()).join());
+  t.check("ノートの歯車も同じ根っこ", (await entries()) === ENTRIES, await entries());
+  await into("notes");
   const R0 = await topText();
-  t.check("notes にノートブック・タグ・表示・書き出し・general にロック（並び・「あの日」は表示の先）",
-    ["ノートブック", "タグ", "表示", "書き出し", "ロック"].every((x) => R0.includes(x))
-      && !R0.includes("「あの日」を出す") && !/並び/.test(R0), R0.slice(0, 300));
-  await into("表示");
-  const V0 = await topText();
-  t.check("notes の表示に並び（右に「直した日」）・季節の絵・「道に置く」を出す",
-    /並び\s*直した日/.test(V0) && V0.includes("季節の絵") && V0.includes("「道に置く」を出す"), V0.slice(0, 200));
+  t.check("notes の一枚に 表示（並び・季節の絵・「道に置く」）・整理（ノートブック・タグ）・書き出しと取り込み。ロックと「あの日」は無い",
+    ["並び", "季節の絵", "「道に置く」を出す", "ノートブック", "タグ", "ノートを書き出す", "目次をコピー"].every((x) => R0.includes(x))
+      && !R0.includes("ロック") && !R0.includes("「あの日」を出す"), R0.slice(0, 300));
+  t.check("並びの右に「直した日」", /並び\s*直した日/.test(R0));
 
   /* ---- 並び ---- */
   /* 二択は行の値のところに小窓（一枚は重ねない。2026年10月24日）。 */
@@ -128,9 +129,8 @@ print(json.dumps(out, ensure_ascii=False))
   await page.locator(".note-pop.set-menu.is-open [role=menuitemradio]", { hasText: "作った日" }).click();
   await page.waitForTimeout(400);
   t.check("並びを作った日に（鍵は notesOrder）", (await page.evaluate(() => KN.store.get().settings.notesOrder)) === "created");
-  t.check("表示の値も作った日", /並び\s*作った日/.test(await topText()));
+  t.check("行の値も作った日", /並び\s*作った日/.test(await topText()));
   await page.evaluate(() => { KN.store.update((s) => { delete s.settings.notesOrder; }); });
-  await back();
 
   /* ---- ノートブック ---- */
   await into("ノートブック");
@@ -192,12 +192,12 @@ print(json.dumps(out, ensure_ascii=False))
   t.check("タグをまとめると重ならない", JSON.stringify(await page.evaluate((x) => KN.notes.get(x.a).tags, ids)) === '["料理"]');
   await page.locator(`${top} .set-row.is-danger`).click();
   await confirmOk("外す");
-  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length === 2);
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length === 3);   // 根っこ・notes・タグ
   await page.waitForTimeout(300);
   const rm = await page.evaluate((x) => ({ a: KN.notes.get(x.a), b: KN.notes.get(x.b), tags: KN.notes.tagNames() }), ids);
   t.check("タグを外してもノートは残る", !!rm.a && !!rm.b && !rm.tags.length && !rm.a.tags.length, JSON.stringify(rm.tags));
   await back();
-  t.check("タグが無くなったら根っこにタグの行は出ない", !/\nタグ\n/.test("\n" + (await topText()) + "\n"));
+  t.check("タグが無くなったら notes の一枚にタグの行は出ない", !/\nタグ\n/.test("\n" + (await topText()) + "\n"));
 
   /* ホームの木のノートブックは選んだ色（仕事に色を付けて確かめる。カードは「すべてのノート」にだけ。③）。 */
   await page.evaluate(() => {
@@ -228,8 +228,8 @@ print(json.dumps(out, ensure_ascii=False))
   t.check("1つにまとめる：題の無いノートは一行目を見出しに", ex.one.includes("# 献立の一行目\n"));
 
   /* ---- 書き出し：画面から zip ---- */
-  /* ノートの歯車からは notes の節が先（根っこは全部の席が一枚。daily・health にも「書き出し」がある）。 */
-  await into("書き出し");
+  /* notes の一枚の「書き出しと取り込み」の束（2026年11月5日）。 */
+  await into("ノートを書き出す");
   t.check("書き出しの一枚", (await navTitle()) === "ノートを書き出す");
   const chips = await page.$$eval(`${top} .chip`, (c) => c.map((x) => x.getAttribute("aria-label") || x.textContent.trim()));
   t.check("何を書き出すかのチップ（すべて・★・ノートブック・タグ）", chips.join() === "すべて,★,仕事,料理", chips.join());
@@ -270,7 +270,7 @@ print(json.dumps(out, ensure_ascii=False))
   /* ---- 言葉 ---- */
   await back();
   const texts = await page.$$eval(".set-layer", (ls) => ls.map((l) => l.innerText).join("\n"));
-  const notesPart = texts.slice(texts.indexOf("notes"), texts.indexOf("general"));
+  const notesPart = await topText();   // notes の一枚（根っこの入口の先）
   const bad = FORBIDDEN.filter((w) => notesPart.includes(w));
   t.check("notes の行に数・評価の言葉が無い", !bad.length, bad.join());
   t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(texts));

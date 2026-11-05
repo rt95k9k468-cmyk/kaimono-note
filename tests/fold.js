@@ -37,7 +37,10 @@ const t = checker("fold");
 
   await page.evaluate(() => KN.app.showScreen("settings"));
   await wait(700);
-  const row = page.locator("#screen-settings .set-row", { hasText: "そろそろ切れそう" });
+  /* 根っこの入口「shopping」の先（2026年11月5日）。 */
+  await page.locator("#screen-settings .set-layer:last-child .set-row", { hasText: "shopping" }).first().click();
+  await wait(800);
+  const row = page.locator("#screen-settings .set-layer:last-child .set-row", { hasText: "そろそろ切れそう" });
   t.check("買うものの設定に戻すスイッチ", (await row.count()) === 1
     && (await row.getAttribute("aria-checked")) !== "true");
   await row.click();

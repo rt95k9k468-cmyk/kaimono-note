@@ -42,6 +42,9 @@ const { open, checker } = require("./lib");
     await page.evaluate(() => KN.app.showScreen("notes"));
     await page.evaluate(() => KN.app.showScreen("settings"));
     await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
+    /* ノートの行は根っこの入口「notes」の先（2026年11月5日）。 */
+    await page.evaluate(() => KN.settingsParts.go("notes"));
+    await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
     const r = await page.evaluate(() => [...document.querySelectorAll(".set-layer:last-child .set-title")].map((e) => e.textContent).join(" / "));
     await page.evaluate(() => KN.app.showScreen("notes"));
     return r;

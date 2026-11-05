@@ -157,6 +157,9 @@ const { open, checker } = require("./lib");
   /* 設定の行 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
+  /* ノートの行は根っこの入口「notes」の先（2026年11月5日）。 */
+  await page.evaluate(() => KN.settingsParts.go("notes"));
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   const rows = await page.locator(".set-layer:last-child").innerText();
   t.check("設定：分けたあとは「戻す」だけ", /6つに分けたのを戻す/.test(rows) && !/6つに分ける\n/.test(rows + "\n"), rows);
 

@@ -37,8 +37,11 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
+  /* ノートの行は根っこの入口「notes」の先（2026年11月5日）。 */
+  await page.evaluate(() => KN.settingsParts.go("notes"));
+  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   const has = await page.locator(".set-layer:last-child .set-row", { hasText: "目次をコピー" }).count();
-  t.check("ノートの歯車に「目次をコピー」", has === 1, String(has));
+  t.check("設定の notes に「目次をコピー」", has === 1, String(has));
 
   t.check("エラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();

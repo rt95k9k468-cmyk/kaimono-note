@@ -110,12 +110,14 @@
   /* 根っこの束（2026年10月24日に組み直し）：時間割（見方と一日の枠）・見直す日・知らせ（通知・カレンダー）・
      取り込み（Google・誕生日）・置き直しの控え。前は七枚のカードに散っていて、「一日の道」の見出しの下に
      一日の始まりと終わりが居たので、道の設定に見えていた。 */
-  function todoRows() {
+  /** tasks の一枚（根っこの入口「tasks」の先。2026年11月5日）。前は根っこに時間割の束と「›」が五つ並び、
+      見直す間隔は三行だけの別の一枚だった。いまは一枚に：時間割 → 見直す間隔（その場で選ぶ）→ 記録 → 取り込み。
+      通知は「通知・プライバシー」、カレンダーと誕生日のショートカットは「連携・ヘルプ」へ。 */
+  function tasksPageRows() {
     const s = store.get().settings;
     const timeline = s.todoTimeline !== false;
-    const d = store.reviewDays();
-    const batches = store.googleBatches();
     return [
+      head("時間割"),
       card(
         switchRow({
           title: "今日を時間割で見る", on: timeline,
@@ -128,33 +130,28 @@
         timeline ? roadRow(s) : null,
         ...spanRows(s)
       ),
-      /* 「›」の行は一つの束に（2026年11月5日。前は一、二行ずつ四枚のカードに割れていた）。通知は general へ。
-         見直す間隔 → カレンダー → 取り込み（Google・誕生日・取り消し）→ 置き直しの記録。 */
-      card(
-        navRow({
-          ico: "clock", tint: TINT.cat, title: "見直す間隔",
-          value: `${daysLabel("next", d.next)}・${daysLabel("wait", d.wait)}・${daysLabel("someday", d.someday)}`,
-          onTap: () => go("review"),
-        }),
-        KN.ics && KN.ics.apple() && !(KN.util.folded("calShortcut") && s.calShortcut !== true) ? navRow({
-          ico: "calendar", tint: TINT.sync, title: "カレンダー",
-          value: s.calShortcut === true ? "オン" : "オフ", onTap: () => go("cal"),
-        }) : null,
-        /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。 */
-        ...(KN.util.folded("googleImport") ? [] : [
-          navRow({ ico: "download", tint: TINT.sync, title: "外部アプリから取り込む", onTap: () => KN.googleImport.open() }),
-          navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
-          batches.length
-            ? navRow({ ico: "undo", tint: TINT.sub, title: "取り込みを取り消す", value: `${batches[0].n}件`, act: true,
-              onTap: () => KN.googleImport.undo().then(render) })
-            : null,
-        ]),
-        /* 崩れ方の事実（3.0 の D1）。並べるだけ。前の名は「置き直しの控え」（控えはバックアップの言葉と重なった）。 */
-        KN.util.folded("slips") ? null : navRow({ ico: "repeat", tint: TINT.data, title: "置き直しの記録",
-          value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
-          onTap: () => go("slips") })
-      ),
+      head("見直す間隔"),
+      ...reviewRows(),
+      /* 崩れ方の事実（3.0 の D1）。並べるだけ。前の名は「置き直しの控え」（控えはバックアップの言葉と重なった）。 */
+      KN.util.folded("slips") ? null : head("記録"),
+      KN.util.folded("slips") ? null : card(navRow({ title: "置き直しの記録",
+        value: (() => { const f = store.slipFacts(); return f.todos ? `${f.todos}件` : ""; })(),
+        onTap: () => go("slips") })),
+      ...(tasksImportRows().length ? [head("取り込み"), card(tasksImportRows())] : []),
     ];
+  }
+
+  /** Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。tasks の一枚と「取り込み」の一枚の両方に出す。 */
+  function tasksImportRows() {
+    if (KN.util.folded("googleImport") || !KN.googleImport) return [];
+    const batches = store.googleBatches();
+    return [
+      navRow({ title: "外部アプリから取り込む", onTap: () => KN.googleImport.open() }),
+      batches.length
+        ? navRow({ title: "取り込みを取り消す", value: `${batches[0].n}件`, act: true,
+          onTap: () => KN.googleImport.undo().then(render) })
+        : null,
+    ].filter(Boolean);
   }
 
   /** 通知（general の「›」の先。11月5日まで tasks に）。 */
@@ -424,5 +421,5 @@
     ];
   }
 
-  Object.assign(S, { todoRows, reviewRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows, slipFineRows });
+  Object.assign(S, { tasksPageRows, tasksImportRows, notifyRows, calRows, calHowRows, glanceHowRows, birthHowRows, slipRows, slipFineRows });
 })();

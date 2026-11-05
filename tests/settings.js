@@ -34,11 +34,26 @@ const { open, checker } = require("./lib");
   };
 
   /* ---------------- 主な筋 ---------------- */
+  /* 根っこは入口だけの一枚（2026年11月5日）：表示・操作／通知・プライバシー／五つのタブ／データ・同期／連携・ヘルプ。
+     どの歯車から開いても同じ並び。入口の先の一枚に中身が全部並ぶ。 */
+  const into = async (title) => {
+    const n = await page.locator(".set-layer").count();
+    await rowOf(title).click();
+    await page.waitForFunction((k) => document.querySelectorAll(".set-layer").length > k, n);
+    await layerStill();
+    await page.waitForTimeout(300);
+    return page.locator(top).innerText();
+  };
+  const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "notes", "tasks", "shopping", "health", "データ・同期", "連携・ヘルプ"];
+  const entries = () => page.$$eval(`${top} .set-row.has-lead .set-title`, (ts) => ts.map((x) => x.firstChild.textContent.trim()));
   await openSettings("todo");
   const rootText = await page.locator(top).innerText();
-  t.check("やることの歯車から：その画面の設定と「一般」が一枚に並ぶ",
-    rootText.includes("一日の道") && rootText.includes("外観") && rootText.includes("バックアップ"),
-    rootText.slice(0, 120));
+  t.check("根っこは入口だけの一枚（九つ）", (await entries()).join() === ENTRIES.join(), (await entries()).join());
+  t.check("入口の下に中身の名前（一行）", rootText.includes("明るさ・基調色・文字・上の帯") && rootText.includes("時間割・一日の道・見直す間隔"),
+    rootText.slice(0, 160));
+  t.check("入口の絵は基調色の線の絵だけ（色の四角は無い）",
+    (await page.locator(`${top} .set-tile`).count()) === 0 && (await page.locator(`${top} .set-row.has-lead .set-lead svg`).count()) === 9);
+  await into("tasks");
 
   /* 一日の道は 上・下・出さない（2026年10月19日。前は「一日の道を出す」のスイッチ）。
      短い選択肢は一枚を重ねず、行の値のところに小窓（2026年10月24日。docs/settings.md の「その場で選ぶ」）。 */
@@ -58,7 +73,7 @@ const { open, checker } = require("./lib");
   const below = await page.evaluate(() => KN.store.get().settings.todoRoadAt === "below");
   t.check("一日の道は行の値のところに小窓（三つ・いまのものに ✓・一枚は重ねない）",
     /時間割の上/.test(roadRow) && items.join() === "時間割の上✓,時間割の下,出さない"
-      && (await page.locator(".set-layer").count()) === 1, `${roadRow} / ${items.join()}`);
+      && (await page.locator(".set-layer").count()) === 2, `${roadRow} / ${items.join()}`);   // 根っこ・tasks の一枚
   await pickIn("一日の道", "出さない");
   t.check("押すと記録に入る（一日の道：既定は上 → 下 → 出さない）",
     below && await page.evaluate(() => KN.store.get().settings.todoRoad === false)
@@ -90,10 +105,8 @@ const { open, checker } = require("./lib");
     (await page.evaluate(() => KN.store.get().settings.dayEnd)) === span1[1]);
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.dayStart; delete s.settings.dayEnd; }));
 
-  await rowOf("外観").click();
-  await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
-  await layerStill();
-  await page.waitForTimeout(300);
+  await back();
+  await into("表示・操作");
   t.check("明るさは三枚の絵（自動・ライト・ダーク。いまのものに印）",
     (await page.locator(`${top} .theme-pick`).count()) === 3
       && (await page.locator(`${top} .theme-pick[data-theme="auto"]`).getAttribute("aria-checked")) === "true");
@@ -115,70 +128,69 @@ const { open, checker } = require("./lib");
 
   /* ---------------- 二段の一覧（2026年9月30日） ----------------
      根っこは一覧、長いものは「›」の先。行の置き場だけが変わり、鍵は変わらない。 */
-  const into = async (title) => {
-    await rowOf(title).click();
-    await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
-    await layerStill();
-    await page.waitForTimeout(300);
-    return page.locator(top).innerText();
-  };
   await openSettings("todo");
   const T0 = await page.locator(top).innerText();
   const notifyOn = await page.evaluate(() => KN.notify.enabled());
-  t.check("通知 › は general に一つ（いまの状態）・スイッチ二つは出ない（2026年11月5日まで tasks）",
-    new RegExp(`通知\\s*${notifyOn ? "オン" : "オフ"}`).test(T0) && !T0.includes("やることの時刻を知らせる")
-      && T0.indexOf("general") < T0.indexOf("通知"), T0.slice(0, 200));
-  /* 根っこは一枚に全部の席（2026年11月5日）：歯車を押した席 → general → 残りの席（下の帯の順）。 */
-  const heads = () => page.locator(`${top} .set-head.is-seat`).allInnerTexts().then((a) => a.map((x) => x.trim()).join());
-  t.check("tasks の歯車：tasks → general → daily・notes・shopping・health", (await heads()) === "tasks,general,daily,notes,shopping,health", await heads());
-  t.check("ロックは根っこに一つ（前は daily と notes の二か所）", (await page.locator(`${top} .set-row`, { hasText: "ロック" }).count()) === 1);
-  t.check("「カレンダー ›」はショートカット App のある端末だけ",
-    T0.includes("カレンダー") === (await page.evaluate(() => !!(KN.ics && KN.ics.apple()))));
-  const T1 = await into("通知");
-  t.check("通知の先に「やることの時刻を知らせる」", T1.includes("やることの時刻を知らせる"), T1.slice(0, 200));
+  t.check("通知・プライバシーの下の一行がいまの状態（通知・ロック）",
+    new RegExp(`通知 ${notifyOn ? "オン" : "オフ"}・ロック オフ`).test(T0) && !T0.includes("やることの時刻を知らせる"), T0.slice(0, 200));
+  const T1 = await into("通知・プライバシー");
+  t.check("通知・プライバシーの一枚に、通知のスイッチとロックが並ぶ（前は一、二行ずつの二枚）",
+    T1.includes("やることの時刻を知らせる") && /ロック/.test(T1), T1.slice(0, 200));
+  await back();
+  const TT = await into("tasks");
+  t.check("tasks の一枚に時間割・見直す間隔（その場で選ぶ）・置き直しの記録・取り込み",
+    ["今日を時間割で見る", "一日の道", "一日の始まり", "これから", "待つ", "いつか", "置き直しの記録", "外部アプリから取り込む"]
+      .every((x) => TT.includes(x)) && (await page.locator(`${top} .set-row.is-pick`, { hasText: "これから" }).count()) === 1, TT.slice(0, 240));
+  await back();
+  const HP = await into("連携・ヘルプ");
+  t.check("連携・ヘルプに中継所・誕生日・小窓・エラーの記録・アイコンの報告",
+    ["中継所", "誕生日のショートカット", "小窓の組み方", "エラーの記録", "アイコンの報告"].every((x) => HP.includes(x)), HP.slice(0, 200));
+  t.check("「カレンダー ›」はショートカット App のある端末だけ（連携の束）",
+    HP.includes("カレンダー") === (await page.evaluate(() => !!(KN.ics && KN.ics.apple()))));
   await back();
 
   await openSettings("archive");
-  const D0 = await page.locator(top).innerText();
-  t.check("daily の根っこは 表示 ›・書き出し ›（「あの日」は表示の先へ）",
-    !D0.includes("「あの日」を出す") && /表示/.test(D0) && /書き出し/.test(D0)
-      && !D0.includes("出す範囲") && !D0.includes("月ぶんを書き出す"), D0.slice(0, 200));
-  t.check("daily の歯車：daily → general → notes・tasks・shopping・health", (await heads()) === "daily,general,notes,tasks,shopping,health", await heads());
-  const D1 = await into("表示");
-  t.check("表示の先に見え方の行（あの日・出す範囲・季節のひとこと・月のまとめ）",
+  t.check("daily の歯車からも同じ入口", (await entries()).join() === ENTRIES.join(), (await entries()).join());
+  const D1 = await into("daily");
+  t.check("daily の一枚に見え方の行（あの日・出す範囲・季節・月のまとめ）",
     ["「あの日」を出す", "日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "季節の絵", "月のまとめ"]
       .every((x) => D1.includes(x)) && !/積み上げ/.test(D1), D1.slice(0, 200));
-  /* 「見せ方」（全文・3行・5行）は一枚の紙のときだけ効くので、時刻ごと（既定）では出さない（docs/thinking.md）。 */
-  t.check("日記は時刻ごと（既定）・見せ方は一枚のときだけ", /日記\s*時刻ごと/.test(D1) && !D1.includes("見せ方"), D1.slice(0, 200));
-  await back();
-  const D2 = await into("書き出し");
-  t.check("書き出しの先に「月ぶんを書き出す」「年の本」（説明は置かない）",
-    D2.includes("月ぶんを書き出す") && D2.includes("年の本") && !D2.includes("一年ぶんの積み上げ"), D2.slice(0, 200));
+  /* 「行数」（全文・3行・5行）は一枚の紙のときだけ効くので、時刻ごと（既定）では出さない（docs/thinking.md）。 */
+  t.check("日記は時刻ごと（既定）・行数は一枚のときだけ", /日記\s*時刻ごと/.test(D1) && !D1.includes("行数"), D1.slice(0, 200));
+  t.check("daily の一枚に書き出し（月ぶん・期間・年の本）と取り込み（説明は置かない）",
+    D1.includes("月ぶんを書き出す") && D1.includes("年の本") && D1.includes("日記を取り込む") && !D1.includes("一年ぶんの積み上げ"), D1.slice(-200));
   await back();
 
   await openSettings("list");
-  t.check("shopping の根っこに「おぼえた振り分け」", (await page.locator(top).innerText()).includes("おぼえた振り分け"));
+  const SH = await into("shopping");
+  t.check("shopping の一枚に お店・カテゴリ・おぼえた振り分け・「そろそろ切れそう」",
+    ["お店", "カテゴリ", "おぼえた振り分け", "「そろそろ切れそう」を出す"].every((x) => SH.includes(x)), SH.slice(0, 200));
   /* 何も覚えていなくても「›」の先の一枚（前は知らせが出るだけだった）。 */
   const LR = await into("おぼえた振り分け");
   t.check("おぼえた振り分けは一枚（空なら「ありません」）", LR.includes("ありません"), LR.slice(0, 120));
   await back();
+  await back();
 
   await openSettings("diet");
-  const H0 = await page.locator(top).innerText();
-  t.check("health の根っこに「書き出し」（説明は置かない）・「取り込み ›」",
-    /health[\s\S]*書き出し[\s\S]*general/.test(H0) && !H0.includes("日ごとの表") && H0.includes("取り込み")
-      && !H0.includes("ヘルスケアから取り込む"), H0.slice(0, 300));
-  t.check("health の歯車：health → general → daily・notes・tasks・shopping", (await heads()) === "health,general,daily,notes,tasks,shopping", await heads());
-  const H1 = await into("取り込み");
-  t.check("取り込みの先にヘルスケア・中継所（AIの窓口は外した）",
-    H1.includes("ヘルスケアから取り込む") && H1.includes("中継所") && !H1.includes("AIの窓口"), H1.slice(0, 200));
+  const H1 = await into("health");
+  t.check("health の一枚に目標・気づいたこと・取り込み（ヘルスケア・中継所）・書き出し（AIに分析も）",
+    ["目標", "「気づいたこと」を出す", "開いたら自動で取り込む", "ヘルスケアから取り込む", "中継所", "記録を書き出す", "AIに分析してもらう"]
+      .every((x) => H1.includes(x)) && !H1.includes("AIの窓口") && !H1.includes("日ごとの表"), H1.slice(0, 300));
   await back();
-  const B0 = await into("バックアップ");
-  t.check("「バックアップ」の一枚から、移した三つが消えている",
-    B0.includes("バックアップを保存") && !B0.includes("データを消す")
-      && !B0.includes("記録を書き出す") && !B0.includes("年の本") && !B0.includes("おぼえた振り分け"), B0.slice(0, 200));
-  t.check("帯の題は「バックアップ」",
-    (await page.locator(`${top} .js-nav-title`).innerText()).trim() === "バックアップ");
+  const B0 = await into("データ・同期");
+  t.check("データ・同期：バックアップ・復元・書き出しと取り込みが別の束（消す口は無い）",
+    ["バックアップを保存", "バックアップを確かめる", "バックアップから復元", "自動バックアップから戻す", "書き出し", "取り込み", "この端末の中"]
+      .every((x) => B0.includes(x)) && !B0.includes("データを消す"), B0.slice(0, 300));
+  t.check("帯の題は「データ・同期」", (await page.locator(`${top} .js-nav-title`).innerText()).trim() === "データ・同期");
+  const BO = await into("書き出し");
+  t.check("書き出しの一枚はタブごと（daily・notes・health）。同じ行がタブの一枚にもある",
+    ["バックアップを保存", "期間を選んで書き出す", "年の本", "ノートを書き出す", "目次をコピー", "記録を書き出す", "AIに分析してもらう"]
+      .every((x) => BO.includes(x)), BO.slice(0, 300));
+  await back();
+  const BI = await into("取り込み");
+  t.check("取り込みの一枚はタブごと（日記・問いの元・ノート・予定・ヘルスケア）",
+    ["日記を取り込む", "問いの元を取り込む", "外部アプリから取り込む", "ヘルスケアから取り込む"].every((x) => BI.includes(x)), BI.slice(0, 300));
+  await back();
   await back();
 
   /* ---------------- 困ったときの記録（R23） ---------------- */
@@ -243,6 +255,8 @@ const { open, checker } = require("./lib");
   t.check("文は200字で切る", await page.evaluate(() => KN.errlog.list()[0].msg.length === 200));
 
   await openSettings("list");
+  t.check("根っこの「連携・ヘルプ」の右にエラーの数", /連携・ヘルプ[\s\S]*2件/.test(await page.locator(top).innerText()));
+  await into("連携・ヘルプ");
   const errRow = rowOf("エラーの記録");
   t.check("general に「エラーの記録」と件数", /2件/.test(await errRow.innerText()), await errRow.innerText());
   await errRow.click();
@@ -273,6 +287,7 @@ const { open, checker } = require("./lib");
   t.check("起動の控えは最後の5回だけ・読み直しを覚える・書き出しに乗らない", L2.n === 5 && L2.last && L2.last.reload === true && !L2.ex,
     JSON.stringify(L2));
   await openSettings("list");
+  await into("連携・ヘルプ");
   await rowOf("エラーの記録").click();
   await page.waitForSelector(`${top} .js-err-row`);
   t.check("上限（50件）だけを一行で言う", E2.includes("50件まで"));
@@ -284,7 +299,7 @@ const { open, checker } = require("./lib");
       ai: { kcal: 500, raw: "あ".repeat(3000), analysis: "い".repeat(1500) } });
   });
   await openSettings("list");
-  await rowOf("バックアップ").click();
+  await rowOf("データ・同期").click();
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U1 = await page.locator(top).innerText();
   t.check("使用量に AI の原文の字数が並ぶ", /AI の原文/.test(U1), (U1.match(/この端末の中[^\n]*/) || [""])[0]);
@@ -296,7 +311,7 @@ const { open, checker } = require("./lib");
     KN.backup.usage = () => ({ ...real(), liveChars: 1700000, where: "idb" });
     return true;
   });
-  await rowOf("バックアップ").click();
+  await rowOf("データ・同期").click();
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U2 = await page.locator(top).innerText();
   const warnColor = await page.evaluate(() => {

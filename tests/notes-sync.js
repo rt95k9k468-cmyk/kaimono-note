@@ -363,6 +363,10 @@ const { open, checker } = require("./lib");
   await e.click('.tab[data-tab="notes"]');
   await e.waitForFunction(() => KN.app.activeScreen() === "notes");
   await e.evaluate(() => { KN.notesSync.setOn(true); KN.app.showScreen("settings"); });
+  /* ノートの同期は「データ・同期」の同期の束（2026年11月5日まで notes の行）。 */
+  await e.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
+  await e.evaluate(() => KN.settingsParts.go("data"));
+  await e.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   const early = await e.waitForFunction(() => KN.notes.list().length >= 40, null, { timeout: 15000 }).then(() => true, () => false);
   const mid = await e.evaluate(() => ({ busy: KN.notesSync.status().busy, step: KN.notesSync.status().step }));
   t.check("はじめて来たノートは、取り終える前に手元にある（途中で閉じても続きから）",
@@ -415,13 +419,16 @@ const { open, checker } = require("./lib");
   await a.click('.tab[data-tab="notes"]');
   await a.waitForFunction(() => KN.app.activeScreen() === "notes");
   await a.evaluate(() => KN.app.showScreen("settings"));
+  await a.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
+  await a.evaluate(() => KN.settingsParts.go("data"));
+  await a.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   /* 頭の一行は組んだあとに差しこまれるので、その一行が出るまで待つ（上限だけ。出なければ下の check が落とす）。 */
   await a.waitForFunction(() => KN.app.activeScreen() === "settings"
     && [...document.querySelectorAll(".set-layer .set-row")].some((r) => r.textContent.includes("合わせられていません"))
     && [...document.querySelectorAll(".set-row")].some((r) => r.textContent.includes("今すぐ合わせる")), null, { timeout: 5000 }).catch(() => {});
   const rowText = await a.evaluate(() => [...document.querySelectorAll(".set-row")].map((r) => r.textContent.replace(/\s+/g, " ").trim()));
   t.check("点の中身を設定の頭に一行", rowText[0] === "ノートを4日合わせられていません", rowText[0]);
-  t.check("設定のノートに「同期」と「今すぐ合わせる」", rowText.some((x) => x.startsWith("同期")) && rowText.some((x) => x.startsWith("今すぐ合わせる")), rowText.filter((x) => /同期|合わせ/.test(x)).join(" / "));
+  t.check("データ・同期に「ノートの同期」と「今すぐ合わせる」", rowText.some((x) => x.startsWith("ノートの同期")) && rowText.some((x) => x.startsWith("今すぐ合わせる")), rowText.filter((x) => /同期|合わせ/.test(x)).join(" / "));
 
   await a.evaluate(() => KN.notesSync.now());
   await a.waitForTimeout(100);

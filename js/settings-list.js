@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, navRow, switchRow, dangerRow } = S;
+  const { go, TINT, card, head, navRow, switchRow, dangerRow } = S;
 
   /* ---------------- 買うもの ----------------
 
@@ -18,28 +18,19 @@
      行に出して、中身は「›」の先へ。価格の画面の上にあった「68商品・10店舗」も
      ここへ——あちらでは値札の並びそのものが数を見せていて、その上でもう一度
      数えた結果を書くのは、同じことを二度言うことでした。 */
-  function listRows() {
+  /** shopping の一枚（根っこの入口「shopping」の先。2026年11月5日）：お店・カテゴリ・おぼえた振り分けと、表示。 */
+  function shoppingPageRows() {
     const s = store.get();
+    const learned = store.learnedList().length;
     return [
+      head("一覧"),
       card(
-        navRow({
-          ico: "store", tint: TINT.store, title: "お店",
-          value: `${(s.stores || []).length}件`, onTap: () => go("stores"),
-        }),
-        navRow({
-          ico: "tag", tint: TINT.cat, title: "カテゴリ",
-          value: `${(s.categories || []).length}件`, onTap: () => go("cats"),
-        }),
-        /* バックアップの一枚から移しました。カテゴリの自動判定の話なので、
-           カテゴリのすぐ下に。前は紙で、何も覚えていないときは押しても知らせが出るだけだった
-           ——お店・カテゴリと同じ「›」の先の一枚にして、空なら空と見せる。 */
-        navRow({
-          ico: "sparkles", tint: TINT.sub, title: "おぼえた振り分け",
-          value: store.learnedList().length ? `${store.learnedList().length}件` : "なし", onTap: () => go("learned"),
-        })
+        navRow({ title: "お店", value: `${(s.stores || []).length}件`, onTap: () => go("stores") }),
+        navRow({ title: "カテゴリ", value: `${(s.categories || []).length}件`, onTap: () => go("cats") }),
+        /* カテゴリの自動判定が覚えたもの。空でも開いて「ありません」と見せる。 */
+        navRow({ title: "おぼえた振り分け", value: learned ? `${learned}件` : "なし", onTap: () => go("learned") })
       ),
-      /* カードの下の「◯商品」は外した（2026年11月5日）。何の数かを言わない数だけの一行で、
-         根っこに全部の席が並ぶと、ほかの席の見出しの添え書きにも読めた。 */
+      head("表示"),
       /* 既定で畳む（roadmap-3.1 の S4）。 */
       card(
         switchRow({
@@ -339,5 +330,5 @@
     ];
   }
 
-  Object.assign(S, { listRows, storesGroup, categoriesGroup, learnedRows });
+  Object.assign(S, { shoppingPageRows, storesGroup, categoriesGroup, learnedRows });
 })();
