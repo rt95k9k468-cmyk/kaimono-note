@@ -217,6 +217,14 @@
     { "screen": "meal", "text": "ポテサラ", "want": ["potatoSalad"], "note": "語彙を足す前は、かな2文字の「さら」(皿) が当たって皿の絵になっていた" },
     { "screen": "meal", "text": "チーズトースト", "want": ["toast", "cheese"] },
     { "screen": "meal", "text": "ミニトマト", "want": ["tomato"] },
-    { "screen": "shop", "text": "トマトケチャップ", "want": ["ketchup"] }
+    { "screen": "shop", "text": "トマトケチャップ", "want": ["ketchup"] },
+    { "screen": "todo", "text": "週案作り", "want": ["do-calendarCheck"] },
+    { "screen": "todo", "text": "USBかえす", "want": ["do-returnArrow"] },
+    { "screen": "todo", "text": "くりかえし練習", "want": ["do-repeat"], "note": "「かえす」（返す）より長い「くりかえ」が先に当たること" },
+    { "screen": "todo", "text": "プリンターインクを買う", "want": ["inkCartridge"], "note": "こと辞書の「プリンタ」は「プリンタの」「カラープリンタ」に絞った。裸で置くとインクを奪う" },
+    { "screen": "todo", "text": "折り紙を買う", "want": ["origami"], "note": "「千羽鶴」は工作だが、折り紙は品物の絵のまま" },
+    { "screen": "todo", "text": "レターケース確認", "want": ["do-inboxTray"] },
+    { "screen": "meal", "text": "ファミチキ", "want": ["friedFood"] },
+    { "screen": "meal", "text": "スンドゥブチゲ", "want": ["pot"] }
   ]
 }
