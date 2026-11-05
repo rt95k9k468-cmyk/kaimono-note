@@ -258,7 +258,7 @@ const { open, checker, ASKS } = require("./lib");
     t.check("戻すと、まだの問いへ戻る", (await yetText()).includes(it5.q) && !(await noIn()).length
       && (await page.evaluate(() => Object.keys(KN.store.get().settings.askNo || {}).length)) === 0);
 
-    /* ---- 問いの答えは thinking の中で一行「問いの答え」に畳み、最近直したにも出さない（見せ方だけ） ---- */
+    /* ---- 問いの答えは thinking に並べず（入口は上の「問い」）、最近直したにも出さない（見せ方だけ） ---- */
     const home = await page.evaluate(async () => {
       KN.screens.notes.again();
       await new Promise((r) => setTimeout(r, 400));
@@ -268,11 +268,11 @@ const { open, checker, ASKS } = require("./lib");
       const ans = KN.notes.list().filter((n) => n.notebook === "thinking" && /^？/.test(n.body)).length;
       return { names, recent, ans };
     });
-    t.check("thinking：答えのノートは並べず「問いの答え」の一行", home.ans > 0 && home.names.includes("問いの答え") && !home.names.some((x) => /^？/.test(x)), JSON.stringify(home));
+    t.check("thinking：答えのノートも「問いの答え」の行も並べない", home.ans > 0 && !home.names.includes("問いの答え") && !home.names.some((x) => /^？/.test(x)), JSON.stringify(home));
     t.check("最近直したに問いの答えは出ない", !home.recent.some((x) => /^？/.test(x)), JSON.stringify(home.recent));
-    await page.click('#screen-notes .nt-shelf[data-shelf="thinking"] .js-answers');
+    await page.click("#screen-notes .js-asks");
     await page.waitForSelector("#screen-notes .notes-asks.is-go", { timeout: 4000 });
-    t.check("「問いの答え」を押すと問いの面", (await goText()).length > 0);
+    t.check("上の「問い」から答えへ", (await goText()).length > 0);
   }
 
   /* ---- 今日の問い：前の日に「？問い」を書いた問いは引かない・自分で書いた問いも混ざる ---- */

@@ -526,12 +526,13 @@
         if (tops.length) slide(r, () => { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); });
       });
       g.append(r);
-      /* thinking の問いの答え（★でも枝のあるものでもない）は一行「問いの答え」に畳み、押せば問いの面へ。見せ方だけ。 */
+      /* thinking の問いの答え（★でも枝のあるものでもない）は棚に並べない。入口は上の「問い」（まだの問いも答えも
+         そこに一つ。11月5日・利用者）。見せ方だけ——冊・本文は変えない。 */
       const ans = nb === THINK ? tops.filter((n) => !n.fav && !t.kids(n.id).length && isAnswer(n)) : [];
       const own = ans.length ? tops.filter((n) => !ans.includes(n)) : tops;
       const fold = shelf && FOLD[nb] ? splitOld(own, t, FOLD[nb]) : null;
       const shown = fold ? fold.keep : own;
-      const tail = () => { if (ans.length) g.append(answersRow()); if (fold && fold.old.length) foldRows(g, nb, fold.old, o); };
+      const tail = () => { if (fold && fold.old.length) foldRows(g, nb, fold.old, o); };
       if (open) { treeRows(g, shown, 1, sub); tail(); }
       else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, shown, 1, sub); tail(); });
       (shelf ? box : rest).append(g);
@@ -593,17 +594,6 @@
       });
     });
   }
-  function answersRow() {
-    const look = rowLook(1, false, false);
-    const r = node(html`
-      <button type="button" class="nt-row is-fold js-answers" role="treeitem" data-d="1" style="${look.style}">
-        <span class="nt-ico">${icon("thought")}</span><span class="nt-name">問いの答え</span>
-      </button>`);
-    r.addEventListener("click", () => { KN.motion.fire("select"); go({ k: "ask" }); });
-    const g = node(html`<div class="nt-grp" role="none"></div>`);
-    g.append(r);
-    return g;
-  }
   function oldRow(n, o) {
     const look = rowLook(3, false, false);
     const r = node(html`
@@ -656,8 +646,16 @@
     t.path(n.id).forEach((p) => { if (!t.isHead(p.id)) treeOpen.add(p.id); });
   }
 
-  /** 印の行が見えていなければ、送る器の真ん中へ。 */
+  /** 印の行が見えていなければ、送る器の真ん中へ。印は戻った場所を一度見せるだけ——--m-flash のあと外す
+      （残すと押した色が戻らないように見える。11月5日・利用者）。左の木の印（開いている紙）は別で、残す。 */
+  let curTimer = 0;
   function showCur() {
+    clearTimeout(curTimer);
+    curTimer = setTimeout(() => {
+      homeCur = null;
+      homeNb = null;
+      if (els.body) els.body.querySelectorAll(`${TREE_ROW}[aria-current="true"]`).forEach((x) => x.removeAttribute("aria-current"));
+    }, KN.motion.ms("--m-flash"));
     const sc = root ? KN.app.scrollerOf(root) : null;
     const r = els.body ? els.body.querySelector(`${TREE_ROW}[aria-current="true"]`) : null;
     if (!sc || !r) return;

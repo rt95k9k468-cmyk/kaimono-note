@@ -201,6 +201,8 @@ const { open, checker } = require("./lib");
   await openPapers(0);
   const cur1 = await page.$eval('#screen-notes .notes-books[role="tree"] [aria-current="true"]', (e) => e.textContent.trim());
   t.check("木から開いた紙を閉じると、その行に印", cur1 === "鍋", cur1);
+  t.check("印は一度見せたら外れる（--m-flash のあと）", await page.waitForFunction(() => !document.querySelector('#screen-notes .notes-books[role="tree"] [aria-current="true"]'), null, { timeout: 4000 })
+    .then(() => true, () => false));
   await page.click(`${note("鍋")} .nt-name`);
   await openPapers(1);
   await menu("移す");
