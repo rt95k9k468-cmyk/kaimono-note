@@ -119,10 +119,10 @@ const { open, checker } = require("./lib");
   const kept = await page.evaluate(() => KN.store.get().todos.filter((x) => x.gbatch).map((x) => [x.gid, x.gbatch]));
   t.check("読み直しても gid・gbatch が残る", kept.length === 1 && kept[0][0] === "e:solo2", JSON.stringify(kept));
 
-  /* 設定の行：やることの紙に「Google から取り込む」。取り消しは束のあるときだけ。 */
+  /* 設定の行：やることの紙に「外部アプリから取り込む」。取り消しは束のあるときだけ。 */
   await page.evaluate(() => { document.querySelector('[data-tab="settings"], #tab-settings, .tab-settings'); });
   const rows = await page.evaluate(() => KN.settingsParts.todoRows().flatMap((c) => [...(c ? c.querySelectorAll(".set-title") : [])].map((e) => e.textContent)));
-  t.check("設定に取り込みの行（束があれば取り消しも）", rows.includes("Google から取り込む") && rows.includes("取り込みを取り消す"), rows.join());
+  t.check("設定に取り込みの行（束があれば取り消しも）", rows.includes("外部アプリから取り込む") && rows.includes("取り込みを取り消す"), rows.join());
 
   /* 枠に収まるぶんだけ：先のものを残し、古い過去から省く。 */
   const trim = await page.evaluate(async () => {

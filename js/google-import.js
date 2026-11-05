@@ -2,7 +2,7 @@
    くらしノート — Google からの取り込み（予定は .ics の zip、タスクは Takeout の JSON。
    docs/todo-items.md「Google 取り込み」）
 
-   - 流れ：設定 → やること → Google から取り込む → ファイルを選ぶ → **先に見せる紙**（件数・カレンダーごとに
+   - 流れ：設定 → やること → 外部アプリから取り込む → ファイルを選ぶ → **先に見せる紙**（件数・カレンダーごとに
      仕事かくらし）→ 控え → 取り込む。束ごと元に戻せる（`store.unimportGoogle`）。
    - 過去も入れる。過ぎた予定・済んだタスクは「済」の印つきの単発として（運ばれず、期限切れに積まれない）。
      未完了のタスクは、日が先なら その日、過ぎていれば「これから」へ。
@@ -523,7 +523,7 @@
     };
     draw();
     body.addEventListener("change", (e) => { if (e.target.matches("select")) draw(); });
-    const h = KN.ui.sheet({ title: "Google から", content: body, footer: foot });
+    const h = KN.ui.sheet({ title: "外部アプリから", content: body, footer: foot });
     let busy = false;
     go.addEventListener("click", async () => {
       if (busy || !total) return;

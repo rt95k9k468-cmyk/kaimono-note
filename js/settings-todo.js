@@ -153,7 +153,7 @@
       /* Google から（js/google-import.js）。取り消しは取り込みがあるときだけ。三行とも四角を付ける
          （前は四角の無い行と有る行が一枚に混ざり、字の頭が揃っていなかった）。 */
       KN.util.folded("googleImport") ? null : card(
-        navRow({ ico: "download", tint: TINT.sync, title: "Google から取り込む", onTap: () => KN.googleImport.open() }),
+        navRow({ ico: "download", tint: TINT.sync, title: "外部アプリから取り込む", onTap: () => KN.googleImport.open() }),
         navRow({ ico: "calendar", tint: TINT.sync, title: "誕生日のショートカット", onTap: () => go("birthHow") }),
         batches.length
           ? navRow({ ico: "undo", tint: TINT.sub, title: "取り込みを取り消す", value: `${batches[0].n}件`, act: true,

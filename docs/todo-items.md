@@ -763,7 +763,7 @@ Wohl, Pychyl & Bennett 2010 PAID 48(7)／Aeon, Faber & Panaccio 2021 PLOS ONE／
   （今日なら今日の印も）、ほかはこれから（`weekAdd`）／期限の縁は月の段（内側の線）。
 - 未：月の升目の名前（暦は上の帯の一つだけ、で作らないと決めた＝取り下げ）。
 
-**Google 取り込み（③・10月19日。`js/google-import.js`、試験 `tests/google-import.js`）**：設定 → やること →「Google から取り込む」
+**Google 取り込み（設定の行の名前は「外部アプリから取り込む」。11月5日、Sorted も入れたため）（③・10月19日。`js/google-import.js`、試験 `tests/google-import.js`）**：設定 → やること →「Google から取り込む」
 （zip・.ics・Tasks.json を直接）。実物の書き出しで確かめた形：
 - カレンダーは zip に .ics が一つずつ。時刻は UTC（`Z`）か終日の日付だけ（`TZID` は無かった）。`VALARM` の中の字は読まない。
   取り消し（`STATUS:CANCELLED`）は入れない。一回だけ外した・動かした回（`EXDATE`／`RECURRENCE-ID`）は、過ぎた回は単発で反映。
