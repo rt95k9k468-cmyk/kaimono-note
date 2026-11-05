@@ -608,3 +608,15 @@ daily には置かない。動きの足し方は上の二つ（`is-m-arrive` の
 Enough?」CHI 2013／Apple WWDC 2018「Designing Fluid Interfaces」／WebKit Bugzilla 312407・312015（`linear()` と
 合成）と、Core Animation に渡す動きを説明した 2021年の記録／Safari の機能フラグ「Prefer Page Rendering Updates near
 60fps」（WebKit Bugzilla 294338・236780）。どれも 2026年10月9日に検索で確かめた（WWDC は二次の記事で）。
+
+### 移る一拍を埋める（2026年11月5日・利用者「問いの答えなど、移るときの動きが無いところがある」）
+
+- **畳んだ段（`<details>`）は器ごと伸び縮み**（`motion.js` の fold。どの画面も一か所）。題を指で押したときだけ。
+  閉じるときは開いたまま縮めてから `open` を外す（試験で閉じたかを見るなら `--m-grow` 待つ）。
+- **セグメント（`.seg`）の選んだ地は、押したところへ滑る**（`motion.js`。組み直したあと押した場所の新しいボタンへ
+  `--seg-dx`/`--seg-sx` と `.is-seg-slide`。滑るあいだだけ地を `::before` へ）。
+- ノートの面の移り（ホーム⇄問い⇄すべて）は内容が少し寄って入る（`faceIn`。`translate`——払って戻るの `transform` と分ける）。
+  払って戻ったときは流さない。**`screen-notes.js` には枝の `slide` が既にある**——名前を重ねない。
+- 答える紙・問いをつくる紙は押したカード（daily は今日の問いの札）から膨らみ、問いのカードへ縮んで戻る（`grow`）。
+  問いの面の組み直しは FLIP（`data-flip`）。×は縮んで消えてから store を書く（書けば subscribe が組む。自分で組むと二度組みで FLIP が跳ぶ）。
+- daily の「別の問い」は字が浮かんで入る（m-add の形）。

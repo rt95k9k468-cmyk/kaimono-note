@@ -151,7 +151,7 @@
         begin: () => {
           const under = underPage();
           const off = () => { if (under) under.remove(); KN.edgeBack.clear(els.body); };
-          return { top: els.body, under, clip: !!under, commit: () => { off(); back(); }, cancel: off };
+          return { top: els.body, under, clip: !!under, commit: () => { off(); back(true); }, cancel: off };
         },
       });
     }
@@ -258,6 +258,8 @@
        戻ると一覧の頭へ飛ばされていました（2026年10月11日、利用者）。 */
     const sc = root ? KN.app.scrollerOf(root) : null;
     const keepY = sc ? sc.scrollTop : 0;
+    /* 問いの面を同じ面のまま組み直すとき（答えた・考えない・戻す）は、カードがもといた場所から滑る（FLIP）。 */
+    const settle = jump == null && !query && page().k === "ask" ? KN.ui.flipRows(box, ".notes-asks .note-row[data-flip]") : null;
     box.innerHTML = "";
     const st = N().state();
     if (st === "off") {
@@ -269,6 +271,7 @@
     fill(box, N().tree(), page(), keepX);
     const y = jump == null ? keepY : jump;
     if (sc && sc.scrollTop !== y) sc.scrollTop = y;
+    if (settle) settle();
     paintTree();
   }
 
@@ -695,13 +698,20 @@
       s.settings.askNo = m;
     });
   }
-  const askRedraw = () => { if (root && page().k === "ask") renderBody(); };
   function setRest(q, on) {
     KN.store.update((s) => {
       const m = { ...askRest() };
       if (on) m[askKey(q)] = new Date().toISOString(); else delete m[askKey(q)];
       s.settings.askRest = m;
     });
+  }
+
+  /** 畳んだ段は、組み直しても開いたまま（答えて閉じるたびに畳まれていた）。 */
+  const foldOpen = new Set();
+  function keepFold(k, d) {
+    d.open = foldOpen.has(k);
+    d.addEventListener("toggle", () => { if (d.open) foldOpen.add(k); else foldOpen.delete(k); });
+    return d;
   }
 
   function askBody(box) {
@@ -723,14 +733,14 @@
     const noYet = Object.values(no).filter((x) => x && x.q).sort((x, y) => String(y.t).localeCompare(String(x.t)));
 
     const add = node(html`<div class="notes-list notes-asks is-new"><div class="note-row is-card is-ask"><button class="note-open notes-ask-new js-ask-new">${icon("plus")}<span class="note-t">問いをつくる</span></button></div></div>`);
-    add.querySelector(".js-ask-new").addEventListener("click", () => { KN.motion.fire("select"); makeAsk(); });
+    add.querySelector(".js-ask-new").addEventListener("click", () => { KN.motion.fire("select"); makeAsk(add.firstElementChild); });
     box.append(add);
     if (!rows.length && !yet.length && !restYet.length && !noYet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
 
     const card = (r) => {
       const where = r.n ? (headOf(r.n) || "ノート") : `${U.formatDate(`${r.day}T00:00`)} の日記`;
       const el = node(html`
-        <div class="note-row is-card is-ask">
+        <div class="note-row is-card is-ask" data-ask="${askKey(r.text)}" data-flip="${askKey(r.text)}">
           <button class="note-open js-open">
             <span class="note-t">${r.text}</span>
             <span class="note-foot">
@@ -742,7 +752,7 @@
       `);
       el.querySelector(".js-open").addEventListener("click", () => {
         KN.motion.fire("select");
-        if (r.go) { answer(r.text); return; }
+        if (r.go) { answer(r.text, { from: el }); return; }
         if (r.n) { openNote(r.n.id, el, r.line != null ? { line: r.line } : null); return; }
         KN.app.showScreen("archive");
         if (KN.screens.archive && KN.screens.archive.goDay) KN.screens.archive.goDay(r.day);
@@ -751,29 +761,35 @@
     };
     const yetCard = (a) => {
       const el = node(html`
-        <div class="note-row is-card is-ask is-yet">
+        <div class="note-row is-card is-ask is-yet" data-ask="${askKey(a.q)}" data-flip="${askKey(a.q)}">
           <button class="note-open js-answer"><span class="note-t">${a.q}</span>${a.from ? html`<span class="note-foot"><span class="note-d">${a.from}</span></span>` : ""}</button>
           <button type="button" class="note-side js-ask-no" aria-label="考えない">${icon("close")}</button>
         </div>
       `);
-      el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(a.q); });
+      el.querySelector(".js-answer").addEventListener("click", () => { KN.motion.fire("select"); answer(a.q, { from: el }); });
       el.querySelector(".js-ask-no").addEventListener("click", () => {
         KN.motion.fire("select");
-        setNo(a, true);
-        askRedraw();
-        KN.ui.toast("考えない問いにしました", { action: { label: "元に戻す", onClick: () => { setNo(a, false); askRedraw(); } } });
+        /* その場で縮んで薄れてから書く（書けば app の subscribe が組み直し、残りが FLIP で詰まる。
+           自分でも組み直すと二度組みになり、滑りかけた行が跳ぶ）。 */
+        const put = () => {
+          setNo(a, true);
+          KN.ui.toast("考えない問いにしました", { action: { label: "元に戻す", onClick: () => setNo(a, false) } });
+        };
+        if (KN.motion.still()) { put(); return; }
+        el.classList.add("is-m-delete");
+        setTimeout(put, KN.motion.ms("--m-delete"));
       });
       return el;
     };
     /* 考えない問い：畳んだ段に、押せば戻す（字だけ。答えの紙は開かない）。 */
     const noCard = (x) => {
       const el = node(html`
-        <div class="note-row is-card is-ask is-no">
+        <div class="note-row is-card is-ask is-no" data-flip="no:${askKey(x.q)}">
           <span class="note-open"><span class="note-t">${x.q}</span></span>
           <button type="button" class="note-side js-ask-back" aria-label="戻す">${icon("undo")}</button>
         </div>
       `);
-      el.querySelector(".js-ask-back").addEventListener("click", () => { KN.motion.fire("select"); setNo(x, false); askRedraw(); });
+      el.querySelector(".js-ask-back").addEventListener("click", () => { KN.motion.fire("select"); setNo(x, false); });
       return el;
     };
     const listOf = (cls, items, fn) => { const l = node(html`<div class="notes-list notes-asks ${cls}"></div>`); items.forEach((x) => l.append(fn(x))); return l; };
@@ -796,13 +812,13 @@
     }
     if (left.length) box.append(secTitle("ノートに残した問い"), listOf("is-left", left, card));
     if (resting.length || restYet.length) {
-      const d = node(html`<details class="notes-rest"><summary class="notes-sec"><span class="section-title">一区切り</span>${icon("chevron")}</summary></details>`);
+      const d = keepFold("rest", node(html`<details class="notes-rest"><summary class="notes-sec"><span class="section-title">一区切り</span>${icon("chevron")}</summary></details>`));
       d.append(listOf("is-rest", resting, card));
       restYet.forEach((a) => d.lastElementChild.append(yetCard(a)));
       box.append(d);
     }
     if (noYet.length) {
-      const d = node(html`<details class="notes-rest is-no"><summary class="notes-sec"><span class="section-title">考えない</span>${icon("chevron")}</summary></details>`);
+      const d = keepFold("no", node(html`<details class="notes-rest is-no"><summary class="notes-sec"><span class="section-title">考えない</span>${icon("chevron")}</summary></details>`));
       d.append(listOf("is-no", noYet, noCard));
       box.append(d);
     }
@@ -810,7 +826,7 @@
 
   /** ＋問いをつくる：頭の行が「？問い」だけのノート（答えのノートと同じ形。同期・控え・書き出しはノートのまま）。
       同じ問いがあればつくらず、その問いを開く。 */
-  function makeAsk() {
+  function makeAsk(from) {
     if (N().state() !== "on") return;
     const box = node(html`<label class="field"><textarea class="textarea js-q" rows="3" aria-label="問い" placeholder="問い" enterkeyhint="done"></textarea></label>`);
     const ta = box.querySelector(".js-q");
@@ -841,12 +857,21 @@
       if (root && page().k === "ask") renderBody();
     };
     onEnter(ta, () => h.close());
+    /* ＋問いをつくるのカードから膨らみ、閉じたら、できた問いのカード（無ければ＋）へ縮む。 */
+    const own = (k) => root && root.querySelector(`.notes-asks .note-row[data-ask="${CSS.escape(k)}"]`);
     const h = KN.ui.sheet({
       title: "問いをつくる",
       content: box,
       cls: "is-card",
       clear: true,
       guard: false,
+      grow: from && from.isConnected ? {
+        from,
+        back: () => {
+          const q = ta.value.replace(/\s+/g, " ").trim().replace(/^[？?]\s*/, "");
+          return (q && own(askKey(q))) || (root && root.querySelector(".notes-asks.is-new .note-row")) || null;
+        },
+      } : null,
       footer: node(html`<button class="btn btn-primary btn-block js-ok">保存する</button>`),
       onClose: close,
     });
@@ -867,11 +892,23 @@
     pages.push(p);
     pick = null;
     renderBody(0);
+    faceIn(1);
   }
-  function back() {
+  /** slid … 払って戻ったとき（面はもう指で動かした。重ねて流さない）。 */
+  function back(slid) {
     if (pages.length < 2) return;
     pages.pop();
     renderBody(page().y || 0);
+    if (slid !== true) faceIn(-1);
+  }
+  /** 面が移る一拍：降りるときは右から、戻るときは左から、少しだけ寄って入る（帯の題はそのまま）。
+      `translate` で動かす（払って戻る edge-back が握る transform と取り合わない。docs/traps.md）。 */
+  function faceIn(dir) {
+    if (!els.body || KN.motion.still()) return;
+    els.body.animate([
+      { opacity: 0, translate: `${dir * 28}px 0` },
+      { opacity: 1, translate: "0 0" },
+    ], { duration: KN.motion.ms("--m-nav"), easing: KN.motion.ease("--ease-out") });
   }
   /** 帯の題：ホームは「Notes」、降りた面はその名前と ‹。 */
   function paintTitle() {
@@ -891,6 +928,7 @@
     if (pages.length < 2) return false;
     pages = [pages[0]];
     renderBody(pages[0].y || 0);
+    faceIn(-1);
     return true;
   }
 
@@ -2659,7 +2697,7 @@
    * 頭の行を「？問い」にした新しいノート。同じ問いのノートがあれば、その終わりに日付と時刻の行をはさんで足す。
    * ノートが開けないときは null（呼ぶ側が日記の紙で代わる）。
    */
-  function answer(q) {
+  function answer(q, o) {
     if (N().state() !== "on") return null;
     const hidden = !!(KN.lock && KN.lock.hides("notes"));
     /* 問いの下に出典と文脈（畳まない）。 */
@@ -2730,12 +2768,19 @@
       /* ノートの onChange は書いたときには来ない：問いの面が出ていれば組み直す（答えた問いを「書いた問い」へ）。 */
       if (root && page().k === "ask") renderBody();
     };
+    /* 押したカード（問いの面・daily の今日の問い）から膨らみ、閉じるとその問いのカードへ縮んで戻る
+       （答えると「続きから考える」へ移るので、帰り先は毎フレーム探し直す。ノートの紙と同じ growCard）。 */
+    const from = o && o.from && o.from.isConnected ? o.from : null;
     const h = KN.ui.sheet({
       title: "問い",
       content: box,
       cls: "is-card",
       clear: true,
       guard: false,
+      grow: from ? {
+        from,
+        back: (o && o.back) || (() => (root && root.querySelector(`.notes-asks .note-row[data-ask="${CSS.escape(askKey(q))}"]`)) || null),
+      } : null,
       footer: node(html`<div class="ask-foot"><button class="btn btn-ghost js-rest">${resting ? "再開する" : "一区切り"}</button><button class="btn btn-primary js-ok">保存する</button></div>`),
       onClose: close,
     });

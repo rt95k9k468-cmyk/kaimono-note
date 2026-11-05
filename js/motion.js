@@ -632,6 +632,83 @@
     el.addEventListener("pointerleave", off);
   }
 
+  /* ---------------------------------------------------------------
+     畳んだ段（`<details>`）は、器ごと伸び縮みする（--m-grow）
+
+     素の details は一瞬で開き閉じし、下の行が跳んでいた（2026年11月5日・利用者「移るときの動きが
+     無いところがある」）。題（summary）を押したら、開く前と後の高さを測って器の高さを伸ばし、中身は
+     m-add と同じ形で浮かぶ。閉じるときは開いたまま縮めてから閉じる。どの画面の details も、ここ一か所。
+     ふだんの開け閉めはブラウザのまま（`open` を書いたのは誰でも同じ）——動かすのは指で題を押したときだけ。
+     --------------------------------------------------------------- */
+  const folding = new WeakMap();
+  function fold(d) {
+    /* 測るのは書く前に、まとめて（docs/traps.md）。動いている途中なら、いまの高さから折り返す。 */
+    const h0 = d.getBoundingClientRect().height;
+    const was = folding.get(d);
+    if (was) { was.run.cancel(); d.open = was.opening; }
+    const opening = !d.open;
+    d.open = opening;
+    const h1 = d.getBoundingClientRect().height;
+    if (!opening) d.open = true;               // 縮み終わるまで中身を見せておく
+    const timing = { duration: ms("--m-grow"), easing: ease(opening ? "--ease-out" : "--ease-in") };
+    const run = d.animate([{ height: `${h0}px`, overflow: "clip" }, { height: `${h1}px`, overflow: "clip" }], timing);
+    [...d.children].forEach((k) => {
+      if (k.tagName === "SUMMARY") return;
+      k.animate(opening
+        ? [{ opacity: 0, translate: "0 -6px" }, { opacity: 1, translate: "0 0" }]
+        : [{ opacity: 1 }, { opacity: 0 }], timing);
+    });
+    folding.set(d, { run, opening });
+    run.onfinish = () => {
+      folding.delete(d);
+      if (!opening) d.open = false;
+    };
+  }
+  document.addEventListener("click", (e) => {
+    const s = e.target && e.target.closest && e.target.closest("summary");
+    if (!s || still() || e.defaultPrevented) return;
+    const d = s.parentElement;
+    if (!d || d.tagName !== "DETAILS" || d.firstElementChild !== s) return;
+    /* 題の中に置いた押せるもの（ボタンなど）は、そのものの出来事。 */
+    const ctl = e.target.closest("a, button, input, select, textarea, label");
+    if (ctl && s.contains(ctl)) return;
+    e.preventDefault();
+    fold(d);
+  });
+
+  /* ---------------------------------------------------------------
+     セグメント（`.seg`）の選んだ地は、押したところへ滑る
+
+     どの画面も押すと丸ごと組み直すので、選んだ地は一瞬で跳んでいた。押す前の地の箱を覚えておき、
+     組み直したあと（面の移りで遅れることもあるので数フレーム待つ）新しく選ばれたボタンの地
+     （`::before`）を、もといた箱から滑らせる。書くのはそのボタンの上だけ（--seg-dx / --seg-sx）。
+     --------------------------------------------------------------- */
+  document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest && e.target.closest(".seg > .seg-btn");
+    if (!b || still() || b.getAttribute("aria-pressed") === "true") return;
+    const seg = b.parentElement;
+    const was = seg.querySelector(':scope > .seg-btn[aria-pressed="true"]');
+    if (!was) return;
+    const a = was.getBoundingClientRect(), at = b.getBoundingClientRect();
+    const cx = at.left + at.width / 2, cy = at.top + at.height / 2;
+    let tries = 0;
+    const look = () => {
+      /* 組み直されていれば、押した場所にいるのは新しいボタン。 */
+      const hit = document.elementFromPoint(cx, cy);
+      const now = hit && hit.closest && hit.closest('.seg > .seg-btn[aria-pressed="true"]');
+      if (!now) { if (++tries < 30) requestAnimationFrame(look); return; }
+      const r = now.getBoundingClientRect();
+      if (!r.width) return;
+      now.style.setProperty("--seg-dx", `${(a.left - r.left).toFixed(1)}px`);
+      now.style.setProperty("--seg-sx", (a.width / r.width).toFixed(3));
+      now.classList.remove("is-seg-slide");
+      void now.offsetWidth;
+      now.classList.add("is-seg-slide");
+      now.addEventListener("animationend", () => now.classList.remove("is-seg-slide"), { once: true });
+    };
+    requestAnimationFrame(look);
+  }, true);
+
   /** 送りの behavior。JS で "smooth" と書いた送りはブラウザが「動きを減らす」でも止めないので、ここを通す（P7）。 */
   const smooth = () => (still() ? "auto" : "smooth");
   KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, smooth, feel, arrive, onArrive, depart, warm, wakeSound, EVENTS };

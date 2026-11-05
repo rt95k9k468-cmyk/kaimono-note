@@ -1354,7 +1354,15 @@
       askTurns.set(day, askPick(day, past, cur.text));
       paint();
       askSaw(cur.text);
+      turnIn();
     });
+    /* 問いが替わった一拍：字が下から浮かんで入る（m-add と同じ形。字が黙って差し替わると、替わったと気づけない）。 */
+    const turnIn = () => {
+      if (KN.motion.still()) return;
+      const t = { duration: KN.motion.ms("--m-add"), easing: KN.motion.ease("--ease-out") };
+      [q, ctx].forEach((x, i) => !x.hidden && x.animate([{ opacity: 0, translate: "0 8px" }, { opacity: 1, translate: "0 0" }],
+        { ...t, delay: i * KN.motion.ms("--m-stagger") }));
+    };
     /* 考えない：この問いを二度と引かない（設定 askNo。字と系統も持つ。問いの面の畳んだ段から戻せる）。 */
     if (cur.text) noBtn.addEventListener("click", () => {
       if (cur.mine) return;
@@ -1369,7 +1377,7 @@
       askTurns.set(day, askPick(day, past, cur.text));
       put(true);
       KN.ui.toast("考えない問いにしました", { action: { label: "元に戻す", onClick: () => put(false) } });
-      if (el.isConnected) { paint(); askSaw(cur.text); }
+      if (el.isConnected) { paint(); askSaw(cur.text); turnIn(); }
       if (!cur.text && el.isConnected) { const t = el.querySelector(".think-today"); if (t) t.remove(); }
     });
     /* 答える紙（問いは欄の外。保存は「？問い」を頭にしたノート）。ノートが開けなければ、「？」の行を頭に置いた
@@ -1377,10 +1385,12 @@
     const go = el.querySelector(".js-think-today");
     if (go) go.addEventListener("click", () => {
       const NS = KN.screens.notes;
-      if (!cur.mine) { if (!(NS && NS.answer && NS.answer(cur.text))) openPost(day, null, `？${cur.text}\n`); return; }
+      /* 答える紙は今日の問いの札から膨らみ、閉じると札へ縮んで戻る。 */
+      const grow = { from: el.querySelector(".think-today"), back: () => document.querySelector(".screen.is-active .think-today") };
+      if (!cur.mine) { if (!(NS && NS.answer && NS.answer(cur.text, grow))) openPost(day, null, `？${cur.text}\n`); return; }
       KN.motion.fire("select");
       /* 答えのノート（頭の行が「？問い」。＋でつくった問いも）は答える紙で続きを。 */
-      if (cur.note && cur.line === 0 && NS && NS.answer && NS.answer(cur.text)) return;
+      if (cur.note && cur.line === 0 && NS && NS.answer && NS.answer(cur.text, grow)) return;
       if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line }); }
     });
     return el;
