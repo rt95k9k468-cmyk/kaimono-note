@@ -98,7 +98,8 @@ const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "not
   await back();
 
   /* ---- 「›」の先の一枚が全部組める ---- */
-  const ids = await page.evaluate(() => Object.keys(KN.settingsParts.PAGES).filter((x) => x !== "noteLabel"));
+  /* 一つのノートブック・タグ（noteLabel）は選んでから。タグの一覧は、タグが一つも無いと入口の行ごと出ない（空の一枚には行けない）。 */
+  const ids = await page.evaluate(() => Object.keys(KN.settingsParts.PAGES).filter((x) => x !== "noteLabel" && x !== "notesTags"));
   const bad = [];
   for (const id of ids) {
     await go(id);

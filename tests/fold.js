@@ -109,12 +109,15 @@ const t = checker("fold");
     const S = KN.settingsParts;
     return S[f]().flat().filter(Boolean).map((r) => r.textContent).join(" ");
   }, fn);
-  const T = await textOf("todoRows");
-  t.check("tasks にカレンダーが出ない（他は出る。置き直しの記録は D1 の見直しで、Google・誕生日は11月5日に戻した。通知は general へ）",
-    !/カレンダー/.test(T) && T.includes("外部アプリから取り込む") && T.includes("置き直しの記録"), T.slice(0, 200));
-  const R = await textOf("reviewRows");
+  /* tasks の一枚（見直す間隔もこの一枚に）・daily の書き出しの行（2026年11月5日）。カレンダーは連携・ヘルプへ。 */
+  const T = await textOf("tasksPageRows");
+  const H = await textOf("helpRows");
+  t.check("連携にカレンダーが出ない（他は出る。置き直しの記録は D1 の見直しで、Google・誕生日は11月5日に戻した）",
+    !/カレンダー/.test(H) && !/カレンダー/.test(T) && T.includes("外部アプリから取り込む") && T.includes("置き直しの記録") && H.includes("誕生日"),
+    T.slice(0, 200));
+  const R = T;
   t.check("見直すに「節気の初日に揃える」が出ない", !R.includes("節気") && R.includes("いつか"), R.slice(0, 120));
-  const O = await textOf("dailyOutRows");
+  const O = await textOf("dailyExportRows");
   t.check("書き出しに「月ぶんを書き出す」が出ない（期間・年の本は出る）",
     !O.includes("月ぶん") && O.includes("期間を選んで書き出す") && O.includes("年の本"), O);
   const L = await textOf("lookRows");
@@ -124,7 +127,7 @@ const t = checker("fold");
   await page.evaluate(() => KN.store.update((s) => {
     s.settings.calShortcut = true; s.settings.reviewSekki = true; s.settings.layout = "tiles"; s.settings.searchBar = true;
   }));
-  const T2 = await textOf("todoRows"), R2 = await textOf("reviewRows"), L2 = await textOf("lookRows");
+  const T2 = await textOf("helpRows"), R2 = await textOf("tasksPageRows"), L2 = await textOf("lookRows");
   t.check("オンのあいだはカレンダー・節気・並べ方・探す窓が出る",
     T2.includes("カレンダー") && R2.includes("節気の初日に揃える") && L2.includes("並べ方") && L2.includes("探す窓"),
     [T2.slice(0, 80), R2.slice(0, 80), L2.slice(-80)].join(" | "));

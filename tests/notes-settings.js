@@ -106,7 +106,7 @@ print(json.dumps(out, ensure_ascii=False))
   const entries = () => page.$$eval(`${top} .set-row.has-lead .set-title`, (ts) => ts.map((x) => x.firstChild.textContent.trim()).join());
   const ENTRIES = "表示・操作,通知・プライバシー,daily,notes,tasks,shopping,health,データ・同期,連携・ヘルプ";
   t.check("daily の歯車：入口だけの根っこ", (await entries()) === ENTRIES, await entries());
-  t.check("根っこにノートの並びは出ない（notes の一枚に）", !/並び/.test(await topText()));
+  t.check("根っこにノートの並びの行は出ない（notes の一枚に）", !(await page.locator(`${top} .set-row.is-pick`, { hasText: "並び" }).count()));
   await into("daily");
   t.check("daily の一枚に「ノートの並び」は無い", !(await topText()).includes("並び"));
   await back();

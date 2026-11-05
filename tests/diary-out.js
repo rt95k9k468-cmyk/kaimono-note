@@ -139,6 +139,8 @@ const bigDays = (tag) => Array.from({ length: BIG_DAYS }, (_, i) => [bigDate(i),
       for (let i = 0; i < 60; i++) s.archive.days.push({ date: `2018-0${1 + (i % 9)}-${String(1 + (i % 28)).padStart(2, "0")}`, memo: "y".repeat(10000), wake: null, sleep: null });
       return JSON.stringify(s);
     }, { days: bigDays("復元") });
+    /* 日記の取り込みは daily の一枚、復元と「日記を記録から外す」は データ・同期 の一枚（2026年11月5日）。 */
+    await openBackup(page);
     await page.locator(".js-file").setInputFiles({ name: "big.json", mimeType: "application/json", buffer: Buffer.from(bigFile) });
     const refuse2 = dialog(page, "入りきりません");
     await refuse2.waitFor();
