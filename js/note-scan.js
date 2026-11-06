@@ -692,6 +692,11 @@
       `);
       stage.append(wrap);
       const video = wrap.querySelector(".js-video");
+      /* iOS は属性だけでは足りないことがある（黒いまま）。値でも入れる。 */
+      video.muted = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.setAttribute("webkit-playsinline", "");
       const guide = wrap.querySelector(".js-guide");
       const poly = wrap.querySelector(".js-poly");
       const flash = wrap.querySelector(".js-flash");
@@ -771,20 +776,63 @@
         setTimeout(loop, 280);
       };
 
-      navigator.mediaDevices.getUserMedia({ audio: false, video: {
-        facingMode: { ideal: "environment" }, width: { ideal: 4096 }, height: { ideal: 3072 } } })
-        .then((s) => {
-          if (closed || view !== "cam") { s.getTracks().forEach((t) => t.stop()); return; }
-          stream = s;
-          video.srcObject = s;
-          video.addEventListener("loadedmetadata", () => { fit(); loop(); }, { once: true });
-          window.addEventListener("resize", fit);
-          video.play().catch(() => {});
-        })
-        .catch(() => {
-          KN.ui.toast("カメラを使えませんでした");
-          if (!closed) show(pages.length ? "pages" : "start");
-        });
+      /* 映像が来るか（新しい一コマ）。iOS は許可の直後・高い解像度を最初から求めたときに黒いまま
+         止まることがあるので、来なければ開き直す。 */
+      const gone = () => closed || view !== "cam" || !wrap.isConnected;
+      const frames = (ms) => new Promise((resolve) => {
+        let done = false;
+        const end = (ok) => { if (!done) { done = true; resolve(ok); } };
+        setTimeout(() => end(false), ms);
+        if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(() => end(video.videoWidth > 0));
+        const t0 = video.currentTime;
+        const poll = () => {
+          if (done) return;
+          if (video.readyState >= 2 && video.videoWidth > 0 && video.currentTime > t0) end(true);
+          else setTimeout(poll, 100);
+        };
+        poll();
+      });
+      const attach = (s) => {
+        stream = s;
+        video.srcObject = s;
+        const go = () => { video.play().catch(() => {}); fit(); };
+        video.onloadedmetadata = go;
+        video.oncanplay = go;
+        video.onresize = fit;
+        video.play().catch(() => {});
+      };
+      const BASE = { audio: false, video: { facingMode: { ideal: "environment" } } };
+      const start = async () => {
+        let ok = false;
+        for (let i = 0; i < 2 && !ok; i++) {
+          stopCam();
+          const s = await navigator.mediaDevices.getUserMedia(BASE);
+          if (gone()) { s.getTracks().forEach((t) => t.stop()); return; }
+          attach(s);
+          ok = await frames(2500);
+          if (gone()) return;
+        }
+        if (!ok) throw new Error("映りません");
+        window.addEventListener("resize", fit);
+        loop();
+        /* 映ってから解像度を上げる（撮る一枚の画質）。上げて止まったら元の解像度へ。 */
+        const track = stream && stream.getVideoTracks()[0];
+        if (!track || !track.applyConstraints) return;
+        const was = track.getSettings ? track.getSettings() : {};
+        try {
+          await track.applyConstraints({ facingMode: { ideal: "environment" }, width: { ideal: 4096 }, height: { ideal: 3072 } });
+          if (gone()) return;
+          if (!(await frames(2000)) && !gone() && was.width) {
+            await track.applyConstraints({ width: { ideal: was.width }, height: { ideal: was.height } }).catch(() => {});
+          }
+        } catch (_) { /* 上げられない端末はそのまま */ }
+      };
+      start().catch(() => {
+        stopCam();
+        if (gone()) return;
+        KN.ui.toast("カメラを使えませんでした");
+        show(pages.length ? "pages" : "start");
+      });
     }
 
     /* ---- 並べる・仕上げ・字・保存 ---- */

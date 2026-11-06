@@ -328,14 +328,25 @@ function pdfText(buf) {
     const draw = () => g.drawImage(window.__src, 0, 0, 1600, 1200);
     draw();
     setInterval(draw, 100);
-    navigator.mediaDevices.getUserMedia = async () => c.captureStream(10);
+    /* 一回目は一コマも来ない流れ（iOS で黒いまま止まるとき）、二回目から映る。 */
+    const dark = document.createElement("canvas");
+    dark.width = 640; dark.height = 480;
+    window.__gum = [];
+    navigator.mediaDevices.getUserMedia = async (o) => {
+      window.__gum.push(JSON.stringify(o));
+      return window.__gum.length === 1 ? dark.captureStream(0) : c.captureStream(10);
+    };
   });
   await openScan();
   await page.click(".scan-src:nth-child(1)");
   await page.waitForSelector(".scan[data-view=cam] video");
   t.check("カメラ：自動は既定で入", (await page.getAttribute(".scan .js-auto", "aria-pressed")) === "true");
-  const shot = await page.waitForFunction(() => /済 1/.test(document.querySelector(".scan .js-done").textContent), null, { timeout: 8000 })
+  const shot = await page.waitForFunction(() => /済 1/.test(document.querySelector(".scan .js-done").textContent), null, { timeout: 12000 })
     .then(() => true, () => false);
+  const gum = await page.evaluate(() => window.__gum);
+  t.check("カメラ：映らなければ一度だけ開き直す", gum.length === 2, JSON.stringify(gum));
+  t.check("カメラ：最初は解像度を求めない（映ってから上げる）", gum.every((g) => !/width|height/.test(g)), JSON.stringify(gum));
+  t.check("カメラ：映像は muted・playsinline（値でも）", await page.$eval(".scan video", (v) => v.muted && v.playsInline));
   t.check("カメラ：紙が止まると自動で撮る", shot);
   await page.waitForTimeout(2500);
   t.check("カメラ：止まったままなら二枚目を撮らない", /済 1$/.test((await page.textContent(".scan .js-done")).trim()));
@@ -348,6 +359,20 @@ function pdfText(buf) {
   t.check("カメラ：止める（流れを閉じる）", await page.evaluate(() => !document.querySelector(".scan video")));
   await page.keyboard.press("Escape");
   t.check("Escape で閉じる", !(await page.$(".scan")));
+
+  /* 二度とも映らない：一言出して最初の面へ（「カメラ」で撮れる）。流れは止める。 */
+  await page.evaluate(() => {
+    const dark = document.createElement("canvas");
+    window.__dark = [];
+    navigator.mediaDevices.getUserMedia = async () => { const s = dark.captureStream(0); window.__dark.push(s); return s; };
+  });
+  await openScan();
+  await page.click(".scan-src:nth-child(1)");
+  const back = await page.waitForSelector(".scan[data-view=start] .scan-src", { timeout: 9000 }).then(() => true, () => false);
+  t.check("カメラ：映らなければ最初の面へ戻る", back);
+  t.check("カメラ：映らなかった流れは止める", await page.evaluate(() => window.__dark.length === 2
+    && window.__dark.every((s) => s.getTracks().every((tr) => tr.readyState === "ended"))));
+  await page.keyboard.press("Escape");
 
   t.check("頁のエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
