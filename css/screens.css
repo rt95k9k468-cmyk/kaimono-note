@@ -8588,6 +8588,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 
 .scan-cam { position: absolute; inset: 0; background: #000; }
 .scan-cam video { width: 100%; height: 100%; object-fit: contain; }
+.scan-view { position: absolute; left: 0; top: 0; pointer-events: none; }
 .scan-guide { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .scan-guide polygon { fill: rgba(80, 170, 255, .16); stroke: #5aaeff; vector-effect: non-scaling-stroke; stroke-width: 3px; stroke-linejoin: round; }
 .scan-guide:not(.is-found) polygon { display: none; }

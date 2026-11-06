@@ -347,6 +347,16 @@ function pdfText(buf) {
   t.check("カメラ：映らなければ一度だけ開き直す", gum.length === 2, JSON.stringify(gum));
   t.check("カメラ：最初は解像度を求めない（映ってから上げる）", gum.every((g) => !/width|height/.test(g)), JSON.stringify(gum));
   t.check("カメラ：映像は muted・playsinline（値でも）", await page.$eval(".scan video", (v) => v.muted && v.playsInline));
+  /* iOS のホーム画面のアプリは video を黒く出すことがある。見せるのは canvas に写した一コマ。 */
+  const seen = await page.$eval(".scan .scan-view", (c) => {
+    const r = c.getBoundingClientRect();
+    const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    let lit = 0;
+    for (let i = 0; i < d.length; i += 4 * 97) if (d[i] + d[i + 1] + d[i + 2] > 300) lit++;
+    return { w: r.width, h: r.height, lit, guide: document.querySelector(".scan .scan-guide").getBoundingClientRect().width };
+  });
+  t.check("カメラ：映像を canvas に写して見せる（紙の白が写る・枠と同じ大きさ）",
+    seen.lit > 20 && seen.w > 300 && Math.abs(seen.w - seen.guide) < 1, JSON.stringify(seen));
   t.check("カメラ：紙が止まると自動で撮る", shot);
   await page.waitForTimeout(2500);
   t.check("カメラ：止まったままなら二枚目を撮らない", /済 1$/.test((await page.textContent(".scan .js-done")).trim()));

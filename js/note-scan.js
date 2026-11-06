@@ -686,6 +686,7 @@
       const wrap = node(html`
         <div class="scan-cam">
           <video class="js-video" playsinline muted autoplay></video>
+          <canvas class="scan-view js-view"></canvas>
           <svg class="scan-guide js-guide" preserveAspectRatio="none"><polygon class="js-poly" points=""></polygon></svg>
           <div class="scan-flash js-flash"></div>
         </div>
@@ -698,6 +699,18 @@
       video.autoplay = true;
       video.setAttribute("webkit-playsinline", "");
       const guide = wrap.querySelector(".js-guide");
+      /* 見せるのは canvas に写した一コマ。iOS のホーム画面のアプリは、カメラの映像を video のままでは
+         黒く出すことがある（録画の印は出て、四隅の推定＝drawImage は読める。2026年11月6日、iPhone）。 */
+      const shown = wrap.querySelector(".js-view");
+      const vg = shown.getContext("2d");
+      const paintView = () => {
+        if (closed || shown.isConnected === false) return;
+        if (video.videoWidth && shown.width > 1) {
+          try { vg.drawImage(video, 0, 0, shown.width, shown.height); } catch (_) { /* まだ一コマも無い */ }
+        }
+        requestAnimationFrame(paintView);
+      };
+      requestAnimationFrame(paintView);
       const poly = wrap.querySelector(".js-poly");
       const flash = wrap.querySelector(".js-flash");
       let auto = true;
@@ -724,8 +737,14 @@
         /* video は contain で置く。案内の絵も同じ枠に。 */
         const r = video.getBoundingClientRect();
         const k = Math.min(r.width / vw, r.height / vh);
-        Object.assign(guide.style, { width: `${vw * k}px`, height: `${vh * k}px`,
-          left: `${(r.width - vw * k) / 2}px`, top: `${(r.height - vh * k) / 2}px` });
+        const box = { width: `${vw * k}px`, height: `${vh * k}px`,
+          left: `${(r.width - vw * k) / 2}px`, top: `${(r.height - vh * k) / 2}px` };
+        Object.assign(guide.style, box);
+        Object.assign(shown.style, box);
+        /* 画面の画素の数だけ（撮る一枚は video から別に取るので、見せる絵は細かすぎなくてよい）。 */
+        const px = Math.min(2, window.devicePixelRatio || 1);
+        const cw = Math.max(2, Math.round(vw * k * px)), ch = Math.max(2, Math.round(vh * k * px));
+        if (shown.width !== cw || shown.height !== ch) { shown.width = cw; shown.height = ch; }
       };
 
       const grab = async () => {
