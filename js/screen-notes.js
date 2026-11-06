@@ -2873,8 +2873,16 @@
     `);
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
-      /* ノートブックに書くのは、木のノートブックの行の＋から（③）。 */
-      openNote(null, null, null);
+      /* ノートブックに書くのは、木のノートブックの行の＋から（③）。
+         ＋は「書く」「スキャン」の二つ（2026年11月6日。docs/notes.md「スキャン」）。画像の入れ物が
+         開けない日はスキャンを出さずに書く。試験の台本は sessionStorage の kn-note-fab=direct で今までどおり。 */
+      let direct = false;
+      try { direct = sessionStorage.getItem("kn-note-fab") === "direct"; } catch (_) {}
+      if (direct || !KN.scan || !KN.noteImg || KN.noteImg.state() !== "on") { openNote(null, null, null); return; }
+      KN.app.fabMenu(e.currentTarget, [
+        { label: "書く", icon: "edit", onPick: () => openNote(null, null, null) },
+        { label: "スキャン", icon: "camera", onPick: () => KN.scan.open() },
+      ]);
     });
     return fab;
   }
