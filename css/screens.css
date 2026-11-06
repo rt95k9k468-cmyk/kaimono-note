@@ -8638,12 +8638,11 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .scan-pill.is-main { background: #fff; color: #111; }
 .scan-pill[aria-pressed="true"] { background: #ffd54a; color: #111; }
 .scan-pill[aria-disabled="true"] { opacity: var(--press-off); }
-/* 共有：原本が仕上がるまでの進み。 */
-.scan-pill.is-wait::before {
+/* 共有：原本が仕上がるまでの進み（押せないあいだだけ）。 */
+.scan-pill.is-wait[aria-disabled="true"]::before {
   content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--p, 0) * 100%);
   background: #ffd54a; transition: width var(--m-state) var(--ease);
 }
-.scan-pill.is-wait:not([aria-disabled="true"])::before { opacity: 0; }
 
 .scan-pages { display: flex; flex-direction: column; gap: 14px; padding: 8px 12px 20px; }
 .scan-page { display: flex; align-items: flex-start; gap: 8px; background: #0d0d0f; }

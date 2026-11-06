@@ -27,7 +27,7 @@
   const LOOK = 1600;            // 直す画面・並べる絵の元
   const PREVIEW = 1100;         // 並べて見せる仕上がり
   const LAYOUT = 1000;          // 字の帯を探す図
-  const HOLD_MS = 700;          // 紙が止まってから撮るまで
+  const STILL_MS = 700;         // 紙が止まってから撮るまで（指の重さではない）
   const DETECT_MS = 110;        // 撮るあいだの四隅の間合い
   const DRAFT_DB = "kaimono-note-scan";
   const FLAG = "kn-scan-draft"; // 撮りかけがあるか・開いていたか（起動で続きを開く）
@@ -646,8 +646,8 @@
         /* 撮ったあとは、紙が動く・消える・中身が変わる（めくる）まで次を撮らない。 */
         if (!st.armed && (move > 0.06 || C.sigDiff(sig, st.sig) > 0.45)) { st.armed = true; st.since = now; }
         const held = now - st.since;
-        setProg(auto && st.armed ? Math.min(1, held / HOLD_MS) : 0);
-        if (!auto || !st.armed || held < HOLD_MS || now - st.shotAt < 900) return;
+        setProg(auto && st.armed ? Math.min(1, held / STILL_MS) : 0);
+        if (!auto || !st.armed || held < STILL_MS || now - st.shotAt < 900) return;
         if (sharp < 0.6 * st.sharpMax) return;
         if (st.sig && C.sigDiff(sig, st.sig) < 0.3) { st.armed = false; setProg(0); return; }
         shoot(st.target, sig);
@@ -861,7 +861,7 @@
     function paintPages() {
       if (!pages.length && !pend.size) { show(canCam() ? "cam" : "start"); return; }
       title.textContent = `${pages.length}枚`;
-      if (clip()) topR.append(btn("scan-pill js-paste-all", "copy", "貼る", () => pasteAll()));
+      if (clip() && pages.length > 1) topR.append(btn("scan-pill js-paste-all", "copy", "貼る", () => pasteAll()));
       const list = node(html`<div class="scan-pages"></div>`);
       stage.append(list);
       pages.forEach((p, i) => list.append(card(p, i)));
