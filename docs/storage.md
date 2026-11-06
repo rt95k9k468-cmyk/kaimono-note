@@ -45,6 +45,7 @@
 | meta `replica`・`kn-replica`・`kn-desk-held` | 写しの端末の写し・印・置く前の受け箱 | 写しは Dropbox から読み直す。置く前の受け箱は失う | desk-replica、desk-inbox |
 | idb `kaimono-note-sync` | 3台の同期：鍵の元・部屋の鍵と URL・前に合わせた中身・送り待ち（docs/sync.md） | 鍵の元は Dropbox の `sync-key.json`。ほかは部屋から作り直せる写し（記録ではない） | sync-device |
 | idb `kaimono-note-bell` | 鳴らす予定 | 次に開いたとき作り直す（記録ではない） | bell |
+| idb `kaimono-note-scan`・`kn-scan-draft`・`kn-scan-mode` | スキャンの撮りかけ（写真・四隅・字）と、開いていたか・仕上げの選び | 無い（保存すればノートの画像・files/ へ。保存・捨てるで消す） | note-scan |
 | Dropbox（App folder） | `kurashi-latest.json`・`daily/`（30日＋月の背骨12）・ノート・画像・受け箱 | Dropbox 側の版の履歴。外したら手の書き出しだけ | dropbox、offdevice-watch、restore-drill 1・2 |
 | 手の書き出し（ファイル） | `exportJSON`（画像・PDF は入らない）・ノートの zip（画像・PDF 入り。人が読む形） | — | restore-practice |
 | 中継所（Cloudflare） | ヘルスケアの便（受け取ると消える・一週間） | 記録ではない | relay/worker.test.mjs |

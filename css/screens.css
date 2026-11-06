@@ -8561,89 +8561,147 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   }
 }
 
-/* ---------------- スキャン（js/note-scan.js。docs/notes.md「スキャン」） ---------------- */
+/* ---------------- スキャン（js/note-scan.js・js/scan-core.js。docs/notes.md「スキャン」） ---------------- */
 .scan {
   position: fixed; inset: 0; z-index: var(--z-sheet);
   display: flex; flex-direction: column;
   background: #0d0d0f; color: #fff;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   opacity: 0; transition: opacity var(--m-sheet-open) var(--ease-out);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 .scan.is-on { opacity: 1; }
-.scan.is-busy { pointer-events: none; }
-.scan.is-busy .scan-stage { opacity: .5; }
-.scan-top { display: flex; align-items: center; justify-content: space-between; min-height: 52px; padding: 0 6px; }
+.scan [hidden] { display: none; }
+.scan.is-busy .scan-stage, .scan.is-busy .scan-seg, .scan.is-busy .scan-acts { pointer-events: none; opacity: .55; transition: opacity var(--m-state) var(--ease); }
+.scan-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 0 6px; }
+.scan-top-r { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 44px; }
 .scan-title { font-size: 17px; font-weight: var(--fw-bold); }
 .scan-ico { width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--r-full); color: #fff; }
 .scan-ico svg { width: var(--ico); height: var(--ico); }
-.scan-stage { position: relative; flex: 1; min-height: 0; overflow: auto; }
+.scan-ico[aria-pressed="true"] { background: #ffd54a; color: #111; }
+.scan-stage { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .scan-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px 16px; }
 
-.scan-start { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px; }
+.scan-start { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 24px; }
 .scan-src {
   display: flex; align-items: center; gap: 16px; min-height: 72px; padding: 0 22px;
-  border-radius: 20px; background: rgba(255, 255, 255, .1); color: #fff; font-size: 20px; font-weight: var(--fw-bold);
+  border-radius: var(--r-xl); background: rgba(255, 255, 255, .1); color: #fff; font-size: 20px; font-weight: var(--fw-bold);
 }
 .scan-src svg { width: calc(var(--ico) * 1.5); height: calc(var(--ico) * 1.5); }
 
-.scan-cam { position: absolute; inset: 0; background: #000; }
-.scan-cam video { width: 100%; height: 100%; object-fit: contain; }
+/* カメラ：映像は canvas に写して見せる（iOS のホーム画面のアプリは video を黒く出すことがある）。 */
+.scan[data-view="cam"] .scan-bar { justify-content: space-between; flex-wrap: nowrap; padding: 14px 28px 20px; }
+.scan-cam { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.scan-cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .scan-view { position: absolute; left: 0; top: 0; pointer-events: none; }
-.scan-guide { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.scan-guide polygon { fill: rgba(80, 170, 255, .16); stroke: #5aaeff; vector-effect: non-scaling-stroke; stroke-width: 3px; stroke-linejoin: round; }
-.scan-guide:not(.is-found) polygon { display: none; }
 .scan-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 .scan-flash.is-on { animation: scan-flash var(--m-sheet-open) var(--ease-out); }
-@keyframes scan-flash { from { opacity: .8; } to { opacity: 0; } }
+@keyframes scan-flash { from { opacity: .75; } to { opacity: 0; } }
 .scan-shutter {
-  width: 74px; height: 74px; border-radius: var(--r-full); background: #fff;
-  box-shadow: 0 0 0 4px #0d0d0f, 0 0 0 7px #fff; margin: 0 18px;
+  --p: 0;
+  position: relative; width: 74px; height: 74px; flex: 0 0 auto; border-radius: var(--r-full); background: #fff;
+  box-shadow: 0 0 0 4px #0d0d0f, 0 0 0 7px rgba(255, 255, 255, .55);
+  transition: scale var(--m-press) var(--ease);
+}
+/* 止まっているあいだ、外の輪が満ちる（満ちたら撮る）。 */
+.scan-shutter::after {
+  content: ""; position: absolute; inset: -7px; border-radius: var(--r-full); pointer-events: none;
+  background: conic-gradient(#ffd54a calc(var(--p) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
 }
 .scan-shutter:active { scale: var(--press-dot); }
+.scan-round { width: 52px; height: 52px; flex: 0 0 auto; display: grid; place-items: center; border-radius: var(--r-full); background: rgba(255, 255, 255, .14); color: #fff; }
+.scan-round svg { width: var(--ico); height: var(--ico); }
+.scan-thumb-b { position: relative; width: 52px; height: 52px; flex: 0 0 auto; padding: 0; border-radius: var(--r-sm); background: rgba(255, 255, 255, .14); }
+.scan-thumb-b canvas { display: block; width: 100%; height: 100%; border-radius: var(--r-sm); }
+.scan-thumb-b.is-empty { visibility: hidden; }
+.scan-count {
+  position: absolute; right: -8px; top: -8px; min-width: 22px; height: 22px; padding: 0 6px;
+  display: grid; place-items: center; border-radius: var(--r-full); background: #ffd54a; color: #111;
+  font-size: 13px; font-weight: var(--fw-bold);
+}
+.scan-count:empty { display: none; }
+.scan-fly {
+  position: fixed; z-index: 1; pointer-events: none; transform-origin: center; border-radius: var(--r-sm);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+  transition: transform var(--m-sheet-open) var(--ease-out), opacity var(--m-sheet-open) var(--ease-out);
+}
+.scan-fly.is-going { opacity: .5; }
 
 .scan-pill {
+  position: relative; overflow: hidden;
   display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 18px;
   border-radius: var(--r-xl); background: rgba(255, 255, 255, .14); color: #fff; font-size: 16px; font-weight: var(--fw-bold);
 }
 .scan-pill svg { width: var(--ico); height: var(--ico); }
 .scan-pill.is-main { background: #fff; color: #111; }
 .scan-pill[aria-pressed="true"] { background: #ffd54a; color: #111; }
+.scan-pill[aria-disabled="true"] { opacity: var(--press-off); }
+/* 共有：原本が仕上がるまでの進み。 */
+.scan-pill.is-wait::before {
+  content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--p, 0) * 100%);
+  background: #ffd54a; transition: width var(--m-state) var(--ease);
+}
+.scan-pill.is-wait:not([aria-disabled="true"])::before { opacity: 0; }
 
-.scan-pages { display: flex; flex-direction: column; gap: 14px; padding: 8px 16px 20px; }
-.scan-page { display: flex; gap: 12px; align-items: flex-start; }
-.scan-thumb { flex: 0 0 42%; padding: 0; border-radius: 10px; overflow: hidden; background: rgba(255, 255, 255, .08); }
-.scan-thumb img { display: block; width: 100%; height: auto; min-height: 80px; transition: opacity var(--m-state) var(--ease); }
-.scan-thumb img.is-wait { opacity: .45; }
+.scan-pages { display: flex; flex-direction: column; gap: 14px; padding: 8px 12px 20px; }
+.scan-page { display: flex; align-items: flex-start; gap: 8px; background: #0d0d0f; }
+.scan-grip { flex: 0 0 auto; width: 28px; height: 44px; display: grid; place-items: center; color: rgba(255, 255, 255, .5); touch-action: none; }
+.scan-grip svg { width: var(--ico); height: var(--ico); }
+.scan-thumb { flex: 0 0 40%; padding: 0; border-radius: var(--r-md); overflow: hidden; background: rgba(255, 255, 255, .08); }
+.scan-thumb img { display: block; width: 100%; height: auto; min-height: 96px; transition: opacity var(--m-state) var(--ease); }
+.scan-thumb img.is-wait { opacity: .4; }
+.scan-wait { height: 96px; margin-left: 36px; width: 40%; border-radius: var(--r-md); background: rgba(255, 255, 255, .08); }
 .scan-page-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .scan-no { font-size: 15px; font-weight: var(--fw-bold); opacity: .7; }
 .scan-text {
   width: 100%; min-height: 64px; max-height: 40vh; resize: none; padding: 10px 12px; border: 0; border-radius: var(--r-md);
-  background: rgba(255, 255, 255, .1); color: #fff; font: inherit; font-size: 16px;
+  background: rgba(255, 255, 255, .1); color: #fff; font: inherit; font-size: 16px; -webkit-user-select: text; user-select: text;
 }
-.scan-page-acts { display: flex; gap: 8px; }
+.scan-page-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .scan-mini {
-  display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px; border-radius: 18px;
+  display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px; border-radius: var(--r-lg);
   background: rgba(255, 255, 255, .1); color: #fff; font-size: 15px;
 }
 .scan-mini svg { width: var(--ico-sm); height: var(--ico-sm); }
-.scan-seg { display: flex; width: 100%; max-width: 420px; padding: 3px; border-radius: 14px; background: rgba(255, 255, 255, .12); }
-.scan-seg-b { flex: 1; min-height: 40px; border-radius: 11px; color: #fff; font-size: 16px; font-weight: var(--fw-regular); }
+.scan-seg { display: flex; width: 100%; max-width: 420px; padding: 3px; border-radius: var(--r-lg); background: rgba(255, 255, 255, .12); }
+.scan-seg-b { flex: 1; min-height: 40px; border-radius: var(--r-md); color: #fff; font-size: 16px; font-weight: var(--fw-regular); }
 .scan-seg-b[aria-checked="true"] { background: #fff; color: #111; font-weight: var(--fw-bold); }
-.scan-acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.scan-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.scan-progress { position: relative; width: 100%; max-width: 420px; height: 3px; overflow: hidden; border-radius: var(--r-full); background: rgba(255, 255, 255, .14); }
+.scan-progress::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%);
+  background: #ffd54a; transition: width var(--m-state) var(--ease);
+}
 
 .scan-edit { position: absolute; inset: 12px; display: flex; align-items: center; justify-content: center; }
 .scan-edit-box { position: relative; touch-action: none; }
-.scan-edit-box img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+.scan-edit-box img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; }
+.scan-poly { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.scan-poly polygon { fill: rgba(90, 174, 255, .14); stroke: #5aaeff; stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .scan-dot {
-  position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: var(--r-full);
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: var(--r-full);
   border: 3px solid #5aaeff; background: rgba(255, 255, 255, .35); pointer-events: none;
+  transition: scale var(--m-press) var(--ease);
 }
+.scan-dot.is-edge { width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid #fff; background: #5aaeff; }
+.scan-dot.is-held { scale: 1.3; }
 .scan-loupe {
-  position: absolute; width: 96px; height: 96px; margin: -150px 0 0 -48px; border-radius: var(--r-full);
-  border: 3px solid #fff; background-repeat: no-repeat; pointer-events: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+  position: absolute; left: 0; top: 0; width: 112px; height: 112px; border-radius: var(--r-full);
+  border: 3px solid #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, .5); pointer-events: none;
 }
-.scan-loupe::after {
-  content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px;
-  border-radius: var(--r-full); background: #5aaeff;
+
+.scan-ask {
+  position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); background: rgba(0, 0, 0, .45);
+  opacity: 0; transition: opacity var(--m-state) var(--ease);
 }
+.scan-ask.is-on { opacity: 1; }
+.scan-ask-box { width: min(420px, 100%); display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: var(--r-xl); background: #1c1c20; }
+.scan-ask-b {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, .08); color: #fff; font-size: 17px; font-weight: var(--fw-bold);
+}
+.scan-ask-b svg { width: var(--ico); height: var(--ico); }
+.scan-ask-b.is-danger { color: #ff6b6b; }

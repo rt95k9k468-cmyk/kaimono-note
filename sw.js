@@ -54,6 +54,7 @@ const ASSETS = [
   "js/entries-note.js",
   "js/note-img.js",
   "js/note-file.js",
+  "js/scan-core.js",
   "js/note-scan.js",
   "js/ui.js",
   "js/reorder.js",
