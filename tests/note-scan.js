@@ -7,8 +7,9 @@
    字の層をページごとに照合・行の帯の位置・縦書きは回した行列・題・pdftotext）／
    ＋の「書く」「スキャン」→ すぐカメラ（captureStream をカメラの代わりに）：自動で撮る・止まったままなら
    二枚目を撮らない・めくると次を撮る・シャッター／並べる面：撮りかけを開き直しで続ける（再読み込み）・
-   並べ替え・四隅（隅・辺・拡大の丸・自動へ戻す）・回す・仕上げの切り替えを覚える・「字」（読ませる画像に
-   ページの印）→「貼る」（印の番号でページへ・読み違い・空白）・
+   並べ替え・四隅（隅・辺・拡大の丸・自動へ戻す）・回す・仕上げの切り替えを覚える・「字」（字の無いページの
+   読ませる画像にページの印。開き直しても「貼る」）→「貼る」（クリップボードの項目ごとに印の番号でページへ・
+   読み違い・印が後ろ・渡していないページの字と印の無い字は置かない・readText だけの日・手で直した字は残す）・
    保存（画像の行・原本の行・PDF の行、原本は仕上げた大きさ、PDF の字・検索、撮りかけを消す）／
    閉じる（あとで続ける・捨てる）／カメラが使えない日は「カメラ・写真」・写真から（明るい机）・原本は
    縮めない／映らない流れは一度開き直して最初の面へ／Worker が使えない日もこの場で仕上がる。
@@ -468,17 +469,23 @@ function pdfText(buf) {
   await page.click(".scan .scan-seg-b[data-mode=color]");
   t.check("仕上げ：カラーを覚える", await page.evaluate(() => localStorage.getItem("kn-scan-mode") === "color"));
 
-  /* ---- 字：読ませる画像を渡す（書類の仕上げ・上の帯にページの印）→ 戻ると「貼る」→ 印でページへ ---- */
-  await page.evaluate(() => { window.__shared = null; navigator.canShare = () => true; navigator.share = async (d) => { window.__shared = d; }; });
-  const ready = await page.waitForFunction(() => document.querySelector(".scan .js-read").getAttribute("aria-disabled") === "false", null, { timeout: 30000 }).then(() => true, () => false);
-  t.check("字：読ませる画像が揃うと押せる", ready);
+  /* ---- 字：字の無いページの読ませる画像を渡す（書類の仕上げ・上の帯にページの印）→ 戻ると「貼る」→ 印でページへ ---- */
+  const shareStub = () => page.evaluate(() => { window.__shared = window.__shared || []; navigator.canShare = () => true; navigator.share = async (d) => { window.__shared.push(d.files); }; });
+  const clipStub = (items) => page.evaluate((its) => {
+    Object.defineProperty(navigator.clipboard, "read", { configurable: true, value: async () => its.map((s) => ({ types: ["text/plain"], getType: async () => new Blob([s], { type: "text/plain" }) })) });
+  }, items);
+  const readable = () => page.waitForFunction(() => document.querySelector(".scan .js-read").getAttribute("aria-disabled") === "false", null, { timeout: 30000 }).then(() => true, () => false);
+  const readLabel = () => page.$eval(".scan .js-read", (b) => b.textContent.trim());
+  const sharedN = (n) => page.waitForFunction((k) => window.__shared.length === k, n, { timeout: 5000 }).catch(() => {});
+  await shareStub();
+  t.check("字：読ませる画像が揃うと押せる", await readable());
   await page.click(".scan .js-read");
-  await page.waitForFunction(() => !!window.__shared, null, { timeout: 5000 }).catch(() => {});
+  await sharedN(1);
   const shared = await page.evaluate(async () => {
-    const d = window.__shared;
-    if (!d) return null;
+    const files = window.__shared[0];
+    if (!files) return null;
     const out = [];
-    for (const f of d.files) {
+    for (const f of files) {
       const bm = await createImageBitmap(f);
       const c = document.createElement("canvas");
       c.width = bm.width; c.height = bm.height;
@@ -494,24 +501,76 @@ function pdfText(buf) {
     }
     return out;
   });
-  t.check("字：三枚の JPEG（scan-1〜3）", !!shared && JSON.stringify(shared.map((x) => [x.name, x.type])) === JSON.stringify([["scan-1.jpg", "image/jpeg"], ["scan-2.jpg", "image/jpeg"], ["scan-3.jpg", "image/jpeg"]]), JSON.stringify(shared));
+  /* 二枚目には「下書きの字」を書いてある（上の続きの試験）。 */
+  t.check("字：字の無いページだけ渡す（JPEG 2枚）", !!shared && JSON.stringify(shared.map((x) => [x.name, x.type])) === JSON.stringify([["scan-1.jpg", "image/jpeg"], ["scan-2.jpg", "image/jpeg"]]), JSON.stringify(shared));
   t.check("字：上の白い帯にページの印（白地に濃い字）", !!shared && shared.every((x) => x.white > 0.75 && x.dark > 0.004), JSON.stringify(shared));
   t.check("字：渡したあとは「貼る」・上の「貼る」は隠れる", await page.evaluate(() => {
     const b = document.querySelector(".scan .js-read"), top = document.querySelector(".scan .js-paste-all");
     return b.textContent.trim() === "貼る" && b.classList.contains("is-main") && (!top || top.hidden);
   }));
+  /* ショートカットのあいだに iOS がアプリを落とした：開き直しても「貼る」（ここから渡したものの数え直し）。 */
+  await page.waitForTimeout(400);
+  await page.reload();
+  await page.waitForSelector(".scan.is-on[data-view=pages] .scan-page:nth-child(3) img[src^='blob:']", { timeout: 15000 });
+  await helpers();
+  await camStub();
+  await shareStub();
+  t.check("字：開き直しても「貼る」のまま", (await readLabel()) === "貼る");
   const nos = await page.evaluate(() => KN.scan.live().pages.map((p) => p.no));
-  /* 認識の出す字：印の順はばらばら・読み違い（空白・全角）・漢字かなのあいだの空白。 */
-  const PASTE = `KNSCAN ${nos[1]}\n二 ペ ー ジ 目\nKN SCAN ${nos[0]}\n一ページ目の字\n二行目\n${String.fromCharCode(...[..."KNSCAN"].map((c) => c.charCodeAt(0) + 0xfee0))} ${nos[2]}\n三ページ目 ABC`;
-  await page.evaluate((s) => { Object.defineProperty(navigator.clipboard, "readText", { value: async () => s, configurable: true }); }, PASTE);
+  /* iOS の「クリップボードにコピー」は画像ごとの字を別の項目で置く（readText は最初の一つしか読まない）。
+     項目の順はばらばら・印の読み違い（空白・全角）・縦書きで印が字のあとに読まれる・漢字かなのあいだの空白・
+     渡していないページの印。 */
+  const FW = String.fromCharCode(...[..."KNSCAN"].map((c) => c.charCodeAt(0) + 0xfee0));
+  await clipStub([`${FW} ${nos[2]}\n三ページ目 ABC`, `一ページ目の字\n二行目\nKN SCAN ${nos[0]}`, `KNSCAN ${nos[1]}\n二 ペ ー ジ 目`]);
+  await page.click(".scan .js-read");
+  await page.waitForFunction(() => document.querySelector(".scan .js-read").textContent.trim() === "字", null, { timeout: 3000 }).catch(() => {});
+  t.check("貼る：項目ごとの字を印の番号でページへ（順・読み違い・印が後ろ。渡していないページの字は置かない）",
+    JSON.stringify(await page.evaluate(() => KN.scan.live().pages.map((p) => p.text))) === JSON.stringify(["一ページ目の字\n二行目", "下書きの字", "三ページ目 ABC"]),
+    JSON.stringify(await page.evaluate(() => KN.scan.live().pages.map((p) => [p.no, p.text]))));
+  t.check("貼る：「字」に戻る", (await readLabel()) === "字");
+
+  /* 書いた字を消して「字」→ そのページだけ。前にコピーした字（印が無い）は貼らない。readText だけの日も。 */
+  await page.fill(".scan .scan-page:nth-child(2) .js-text", "");
+  await readable();
+  await page.click(".scan .js-read");
+  await sharedN(1);
+  t.check("字：字を消したページだけ渡す", await page.evaluate(() => (window.__shared[0] || []).length === 1));
+  await clipStub(["https://example.com/"]);
+  await page.click(".scan .js-read");
+  await page.waitForTimeout(300);
+  t.check("貼る：印の無い字は貼らず「字」に戻る", (await readLabel()) === "字"
+    && await page.evaluate(() => KN.scan.live().pages[1].text === "" && /字が届いていません/.test(document.getElementById("toast-root").textContent)));
+  await page.click(".scan .js-read");
+  await sharedN(2);
+  await page.evaluate((s) => {
+    Object.defineProperty(navigator.clipboard, "read", { configurable: true, value: undefined });
+    Object.defineProperty(navigator.clipboard, "readText", { configurable: true, value: async () => s });
+  }, `KNSCAN ${nos[1]}\n二 ペ ー ジ 目\nKNSCAN ${nos[0]}\n渡していない`);
   await page.click(".scan .js-read");
   await page.waitForFunction(() => document.querySelector(".scan .js-read").textContent.trim() === "字", null, { timeout: 3000 }).catch(() => {});
   const texts = await page.evaluate(() => KN.scan.live().pages.map((p) => p.text));
-  t.check("貼る：印の番号でページへ（順・読み違い・空白によらない）", JSON.stringify(texts) === JSON.stringify(["一ページ目の字\n二行目", "二ページ目", "三ページ目 ABC"]), JSON.stringify([nos, texts]));
-  t.check("貼る：「字」に戻る", (await page.$eval(".scan .js-read", (b) => b.textContent.trim())) === "字");
+  t.check("貼る：readText だけの日も（一つの字・渡したページだけ）", JSON.stringify(texts) === JSON.stringify(["一ページ目の字\n二行目", "二ページ目", "三ページ目 ABC"]), JSON.stringify(texts));
+
+  /* どのページにも字がある：「字」はぜんぶ渡し、手で直したページは「貼る」で上書きしない。 */
+  await page.fill(".scan .scan-page:nth-child(3) .js-text", "三ページ目 ABC 直した");
+  await readable();
+  await page.click(".scan .js-read");
+  await sharedN(3);
+  t.check("字：どのページにも字があれば、ぜんぶ渡す", await page.evaluate(() => (window.__shared[2] || []).length === 3));
+  await clipStub([`KNSCAN ${nos[0]}\n一ページ目の字\n二行目`, `KNSCAN ${nos[1]}\n二ページ目`, `KNSCAN ${nos[2]}\n三ページ目 ABC`]);
+  await page.click(".scan .js-read");
+  await page.waitForTimeout(300);
+  t.check("貼る：手で直したページはそのまま", await page.evaluate(() => KN.scan.live().pages[2].text === "三ページ目 ABC 直した"
+    && /直した1ページはそのまま/.test(document.getElementById("toast-root").textContent)));
+  texts[2] = "三ページ目 ABC 直した";
+
   t.check("貼る：分け目の読み方（---・改ページ・印が無いとき）", JSON.stringify(await page.evaluate(() => KN.scan.splitPages("a\fb\n===\nc"))) === JSON.stringify(["a", "b", "c"]));
   t.check("貼る：漢字・かなのあいだの空白を外す", await page.evaluate(() => KN.scan.tidy(" 日 本 語 の 字 ABC 123 ") === "日本語の字 ABC 123"));
   t.check("貼る：印の前の字は、印の読めなかったページへ", JSON.stringify(await page.evaluate(() => KN.scan.assign("前\nKNSCAN 1\n一", [{ no: 2 }, { no: 1 }]))) === JSON.stringify([[0, "前"], [1, "一"]]));
+  t.check("貼る：読み違えた印（一字）も印・知らない番号の字は混ぜない", JSON.stringify(await page.evaluate(() => [
+    KN.scan.markOf("KNSCAM 2"), KN.scan.markOf("KANSAI 1"),
+    KN.scan.assign("KNSCAN 1\na\nKNSCAN 9\nz\nKNSCAN 2\nb", [{ no: 1 }, { no: 2 }]),
+  ])) === JSON.stringify([2, null, [[0, "a"], [1, "b"]]]));
 
   /* ---- 保存 ---- */
   const fulls = await page.evaluate(async () => (await KN.scan.live().warm()).map((v) => [v.w, v.h]));

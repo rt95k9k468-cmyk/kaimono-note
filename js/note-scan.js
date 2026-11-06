@@ -10,12 +10,13 @@
      原本の行（`KN.noteFile.keep`。仕上げた大きさ・JPEG 0.95）。終わりに字入りの PDF（`KN.noteFile.add`。
      写真は原本の JPEG のまま、字は行の帯の位置へ透明に）。ファイルを先に書き、書けてから本文。
    - 字はアプリでは読まない（iPhone の文字認識がいちばん確か。2026年11月6日、利用者が選んだ）。「字」→ iOS の
-     ショートカット（画像からテキストを抽出 → クリップボードにコピー）→ 戻ると「貼る」。渡す画像は書類の仕上げ・
-     長辺2800で、上の白い帯にページの印「KNSCAN n」（n はページの番号。並べ替えても変わらない）を刷る。
-     認識がその印も読むので、ショートカットに分け目が無くてもページごとに入る（`---` の行・改ページも読む）。
-     漢字・かなのあいだの空白は外す。字は `setText` で検索にも（日本語の折り返しはつないで）。
-   - 撮りかけは別の入れ物 `kaimono-note-scan`（版1の決め打ち。写真と四隅・字だけ）。ショートカットへ行く
-     あいだに iOS がアプリを落としても、開き直せば続きから（20分以内なら起動で開く）。保存・捨てるで消す。
+     ショートカット（画像からテキストを抽出 → クリップボードにコピー）→ 戻ると「貼る」。渡すのは字の無いページ
+     （どれにも字があればぜんぶ）。画像は書類の仕上げ・長辺2800で、上の白い帯にページの印「KNSCAN n」（n は
+     ページの番号。並べ替えても変わらない）を刷る。認識がその印も読むので、項目の順・分け目によらずページごとに
+     入る。クリップボードは項目ごとに読む（readText は最初の項目だけ）。印の無い字は貼らない・手で直した字は
+     上書きしない。漢字・かなのあいだの空白は外す。字は `setText` で検索にも（日本語の折り返しはつないで）。
+   - 撮りかけは別の入れ物 `kaimono-note-scan`（版1の決め打ち。写真と四隅・字・渡したページ）。ショートカットへ
+     行くあいだに iOS がアプリを落としても、開き直せば続きから「貼る」（20分以内なら起動で開く）。保存・捨てるで消す。
    ========================================================= */
 (function () {
   "use strict";
@@ -117,6 +118,7 @@
     return {
       id: o.id || newId(), no: o.no || 0, blob: o.blob, w: o.w, h: o.h, quad: o.quad.map((p) => p.slice()),
       auto: (o.auto || o.quad).map((p) => p.slice()), found: !!o.found, rot: o.rot || 0, text: o.text || "",
+      pasted: o.pasted || "",   // 「貼る」で入れた字（これと違えば手で直した字。上書きしない）
       look: o.look || null, lookUrl: null, prev: null, prevKey: "", prevP: null, prevFor: "",
       full: null, fullKey: "", fullP: null, fullFor: "",
       ocr: null, ocrKey: "", ocrP: null, ocrFor: "",
@@ -308,11 +310,15 @@
     return out;
   }, []).join("\n");
 
-  /** ページの印（KNSCAN n）なら n。読み違えやすい字（I・l・|→1、O→0、5→S）と全角も受ける。 */
+  /** ページの印（KNSCAN n）なら n。全角・空白・前後の記号と、読み違い（番号の I・l・|・O、KNSCAN の一字）も受ける。 */
   function markOf(line) {
-    const t = String(line).normalize("NFKC").replace(/\s+/g, "").toUpperCase();
-    const m = /^KN[S5]CAN[-:.]?([0-9IL|O]{1,3})$/.exec(t);
-    return m ? Number(m[1].replace(/[IL|]/g, "1").replace(/O/g, "0")) : null;
+    const t = String(line).normalize("NFKC").toUpperCase().replace(/[\s.,:;'"`*_()[\]「」・。、-]/g, "");
+    const m = /^([A-Z0-9|]{6})([0-9IL|O]{1,3})$/.exec(t);
+    if (!m) return null;
+    const w = m[1].replace(/5/g, "S").replace(/0/g, "O");
+    if ([..."KNSCAN"].filter((c, k) => w[k] !== c).length > 1) return null;
+    const n = Number(m[2].replace(/[IL|]/g, "1").replace(/O/g, "0"));
+    return n > 0 ? n : null;
   }
   /** `---` の行・改ページで分ける。 */
   function splitPages(s) {
@@ -324,40 +330,76 @@
     chunks.push(cur.join("\n").trim());
     return chunks.filter(Boolean);
   }
-  /** 貼った字をページへ。list は [{no, text}]（並べた順）。返すのは [[ページの添え字, 字]]。
-      1) 印（KNSCAN n）が読めれば、その番号のページへ（ショートカットの順・並べ替えによらない）。印の前の字は、
-         印の読めなかったページへ。2) 無ければ `---` の行・改ページで順に。3) それも無ければ字の無い最初のページへ。 */
-  function assign(s, list) {
-    const lines = String(s || "").replace(/\r\n?/g, "\n").replace(/\f/g, "\n").split("\n");
+  const linesOf = (s) => String(s || "").replace(/\r\n?/g, "\n").replace(/\f/g, "\n---\n").split("\n");
+  /** 字に印があるか（「字」のあとの「貼る」は、印の無い字＝前にコピーした別の字を貼らない）。 */
+  const hasMark = (src) => [].concat(src).some((s) => linesOf(s).some((l) => markOf(l) != null));
+  /** 貼った字をページへ。src は字か、クリップボードの項目ごとの字の配列（ショートカットはページごとに別の項目で
+      置くことがある）。list は字を入れてよいページ [{no, text}]（並べた順）。返すのは [[list の添え字, 字]]（添え字の順）。
+      1) 印（KNSCAN n）から次の印までは、番号のページへ（ショートカットの順・並べ替えによらない）。項目が二つ以上で
+         印が一つの項目は、まるごとそのページ（項目は画像一枚。印が字のあとに読まれても）。印の前の字・印の無い項目は、
+         印の見つからなかったページへ順に（無ければ、印の前の字は最初の印のページの頭へ）。list に無い番号の字は捨てる
+         （外したページ・渡していないページ・前の字）。同じ字が二度来ても一度。
+      2) 印が一つも無ければ、項目・`---` の行・改ページで分けて順に。分け目も無ければ字の無い最初のページへ。 */
+  function assign(src, list) {
+    const items = [].concat(src).map(linesOf);
     const byNo = new Map(list.map((p, i) => [p.no, i]));
-    const segs = [];
-    let cur = null;
-    const pre = [];
-    lines.forEach((l) => {
-      const n = markOf(l);
-      if (n != null && byNo.has(n)) { cur = { i: byNo.get(n), lines: [] }; segs.push(cur); return; }
-      if (SEP.test(l)) return;
-      (cur ? cur.lines : pre).push(l);
+    const parts = [];
+    items.forEach((ls) => {
+      const mine = [{ n: null, lines: [] }];
+      ls.forEach((l) => {
+        const n = markOf(l);
+        if (n != null) mine.push({ n, lines: [] });
+        else if (!SEP.test(l)) mine[mine.length - 1].lines.push(l);
+      });
+      if (items.length > 1 && mine.length === 2) mine[1].lines.unshift(...mine.shift().lines);
+      const lead = mine[0].n == null && mine[1] ? mine[1].n : null;
+      mine.forEach((g) => parts.push({ n: g.n, lead: g.n == null ? lead : null, text: tidy(g.lines.join("\n")) }));
     });
-    if (segs.length) {
+    if (parts.some((g) => g.n != null)) {
       const got = new Map();
-      segs.forEach((g) => got.set(g.i, [got.get(g.i), g.lines.join("\n")].filter(Boolean).join("\n")));
-      const head = tidy(pre.join("\n"));
-      if (head) {
-        const miss = list.findIndex((_, i) => !got.has(i));
-        if (miss >= 0) got.set(miss, head); else got.set(segs[0].i, `${head}\n${got.get(segs[0].i)}`);
-      }
-      return [...got.entries()].map(([i, t]) => [i, tidy(t)]).filter(([, t]) => t).sort((a, b) => a[0] - b[0]);
+      const put = (i, t, first) => {
+        const old = got.get(i);
+        if (!t || (old && old.split("\n\n").includes(t))) return;
+        got.set(i, old ? (first ? `${t}\n\n${old}` : `${old}\n\n${t}`) : t);
+      };
+      const found = new Set(parts.filter((g) => byNo.has(g.n)).map((g) => byNo.get(g.n)));
+      const free = list.map((_, i) => i).filter((i) => !found.has(i));
+      parts.forEach((g) => { if (byNo.has(g.n)) put(byNo.get(g.n), g.text); });
+      parts.filter((g) => g.n == null && g.text).forEach((g) => {
+        if (free.length) put(free.shift(), g.text);
+        else if (byNo.has(g.lead)) put(byNo.get(g.lead), g.text, true);
+      });
+      return [...got.entries()].sort((a, b) => a[0] - b[0]);
     }
-    const parts = splitPages(s).map(tidy).filter(Boolean);
-    if (!parts.length || !list.length) return [];
-    if (parts.length > 1) {
-      const out = parts.slice(0, list.length).map((t, i) => [i, t]);
-      if (parts.length > list.length) out[out.length - 1][1] += `\n${parts.slice(list.length).join("\n")}`;
+    const chunks = items.flatMap((ls) => splitPages(ls.join("\n"))).map(tidy).filter(Boolean);
+    if (!chunks.length || !list.length) return [];
+    if (chunks.length > 1) {
+      const out = chunks.slice(0, list.length).map((t, i) => [i, t]);
+      if (chunks.length > list.length) out[out.length - 1][1] += `\n${chunks.slice(list.length).join("\n")}`;
       return out;
     }
     const empty = list.findIndex((p) => !String(p.text || "").trim());
-    return [[empty >= 0 ? empty : list.length - 1, parts[0]]];
+    return [[empty >= 0 ? empty : list.length - 1, chunks[0]]];
+  }
+
+  /** クリップボードの字を項目ごとに（readText は最初の項目しか読まない。ショートカットはページごとに別の項目で
+      置くことがある）。断られたら null。押した流れのまま呼ぶ（iOS は「ペースト」を出す）。 */
+  async function clipTexts() {
+    const cb = navigator.clipboard;
+    if (!cb) return null;
+    if (cb.read) {
+      let items = null;
+      try { items = await cb.read(); } catch (e) { if (!cb.readText || (e && e.name === "NotAllowedError")) return null; }
+      if (items) {
+        const out = [];
+        for (const it of items) {
+          if (!(it.types || []).includes("text/plain")) continue;
+          try { out.push(await (await it.getType("text/plain")).text()); } catch (_) { /* この項目は読めない */ }
+        }
+        return out;
+      }
+    }
+    try { return [String((await cb.readText()) || "")]; } catch (_) { return null; }
   }
 
   /* ---------------- 画面 ---------------- */
@@ -380,9 +422,10 @@
     let editCancel = null;
     let metaT = 0;
     let awaitPaste = false;     // 「字」で渡したあと（戻ったら「貼る」）
+    let asked = null;           // 「字」で渡したページの番号（撮りかけに残す。アプリが落ちても戻れば「貼る」）
     const canCam = () => !camFailed && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
     const nextNo = () => pages.reduce((m, x) => Math.max(m, x.no || 0), 0) + 1;
-    const clip = () => !!(navigator.clipboard && navigator.clipboard.readText);
+    const clip = () => !!(navigator.clipboard && (navigator.clipboard.read || navigator.clipboard.readText));
 
     const el = node(html`
       <div class="scan" role="dialog" aria-label="スキャン">
@@ -424,8 +467,8 @@
       if (!pages.length) { flag(null); return draft.putMeta({ at: Date.now(), open: false, mode, pages: [] }); }
       const at = Date.now();
       flag({ open: !!isOpen, at, n: pages.length });
-      return draft.putMeta({ at, open: !!isOpen, mode, pages: pages.map((p) => ({
-        id: p.id, no: p.no, w: p.w, h: p.h, quad: p.quad, auto: p.auto, found: p.found, rot: p.rot, text: p.text })) });
+      return draft.putMeta({ at, open: !!isOpen, mode, asked, pages: pages.map((p) => ({
+        id: p.id, no: p.no, w: p.w, h: p.h, quad: p.quad, auto: p.auto, found: p.found, rot: p.rot, text: p.text, pasted: p.pasted })) });
     };
     const saveMeta = () => { clearTimeout(metaT); metaT = setTimeout(() => { if (!closed) metaNow(true); }, 250); };
 
@@ -576,15 +619,23 @@
         drop(cv);
         const blob = await toBlob(out, 0.9);
         drop(out);
-        if (ocrKey(p) === k) { p.ocr = blob; p.ocrKey = k; }
+        if (ocrKey(p) === k) { p.ocr = blob; p.ocrKey = k; p.ocrErr = false; }
         paintRead();
         return blob;
+      }).catch((e) => {
+        /* 作れなかった（iOS の記憶の上限など）：覚えておかず、「字」を押せば作り直す。 */
+        if (p.ocrFor === k) { p.ocrP = null; p.ocrFor = ""; p.ocrErr = true; }
+        paintRead();
+        throw e;
       });
       return p.ocrP;
     };
+    const ocrReady = (p) => !!p.ocr && p.ocrKey === ocrKey(p);
+    /** 「字」で渡すページ：字の無いページ（どのページにも字があれば、ぜんぶ読み直す）。 */
+    const toRead = () => { const e = pages.filter((p) => !p.text.trim()); return e.length ? e : pages.slice(); };
     /** 見せる絵 → 字を読ませる画像 → 原本の順に。 */
     const warm = () => Promise.all(pages.map((p) => preview(p).catch(() => null)))
-      .then(() => (closed ? null : Promise.all(pages.map((p) => ocrOf(p).catch(() => null)))))
+      .then(() => (closed ? null : Promise.all(toRead().map((p) => ocrOf(p).catch(() => null)))))
       .then(() => { if (!closed) pages.forEach((p) => full(p).catch(() => {})); });
 
     /* ---- 面 ---- */
@@ -959,9 +1010,12 @@
       readB.classList.toggle("is-main", awaitPaste);
       readB.classList.toggle("is-wait", !awaitPaste);
       if (awaitPaste) { readB.setAttribute("aria-disabled", "false"); return; }
-      const ready = pages.filter((p) => p.ocr && p.ocrKey === ocrKey(p)).length;
-      readB.setAttribute("aria-disabled", String(!pages.length || ready < pages.length));
-      readB.style.setProperty("--p", pages.length ? (ready / pages.length).toFixed(3) : "0");
+      const due = toRead();
+      const ready = due.filter(ocrReady).length;
+      /* 作れなかった画像があれば押せる（押すと作り直す）。 */
+      const stuck = due.some((p) => p.ocrErr);
+      readB.setAttribute("aria-disabled", String(!due.length || (ready < due.length && !stuck)));
+      readB.style.setProperty("--p", due.length ? (ready / due.length).toFixed(3) : "0");
     };
     const setProgress = (v) => {
       if (!progEl) return;
@@ -1046,7 +1100,13 @@
       c.querySelector(".js-edit").addEventListener("click", () => editCorners(p));
       const ta = c.querySelector(".js-text");
       ta.value = p.text;
-      ta.addEventListener("input", () => { p.text = ta.value; saveMeta(); });
+      ta.addEventListener("input", () => {
+        const had = !!p.text.trim();
+        p.text = ta.value;
+        saveMeta();
+        /* 字を消した・書いた：「字」で渡すページが変わる。 */
+        if (had !== !!p.text.trim()) { paintRead(); warm(); }
+      });
       const acts = c.querySelector(".scan-page-acts");
       acts.append(btn("scan-mini js-rot", "redo", "回す", () => {
         p.rot = ((p.rot || 0) + 1) % 4;
@@ -1056,13 +1116,17 @@
         warm();
       }));
       if (clip()) {
+        /* このページへ（印があればこのページの分、無ければぜんぶ）。押したページなので、書いた字も置き換える。 */
         acts.append(btn("scan-mini js-paste", "copy", "貼る", async () => {
-          try {
-            const s = String((await navigator.clipboard.readText()) || "");
-            const mine = assign(s, pages).find(([i]) => pages[i] === p);
-            const t = mine ? mine[1] : tidy(s.split("\n").filter((l) => markOf(l) == null && !SEP.test(l)).join("\n"));
-            if (t) { p.text = ta.value = t; saveMeta(); }
-          } catch (_) { KN.ui.focusNow(ta); }
+          const got = await clipTexts();
+          if (!got) { KN.ui.focusNow(ta); return; }
+          const mine = assign(got, pages).find(([k]) => pages[k] === p);
+          const t = mine ? mine[1] : tidy(got.map((s) => linesOf(s).filter((l) => markOf(l) == null && !SEP.test(l)).join("\n")).join("\n\n"));
+          if (!t) return;
+          const had = !!p.text.trim();
+          p.text = p.pasted = ta.value = t;
+          saveMeta();
+          if (!had) { paintRead(); warm(); }
         }));
       }
       acts.append(btn("scan-mini js-drop", "trash", "外す", () => {
@@ -1077,32 +1141,74 @@
       return c;
     }
 
-    /** まとめて貼る（`assign`）。 */
+    /** 貼った字をページへ。手で直した字（貼った字と違う字）は上書きしない。返すのは [入れた数, そのままの数]。 */
+    const fill = (list, res) => {
+      let n = 0, kept = 0;
+      res.forEach(([i, t]) => {
+        const p = list[i];
+        if (p.text !== t && p.text.trim() && p.text !== p.pasted) { kept++; return; }
+        p.text = p.pasted = t;
+        n++;
+      });
+      return [n, kept];
+    };
+    const sayFilled = ([n, kept]) => KN.ui.toast(!kept ? `${n}ページに字を入れました`
+      : n ? `${n}ページに字を入れました（直した${kept}ページはそのまま）` : `直した${kept}ページはそのままにしました`, { long: !!kept });
+
+    /** まとめて貼る（`assign`。印が無ければ `---` の行・改ページで順に）。 */
     async function pasteAll() {
-      let s = "";
-      try { s = await navigator.clipboard.readText(); } catch (_) { KN.ui.toast("貼れませんでした"); return; }
-      const got = assign(s, pages);
-      if (!got.length) { KN.ui.toast("字がありませんでした"); return; }
-      got.forEach(([i, t]) => { pages[i].text = t; });
-      awaitPaste = false;
+      const got = await clipTexts();
+      if (!got) { KN.ui.toast("貼れませんでした"); return; }
+      const res = assign(got, pages);
+      if (!res.length) { KN.ui.toast("字がありませんでした"); return; }
+      const said = fill(pages, res);
       saveMeta();
       show("pages");
-      KN.ui.toast(`${got.length}ページに字を入れました`);
+      sayFilled(said);
     }
 
-    /** 「字」：読ませる画像をショートカットへ渡す。済んだら「貼る」に変わる。 */
+    /** 「字」のあとの「貼る」：渡したページへ印の番号で。印の無い字（前にコピーした別の字）は貼らない。 */
+    async function pasteBack() {
+      const got = await clipTexts();
+      if (!got) { KN.ui.toast("貼れませんでした"); return; }
+      const list = pages.filter((p) => (asked || []).includes(p.no));
+      const res = hasMark(got) ? assign(got, list) : [];
+      awaitPaste = false;
+      asked = null;
+      if (!res.length) { saveMeta(); paintRead(); KN.ui.toast("字が届いていません"); return; }
+      const said = fill(list, res);
+      saveMeta();
+      show("pages");
+      sayFilled(said);
+    }
+
+    /** 「字」：字の無いページ（どれにも字があれば、ぜんぶ）の読ませる画像をショートカットへ渡す。押した流れの
+        まま渡すので、画像は先に作っておく。渡したら「貼る」に変わる。 */
     function read() {
-      if (awaitPaste) { pasteAll(); return; }
-      const ready = pages.length && pages.every((p) => p.ocr && p.ocrKey === ocrKey(p));
-      if (!ready) return;
-      const files = pages.map((p, i) => new File([p.ocr], `scan-${i + 1}.jpg`, { type: "image/jpeg" }));
+      if (awaitPaste) { pasteBack(); return; }
+      const want = toRead();
+      if (!want.length) return;
+      if (!want.every(ocrReady)) {
+        want.forEach((p) => { p.ocrErr = false; });
+        paintRead();
+        warm();
+        return;
+      }
+      const files = want.map((p, i) => new File([p.ocr], `scan-${i + 1}.jpg`, { type: "image/jpeg" }));
       if (!navigator.share || (navigator.canShare && !navigator.canShare({ files }))) { KN.ui.toast("共有できませんでした"); return; }
+      /* 渡す前に残す（ショートカットのあいだに iOS がアプリを落としても、開き直せば「貼る」）。 */
+      asked = want.map((p) => p.no);
       metaNow(true);
       navigator.share({ files }).then(() => {
         if (closed) return;
         awaitPaste = true;
+        saveMeta();
         paintRead();
-      }).catch(() => {});
+      }).catch(() => {
+        if (closed) return;
+        asked = null;
+        saveMeta();
+      });
     }
 
     /** 仕上げた一枚から字の帯（書類の仕上げで見る）。 */
@@ -1350,6 +1456,8 @@
       });
       pages.forEach((p, i) => { if (!p.no || pages.some((x, j) => j < i && x.no === p.no)) p.no = nextNo(); });
       if (meta && MODES.some(([k]) => k === meta.mode)) mode = meta.mode;
+      /* 「字」で渡したまま落ちていた：戻ったら「貼る」。 */
+      if (meta && Array.isArray(meta.asked) && meta.asked.some((n) => pages.some((p) => p.no === n))) { asked = meta.asked.slice(); awaitPaste = true; }
       if (pages.length) { metaNow(true); show("pages"); } else show(canCam() ? "cam" : "start");
     });
     return live;
@@ -1373,6 +1481,6 @@
     workerState: () => wstate,
     noWorker: () => offWorker(),
     draft: () => draft.load(),
-    splitPages, assign, tidy, flow, markOf,
+    splitPages, assign, hasMark, tidy, flow, markOf,
   };
 })();
