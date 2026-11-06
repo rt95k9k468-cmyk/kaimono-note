@@ -7,7 +7,8 @@
    字の層をページごとに照合・行の帯の位置・縦書きは回した行列・題・pdftotext）／
    ＋の「書く」「スキャン」→ すぐカメラ（captureStream をカメラの代わりに）：自動で撮る・止まったままなら
    二枚目を撮らない・めくると次を撮る・シャッター／並べる面：撮りかけを開き直しで続ける（再読み込み）・
-   並べ替え・四隅（隅・辺・拡大の丸・自動へ戻す）・回す・仕上げの切り替えを覚える・まとめて貼る・共有・
+   並べ替え・四隅（隅・辺・拡大の丸・自動へ戻す）・回す・仕上げの切り替えを覚える・「字」（読ませる画像に
+   ページの印）→「貼る」（印の番号でページへ・読み違い・空白）・
    保存（画像の行・原本の行・PDF の行、原本は仕上げた大きさ、PDF の字・検索、撮りかけを消す）／
    閉じる（あとで続ける・捨てる）／カメラが使えない日は「カメラ・写真」・写真から（明るい机）・原本は
    縮めない／映らない流れは一度開き直して最初の面へ／Worker が使えない日もこの場で仕上がる。
@@ -467,22 +468,50 @@ function pdfText(buf) {
   await page.click(".scan .scan-seg-b[data-mode=color]");
   t.check("仕上げ：カラーを覚える", await page.evaluate(() => localStorage.getItem("kn-scan-mode") === "color"));
 
-  /* ---- まとめて貼る ---- */
-  const PASTE = "一ページ目の字\n二行目\n---\n二ページ目\n---\n三ページ目 ABC";
-  await page.evaluate((s) => { Object.defineProperty(navigator.clipboard, "readText", { value: async () => s, configurable: true }); }, PASTE);
-  await page.click(".scan .js-paste-all");
-  await page.waitForTimeout(200);
-  const texts = await page.evaluate(() => KN.scan.live().pages.map((p) => p.text));
-  t.check("貼る：--- で分けてページごとに", JSON.stringify(texts) === JSON.stringify(["一ページ目の字\n二行目", "二ページ目", "三ページ目 ABC"]), JSON.stringify(texts));
-  t.check("貼る：分け目の読み方", JSON.stringify(await page.evaluate(() => KN.scan.splitPages("a\fb\n===\nc"))) === JSON.stringify(["a", "b", "c"]));
-
-  /* ---- 共有（仕上がるまで押せない → 三枚の JPEG） ---- */
+  /* ---- 字：読ませる画像を渡す（書類の仕上げ・上の帯にページの印）→ 戻ると「貼る」→ 印でページへ ---- */
   await page.evaluate(() => { window.__shared = null; navigator.canShare = () => true; navigator.share = async (d) => { window.__shared = d; }; });
-  const ready = await page.waitForFunction(() => document.querySelector(".scan .js-share").getAttribute("aria-disabled") === "false", null, { timeout: 30000 }).then(() => true, () => false);
-  t.check("共有：原本が仕上がると押せる", ready);
-  await page.click(".scan .js-share");
-  const shared = await page.evaluate(() => window.__shared && window.__shared.files.map((f) => [f.name, f.type, f.size > 0]));
-  t.check("共有：三枚の JPEG（scan-1〜3）", JSON.stringify(shared) === JSON.stringify([["scan-1.jpg", "image/jpeg", true], ["scan-2.jpg", "image/jpeg", true], ["scan-3.jpg", "image/jpeg", true]]), JSON.stringify(shared));
+  const ready = await page.waitForFunction(() => document.querySelector(".scan .js-read").getAttribute("aria-disabled") === "false", null, { timeout: 30000 }).then(() => true, () => false);
+  t.check("字：読ませる画像が揃うと押せる", ready);
+  await page.click(".scan .js-read");
+  await page.waitForFunction(() => !!window.__shared, null, { timeout: 5000 }).catch(() => {});
+  const shared = await page.evaluate(async () => {
+    const d = window.__shared;
+    if (!d) return null;
+    const out = [];
+    for (const f of d.files) {
+      const bm = await createImageBitmap(f);
+      const c = document.createElement("canvas");
+      c.width = bm.width; c.height = bm.height;
+      const g = c.getContext("2d");
+      g.drawImage(bm, 0, 0);
+      const strip = g.getImageData(0, 0, bm.width, 40).data;
+      let white = 0, dark = 0;
+      for (let i = 0; i < strip.length; i += 4) {
+        const l = strip[i] * 0.299 + strip[i + 1] * 0.587 + strip[i + 2] * 0.114;
+        if (l > 240) white++; else if (l < 90) dark++;
+      }
+      out.push({ name: f.name, type: f.type, long: Math.max(bm.width, bm.height), white: white / (strip.length / 4), dark: dark / (strip.length / 4) });
+    }
+    return out;
+  });
+  t.check("字：三枚の JPEG（scan-1〜3）", !!shared && JSON.stringify(shared.map((x) => [x.name, x.type])) === JSON.stringify([["scan-1.jpg", "image/jpeg"], ["scan-2.jpg", "image/jpeg"], ["scan-3.jpg", "image/jpeg"]]), JSON.stringify(shared));
+  t.check("字：上の白い帯にページの印（白地に濃い字）", !!shared && shared.every((x) => x.white > 0.75 && x.dark > 0.004), JSON.stringify(shared));
+  t.check("字：渡したあとは「貼る」・上の「貼る」は隠れる", await page.evaluate(() => {
+    const b = document.querySelector(".scan .js-read"), top = document.querySelector(".scan .js-paste-all");
+    return b.textContent.trim() === "貼る" && b.classList.contains("is-main") && (!top || top.hidden);
+  }));
+  const nos = await page.evaluate(() => KN.scan.live().pages.map((p) => p.no));
+  /* 認識の出す字：印の順はばらばら・読み違い（空白・全角）・漢字かなのあいだの空白。 */
+  const PASTE = `KNSCAN ${nos[1]}\n二 ペ ー ジ 目\nKN SCAN ${nos[0]}\n一ページ目の字\n二行目\n${String.fromCharCode(...[..."KNSCAN"].map((c) => c.charCodeAt(0) + 0xfee0))} ${nos[2]}\n三ページ目 ABC`;
+  await page.evaluate((s) => { Object.defineProperty(navigator.clipboard, "readText", { value: async () => s, configurable: true }); }, PASTE);
+  await page.click(".scan .js-read");
+  await page.waitForFunction(() => document.querySelector(".scan .js-read").textContent.trim() === "字", null, { timeout: 3000 }).catch(() => {});
+  const texts = await page.evaluate(() => KN.scan.live().pages.map((p) => p.text));
+  t.check("貼る：印の番号でページへ（順・読み違い・空白によらない）", JSON.stringify(texts) === JSON.stringify(["一ページ目の字\n二行目", "二ページ目", "三ページ目 ABC"]), JSON.stringify([nos, texts]));
+  t.check("貼る：「字」に戻る", (await page.$eval(".scan .js-read", (b) => b.textContent.trim())) === "字");
+  t.check("貼る：分け目の読み方（---・改ページ・印が無いとき）", JSON.stringify(await page.evaluate(() => KN.scan.splitPages("a\fb\n===\nc"))) === JSON.stringify(["a", "b", "c"]));
+  t.check("貼る：漢字・かなのあいだの空白を外す", await page.evaluate(() => KN.scan.tidy(" 日 本 語 の 字 ABC 123 ") === "日本語の字 ABC 123"));
+  t.check("貼る：印の前の字は、印の読めなかったページへ", JSON.stringify(await page.evaluate(() => KN.scan.assign("前\nKNSCAN 1\n一", [{ no: 2 }, { no: 1 }]))) === JSON.stringify([[0, "前"], [1, "一"]]));
 
   /* ---- 保存 ---- */
   const fulls = await page.evaluate(async () => (await KN.scan.live().warm()).map((v) => [v.w, v.h]));
@@ -521,7 +550,7 @@ function pdfText(buf) {
     t.check("保存：PDF は3ページ・字の層はページごとに貼った字", sp.xrefOk && sp.pages.length === 3
       && sp.pages.map((p) => p.lines.join("\n")).join("|") === texts.join("|"), JSON.stringify(sp.pages.map((p) => p.lines)));
     t.check("保存：回したページは横長", sp.pages[1].box[0] > sp.pages[1].box[1] && sp.pages[0].box[0] < sp.pages[0].box[1], JSON.stringify(sp.pages.map((p) => p.box)));
-    t.check("保存：PDF の字は検索に（setText）", /二ページ目/.test(saved.ft), saved.ft);
+    t.check("保存：PDF の字は検索に（setText。日本語の折り返しはつなぐ）", /二ページ目/.test(saved.ft) && saved.ft.includes("一ページ目の字二行目"), saved.ft);
     t.check("保存：撮りかけは消える", (!saved.draft.meta || !saved.draft.meta.pages.length) && !saved.draft.photos.length && saved.flag === null, JSON.stringify([saved.draft.meta, saved.draft.photos.length, saved.flag]));
   }
   await page.keyboard.press("Escape");

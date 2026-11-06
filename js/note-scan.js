@@ -9,8 +9,11 @@
    - 保存は docs/image-design.md のまま：一枚ごとに見る画像（`KN.noteImg.add`。長辺1600）と、すぐ下に
      原本の行（`KN.noteFile.keep`。仕上げた大きさ・JPEG 0.95）。終わりに字入りの PDF（`KN.noteFile.add`。
      写真は原本の JPEG のまま、字は行の帯の位置へ透明に）。ファイルを先に書き、書けてから本文。
-   - 字はアプリでは読まない。「共有」→ iOS のショートカット（画像からテキストを抽出）→ 写した字を「貼る」
-     （`---` の行か改ページで分ければ、まとめてページごとに入る）。字は `setText` で検索にも。
+   - 字はアプリでは読まない（iPhone の文字認識がいちばん確か。2026年11月6日、利用者が選んだ）。「字」→ iOS の
+     ショートカット（画像からテキストを抽出 → クリップボードにコピー）→ 戻ると「貼る」。渡す画像は書類の仕上げ・
+     長辺2800で、上の白い帯にページの印「KNSCAN n」（n はページの番号。並べ替えても変わらない）を刷る。
+     認識がその印も読むので、ショートカットに分け目が無くてもページごとに入る（`---` の行・改ページも読む）。
+     漢字・かなのあいだの空白は外す。字は `setText` で検索にも（日本語の折り返しはつないで）。
    - 撮りかけは別の入れ物 `kaimono-note-scan`（版1の決め打ち。写真と四隅・字だけ）。ショートカットへ行く
      あいだに iOS がアプリを落としても、開き直せば続きから（20分以内なら起動で開く）。保存・捨てるで消す。
    ========================================================= */
@@ -33,6 +36,7 @@
   const FLAG = "kn-scan-draft"; // 撮りかけがあるか・開いていたか（起動で続きを開く）
   const MODE_KEY = "kn-scan-mode";
   const RESUME_MS = 20 * 60e3;
+  const OCR_SIDE = 2800;        // 字を読ませる画像の長辺（書類の仕上げ）
   const MODES = [["doc", "書類"], ["color", "カラー"], ["raw", "そのまま"]];
   const SEP = /^\s*(?:-{3,}|={3,}|_{3,}|─{3,}|—{2,})\s*$/;
 
@@ -111,10 +115,11 @@
   const newId = () => `s${Date.now().toString(36)}${(idN++).toString(36)}`;
   function mkPage(o) {
     return {
-      id: o.id || newId(), blob: o.blob, w: o.w, h: o.h, quad: o.quad.map((p) => p.slice()),
+      id: o.id || newId(), no: o.no || 0, blob: o.blob, w: o.w, h: o.h, quad: o.quad.map((p) => p.slice()),
       auto: (o.auto || o.quad).map((p) => p.slice()), found: !!o.found, rot: o.rot || 0, text: o.text || "",
       look: o.look || null, lookUrl: null, prev: null, prevKey: "", prevP: null, prevFor: "",
       full: null, fullKey: "", fullP: null, fullFor: "",
+      ocr: null, ocrKey: "", ocrP: null, ocrFor: "",
     };
   }
   async function pageFromBlob(blob) {
@@ -284,7 +289,32 @@
   })();
   const setMode = (m) => { mode = m; try { localStorage.setItem(MODE_KEY, m); } catch (_) { /* 書けない */ } };
 
-  /** 貼った字を `---` の行・改ページで分ける。 */
+  /* ---------------- 貼った字 ---------------- */
+
+  const JA = "\\u3005\\u3006\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f";
+  const JP = "、。，．・：；？！「」『』（）［］【】〈〉《》〔〕…〜～";
+  const JA_GAP = new RegExp(`([${JA}${JP}])[ \\t]+(?=[${JA}${JP}])`, "g");
+  const JA_END = new RegExp(`[${JA}${JP}]$`), JA_HEAD = new RegExp(`^[${JA}${JP}]`);
+
+  /** 読み取りの後始末：漢字・かな・約物のあいだの空白を外す・行の前後の空白・空の行の重なり。 */
+  function tidy(s) {
+    return String(s || "").replace(/\r\n?/g, "\n").split("\n").map((l) => l.replace(JA_GAP, "$1").trim())
+      .join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+  /** 日本語の折り返しをつなぐ（行末も次の行頭も漢字・かな）。検索で行をまたぐ語も見つかるように。 */
+  const flow = (s) => String(s || "").split("\n").reduce((out, l) => {
+    if (out.length && l && JA_END.test(out[out.length - 1]) && JA_HEAD.test(l)) out[out.length - 1] += l;
+    else out.push(l);
+    return out;
+  }, []).join("\n");
+
+  /** ページの印（KNSCAN n）なら n。読み違えやすい字（I・l・|→1、O→0、5→S）と全角も受ける。 */
+  function markOf(line) {
+    const t = String(line).normalize("NFKC").replace(/\s+/g, "").toUpperCase();
+    const m = /^KN[S5]CAN[-:.]?([0-9IL|O]{1,3})$/.exec(t);
+    return m ? Number(m[1].replace(/[IL|]/g, "1").replace(/O/g, "0")) : null;
+  }
+  /** `---` の行・改ページで分ける。 */
   function splitPages(s) {
     const chunks = [];
     let cur = [];
@@ -293,6 +323,41 @@
     });
     chunks.push(cur.join("\n").trim());
     return chunks.filter(Boolean);
+  }
+  /** 貼った字をページへ。list は [{no, text}]（並べた順）。返すのは [[ページの添え字, 字]]。
+      1) 印（KNSCAN n）が読めれば、その番号のページへ（ショートカットの順・並べ替えによらない）。印の前の字は、
+         印の読めなかったページへ。2) 無ければ `---` の行・改ページで順に。3) それも無ければ字の無い最初のページへ。 */
+  function assign(s, list) {
+    const lines = String(s || "").replace(/\r\n?/g, "\n").replace(/\f/g, "\n").split("\n");
+    const byNo = new Map(list.map((p, i) => [p.no, i]));
+    const segs = [];
+    let cur = null;
+    const pre = [];
+    lines.forEach((l) => {
+      const n = markOf(l);
+      if (n != null && byNo.has(n)) { cur = { i: byNo.get(n), lines: [] }; segs.push(cur); return; }
+      if (SEP.test(l)) return;
+      (cur ? cur.lines : pre).push(l);
+    });
+    if (segs.length) {
+      const got = new Map();
+      segs.forEach((g) => got.set(g.i, [got.get(g.i), g.lines.join("\n")].filter(Boolean).join("\n")));
+      const head = tidy(pre.join("\n"));
+      if (head) {
+        const miss = list.findIndex((_, i) => !got.has(i));
+        if (miss >= 0) got.set(miss, head); else got.set(segs[0].i, `${head}\n${got.get(segs[0].i)}`);
+      }
+      return [...got.entries()].map(([i, t]) => [i, tidy(t)]).filter(([, t]) => t).sort((a, b) => a[0] - b[0]);
+    }
+    const parts = splitPages(s).map(tidy).filter(Boolean);
+    if (!parts.length || !list.length) return [];
+    if (parts.length > 1) {
+      const out = parts.slice(0, list.length).map((t, i) => [i, t]);
+      if (parts.length > list.length) out[out.length - 1][1] += `\n${parts.slice(list.length).join("\n")}`;
+      return out;
+    }
+    const empty = list.findIndex((p) => !String(p.text || "").trim());
+    return [[empty >= 0 ? empty : list.length - 1, parts[0]]];
   }
 
   /* ---------------- 画面 ---------------- */
@@ -314,7 +379,9 @@
     let camRestart = null;
     let editCancel = null;
     let metaT = 0;
+    let awaitPaste = false;     // 「字」で渡したあと（戻ったら「貼る」）
     const canCam = () => !camFailed && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    const nextNo = () => pages.reduce((m, x) => Math.max(m, x.no || 0), 0) + 1;
     const clip = () => !!(navigator.clipboard && navigator.clipboard.readText);
 
     const el = node(html`
@@ -358,7 +425,7 @@
       const at = Date.now();
       flag({ open: !!isOpen, at, n: pages.length });
       return draft.putMeta({ at, open: !!isOpen, mode, pages: pages.map((p) => ({
-        id: p.id, w: p.w, h: p.h, quad: p.quad, auto: p.auto, found: p.found, rot: p.rot, text: p.text })) });
+        id: p.id, no: p.no, w: p.w, h: p.h, quad: p.quad, auto: p.auto, found: p.found, rot: p.rot, text: p.text })) });
     };
     const saveMeta = () => { clearTimeout(metaT); metaT = setTimeout(() => { if (!closed) metaNow(true); }, 250); };
 
@@ -429,6 +496,7 @@
         if (closed) return;
         try {
           const p = await pageFromBlob(f);
+          p.no = nextNo();
           pages.push(p);
           draft.putPhoto(p);
         } catch (_) {
@@ -478,15 +546,46 @@
         const v = { blob, w: cv.width, h: cv.height };
         drop(cv);
         if (keyOf(p) === k) { p.full = v; p.fullKey = k; }
-        paintShare();
         return v;
       });
       return p.fullP;
     };
-    /** 見せる絵を先に、原本はそのあと。 */
-    const warm = () => Promise.all(pages.map((p) => preview(p).catch(() => null))).then(() => {
-      if (!closed) pages.forEach((p) => full(p).catch(() => {}));
-    });
+    /** 字を読ませる画像：書類の仕上げ・長辺2800、上の白い帯にページの印（認識がこの印も読む）。 */
+    const ocrKey = (p) => `${p.no}|${p.rot || 0}|${p.quad.map((v) => v.map((n) => n.toFixed(1)).join(",")).join(";")}`;
+    let ocrQ = Promise.resolve();
+    const ocrOf = (p) => {
+      const k = ocrKey(p);
+      if (p.ocr && p.ocrKey === k) return Promise.resolve(p.ocr);
+      if (p.ocrP && p.ocrFor === k) return p.ocrP;
+      p.ocrFor = k;
+      p.ocrP = ocrQ = ocrQ.catch(() => {}).then(async () => {
+        if (closed || ocrKey(p) !== k || !pages.includes(p)) return null;
+        const sz = C.outSize(p.quad, p.w, p.h);
+        const scale = Math.min(1, OCR_SIDE / Math.max(sz.w, sz.h));
+        const cv = await render(p, "doc", scale, { look: scale * Math.max(p.w, p.h) <= LOOK });
+        const band = Math.max(56, Math.round(Math.max(cv.width, cv.height) * 0.05));
+        const out = canvasOf(cv.width, cv.height + band);
+        const g = out.getContext("2d");
+        g.fillStyle = "#fff";
+        g.fillRect(0, 0, out.width, band);
+        g.fillStyle = "#000";
+        g.font = `700 ${Math.round(band * 0.55)}px -apple-system, "Helvetica Neue", Arial, sans-serif`;
+        g.textBaseline = "middle";
+        g.fillText(`KNSCAN ${p.no}`, Math.round(band * 0.5), Math.round(band / 2));
+        g.drawImage(cv, 0, band);
+        drop(cv);
+        const blob = await toBlob(out, 0.9);
+        drop(out);
+        if (ocrKey(p) === k) { p.ocr = blob; p.ocrKey = k; }
+        paintRead();
+        return blob;
+      });
+      return p.ocrP;
+    };
+    /** 見せる絵 → 字を読ませる画像 → 原本の順に。 */
+    const warm = () => Promise.all(pages.map((p) => preview(p).catch(() => null)))
+      .then(() => (closed ? null : Promise.all(pages.map((p) => ocrOf(p).catch(() => null)))))
+      .then(() => { if (!closed) pages.forEach((p) => full(p).catch(() => {})); });
 
     /* ---- 面 ---- */
     function show(v) {
@@ -744,6 +843,7 @@
         const job = (chain = chain.then(() => develop(src, vw, vh)))
           .then((p) => {
             if (!p || closed) return;
+            p.no = nextNo();
             pages.push(p);
             draft.putPhoto(p);
             saveMeta();
@@ -844,13 +944,24 @@
     }
 
     /* ---- 並べる・仕上げ・字・保存 ---- */
-    let shareB = null;
+    let readB = null;
+    let pasteTop = null;
     let progEl = null;
-    const paintShare = () => {
-      if (!shareB || !shareB.isConnected) return;
-      const ready = pages.filter((p) => p.full && p.fullKey === keyOf(p)).length;
-      shareB.setAttribute("aria-disabled", String(!pages.length || ready < pages.length));
-      shareB.style.setProperty("--p", pages.length ? (ready / pages.length).toFixed(3) : "0");
+    /** 「字」：読ませる画像が揃うまで押せない（押した流れで渡す）。渡したあとは「貼る」。 */
+    const paintRead = () => {
+      if (pasteTop && pasteTop.isConnected) pasteTop.hidden = awaitPaste;
+      if (!readB || !readB.isConnected) return;
+      const label = readB.querySelector("span");
+      const ico = readB.querySelector("svg");
+      const want = awaitPaste ? "copy" : "upload";
+      if (ico && ico.dataset.ico !== want) ico.replaceWith(U.node(U.html`${U.icon(want)}`));
+      label.textContent = awaitPaste ? "貼る" : "字";
+      readB.classList.toggle("is-main", awaitPaste);
+      readB.classList.toggle("is-wait", !awaitPaste);
+      if (awaitPaste) { readB.setAttribute("aria-disabled", "false"); return; }
+      const ready = pages.filter((p) => p.ocr && p.ocrKey === ocrKey(p)).length;
+      readB.setAttribute("aria-disabled", String(!pages.length || ready < pages.length));
+      readB.style.setProperty("--p", pages.length ? (ready / pages.length).toFixed(3) : "0");
     };
     const setProgress = (v) => {
       if (!progEl) return;
@@ -861,7 +972,8 @@
     function paintPages() {
       if (!pages.length && !pend.size) { show(canCam() ? "cam" : "start"); return; }
       title.textContent = `${pages.length}枚`;
-      if (clip() && pages.length > 1) topR.append(btn("scan-pill js-paste-all", "copy", "貼る", () => pasteAll()));
+      pasteTop = clip() && pages.length > 1 ? btn("scan-pill js-paste-all", "copy", "貼る", () => pasteAll()) : null;
+      if (pasteTop) topR.append(pasteTop);
       const list = node(html`<div class="scan-pages"></div>`);
       stage.append(list);
       pages.forEach((p, i) => list.append(card(p, i)));
@@ -892,21 +1004,20 @@
             const p = pages.find((x) => x.id === c.dataset.id);
             if (p) showPreview(p, c.querySelector("img"));
           });
-          paintShare();
           saveMeta();
           warm();
         });
         seg.append(b);
       });
       const row = node(html`<div class="scan-acts"></div>`);
-      shareB = btn("scan-pill is-wait js-share", "upload", "共有", () => share());
+      readB = btn("scan-pill is-wait js-read", "upload", "字", () => read());
       row.append(
         btn("scan-pill js-add", "plus", "足す", () => show(canCam() ? "cam" : "start")),
-        shareB,
+        readB,
         btn("scan-pill is-main js-save", "check", "保存", () => save()),
       );
       bar.append(progEl, seg, row);
-      paintShare();
+      paintRead();
       warm();
     }
 
@@ -941,14 +1052,16 @@
         p.rot = ((p.rot || 0) + 1) % 4;
         saveMeta();
         showPreview(p, im);
-        paintShare();
+        paintRead();
         warm();
       }));
       if (clip()) {
         acts.append(btn("scan-mini js-paste", "copy", "貼る", async () => {
           try {
-            const s = String((await navigator.clipboard.readText()) || "").trim();
-            if (s) { p.text = ta.value = s; saveMeta(); }
+            const s = String((await navigator.clipboard.readText()) || "");
+            const mine = assign(s, pages).find(([i]) => pages[i] === p);
+            const t = mine ? mine[1] : tidy(s.split("\n").filter((l) => markOf(l) == null && !SEP.test(l)).join("\n"));
+            if (t) { p.text = ta.value = t; saveMeta(); }
           } catch (_) { KN.ui.focusNow(ta); }
         }));
       }
@@ -964,32 +1077,32 @@
       return c;
     }
 
-    /** まとめて貼る：`---` の行・改ページで分けてページごとに。分け目が無ければ、字の無い最初のページへ。 */
+    /** まとめて貼る（`assign`）。 */
     async function pasteAll() {
       let s = "";
       try { s = await navigator.clipboard.readText(); } catch (_) { KN.ui.toast("貼れませんでした"); return; }
-      const parts = splitPages(s);
-      if (!parts.length || !pages.length) return;
-      if (parts.length > 1) {
-        parts.forEach((t, i) => {
-          if (i < pages.length) pages[i].text = t;
-          else pages[pages.length - 1].text = `${pages[pages.length - 1].text}\n${t}`;
-        });
-      } else {
-        (pages.find((x) => !x.text.trim()) || pages[pages.length - 1]).text = parts[0];
-      }
+      const got = assign(s, pages);
+      if (!got.length) { KN.ui.toast("字がありませんでした"); return; }
+      got.forEach(([i, t]) => { pages[i].text = t; });
+      awaitPaste = false;
       saveMeta();
       show("pages");
+      KN.ui.toast(`${got.length}ページに字を入れました`);
     }
 
-    /** 仕上げた原本を共有（ショートカットで字を写す）。押した流れで渡すので、仕上がるまでは押せない。 */
-    function share() {
-      const ready = pages.length && pages.every((p) => p.full && p.fullKey === keyOf(p));
+    /** 「字」：読ませる画像をショートカットへ渡す。済んだら「貼る」に変わる。 */
+    function read() {
+      if (awaitPaste) { pasteAll(); return; }
+      const ready = pages.length && pages.every((p) => p.ocr && p.ocrKey === ocrKey(p));
       if (!ready) return;
-      const files = pages.map((p, i) => new File([p.full.blob], `scan-${i + 1}.jpg`, { type: "image/jpeg" }));
+      const files = pages.map((p, i) => new File([p.ocr], `scan-${i + 1}.jpg`, { type: "image/jpeg" }));
       if (!navigator.share || (navigator.canShare && !navigator.canShare({ files }))) { KN.ui.toast("共有できませんでした"); return; }
       metaNow(true);
-      navigator.share({ files }).catch(() => {});
+      navigator.share({ files }).then(() => {
+        if (closed) return;
+        awaitPaste = true;
+        paintRead();
+      }).catch(() => {});
     }
 
     /** 仕上げた一枚から字の帯（書類の仕上げで見る）。 */
@@ -1049,7 +1162,7 @@
             const bytes = C.makePdf(outs.map((v, i) => ({ jpeg: new Uint8Array(jpegs[i]), w: v.w, h: v.h, text: pages[i].text, layout: layouts[i] })),
               { title: titleText, date: d });
             const got = await D.add(new File([bytes], `${titleText}.pdf`, { type: "application/pdf" }));
-            const all = pages.map((p) => p.text.trim()).filter(Boolean).join("\n");
+            const all = pages.map((p) => flow(tidy(p.text))).filter(Boolean).join("\n");
             if (all) await D.setText(got.id, all).catch(() => {});
             pdfLine = D.refLine(got.id, got.name);
           } catch (_) { KN.ui.toast("PDF を保存できませんでした"); }
@@ -1235,6 +1348,7 @@
         if (!ph || !ph.bytes || !m.quad) return;
         pages.push(mkPage({ ...m, blob: new Blob([ph.bytes], { type: ph.type || "image/jpeg" }) }));
       });
+      pages.forEach((p, i) => { if (!p.no || pages.some((x, j) => j < i && x.no === p.no)) p.no = nextNo(); });
       if (meta && MODES.some(([k]) => k === meta.mode)) mode = meta.mode;
       if (pages.length) { metaNow(true); show("pages"); } else show(canCam() ? "cam" : "start");
     });
@@ -1259,6 +1373,6 @@
     workerState: () => wstate,
     noWorker: () => offWorker(),
     draft: () => draft.load(),
-    splitPages,
+    splitPages, assign, tidy, flow, markOf,
   };
 })();
