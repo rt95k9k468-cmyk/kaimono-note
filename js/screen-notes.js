@@ -2034,16 +2034,6 @@
         });
       } }]);
 
-    /* 道に置く（3.0 の A2）。このノートについて考える時間を、今日の道に一つ（js/activity.js）。
-       書いたノートだけ（何も書いていないノートは閉じれば消えるので）。 */
-    /* 既定で畳む（roadmap-3.1 の S4。設定のノートから戻せる）。 */
-    const roadItem = () => (!KN.activity || !stored || blank()
-      || KN.store.get().settings.noteRoad !== true ? [] : [{ icon: "hourglass", label: "道に置く",
-      onPick: () => {
-        sync();
-        KN.activity.noteToRoad({ id: note.id, title: N().headOf(N().get(note.id) || note), day: U.todayKey() });
-      } }]);
-
     /* 読んだところ（思考のホーム。docs/thinking.md）。終わりに「### 10月12日 p.」の見出しを足し、押した流れの
        まま続きへ（ページは任意。論文のタグなら「p.」を付けない）。下に書くのは自分の気づき・問い・やってみること
        ——要約の欄は作らない。前の「種をまく」（段6）は外した：種はタグ。つながった記録の札・小窓は今のまま。 */
@@ -2156,7 +2146,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(roadItem(), readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
