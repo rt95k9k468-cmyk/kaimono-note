@@ -407,7 +407,7 @@ iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in
 |---|---|---|
 | 買うものの「そろそろ切れそう」（D6） | `settings.showLow` | 根っこの shopping |
 | 上の帯の「これからの二週間」（R7） | `settings.showUpcoming` | 外観の「上の帯」（`head.js` の `paintDot` が `hidden` を付け外し） |
-| ノートの「⋯」の「道に置く」（A2） | `settings.noteRoad` | notes → 表示 ›（季節の絵の下） |
+| （外した 11月7日）ノートの「⋯」の「道に置く」（A2） | `settings.noteRoad`（欄だけ残す） | — |
 
 選ばなかった候補（使う）：今日買ったものの束・価格への入口・道具箱・AIとほどく・図鑑と傾向・飲みたくなった・AIに分析・年の本・ノートの★。
 すでにスイッチのある面（あの日・季節・空・暦・時間割・一日の道ほか）は一覧に入れなかった。試験は `tests/fold.js`。

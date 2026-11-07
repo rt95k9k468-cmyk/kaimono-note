@@ -80,7 +80,7 @@ const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "not
   await back();
   await go("notes");
   const n = await rows();
-  t.check("notes：並びは作った日・季節の絵は切・「道に置く」は入", n["並び"] === "作った日" && n["季節の絵"] === "off" && n["「道に置く」を出す"] === "on",
+  t.check("notes：並びは作った日・季節の絵は切・「道に置く」の行は無い", n["並び"] === "作った日" && n["季節の絵"] === "off" && !("「道に置く」を出す" in n),
     JSON.stringify(n));
   await back();
   await go("tasks");

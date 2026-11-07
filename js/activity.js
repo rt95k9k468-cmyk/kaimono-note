@@ -105,27 +105,6 @@
     return t;
   }
 
-  /* ノートから道へ（3.0 の A2）。長さの札は 15・20・25・45、既定は25分。題は「『ノートの題』について考える」、
-     種類は種（考えたこと）。結ぶのはノートの id（`act.note`）。済ませた積み上げも同じノートを持つ。 */
-  const NOTE_LENS = [15, 20, 25, 45];
-  function noteToRoad({ id, title, day }) {
-    const name = String(title || "").trim() || "ノート";
-    askSpan({
-      title: "道に置く", ok: "道に置く", lens: NOTE_LENS, minutes: 25,
-      onPick: (at, minutes) => {
-        const t = KN.store.addTodo({
-          title: `『${name}』について考える`, due: day || U.todayKey(), time: at, minutes,
-          act: { type: "seed", note: id },
-        });
-        if (!t) return;
-        KN.motion.fire("save");
-        KN.ui.toast(`「${t.title}」を ${at} に`, {
-          action: { label: "元に戻す", onClick: KN.store.removeTodo.bind(null, t.id) },
-        });
-      },
-    });
-  }
-
   /** 結んだノート（まだあるものだけ。ノートは IndexedDB で、別に消えうる）。{ id, title } か null。 */
   function noteOf(id) {
     if (!id || !KN.notes || KN.notes.state() !== "on") return null;
@@ -300,5 +279,5 @@
   }
 
   KN.activity = { askSpan, plant, recent, forRoad, colorOf, entryIdOf,
-                  noteToRoad, noteOf, openNote, toolsFor, noteOfDay, LENS, PLANNED, NOTE_LENS };
+                  noteOf, openNote, toolsFor, noteOfDay, LENS, PLANNED };
 })();

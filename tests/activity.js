@@ -137,28 +137,9 @@ const NEXT = "2026-10-07";
   await page.evaluate((i) => KN.screens.notes.open(i), nid);
   await page.waitForSelector(".sheet.is-note.is-open");
   await wait(400);
-  /* 「道に置く」は既定で畳んである（3.1 の S4。畳み方は tests/fold.js）。 */
-  await page.evaluate(() => KN.store.update((s) => { s.settings.noteRoad = true; }));
-  await page.click(".sheet.is-note .js-note-more");
-  await wait(300);
-  const items = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.textContent.trim()));
-  c.check("ノートの「⋯」に「道に置く」", items.includes("道に置く"), JSON.stringify(items));
-  await page.locator(".note-pop-item", { hasText: "道に置く" }).click();
-  await wait(600);
-  const nlens = await page.evaluate(() => {
-    const s = [...document.querySelectorAll(".sheet.is-open")].pop();
-    return { title: s.querySelector(".sheet-title").textContent.trim(),
-             chips: [...s.querySelectorAll(".tw-mins .chip")].map((x) => x.textContent.trim()),
-             on: (s.querySelector(".tw-mins .chip[aria-pressed=true]") || {}).textContent };
-  });
-  c.check("長さの札は 15・20・25・45（既定25分）",
-    nlens.title === "道に置く" && nlens.chips.join() === "15分,20分,25分,45分" && String(nlens.on).trim() === "25分", JSON.stringify(nlens));
-  await page.locator(".sheet.is-open .js-ok").last().click();
-  await wait(600);
-  const nt = await page.evaluate((i) => KN.store.get().todos.find((x) => x.act && x.act.note === i), nid);
-  c.check("「『引っ越しの段取り』について考える」が種の活動として今日に",
-    !!nt && nt.title === "『引っ越しの段取り』について考える" && nt.act.type === "seed" && nt.minutes === 25
-    && nt.due === TODAY && nt.time === "10:00", JSON.stringify(nt));
+  /* ノートの「⋯」に「道に置く」は無い（M3で外した）。結んだノートを持つ用事は store から直に作る。 */
+  const nt = await page.evaluate(([i, d]) => KN.store.addTodo({ title: "『引っ越しの段取り』について考える", due: d,
+    time: "10:00", minutes: 25, act: { type: "seed", note: i } }), [nid, TODAY]);
   await page.keyboard.press("Escape");
   await wait(600);
   await page.click('.tab[data-tab="todo"]');

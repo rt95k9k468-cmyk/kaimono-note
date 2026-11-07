@@ -97,7 +97,7 @@ const t = checker("fold");
   await page.evaluate(() => KN.store.update((s) => { s.settings.noteRoad = true; }));
   await wait(300);
   const on = await menuOf();
-  t.check("鍵を入れると「道に置く」が戻る", on.includes("道に置く"), JSON.stringify(on));
+  t.check("鍵（noteRoad）を入れても「道に置く」は出ない（M3で口ごと外した。保存済みの欄は残る）", !on.includes("道に置く"), JSON.stringify(on));
   t.check("ノートの「⋯」に「読んだところ」が出ない", !on.includes("読んだところ"), JSON.stringify(on));
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.store && KN.app);

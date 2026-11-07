@@ -982,18 +982,19 @@
     const bits = [];
     if (d.bySrc.todo) bits.push({ label: "やること", n: d.bySrc.todo });
     if (d.bySrc.item) bits.push({ label: "買うもの", n: d.bySrc.item });
+    /* 数える行が無ければ出さない（見出しだけの空のカードになる。design-review 12節の Z5）。 */
+    if (!bits.length) return null;
 
     return node(html`
       <section class="card arc-counts">
         <h3 class="arc-counts-head">${month + 1}月のまとめ</h3>
-        ${bits.length ? html`
-          <ul class="arc-counts-list">
-            ${bits.map((b) => html`
-              <li class="arc-counts-item">
-                <span class="arc-counts-label">${b.label}</span>
-                <span class="arc-counts-n">${b.n}</span>
-              </li>`)}
-          </ul>` : ""}
+        <ul class="arc-counts-list">
+          ${bits.map((b) => html`
+            <li class="arc-counts-item">
+              <span class="arc-counts-label">${b.label}</span>
+              <span class="arc-counts-n">${b.n}</span>
+            </li>`)}
+        </ul>
       </section>
     `);
   }
