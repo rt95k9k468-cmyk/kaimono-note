@@ -15,7 +15,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const t = checker("daily-range");
-  const { browser, page, errors } = await open({ unfold: ["monthExport"] });
+  const { browser, page, errors } = await open();
 
   /* ---- store ---- */
   const st = await page.evaluate(() => {
@@ -65,7 +65,7 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(400);
   const out = await page.locator(".set-layer:last-child").innerText();
-  t.check("daily の一枚に「期間を選んで書き出す」", out.includes("月ぶんを書き出す") && out.includes("期間を選んで書き出す") && out.includes("年の本"), out.slice(0, 200));
+  t.check("daily の一枚に「期間を選んで書き出す」", !out.includes("月ぶんを書き出す") && out.includes("期間を選んで書き出す") && out.includes("年の本"), out.slice(0, 200));
   await page.locator(".set-layer:last-child .set-row", { hasText: "期間を選んで書き出す" }).first().click();
   await page.waitForTimeout(500);
 

@@ -13,7 +13,7 @@ const YEST = "2026-10-05";
 
 (async () => {
   const c = checker("slips");
-  const { browser, page, errors } = await open({ unfold: ["slips", "reviewFacts"],
+  const { browser, page, errors } = await open({
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 11, 0)); },
   });
   const wait = (ms) => page.waitForTimeout(ms);
@@ -136,8 +136,8 @@ const YEST = "2026-10-05";
     const row = s && [...s.querySelectorAll(".review-row")].find((r) => /D1 の材料/.test(r.textContent));
     return row ? row.querySelector(".rv-facts").textContent : null;
   });
-  c.check("見直しの紙の頭：最初に置いた日・回数・前に置いていた時刻",
-    head === "8月1日から · 4回置き直し · 前は 21:00", String(head));
+  c.check("見直しの紙の頭に置いた日・回数は出さない（2026年11月7日に外した）",
+    head === "" || head === null, String(head));
 
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();

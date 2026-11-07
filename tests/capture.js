@@ -40,7 +40,7 @@ const FAKE = "https://relay.invalid/kn-testonlypath0000";
 const SEP = "\u001E";
 
 (async () => {
-  const { browser, page, errors } = await open({ unfold: ["listDest"] });
+  const { browser, page, errors } = await open();
 
   /* ---- 表：行き先（画面の中の本物の辞書で） ---- */
   const TABLE = [
@@ -102,29 +102,13 @@ const SEP = "\u001E";
   };
   await tab("list");
   await plus("買うものを追加", ".sheet .js-name");
-  await page.fill(".sheet .js-name", "牛乳");
-  const chipList0 = await page.evaluate(() => document.querySelector(".sheet .js-dest").hidden);
-  t.check("買うもので「牛乳」には札が出ない", chipList0 === true);
+  /* 買うものの紙の行き先の札は外した（2026年11月7日。やることの＋の札は残す）。 */
   await page.fill(".sheet .js-name", "明日 19:00 歯医者");
   await page.waitForTimeout(100);
-  const chip = await page.evaluate(() => {
-    const c = document.querySelector(".sheet .js-dest");
-    return { hidden: c.hidden, text: c.textContent };
-  });
-  t.check("買うもので「明日 19:00 歯医者」に札", !chip.hidden && /やること/.test(chip.text) && /19:00/.test(chip.text), JSON.stringify(chip));
-  await page.click(".sheet .js-dest");
-  await page.waitForTimeout(500);
-  const todo = await page.evaluate(() => {
-    const tomorrow = KN.util.dayKey(new Date(Date.now() + 86400000));
-    const r = KN.store.get().todos.find((x) => x.title === "歯医者");
-    return r ? { due: r.due === tomorrow, time: r.time } : null;
-  });
-  t.check("押すとやることへ（明日 19:00）", todo && todo.due && todo.time === "19:00", JSON.stringify(todo));
-  const items0 = await page.evaluate(() => KN.store.get().items.length);
-  t.check("買うものには入らない", items0 === 0, String(items0));
-  const learned = await page.evaluate(() => KN.store.get().settings.captureDest);
-  t.check("押した言葉を覚える", learned && Object.values(learned).includes("todo"), JSON.stringify(learned));
-  t.check("紙は閉じた", !(await page.evaluate(() => !!document.querySelector(".sheet .js-name"))));
+  t.check("買うものの紙に行き先の札は無い", await page.evaluate(() => !document.querySelector(".sheet .js-dest")));
+  await page.fill(".sheet .js-name", "");
+  await page.evaluate(() => { const b = document.querySelector(".sheet .js-close"); if (b) b.click(); });
+  await page.waitForTimeout(400);
 
   /* ---- 画面：やることの＋ → 買うもの ---- */
   await tab("todo");
@@ -159,6 +143,8 @@ const SEP = "\u001E";
     if (b) b.click();
   });
   await page.waitForTimeout(200);
+  const learned = await page.evaluate(() => KN.store.get().settings.captureDest);
+  t.check("押した言葉を覚える", learned && Object.values(learned).includes("list"), JSON.stringify(learned));
   t.check("「戻す」で買うものから片づく（作った品物も）",
     await page.evaluate(() => KN.store.get().items.length === 0 && !KN.store.findProductByName("牛乳")));
 

@@ -222,27 +222,6 @@
       ),
       KN.sky ? S.more("空の写真の出典", "Wikimedia Commons ／ " + KN.sky.credits()
         .map((c) => `${c.name}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")) : null,
-      /* 並べ方・探す窓は畳んだ面（util.js の FOLDED）。既定から変えているあいだは戻せるように出す。 */
-      ...(() => { const rows = [
-        KN.util.folded("layout") && !KN.ui.isTiles() ? null : pickRow({
-          title: "並べ方", value: KN.ui.isTiles() ? "タイル" : "リスト",
-          onTap: () => choose({
-            title: "並べ方", value: KN.ui.isTiles() ? "tiles" : "list",
-            options: [
-              { id: "list",  label: "リスト" },
-              { id: "tiles", label: "タイル" },
-            ],
-            onPick: () => { KN.ui.toggleLayout(); render(); },
-          }),
-        }),
-        KN.util.folded("searchBar") && s.searchBar !== true ? null : switchRow({
-          title: "探す窓をいつも出す", on: s.searchBar === true,
-          onTap: (v) => {
-            store.update((x) => { x.settings.searchBar = v; });
-            render();
-          },
-        }),
-      ].filter(Boolean); return rows.length ? [head("一覧"), card(...rows)] : []; })(),
       /* 一文字の近道（js/keys.js。WCAG 2.1.4）。指だけの端末には出さない。 */
       ...(KN.keys && matchMedia("(any-pointer: fine)").matches ? [head("キーボード"), card(switchRow({
         title: "一文字の近道", on: KN.keys.on(),

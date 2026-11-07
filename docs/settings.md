@@ -423,6 +423,9 @@ iOS の設定と同じ押しのけ（`is-push-in` / `is-push-under` / `is-pop-in
 | 「カレンダー」・「節気の初日に揃える」・外観の「並べ方」「探す窓をいつも出す」 | `calShortcut`・`sekki`・`layout`・`searchBar` |
 
 - 最後の四つはスイッチのある行：**既定のままなら畳み、変えていれば出す**（オンのまま隠すと、切る口が無くなる）。
+- **三度め（2026年11月7日、M4。利用者が一つずつ決めた）**：`monthExport`・`reviewFacts`・`layout`（タイル表示ごと）・`searchBar`・`listDest`・`readMark` は**コードから外した**。
+  鍵（`settings.layout`・`settings.searchBar`・`t.slips`）は残し、読まない。`calShortcut`・`sekki` はオンの人がいるかこちらで確かめられないので畳んだまま。
+  `:not(.is-tile)`・`:not(.is-tile-wrap)` の付いた規則は詳細度を保つために残す（外すと 0,3,0 → 0,2,0 で上書きの順が崩れる）。
 - 控え（`slips`）・`captureDest`・取り込みの束は、今までどおり書く・残す。見せないだけ。
 - 試験は畳んだまま回すと中身を確かめられないので、`open({ unfold: [名前] })`（`tests/lib.js`）で開いて回す。
 - 同じ日に名を直した：「題の木をコピー」→「目次をコピー」、「足したやることを受け箱へ置く」→ 見出し「PC」の「この端末は PC」。 11月1日に「この端末は職場PC」（写しの端末と取り違えた）。

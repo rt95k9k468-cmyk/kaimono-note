@@ -2034,20 +2034,6 @@
         });
       } }]);
 
-    /* 読んだところ（思考のホーム。docs/thinking.md）。終わりに「### 10月12日 p.」の見出しを足し、押した流れの
-       まま続きへ（ページは任意。論文のタグなら「p.」を付けない）。下に書くのは自分の気づき・問い・やってみること
-       ——要約の欄は作らない。前の「種をまく」（段6）は外した：種はタグ。つながった記録の札・小窓は今のまま。 */
-    const readItem = () => (!stored || blank() || KN.util.folded("readMark") ? [] : [{ icon: "book", label: "読んだところ",
-      onPick: () => {
-        const d = new Date();
-        const line = `### ${d.getMonth() + 1}月${d.getDate()}日${note.tags.includes("論文") ? " " : " p."}`;
-        const v = textIn.value.replace(/\s+$/, "");
-        hist.note("read", true);
-        textIn.value = `${v}${v ? "\n\n" : ""}${line}`;
-        toWrite(textIn.value.length);
-        changed();
-      } }]);
-
     /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
        姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
     /* 広い画面だけ：紙を画面いっぱいに（2026年10月21日、利用者「パソコンで最大化できない？」）。端末ごとに覚える。 */
@@ -2146,7 +2132,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(readItem(), menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);

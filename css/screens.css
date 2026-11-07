@@ -313,11 +313,6 @@
   transition: opacity var(--m-state) var(--ease), background var(--m-state) var(--ease) var(--m-press),
               transform var(--m-settle) var(--ease-settle);
 }
-/* タイルは価格のタイルと同じく、一枚ごと縮む。 */
-.item.is-tile { transition: opacity var(--m-state) var(--ease), background var(--m-state) var(--ease),
-                            transform var(--m-settle) var(--ease-settle), scale var(--m-press) var(--ease); }
-.item.is-tile:not(.is-reordering *):has(> .item-body:active) { scale: var(--press-wide); }
-
 /* Hand the row its own compositor layer for the duration of the gesture, so
    each frame is a transform rather than a repaint of the whole row. */
 .item-wrap.is-swiping .item { will-change: transform; }
@@ -936,21 +931,6 @@
   outline-offset: -2px;
 }
 
-
-/* 「毎週 火・金」 is a standing fact about the row, not news about today. It
-   has to be readable when looked for and easy to look past when not, so it
-   sits well back. No ↻ of its own any more — the circle carries that now, and
-   two arrows on one row is one arrow too many; what is left here is the part
-   an icon cannot say, which is *which* days. */
-.tile-repeat {
-  display: inline-flex;
-  align-items: center;
-  flex: none;
-  font-size: calc(11px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  color: color-mix(in srgb, var(--c-text-3) 72%, transparent);
-}
-
 /* ---- a やること row, at two thirds ----
 
    The shopping list's row carries a picture, a size, a price and a shop, and
@@ -964,9 +944,7 @@
    whole middle, vertically centred, and what is left over (the day, a memo,
    「しまった」) sits beside it on the same line rather than under it. One line
    instead of two, and about two thirds the height. */
-/* Rows only. A tile is a square with its buttons in the corners and its own
-   rules for all of this; sharing the row's padding turned the title loose over
-   the tick. */
+/* `:not(.is-tile)` はタイルの名残（2026年11月7日に外した）。詳細度 0,3,0 を保つために残す。 */
 .item.todo:not(.is-tile) {
   align-items: center;
   gap: var(--sp-2);
@@ -1005,16 +983,6 @@
 /* 済ませたものは絵も引きます。行の色が灰に落ちるのに絵だけ元気だと、
    済んだ行が済んでいない行より目立ってしまうため。 */
 .item.is-checked .todo-mark { opacity: .45; filter: grayscale(1); }
-
-/* タイルでは絵が主役。買うもののタイルと同じ 34px。 */
-.item.todo.is-tile .todo-mark {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-}
-.item.todo.is-tile .todo-mark .p-icon { width: 34px; height: 34px; }  /* 入れもの：タイルの丸 */
-.item.todo.is-tile .todo-dot { width: 12px; height: 12px; }
 
 .todo-lead {
   flex: none;
@@ -1146,13 +1114,6 @@
   padding: 0 6px;
 }
 
-.tile-when {
-  font-size: calc(11px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  color: var(--c-text-2);
-  font-variant-numeric: tabular-nums;
-}
-
 /* A link inside a hint line: a button that reads as a sentence, because that
    is where the reason for pressing it is. */
 .link-btn {
@@ -1228,161 +1189,6 @@
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
-
-/* A tile is a third of a screen across. The words do not fit and would only be
-   half-read, so the icon carries it — and it sits where the card's edge is
-   about to be rather than out at the margin. */
-.is-tile-wrap .swipe-yes span,
-.is-tile-wrap .swipe-arch span { display: none; }
-.is-tile-wrap .swipe-yes { padding-left: 10px; }
-.is-tile-wrap .swipe-arch { padding-right: 10px; }
-/* タイルでも同じ大きさです（二段階にしたので、ここで足す差はもうありません）。 */
-
-/* ================= TILES ================= */
-
-/* Three to a row, square, name allowed to wrap. A row is better at reading —
-   name, price and shop on one line, and a swipe to act on it — but a grid is
-   better at finding, because the picture does the work and twelve things fit
-   where four did. Both lists take the same setting, switched from either
-   topbar.
-
-   A tile is about 107px across on a phone, which is why the swipe panels and
-   the drag-to-reorder are not here: neither fits, and neither means anything
-   in a grid. Everything that was a button still is. */
-.item-list.is-tiles,
-.product-list.is-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-2);
-}
-
-.item.is-tile,
-.product.is-tile {
-  aspect-ratio: 1;
-  display: block;
-  padding: 0;
-  /* The whole tile is the target; the corner buttons sit on top of it. */
-  overflow: hidden;
-}
-
-.item.is-tile .item-body,
-.product.is-tile .product-main {
-  width: 100%; height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-1);
-  padding: var(--sp-2) 6px 6px;
-  text-align: center;
-}
-
-/* The picture carries the tile, so it is given the room a 42px chip had and
-   then some — at this size it is what you actually navigate by. */
-.item.is-tile .item-emoji,
-.product.is-tile .product-emoji {
-  width: 34px; height: 34px;
-  background: none;
-  font-size: calc(27px * var(--fs-k));
-  line-height: 1;
-  display: grid;
-  place-items: center;
-}
-
-/* Wrapped, not cut off: a tile has the height for three lines, and 「トイレット
-   ペーパー」 truncated to 「トイレット…」 is the one thing a picture cannot
-   disambiguate. Past three lines it does give up, or a long name would push
-   the price out of its own tile. */
-.item.is-tile .item-name,
-.product.is-tile .product-name {
-  /* Bound to the tile, or the box below stretches to the longest word and the
-     name runs out over the neighbour. */
-  max-width: 100%;
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  line-height: 1.25;
-  white-space: normal;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow-wrap: anywhere;
-}
-
-.tile-price {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-bold);
-  color: var(--c-accent);
-  font-variant-numeric: tabular-nums;
-}
-
-/* The cheapest shop, under its price. Truncated rather than wrapped: two lines
-   of shop name would push the picture out of the tile, and half a name you
-   already know is enough to recognise it. */
-.tile-store {
-  max-width: 100%;
-  font-size: calc(10px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  color: var(--c-text-2);
-  line-height: var(--lh-tight);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* With a shop line under it the price tile has four things to fit, so the name
-   gives up its third line. Two is still enough for 「トイレットペーパー」. */
-.product.is-tile .product-name { -webkit-line-clamp: 2; }
-.item.is-tile .item-qty {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  color: var(--c-text-2);
-}
-
-/* The category edge runs across the top rather than down the side: on a square
-   the left edge is a third of the perimeter and reads as a border, not a mark.
-   Same rule as the rows — the price screen paints it only for what is on the
-   list, the shopping list paints it always. */
-.item.is-tile::before,
-.product.is-tile.is-listed::before {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; top: 0;
-  bottom: auto;
-  width: auto;
-  height: 5px;
-  border-radius: var(--r-md) var(--r-md) 0 0;
-  background: var(--cat, var(--c-border-2));
-}
-.product.is-tile.is-listed::before { background: var(--cat, var(--c-primary)); }
-
-/* The two controls the rows keep at their ends, moved to the corners — below
-   the category's painted top edge, not on it: a tick sitting half on a 5px
-   stripe reads as a smudge on the stripe. */
-.item.is-tile .check,
-.item.is-tile .fav {
-  position: absolute;
-  top: 11px;
-  z-index: 1;
-}
-/* And the tile's own content keeps clear of them. Centred content on a tile
-   with a two-line name rose until the first line ran under the tick — the
-   corner buttons float above the body, so the body has to be told they are
-   there. Reserved at the top only; the content still centres in what is
-   left. */
-.item.is-tile .item-body { padding-top: 34px; }
-
-.item.is-tile .check { left: 4px; }
-.item.is-tile .fav { right: 4px; }
-.item.is-tile .check { width: 22px; height: 22px; }
-.item.is-tile .check svg { width: 13px; height: 13px; }   /* 入れもの：タイルの輪。タイルの輪は小さい */
-.item.is-tile .fav svg { width: var(--ico-sm); height: var(--ico-sm); }
-
-/* Bought: the tile steps back rather than striking a line through a name that
-   is already wrapping across three lines. */
-.item.is-tile.is-checked { opacity: .55; }
-
-.item-wrap:has(.is-tile) { animation: none; }
 
 /* No press-scale on the row. Shrinking it by even half a percent pulled its
    right edge inwards and exposed the delete panel sitting behind — the row
@@ -1646,13 +1452,6 @@
   padding: 1px 7px;
 }
 
-.tile-when {
-  font-size: calc(10px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  color: var(--c-text-3);
-  font-variant-numeric: tabular-nums;
-}
-
 .item-price {
   flex: none;
   text-align: right;
@@ -1821,8 +1620,7 @@
 .archive .product-name { text-decoration: line-through; color: var(--c-text-2); }
 .archive .product-emoji { filter: grayscale(1); }
 .archive .product::before { opacity: .4; }
-.archive .item-price-amount,
-.archive .tile-price { color: var(--c-text-2); }
+.archive .item-price-amount { color: var(--c-text-2); }
 .archive .product-list { padding: 0; }
 .product {
   position: relative;
@@ -1892,7 +1690,6 @@
   background: var(--press-sink);
   transition: background var(--m-state) var(--ease) var(--m-press), transform var(--m-settle) var(--ease-settle);
 }
-.product.is-tile:has(> .product-main:active) { scale: var(--press-wide); }
 .product-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
 
@@ -2676,7 +2473,6 @@
 }
 @keyframes seg-slide { from { translate: var(--seg-dx, 0) 0; scale: var(--seg-sx, 1) 1; } }
 
-
 /* sortable manage rows */
 .manage-row { display: flex; align-items: center; gap: var(--sp-3); min-height: var(--row-h); padding: var(--sp-2) var(--sp-3); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); }
 
@@ -3166,10 +2962,6 @@
 }
 .is-m-arrive .diet-area,
 .is-m-arrive .diet-ma14 { animation: fade-in var(--m-draw) var(--ease) both; }
-.is-m-arrive .diet-bar {
-  transform-box: fill-box; transform-origin: 50% 100%;
-  animation: bar-grow var(--m-fill) var(--ease-out) both;
-}
 @keyframes line-draw   { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes arrive-pop  { from { opacity: 0; scale: 0; } }
 @keyframes bar-grow    { from { scale: 1 0; } }
@@ -4188,9 +3980,6 @@ a.btn { text-decoration: none; }
 .arc-kind-b.is-on { border-color: var(--c-primary); color: var(--c-primary-ink); background: var(--c-primary-soft); }
 .arc-kind-b.is-on svg { color: var(--c-primary); }
 
-/* 読書の名前・著者は長くなりがちなので、一段大きく組みます。 */
-.input-lg { padding: 13px 14px; font-size: var(--fs-lg); }
-
 .arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: var(--fw-bold); margin: 0; white-space: nowrap; }
 /* 開始・終了・ページ数を一行に。幅は数字が入るぶんだけ。 */
 .arc-pages { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--sp-3); align-items: end; }
@@ -4726,7 +4515,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row .tl-item.is-checked .tl-facts { color: var(--c-text-3); }
 .tl-row.is-done .tl-time { color: var(--c-text-3); font-weight: var(--fw-regular); }
 
-
 /* ---------------- いま、どこにいるか ----------------
 
    「いま」は一枚の層（JS の paintNow）。高さは物差しの式（y(いま)）。
@@ -4818,7 +4606,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   left: 0; width: auto; min-width: 40px; padding: 2px 6px; border-radius: var(--r-full);
   background: var(--c-primary); color: var(--c-bg); text-align: center; font-size: var(--fs-xs);
 }
-
 
 /* 日付の帯は、越えられない境目です。
 
@@ -5439,7 +5226,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     linear-gradient(color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent) 0 100%),
     var(--c-bg);
 }
-
 
 /* ---------------- 済ませたときの動き（時間割） ----------------
 

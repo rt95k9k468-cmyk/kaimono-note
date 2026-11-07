@@ -2505,51 +2505,24 @@
     };
   }
 
-  /* ---------------- layout: rows or tiles ---------------- */
-
-  /* Both lists are laid out the same way, from one setting. Two screens
-     disagreeing about how a product looks would be a setting the app keeps
-     rather than a way of looking at it. */
-
-  const isTiles = () => KN.store.get().settings.layout === "tiles";
-
-  function toggleLayout() {
-    const to = isTiles() ? "rows" : "tiles";
-    haptic(10);
-    KN.store.update((s) => { s.settings.layout = to; });
-  }
-
-  /** Paints a topbar button with the layout it switches *to*. */
-  function paintLayoutButton(btn) {
-    if (!btn) return;
-    const toTiles = !isTiles();
-    btn.innerHTML = "";
-    btn.append(node(html`${icon(toTiles ? "tiles" : "rows")}`));
-    const label = toTiles ? "タイル表示にする" : "リスト表示にする";
-    btn.setAttribute("aria-label", label);
-    btn.title = label;
-  }
-
   /* ---------------- swipe: right to take, left to archive ---------------- */
 
-  /* One gesture for both screens and both layouts. Right is the tab's own
+  /* One gesture for both screens. Right is the tab's own
      positive action — ★ on the list, onto the list on the price screen — and
      left is always the archive. Nothing stays open, because neither has a
      second step to confirm; the card springs back and the change lands as it
      goes, with the toast holding the undo.
 
      Past the trigger the card only creeps, so the finger can feel where the
-     edge is instead of watching for it. A tile is a third of a screen across,
-     so it gets its own shorter throw — the same gesture, scaled to what is
-     actually under the thumb.
+     edge is instead of watching for it.
 
      @param wrap  the positioned container holding the panels
      @param card  the part that moves
-     @param opts  {onRight, onLeft, tiles} */
-  function swipeActions(wrap, card, { onRight, onLeft, tiles }) {
-    const TRIGGER = tiles ? 34 : 68;
-    const MAX = tiles ? 52 : 104;
-    const SLOP = tiles ? 10 : 14;
+     @param opts  {onRight, onLeft} */
+  function swipeActions(wrap, card, { onRight, onLeft }) {
+    const TRIGGER = 68;
+    const MAX = 104;
+    const SLOP = 14;
     const DOMINANCE = 1.6;
 
     let startX = 0, startY = 0, dx = 0, dir = 1;
@@ -2680,53 +2653,18 @@
     return scroller ? scroller.querySelector(".search-wrap") : null;
   }
 
-  /** 窓を出しっぱなしにするか（設定）。既定は「出さない」。 */
-  function searchBarAlways() {
-    try { return KN.store.get().settings.searchBar === true; } catch (_) { return false; }
-  }
-
-  /** バーを一段ぶん先へ送って、題の裏に隠します。 */
-  function parkSearch(scroller, force) {
+  /** 探す窓をふだんは畳みます（名前は前の「裏へ送る」の名残）。画面へ戻るたびにここを通ります。
+      「探す窓をいつも出す」（settings.searchBar）は2026年11月7日に外した——欄は残し、読まない。 */
+  function parkSearch(scroller) {
     const wrap = searchWrapOf(scroller);
     if (!wrap) return;
     const input = wrap.querySelector(".search-input");
     // 探している最中の人の手からは、画面を取り上げません。
     if (input && (input.value || document.activeElement === input)) return;
-
-    /* 窓を置きっぱなしにしない設定なら、裏へ送るのではなく畳みます。
-       送るやりかたは「上に一段ぶんの余白がある」ことが前提なので、
-       出していないときはそもそも余白が要りません。
-
-       設定を入れ替えた直後に、その場で追いつくところでもあります——画面へ
-       戻ってきたときに必ずここを通るので、畳んだ窓を出し直すのも、出して
-       いた窓を畳むのも、ここ一か所で済みます。 */
-    if (!searchBarAlways()) {
-      wrap.hidden = true;
-      wrap.style.opacity = "";
-      const stack0 = wrap.parentElement;
-      if (stack0) { stack0.style.flexShrink = ""; stack0.style.minHeight = ""; }
-      return;
-    }
-    wrap.hidden = false;
-    const h = Math.round(wrap.getBoundingClientRect().height);
-    if (!h) return;
-    // すでに読み進めているところへ、割り込みません。
-    if (!force && scroller.scrollTop > h + 1) return;
-
-    /* 送る余地が足りないとき——中身が一画面に収まっている画面——は、
-       足りないぶんだけ下に余白を足します。余白は送りきったところで
-       ちょうど使い切るので、画面には出ません。これが無いと、短い画面
-       だけバーが出たままになって、タブごとに顔が変わります。 */
-    const stack = wrap.parentElement;
-    if (stack) {
-      /* flex-shrink を止めてから。flex の子は既定で min-height:auto を
-         持っていて、それが「中身より縮まない」を保証しています。ここで
-         min-height を書くとその自動の下限が外れ、**中身より縮める**ように
-         なります——長い画面（ダイエット）の下が、帯の下に潜りました。 */
-      stack.style.flexShrink = "0";
-      stack.style.minHeight = `calc(100% + ${h}px)`;
-    }
-    scroller.scrollTop = h;
+    wrap.hidden = true;
+    wrap.style.opacity = "";
+    const stack0 = wrap.parentElement;
+    if (stack0) { stack0.style.flexShrink = ""; stack0.style.minHeight = ""; }
   }
 
   /** バーを出して、そのまま打てるようにします。 */
@@ -2756,10 +2694,9 @@
       if (KN.searchAll) KN.searchAll.hint(els);
     };
 
-    /* 窓を置きっぱなしにしない設定のときは、ふだんは畳んでおきます。
-       虫めがねを押したときだけ開きます——探し終えたら、また畳みます。 */
+    /* ふだんは畳んでおきます。虫めがねを押したときだけ開きます——探し終えたら、また畳みます。 */
     const tuck = () => {
-      if (searchBarAlways() || !els.searchWrap) return;
+      if (!els.searchWrap) return;
       if (els.search.value || document.activeElement === els.search) return;
       els.searchWrap.hidden = true;
       els.searchWrap.style.opacity = "";
@@ -2775,24 +2712,18 @@
     };
     tuck();
 
-    /* 出ているか。置きっぱなしの設定では、窓はいつも在るので「使っている
-       最中か」で見ます（裏へ送ったものは閉じている）。 */
-    const isOpen = () => {
-      if (!els.searchWrap) return false;
-      if (searchBarAlways()) return !!els.search.value || document.activeElement === els.search;
-      return !els.searchWrap.hidden;
-    };
-    /* 閉じる：字を消し、キーボードを下ろし、畳む（置きっぱなしなら裏へ送る）。 */
+    /* 出ているか。 */
+    const isOpen = () => !!els.searchWrap && !els.searchWrap.hidden;
+    /* 閉じる：字を消し、キーボードを下ろし、畳む。 */
     const close = () => {
       if (els.search.value) clear();
       els.search.blur();
-      if (searchBarAlways()) parkSearch(scroller, true);
-      else tuck();
+      tuck();
     };
     /* ×は、字があれば消す・空なら閉じる。だから開いているあいだは出しておく。 */
     const paintClear = () => {
       const open = !els.searchWrap || !els.searchWrap.hidden;
-      els.searchClear.hidden = !(els.search.value || (open && !searchBarAlways()));
+      els.searchClear.hidden = !(els.search.value || open);
       els.searchClear.setAttribute("aria-label", els.search.value ? "検索をクリア" : "探す窓を閉じる");
     };
 
@@ -2894,7 +2825,7 @@
   KN.ui = {
     sheet, actionSheet, popOver, closePops, popMenu, rowMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard, reopen, sheetsOpen: () => openSheets.length, keepDraft, dropDraft, takeDraft, takeGone,
-    isTiles, toggleLayout, paintLayoutButton, swipeActions, wireSearch, focusNow,
+    swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,
   };
 })();

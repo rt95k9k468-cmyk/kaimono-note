@@ -1,9 +1,9 @@
-/* 問い・種・読んだところ（思考のホーム。docs/thinking.md）。
+/* 問い・種（思考のホーム。docs/thinking.md）。
    - 問いは独り立ちの入力にしない：行の中身が「？」で始まるノートの行と、タグ「問い」のノート。日記の「？」の行は引かない
    - ノートのホームに「問い」の行 → 一覧（数は出さない）。押すと元のノートのその行へ／その日の daily へ
    - 読むときは「？」の行の字だけ主色（印は打ったまま。保存の形は変わらない）
    - タグの小窓に、まだ使っていなくても「種」「問い」
-   - 「⋯」の「読んだところ」：終わりに「### 月日 p.」を足して書く欄へ（種をまくは外した）
+   - 「⋯」に種をまく・読んだところは無い（どちらも外した）
    - ノートのホームの「問い」から問いの面へ（daily の札は「思考」に替えた。tests/diary-chat.js）
    - 問いの面の「まだの問い」（今日の問いの元のうち書いていないもの）→ 答える紙（問いは欄の外）→ 「？問い」を頭にした
      ノート（thinking へ）。同じ問いは同じノートの終わりに日付と時刻の行をはさんで。打たずに閉じれば書かない
@@ -16,7 +16,7 @@ const { open, checker, ASKS } = require("./lib");
 
 (async () => {
   const t = checker("asks");
-  const { browser, page, errors } = await open({ unfold: ["readMark"],
+  const { browser, page, errors } = await open({
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 12, 34)); },
   });
   await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
@@ -73,22 +73,13 @@ const { open, checker, ASKS } = require("./lib");
   const body0 = await page.evaluate((id) => KN.notes.get(id).body, ids.a);
   t.check("開いても本文は変わらない", body0 === "一行目\n？ なぜ字は右へ流れるのか\n- 箇条\n普通の行？");
 
-  /* ---- 「⋯」：種をまくは無く、読んだところ ---- */
+  /* ---- 「⋯」：種をまく・読んだところは無い（読んだところは2026年11月7日に外した） ---- */
   await page.click(".sheet.is-note.is-open .js-note-more");
   await page.waitForSelector(".note-pop.is-open .note-pop-item");
   const items = await page.$$eval(".note-pop.is-open .note-pop-item", (xs) => xs.map((x) => x.textContent.trim()));
-  t.check("「⋯」に種をまくは無く、読んだところがある", !items.includes("種をまく") && items.includes("読んだところ"), items.join(","));
-  await page.locator(".note-pop.is-open .note-pop-item", { hasText: "読んだところ" }).click();
+  t.check("「⋯」に種をまく・読んだところは無い", !items.includes("種をまく") && !items.includes("読んだところ"), items.join(","));
+  await page.click(".note-pop-cover");
   await page.waitForTimeout(300);
-  const read = await page.evaluate((id) => {
-    const s = document.querySelector(".sheet.is-note.is-open");
-    const ta = s.querySelector(".js-text");
-    return { v: ta.value, focused: document.activeElement === ta, caret: ta.selectionEnd === ta.value.length, body: KN.notes.get(id).body };
-  }, ids.a);
-  t.check("終わりに「### 10月6日 p.」を足して、その後ろにカーソル", read.v.endsWith("\n\n### 10月6日 p.") && read.focused && read.caret, JSON.stringify(read));
-  t.check("ノートにも入る", read.body === read.v, JSON.stringify(read.body));
-  await page.keyboard.insertText("12-30");
-  await page.waitForTimeout(100);
 
   /* ---- タグの小窓：種・問いがまだ無くても並ぶ ---- */
   await page.click(".sheet.is-note.is-open .note-tag-add");
@@ -102,8 +93,6 @@ const { open, checker, ASKS } = require("./lib");
   await page.keyboard.press("Escape");
   await page.evaluate(() => document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click()));
   await page.waitForTimeout(600);
-  const end = await page.evaluate((id) => KN.notes.get(id).body, ids.a);
-  t.check("読んだところのあとに打った字も残る", end.endsWith("### 10月6日 p.12-30"), JSON.stringify(end));
 
   /* ---- ノートのホームに「問い」の行 ---- */
   const homeRow = await page.evaluate(async () => {

@@ -157,8 +157,8 @@ const { open, checker } = require("./lib");
       .every((x) => D1.includes(x)) && !/積み上げ/.test(D1), D1.slice(0, 200));
   /* 「行数」（全文・3行・5行）は一枚の紙のときだけ効くので、時刻ごと（既定）では出さない（docs/thinking.md）。 */
   t.check("日記は時刻ごと（既定）・行数は一枚のときだけ", /日記\s*時刻ごと/.test(D1) && !D1.includes("行数"), D1.slice(0, 200));
-  t.check("daily の一枚に書き出し（月ぶん・期間・年の本）と取り込み（説明は置かない）",
-    D1.includes("月ぶんを書き出す") && D1.includes("年の本") && D1.includes("日記を取り込む") && !D1.includes("一年ぶんの積み上げ"), D1.slice(-200));
+  t.check("daily の一枚に書き出し（期間・年の本。月ぶんは外した）と取り込み（説明は置かない）",
+    !D1.includes("月ぶんを書き出す") && D1.includes("期間を選んで書き出す") && D1.includes("年の本") && D1.includes("日記を取り込む") && !D1.includes("一年ぶんの積み上げ"), D1.slice(-200));
   await back();
 
   await openSettings("list");

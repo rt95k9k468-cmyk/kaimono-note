@@ -6,6 +6,7 @@
    二度め（2026年10月24日）：戻すスイッチは置かない（js/util.js の FOLDED）。月ぶんを書き出す・外部アプリから取り込む・
    置き直しの控え・見直しの紙の頭の控え・行き先の札（買うもの）・読んだところ。スイッチのある四つ（カレンダー・
    節気・並べ方・探す窓）は、既定のままなら畳み、変えていれば出す。
+   三度め（2026年11月7日）：月ぶん・見直しの頭・並べ方（タイルごと）・探す窓・行き先の札・読んだところは外した。
    置き直しの控え（設定の奥）は 10月27日、D1 の見直しのため利用者が戻した（見直しの紙の頭は畳んだまま）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fold.js */
@@ -128,8 +129,8 @@ const t = checker("fold");
     s.settings.calShortcut = true; s.settings.reviewSekki = true; s.settings.layout = "tiles"; s.settings.searchBar = true;
   }));
   const T2 = await textOf("helpRows"), R2 = await textOf("tasksPageRows"), L2 = await textOf("lookRows");
-  t.check("オンのあいだはカレンダー・節気・並べ方・探す窓が出る",
-    T2.includes("カレンダー") && R2.includes("節気の初日に揃える") && L2.includes("並べ方") && L2.includes("探す窓"),
+  t.check("オンのあいだはカレンダー・節気が出る（並べ方・探す窓は11月7日に外した＝鍵があっても出ない）",
+    T2.includes("カレンダー") && R2.includes("節気の初日に揃える") && !L2.includes("並べ方") && !L2.includes("探す窓"),
     [T2.slice(0, 80), R2.slice(0, 80), L2.slice(-80)].join(" | "));
   await page.evaluate(() => KN.store.update((s) => {
     s.settings.calShortcut = false; s.settings.reviewSekki = false; s.settings.layout = "rows"; s.settings.searchBar = false;
@@ -143,7 +144,7 @@ const t = checker("fold");
   await wait(300);
   await page.fill(".sheet .js-name", "明日 19:00 歯医者");
   await wait(150);
-  t.check("買うものに行き先の札が出ない", await page.evaluate(() => document.querySelector(".sheet .js-dest").hidden));
+  t.check("買うものに行き先の札が無い", await page.evaluate(() => !document.querySelector(".sheet .js-dest")));
 
   /* 見直しの紙の頭：置き直しの控えは言わず、期限は言う。控え（slips）は記録に残ったまま。 */
   const facts = await page.evaluate(() => {

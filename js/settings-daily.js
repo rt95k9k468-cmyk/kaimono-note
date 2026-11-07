@@ -179,7 +179,6 @@
       移したもの——中身の大半が daily の積み上げと日記なので（docs/daily.md の「年の本」）。 */
   function dailyExportRows() {
     return [
-      KN.util.folded("monthExport") ? null : navRow({ title: "月ぶんを書き出す", onTap: openMonthExport }),
       navRow({ title: "期間を選んで書き出す", onTap: openRangeExport }),
       navRow({ title: "年の本", onTap: openYearbook }),
     ].filter(Boolean);
@@ -204,47 +203,6 @@
       KN.ui.toast(`日記の保存場所を読めない日なので、${what}は書き出せません（何も書き出していません）`, { long: true });
     }
     return true;
-  }
-
-  /* 書き出す月を選ぶ紙。記録のある月だけを、新しい順に並べます——
-     空の月を書き出しても意味がないので、選べるのは中身のある月だけです。 */
-  function openMonthExport() {
-    if (monthExportBlocked("月ぶん", openMonthExport)) return;
-    const arc = store.get().archive || { days: [] };
-    const months = new Set();
-    (arc.days || []).forEach((d) => { if (d.date) months.add(String(d.date).slice(0, 7)); });
-    const list = [...months].sort().reverse();
-
-    const body = node(html`<div class="stack"><div class="rows js-rows"></div></div>`);
-    const rows = body.querySelector(".js-rows");
-    if (!list.length) {
-      rows.append(node(html`<div class="row"><span class="row-main">
-        <span class="row-sub">まだ書いたものがありません。</span></span></div>`));
-    }
-    let handle = null;
-    list.forEach((ym) => {
-      const n = store.exportMonth(ym);
-      const days = (n.days || []).length;
-      const row = node(html`
-        <button class="row">
-          <span class="row-main">
-            <span class="row-title">${ym.replace("-", "年") + "月"}</span>
-            <span class="row-sub">Daily Log ${String(days)}日</span>
-          </span>
-          <span class="row-chevron">${icon("download")}</span>
-        </button>
-      `);
-      row.addEventListener("click", () => {
-        // 紙を開いたあとで写しの様子が変わることがあるので、押したときにも。
-        if (monthExportBlocked()) return;
-        downloadJSON(`daily-${ym}.json`, store.exportMonth(ym));
-        KN.ui.toast(`${ym} を書き出しました`);
-        if (handle) handle.close();
-      });
-      rows.append(row);
-    });
-
-    handle = KN.ui.sheet({ title: "月ぶんを書き出す", content: body });
   }
 
   /* 期間を選んで書き出す（roadmap-2.0 の V22）。始まりと終わりの日を年・月・日の

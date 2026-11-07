@@ -100,28 +100,6 @@
     return n.nth === -1 ? `最終${WD[n.weekday]}` : `第${n.nth}${WD[n.weekday]}`;
   }
 
-  /* 「毎週」 on its own says how often; 「毎週 火・金」 says when. Used where
-     there is room for the whole rule — the tiles and the sheet. */
-  function repeatText(t) {
-    if (!t.repeat) return "";
-    // 「毎朝」 already says both how often and when; 「毎日 毎朝」 says it twice.
-    if (isBookend(t.part)) return partLabel(t.part);
-    if (t.repeat === "daily") return "毎日";
-    if (t.repeat === "after") return `済ませてから${t.repeatEvery || 7}日ごと`;
-    if (t.repeat === "yearly") return "毎年";
-    if (t.repeat === "weekly") {
-      // 表示だけ月曜はじまりに揃えます（保存している repeatDays の並びは
-      // 変えません——曜日チップの並びと同じ理由です）。
-      const d = (t.repeatDays || []).slice()
-        .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
-      const w = t.repeatWeeks > 1 ? weeksWord(t.repeatWeeks) : "毎週";
-      return d.length ? `${w} ${d.map((n) => WD[n]).join("・")}` : w;
-    }
-    const n = t.repeatNth;
-    if (!n) return "毎月";
-    return n.nth === -1 ? `毎月 最終${WD[n.weekday]}` : `毎月 第${n.nth}${WD[n.weekday]}`;
-  }
-
   /* ---------------- mount ---------------- */
 
   /** 上の帯（全タブで一つ）の持ち主が、いまこの画面か（js/head.js）。 */
@@ -1070,7 +1048,7 @@
          朝のルーティンが「くりかえし」だけで何も出ていなかった（2026年10月2日）。 */
       const rid = repeatChipId();
       const rw = (REPEATS.find((r) => (r.id || "") === rid) || {}).label;
-      // 表示だけ月曜はじまりに揃えます（曜日チップ・repeatText と同じ並び。
+      // 表示だけ月曜はじまりに揃えます（曜日チップと同じ並び。
       // 保存している repeatDays の並びそのものは変えません）。
       const orderedRepeatDays = repeatDays.slice()
         .sort((a, b) => KN.util.WEEKDAY_COLS.indexOf(a) - KN.util.WEEKDAY_COLS.indexOf(b));
@@ -2434,7 +2412,7 @@
 
   /* ---------------- rows ---------------- */
 
-  function todoRow(t, tiles, groups, shelf) {
+  function todoRow(t, groups, shelf) {
     const closed = t.done || t.archived;
     const when = closed ? store.todoClosedAt(t) : null;
     /* The shelf already says which day, and often which part of it, so the row
@@ -2479,32 +2457,12 @@
     }
 
     const wrap = node(html`
-      <article class="item-wrap todo-wrap ${tiles ? "is-tile-wrap" : ""}"
+      <article class="item-wrap todo-wrap"
                data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}"></article>
     `);
     KN.ui.rowMenu(wrap, () => rowMenuOf(t.id));
 
-    /* Tiles put the same three facts in a square: what it is, when it is, and
-       whether it is done. No memo — a third of a screen wide has no room for a
-       sentence, and the row's own sheet has the whole of it. */
-    const row = tiles ? node(html`
-      <div class="item todo is-tile ${closed ? "is-checked" : ""}">
-        <button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
-                aria-checked="${String(!!t.done)}"
-                aria-label="${t.title} を終わりにする">${checkMark()}</button>
-        <button class="fav ${t.flagged ? "is-on" : ""}" aria-pressed="${String(!!t.flagged)}"
-                aria-label="${t.title} に★を付ける">${icon("star")}</button>
-        <button class="item-body">
-          ${todoMark(t)}
-          <span class="item-name">${t.title}</span>
-          <span class="tile-when">${closed ? KN.util.formatStamp(when)
-            : (t.due
-                ? formatDay(t.due) + (at ? " " + at : "")
-                : "いつか")}</span>
-          ${t.repeat ? html`<span class="tile-repeat">${repeatText(t)}</span>` : ""}
-        </button>
-      </div>
-    `) : node(html`
+    const row = node(html`
       <div class="item todo ${closed ? "is-checked" : ""}">
         ${/* The circle, with its own two shelves. What a row says about *when*
               — 19:30 above, 毎週火・金 below — stacks around the button rather
@@ -2802,7 +2760,6 @@
        日を丸ごと替えたときは、向こうが自分で見送ります（新顔が半分を
        超えたら「編集ではなく行き先の変更」と見なして何もしない）。 */
     const settle = KN.ui.flipRows(els.body, ".tl-row, .tl-done-row");   // 済ませた札は上の一覧の行へ滑る
-    const tiles = KN.ui.isTiles();
     groups = buildGroups();
     const all = store.sortedTodos();
     const q = query;
@@ -2960,19 +2917,19 @@
        something in them: one is a problem rather than a place, and the other is
        an overflow rather than a shelf. */
     const late = groups.find((g) => g.late);
-    if (rowsOf("late").length) shelves.append(groupSection(late, rowsOf("late"), tiles));
+    if (rowsOf("late").length) shelves.append(groupSection(late, rowsOf("late")));
 
     /* 探しているあいだは、当たった棚だけ（空の棚は運ぶ先なのでふだんは出すが、探した結果では「無い」を並べるだけ。
        「ゴミ」で今日の2件のほかに、空の見出しが十いくつ並んでいた。2026年10月24日）。 */
-    if (!query || rowsOf("today").length) shelves.append(todayPanel(rowsOf, tiles));
+    if (!query || rowsOf("today").length) shelves.append(todayPanel(rowsOf));
 
     groups.filter((g) => !g.late && !g.today).forEach((g) => {
       const rows = rowsOf(g.id);
       if (!rows.length && (g.onlyWhenFull || query)) return;
-      shelves.append(groupSection(g, rows, tiles));
+      shelves.append(groupSection(g, rows));
     });
 
-    if (closed.length) shelves.append(archiveSection(closed, tiles));
+    if (closed.length) shelves.append(archiveSection(closed));
     if (shelves !== sheet) wireShelfSwipe(sheet, shelves);
     restoreTop(keepTop);
     settle();
@@ -2982,7 +2939,7 @@
 
   /** 時間割で見ているか（＝一日ずつか）。探しているあいだは棚に戻ります
       ——絞った結果は「一日」ではないので。 */
-  const oneDay = () => !query && !KN.ui.isTiles() && timelineOn();
+  const oneDay = () => !query && timelineOn();
 
   /* いま出している日。null は今日です（日が変わっても勝手についてくる
      ように、todayKey() を焼き付けません）。 */
@@ -4452,17 +4409,10 @@
     const d = new Date(s);
     return isNaN(d.getTime()) ? "" : KN.util.dayKey(d);
   };
-  /** 見直しの紙・置き直しの紙の頭の事実（「9月12日から · 3回置き直し · 期限 10月31日」）。評価の言葉は使わない。 */
+  /** 見直しの紙・置き直しの紙の頭の事実（「期限 10月31日 · 待つ：…」）。評価の言葉は使わない。
+      置いた日・置き直しの回数は外した（2026年11月7日。`t.slips` の欄は残す）。 */
   function factsOf(t) {
     const bits = [];
-    /* 最初に置いた日（控えの最初の「前の日」、無ければ作った日）・置き直しの回数・前に置いていた時刻（D1）。 */
-    const slips = KN.util.folded("reviewFacts") ? [] : t.slips || [];
-    const since = KN.util.folded("reviewFacts") ? null : (slips[0] && slips[0].from) || dayOfStamp(t.createdAt);
-    if (since) bits.push(`${mdJa(since)}から`);
-    const n = slips.length;
-    if (n) bits.push(`${n}回置き直し`);
-    const lastAt = slips.slice().reverse().find((x) => x.time);
-    if (lastAt) bits.push(`前は ${lastAt.time.replace(/^0/, "")}`);
     if (t.deadline) bits.push(`期限 ${mdJa(t.deadline)}`);
     if (t.shelf === "wait" && t.waitFor) bits.push(`待つ：${t.waitFor}`);
     return bits.join(" · ");
@@ -4679,7 +4629,7 @@
     });
   }
 
-  function groupSection(g, rows, tiles) {
+  function groupSection(g, rows) {
     const section = node(html`
       <section class="cat-group todo-group ${rows.length ? "" : "is-empty"}"
                data-group="${g.id}" data-month="${monthKeyOf(g)}"
@@ -4690,10 +4640,10 @@
        描きます。ここは「一覧で見る」ときの棚——期限切れ・来週・もっと先の
        受け皿で、どれも何日かの寄せ集めなので、一本の時間軸は引けません。 */
     if (rows.length) {
-      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rows.forEach((t) => box.append(todoRow(t, tiles, groups, g)));
+      const box = node(html`<div class="item-list js-rows"></div>`);
+      rows.forEach((t) => box.append(todoRow(t, groups, g)));
       section.append(box);
-      if (!tiles) wireReorder(box, g);
+      wireReorder(box, g);
     }
     return section;
   }
@@ -4965,7 +4915,7 @@
     }
   }
 
-  function todayPanel(rowsOf, tiles) {
+  function todayPanel(rowsOf) {
     const panel = node(html`<section class="trip todo-today"></section>`);
     const plain = groups.find((g) => g.id === "today");
     const rows = rowsOf("today");
@@ -4979,10 +4929,10 @@
     /* ここは「一覧で見る」ときの今日の枠です。時間割は daySection が描く
        ようになったので、こちらは並べるだけになりました。 */
     if (rows.length) {
-      const box = node(html`<div class="item-list js-rows ${tiles ? "is-tiles" : ""}"></div>`);
-      rows.forEach((t) => box.append(todoRow(t, tiles, groups, plain)));
+      const box = node(html`<div class="item-list js-rows"></div>`);
+      rows.forEach((t) => box.append(todoRow(t, groups, plain)));
       top.append(box);
-      if (!tiles) wireReorder(box, plain);
+      wireReorder(box, plain);
     } else {
       top.append(node(html`<p class="todo-today-empty">今日のぶんはありません</p>`));
     }
@@ -6716,7 +6666,7 @@
 
   /* Finished and put-away todos, dated, newest first — the same drawer, in the
      same words, as the shopping list's and the price screen's. */
-  function archiveSection(closed, tiles) {
+  function archiveSection(closed) {
     const open = store.get().settings.showTodoArchive === true;
 
     const section = node(html`
@@ -6724,7 +6674,7 @@
         <button class="done-head" aria-expanded="${String(open)}">
           ${icon("chevron")} アーカイブ <span class="cat-head-count">${closed.length}</span>
         </button>
-        <div class="item-list js-done ${tiles ? "is-tiles" : ""}" ${open ? "" : KN.util.raw("hidden")}></div>
+        <div class="item-list js-done" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
     `);
 
@@ -6732,7 +6682,7 @@
       const box = section.querySelector(".js-done");
       closed.slice()
         .sort((a, b) => String(store.todoClosedAt(b) || "").localeCompare(String(store.todoClosedAt(a) || "")))
-        .forEach((t) => box.append(todoRow(t, tiles, groups)));
+        .forEach((t) => box.append(todoRow(t, groups)));
     }
 
     section.querySelector(".done-head").addEventListener("click", () => {

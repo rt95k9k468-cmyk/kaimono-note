@@ -64,7 +64,7 @@ for (const [name, re] of ROWS) {
 const QUIET = [
   ["買うものの絵の丸", /\.item-emoji:active/], ["今日買ったものの開け閉め", /\.day-bought-toggle:active/],
   ["品物の紙の★", /\.pd-fav:active/], ["行く日を決める帯", /\.trip-plan-btn:active/],
-  ["価格の行", /\.product:has\(> \.product-main:active\)/], ["価格のタイル", /\.product\.is-tile:has\(> \.product-main:active\)/],
+  ["価格の行", /\.product:has\(> \.product-main:active\)/],
   ["道の札", /\.road-label:active/], ["道具箱の丸", /\.road-tool:active/], ["連れの丸", /\.road-bead:active/],
   ["「これから」の行", /^\.tl-row:not\(\.is-lifted\).*:active/], ["「これから」の見出し", /\.tl-someday-add:active/],
   ["はみ出しの一行", /\.tl-over:active/],
@@ -79,7 +79,6 @@ const QUIET = [
   ["待つ・いつかの見出し", /\.tl-shelf-head:active/], ["アーカイブの見出し", /\.done-head:active/],
   ["小窓の暦の日", /\.pop-cal-day:not\(:disabled\):not\(\[aria-pressed="true"\]\):active/],
   ["小窓の暦の選んである日", /\.pop-cal-day\[aria-pressed="true"\]:active/],
-  ["タイルの買うもの", /\.item\.is-tile.*:has\(> \.item-body:active\)/],
 ];
 for (const [name, re] of QUIET) {
   const r = rules.find((x) => re.test(x.sel));

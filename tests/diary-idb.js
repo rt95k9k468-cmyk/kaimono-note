@@ -21,7 +21,7 @@
    - importJSON は印の行へ、いま持っている本文を当てる（無ければ印のまま）
    - 罠e：印の行があるのに写しの記録が無い → migrate しない（写しを空にしない・
      確かめ済みにしない）。写しにある本文は戻す
-   - 読み込み中の印の行は「読み込み中」。設定の「月ぶんを書き出す」は、読み込み中・
+   - 読み込み中の印の行は「読み込み中」。設定の「期間を選んで書き出す」は、読み込み中・
      読めない日は断る（罠d）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-idb.js */
@@ -150,7 +150,7 @@ const holdIdb = (ctx) => ctx.addInitScript(() => {
   };
 });
 
-/* 設定 → daily →「月ぶんを書き出す」を押す（2026年11月5日まで daily →「書き出し ›」の先）。押したあと、その紙が出ているか。 */
+/* 設定 → daily →「期間を選んで書き出す」を押す（「月ぶん」は2026年11月7日に外した）。押したあと、その紙が出ているか。 */
 async function tapMonthExport(page) {
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(300);
@@ -158,9 +158,9 @@ async function tapMonthExport(page) {
   await page.waitForTimeout(500);
   await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
   await page.waitForTimeout(400);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "月ぶんを書き出す" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "期間を選んで書き出す" }).first().click();
   await page.waitForTimeout(400);
-  return page.evaluate(() => [...document.querySelectorAll(".sheet")].some((s) => s.textContent.includes("月ぶんを書き出す")));
+  return page.evaluate(() => [...document.querySelectorAll(".sheet")].some((s) => s.textContent.includes("期間を選んで書き出す")));
 }
 
 (async () => {
@@ -168,7 +168,7 @@ async function tapMonthExport(page) {
 
   /* ================= 突き合わせ：写しが正しい ================= */
   {
-    const { browser, page, errors } = await open({ unfold: ["monthExport"] });
+    const { browser, page, errors } = await open();
     await settled(page);
     await page.evaluate(({ A, B }) => {
       KN.store.setDayLog(A, { memo: "一日目の試験の一行" });
@@ -280,7 +280,7 @@ async function tapMonthExport(page) {
 
   /* ================= 段2の2a：印の行（memoOut）を手で作った記録で ================= */
   {
-    const { browser, page, errors } = await open({ unfold: ["monthExport"] });
+    const { browser, page, errors } = await open();
     await settled(page);
     const today = await page.evaluate(() => KN.util.todayKey());
     const BA = "印の試験：写しにある一日目";
@@ -405,7 +405,7 @@ async function tapMonthExport(page) {
   /* ================= 罠e：印の行があるのに、写しの記録が無い ================= */
   {
     const NORMAL = "罠eの試験：ふつうの一日";
-    const { browser, page, errors } = await open({ unfold: ["monthExport"],
+    const { browser, page, errors } = await open({
       before: async (ctx) => {
         await slowIdb(2500)(ctx);
         // まっさらの端末に、印の行を持つ元だけがある（写しは丸ごと失った形）。
@@ -469,7 +469,7 @@ async function tapMonthExport(page) {
   /* ================= 読み込み中：書かせない・写させない・控えを取らない ================= */
   {
     // 大きな保存場所の返事を、確かめ終えるまで止める（holdIdb）
-    const { browser, page, errors } = await open({ unfold: ["monthExport"], before: holdIdb });
+    const { browser, page, errors } = await open({ before: holdIdb });
     t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
     /* 控えは先に頼んでおく（紙・書き出しを確かめるあいだも、済むのを待ったまま）。 */
     await page.evaluate(() => { window.__took = null; KN.backup.take("試験").then((r) => { window.__took = r; }); });
@@ -481,7 +481,7 @@ async function tapMonthExport(page) {
     t.check("読み込み中は日記の紙を開かない", await page.evaluate(() => !document.querySelector(".sheet .js-memo")));
     t.check("読み込み中と知らせる", (await toastText(page)).includes("読み込んでいる"), await toastText(page));
     const monthSheet = await tapMonthExport(page);
-    t.check("読み込み中は、設定の「月ぶんを書き出す」を断る（罠d）",
+    t.check("読み込み中は、設定の「期間を選んで書き出す」を断る（罠d）",
       !monthSheet && (await toastText(page)).includes("読み込んでいる") && (await page.evaluate(() => KN.diaryIdb.body())) === "loading",
       `${monthSheet} ${await toastText(page)}`);
     t.check("読み込み中は控えを取らない（済むのを待つ）",
@@ -502,7 +502,7 @@ async function tapMonthExport(page) {
   {
     /* 時計は昼から進める：この節は40秒ほどかかり、0:00 をまたぐと「今日」の行が消える（roadmap-seamless の
        N10）。止めはしない——「前に試してから5秒は読み直さない」が Date.now で進むので。 */
-    const { browser, page, errors } = await open({ unfold: ["monthExport"],
+    const { browser, page, errors } = await open({
       before: async (ctx, p) => {
         await p.clock.install({ time: new Date(2026, 9, 1, 12, 0) });
         await ctx.addInitScript(() => {
@@ -572,10 +572,10 @@ async function tapMonthExport(page) {
     t.check("ほかのタブは書ける（やること）", await page.evaluate((K) => JSON.parse(localStorage.getItem(K)).todos.some((x) => x.title === "試験のやること"), KEY));
     t.check("やることの画面に出る", await page.evaluate(() => document.body.textContent.includes("試験のやること")));
 
-    /* 読めない日は、設定の「月ぶんを書き出す」も断る（daily 画面の月の書き出しと同じ門）。 */
+    /* 読めない日は、設定の「期間を選んで書き出す」も断る（daily 画面の月の書き出しと同じ門）。 */
     const monthSheet = await tapMonthExport(page);
-    t.check("読めない日は、設定の「月ぶんを書き出す」を断る（罠d）",
-      !monthSheet && (await toastText(page)).includes("月ぶんは書き出せません"), `${monthSheet} ${await toastText(page)}`);
+    t.check("読めない日は、設定の「期間を選んで書き出す」を断る（罠d）",
+      !monthSheet && (await toastText(page)).includes("期間ぶんは書き出せません"), `${monthSheet} ${await toastText(page)}`);
     await page.waitForTimeout(300);   // 断るときの読み直し（retry）が、また読めずに終わるのを待つ
 
     /* 直ったら、前に出てきたときに読み直す。 */

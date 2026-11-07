@@ -26,7 +26,7 @@ const { open, checker } = require("./lib");
   const find = (list, name) => list.find((r) => r.text.includes(name));
 
   /* 買うものの升は店の名前を出さない（値段だけ）ので、行だけ見る。 */
-  for (const [layout, screen, sel] of [["rows", "list", ".item"], ["rows", "prices", ".product"], ["tiles", "prices", ".product"]]) {
+  for (const [layout, screen, sel] of [["rows", "list", ".item"], ["rows", "prices", ".product"]]) {
     await page.evaluate((l) => KN.store.update((st) => { st.settings.layout = l; }), layout);
     await page.evaluate((id) => KN.app.showScreen(id), screen);
     await page.waitForTimeout(600);

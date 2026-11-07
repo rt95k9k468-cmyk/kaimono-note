@@ -191,20 +191,6 @@
          分ける理由は見た目ではなく、**持ち上げて動かせる範囲** をここで
          区切るためです。別のカテゴリへ運べてしまうと、運んだだけで
          商品の仲間分けが黙って変わることになります。 */
-      const tiles = KN.ui.isTiles();
-
-      /* タイルのときは、今までどおり一枚の格子です。三つ並びの格子を
-         カテゴリで割ると、二つしかない仲間のうしろに穴が空き、次の仲間が
-         新しい行から始まります。割る理由は並べ替えの範囲を区切ることに
-         あって、タイルは並べ替えないので、割る理由がありません。 */
-      if (tiles) {
-        const list = node(html`<div class="product-list is-tiles"></div>`);
-        matched.forEach((p) => list.append(productCard(p)));
-        els.body.append(list);
-        if (archived.length) els.body.append(archiveSection(archived));
-        return;
-      }
-
       const groups = new Map();
       matched.forEach((p) => {
         const key = order.has(p.categoryId) ? p.categoryId : "__other";
@@ -237,12 +223,8 @@
      並べ替えられるのは **同じカテゴリの中だけ** です。カテゴリをまたいで
      運べてしまうと、運んだこと自体が「この商品は野菜ではなく飲みものだ」
      という宣言になってしまう——それは持ち上げる動きが意味していることでは
-     ありません（仲間分けは商品の画面で変えます）。
-
-     タイルのときは並べ替えません。買うものの画面と同じ約束で、正方形が
-     三つ並んだ格子は、行のように「上下に差し込む」場所が読めないので。 */
+     ありません（仲間分けは商品の画面で変えます）。 */
   function wireReorder(listEl) {
-    if (KN.ui.isTiles()) return;
     KN.reorder.attach(listEl, {
       item: ".product-wrap",
       onDrop: (from, to) => {
@@ -282,7 +264,7 @@
     `);
 
     if (open) {
-      const box = node(html`<div class="product-list ${KN.ui.isTiles() ? "is-tiles" : ""}"></div>`);
+      const box = node(html`<div class="product-list"></div>`);
       // Newest first, and each card says when — the same as the list screen's
       // archive. Products archived before there was a date to record keep
       // their place at the end and simply say nothing.
@@ -321,17 +303,13 @@
     const size = formatSize(product.amount, product.unit);
     const up = best ? perItemPrice(best.price, product.amount, product.unit) : null;
     const listed = buying(product.id);
-    const tiles = KN.ui.isTiles();
 
     /* Two layers, like the rows on the list screen: the panels underneath are
        what a swipe uncovers, the card on top is what moves. Right is the
        shopping list, left is the archive — opposite directions for opposite
-       kinds of "put this somewhere else".
-
-       Tiles swipe too, on a shorter throw. There is no room for the wording on
-       a third of a screen, so the tile panels are the icons alone. */
+       kinds of "put this somewhere else". */
     const wrap = node(html`
-      <article class="product-wrap ${listed ? "is-there" : ""} ${tiles ? "is-tile-wrap" : ""}"
+      <article class="product-wrap ${listed ? "is-there" : ""}"
                data-product-id="${product.id}"
                style="--cat:${store.productColor(product)}">
         <div class="swipe-yes">
@@ -348,23 +326,7 @@
        「買った」 checkbox one tab over, and the two mean opposite things —
        so this one stopped being a button and became a mark. Putting it on
        or taking it off is the swipe's job. */
-    const card = tiles ? node(html`
-      <div class="product is-tile ${listed ? "is-listed" : ""}">
-        <button class="product-main js-open">
-          <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
-          <span class="product-name">${product.name}</span>
-          ${listed ? html`<span class="sr-only">買うものリストに入っています</span>` : ""}
-          <span class="tile-price">${best ? yen(best.price) : "—"}</span>
-          ${/* A price with no shop attached is half an answer — which shop it
-                was is the whole reason the figure was written down. Under the
-                figure rather than beside it: a third of a screen has no
-                beside. */""}
-          ${best && bestStore ? html`<span class="tile-store">${prices.length > 1 ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}${bestStore.name}</span>` : ""}
-          ${product.archived && product.archivedAt
-            ? html`<span class="tile-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
-        </button>
-      </div>
-    `) : node(html`
+    const card = node(html`
       <div class="product ${listed ? "is-listed" : ""}">
         <span class="product-emoji" aria-hidden="true">${store.productMark(product)}</span>
         <button class="product-main js-open">
@@ -402,7 +364,6 @@
         `.screen.is-active .product-wrap[data-product-id="${CSS.escape(product.id)}"] .product-emoji`),
     }));
     KN.ui.swipeActions(wrap, card, {
-      tiles,
       onRight: () => toggleListed(product),
       onLeft: () => toggleArchived(product),
     });

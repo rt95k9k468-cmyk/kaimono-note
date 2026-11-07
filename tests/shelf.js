@@ -16,7 +16,7 @@ const TODAY = "2026-10-06";
 
 (async () => {
   const c = checker("shelf");
-  const { browser, page, errors } = await open({ unfold: ["sekki", "reviewFacts"],
+  const { browser, page, errors } = await open({ unfold: ["sekki"],
     before: async (cx, p) => {
       await p.clock.setFixedTime(new Date(2026, 9, 6, 9, 0));
       /* 古い長期タスク（review なし・9月12日に作った）と、新しめの一件 */
@@ -183,8 +183,8 @@ const TODAY = "2026-10-06";
   });
   c.check("選ぶ → 一件ずつ で開く", await openReview(page));
   let sh = await rv();
-  c.check("ふくらむ小窓（下から出る紙ではない）に事実（9月12日から · 期限 10月31日）",
-    !!sh && /押し入れの整理/.test(sh.text) && /9月12日から · 期限 10月31日/.test(sh.text)
+  c.check("ふくらむ小窓（下から出る紙ではない）に事実（期限 10月31日。置いた日は外した）",
+    !!sh && /押し入れの整理/.test(sh.text) && /期限 10月31日/.test(sh.text) && !/9月12日から/.test(sh.text)
     && await page.evaluate(() => !document.querySelector(".sheet.is-open")), sh && sh.text);
   c.check("小窓は下の帯より上（紙の高さ）", await page.evaluate(() =>
     Number(getComputedStyle(document.querySelector(".note-pop.is-review")).zIndex) > 30));

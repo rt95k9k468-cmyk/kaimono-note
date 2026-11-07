@@ -742,7 +742,6 @@
             ${fav == null ? "" : html`<button type="button" class="pd-fav js-fav ${fav ? "is-on" : ""}"
                     aria-pressed="${String(!!fav)}" aria-label="今回買う">${icon("star")}</button>`}
           </span>
-          <button type="button" class="dest-chip js-dest" hidden></button>
         </span>
       </div>
     `);
@@ -825,7 +824,6 @@
       memo: body.querySelector(".js-memo"),
       ac: body.querySelector(".js-ac"),
       known: hero.querySelector(".js-cap"),
-      dest: hero.querySelector(".js-dest"),
       more: body.querySelector(".js-more"),
       mark: hero.querySelector(".js-icon-pick"),
       /** メモの札を閉じた姿へ（足す紙で、続けて打つとき）。 */

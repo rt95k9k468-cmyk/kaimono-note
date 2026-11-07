@@ -143,7 +143,6 @@
     const acHost = f.ac;
     const known  = f.known;
     const favBtn = f.fav;
-    const destEl = f.dest;
 
     const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
     const addBtn = foot;
@@ -184,29 +183,8 @@
       const n = pieces().length;
       addBtn.textContent = n >= 2 ? `${n}つに分けて追加` : "リストに追加";
       renderSuggestions(nameEl, acHost, typed, choose, addOften);
-      paintDest();
       paintMark();
     }
-
-    /* 行き先の札（R4）。「明日 19:00 歯医者」は、やることらしい——押せばそちらへ。
-       押さなければ今までどおり買うものに入る。 */
-    const paintDest = KN.capture && !KN.util.folded("listDest")
-      ? KN.capture.bindChip(destEl, {
-        from: "list",
-        text: () => (picked ? "" : nameEl.value),
-        go: (g) => {
-          const rec = KN.capture.toTodo(nameEl.value.trim(), g.when);
-          handle.close();
-          if (!rec) return;
-          const W = KN.whenParse;
-          const w = g.when && W ? W.describe(g.when) : "";
-          KN.motion.fire("save");
-          KN.ui.toast(`やることに「${rec.title}」を入れました${w ? `（${w}）` : ""}`, {
-            action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) },
-          });
-        },
-      })
-      : () => {};
 
     /* 「牛乳、卵、パン」は三つ（docs/roadmap.md の R1）。候補から選んだ品物は、
        名前に読点があっても一つ。登録済みの名前に入っている読点でも分けない。 */
@@ -244,7 +222,6 @@
       known.hidden = !(best && st);
       known.textContent = best && st ? `${store.currentPrices(product).length > 1 ? "最安 " : ""}${st.name} ${yen(best.price)}` : "";
       acHost.innerHTML = "";
-      paintDest();
       paintMark();
       nameEl.focus();
     }
@@ -753,26 +730,6 @@
     const into = host || els.body;
     const groups = groupsOf(list);
 
-    /* Tiles are one grid for the lot. A separate grid per category would give
-       a category of one item a row of its own and two empty cells beside it —
-       which is exactly the wasted space the layout is for. The order still
-       runs category by category, and each tile wears its own colour, so the
-       run is still visible; it just wraps instead of starting a new block. */
-    if (KN.ui.isTiles()) {
-      const grid = node(html`<div class="item-list is-tiles"></div>`);
-      store.sortedCategories().forEach((cat) => {
-        (groups.get(cat.id) || []).forEach(({ item, product }) => {
-          grid.append(itemRow(item, product));
-        });
-      });
-      if (grid.childElementCount) {
-        const section = node(html`<section class="cat-group"></section>`);
-        section.append(grid);
-        into.append(section);
-      }
-      return groups.size > 0;
-    }
-
     store.sortedCategories().forEach((cat) => {
       const entries = groups.get(cat.id);
       if (!entries || !entries.length) return;
@@ -836,7 +793,6 @@
     const bestStore = best ? store.getStore(best.storeId) : null;
     /* 王冠は比べる相手があるときだけ（二つ以上の店の値段。design-review の Y8）。一つなら店の名前だけ。 */
     const vs = store.currentPrices(product).length > 1;
-    const tiles = KN.ui.isTiles();
 
     /* 行を横に払う手つき（右で★・左でアーカイブ）は、2026年9月28日に
        外しました。紙を横に払うと日が動くようになり、行の上で指が二つの
@@ -847,36 +803,20 @@
             （ui.js の flipRows）。data-item-id とは役目が別なので、
             まとめずに二つ持たせています——片方を消しても、もう片方の
             意味が変わらないように。 */""}
-      <article class="item-wrap ${tiles ? "is-tile-wrap" : ""}"
+      <article class="item-wrap"
                data-item-id="${item.id}" data-flip="${item.id}"
                style="--cat:${store.productColor(product)}">
       </article>
     `);
 
-    const row = tiles ? node(html`
-      <div class="item is-tile ${item.checked ? "is-checked" : ""}">
-        <button class="check" role="checkbox" aria-checked="${String(item.checked)}"
-                aria-label="${product.name} を購入済みにする">${icon("check")}</button>
-        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
-                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
-        <button class="item-body">
-          <span class="item-emoji" aria-hidden="true">${store.productMark(product)}</span>
-          <span class="item-name">${product.name}</span>
-          ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
-          <span class="tile-price">${best ? yen(best.price * item.qty) : "—"}</span>
-        </button>
-      </div>
-    `) : node(html`
+    const row = node(html`
       ${/* 星が左、丸が右。**やることの並びに揃えます**——同じ「済ませる」
             丸が、タブを移ると左右に飛ぶのは、指がいちばん覚えにくいところ
             でした。星は「今回買う」の指定なので、名前の手前で構いません。 */""}
       <div class="item ${item.checked ? "is-checked" : ""}">
         <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
                 aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
-        ${/* タイルではなく一覧のときだけ、丸そのものが押せます——一覧では
-              丸が題の連れ（.item-body の外）に居るので、独立した的が
-              作れます。タイルは丸も題も一つのボタンの中なので、これまで
-              どおり押せば紙が開きます（丸だけを的にする余地が無いため）。 */""}
+        ${/* 丸そのものが押せます——丸が題の連れ（.item-body の外）に居るので、独立した的が作れます。 */""}
         <button type="button" class="item-emoji js-emoji"
                 aria-label="${product.name} の絵を選ぶ">${store.productMark(product)}</button>
         <button class="item-body">
