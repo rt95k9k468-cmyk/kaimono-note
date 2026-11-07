@@ -108,7 +108,10 @@ const t = checker("smooth");
   await page.evaluate((d) => KN.screens.archive.goDay(d), yesterday);
   await page.waitForTimeout(250);
   const s3 = await scroller();
-  t.check("別の日へ移れば、その日の頭から", s3.top === 0 && s3.max > 300, JSON.stringify(s3));
+  /* 前提は「読んでいた位置（240）より先まで送れる」こと——それなら位置を持ち越したとき top が 240 になって見分けられる。
+     前は max > 300 だったが、月のまとめの空のカードを外して（design-review 12節の Z5）前日の紙は 287px になった。
+     本文は Daily Log が終わりの数行しか出さないので、長くしても紙は伸びない。 */
+  t.check("別の日へ移れば、その日の頭から", s3.top === 0 && s3.max > 240, JSON.stringify(s3));
   await page.evaluate((d) => KN.screens.archive.goDay(d), today);
   await page.waitForTimeout(400);
 
