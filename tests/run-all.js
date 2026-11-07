@@ -29,6 +29,7 @@ const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "to
   "desk-replica",  // パソコン段15：写しの端末のあいだ、記録・控え・日記の写しを動かさない・Dropbox に控えを置かない
   "desk-inbox",    // パソコン段15③：受け箱の取り込みで iPhone の記録が消えない・二度当てない・読めないものは動かさない
   "season-art",    // 3.0 の E1：季節の絵の大きさ（1枚25KB・合計2MB）と字の濃さの比を門で見張る
+  "one-screen",    // design-review 12節：一度だけ描く決まり三つ（最初の一画面・帯と＋のかぶり・空のまとめ）
   "sky",           // 帯の空：時間帯の区切りと、空の上の字の濃さの比（画素で）を門で見張る
   "motion-dict", "look-tokens",
   "shape-tokens",                  // 総点検 Y1〜Y3：見出しは墨・選ぶ札の形・紙の頭は一つの顔（画面を開かない）    // roadmap-unify の U1・U3：長さの直書き・暗い面の二度書き（画面を開かない）
