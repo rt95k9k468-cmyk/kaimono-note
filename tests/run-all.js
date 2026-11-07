@@ -1,11 +1,12 @@
-/* 試験をまとめて回す（R19）。台本を三本ずつ並べて走らせ、要約だけ出す。
+/* 試験をまとめて回す（R19）。台本を並べて（既定はコアの1.5倍・門は3本）走らせ、要約だけ出す。
 
      NODE_PATH=/opt/node22/lib/node_modules node tests/run-all.js
      … tests/run-all.js day-road carry     名前で絞る（.js は要らない）
      … tests/run-all.js --gate             門（GATE）に入れたものだけ（R22）
      … tests/run-all.js --quick            門のうち画面を開かないものだけ（数秒。main への push の前）
-     … tests/run-all.js -j 4               並べる数（既定 3）
+     … tests/run-all.js -j 4               並べる数（既定：全部はコアの1.5倍、門・名前で絞ったときは 3）
      … tests/run-all.js --verbose          通った台本の出力も出す
+     KN_TIMES=ファイル                       一本ごとの秒を JSON に（長い順）
 
    落ちた台本は NG の行（と、数えずに落ちたら出力の終わり）を出す。一本でも
    落ちれば終了コード 1。やり直しはしない——揺れた試験は揺れた、と出す。
@@ -59,13 +60,19 @@ const GATE = ["registry", "traps", "unknown-keep", "live-slim", "todo-past", "to
 const opensPage = (name) => /\bopen\(|chromium|launch\(|newContext/.test(fs.readFileSync(path.join(DIR, `${name}.js`), "utf8"));
 
 /* 長くかかるものから始める（並べたときに、最後に一本だけ長いのが残らないように）。
-   測った秒（2026年9月29日、3本並べて）。載っていないものは短いとみなす。 */
-const SLOW = { passed: 60, "head-still": 55, "road-walk": 50, "diary-idb": 45, "day-road": 40,
-  "scroll-anchor": 85, "pill-morph": 35, "shop-day": 30, "day-swipe": 30, "road-lead": 30, sets: 25, "due-sheet": 25,
-  "update-path": 60 };
+   測った秒（2026年11月7日、6本並べて。KN_TIMES で測り直す）。載っていないものは短いとみなす。 */
+const SLOW = { "scroll-anchor": 110, "head-still": 80, legibility: 76, "update-path": 70, "desk-edges": 59, widths: 57,
+  "notes-labels": 56, sky: 56, "diary-idb": 50, "notes-format": 50, "settings-map": 49, "desk-hand": 48, desk: 44,
+  "work-week-face": 43, "desk-windows": 42, arrive: 39, sideways: 39, break: 38, "diary-out": 38, "shop-add-v27": 37,
+  "then-years": 37, settings: 35, "diary-chat": 35, notes: 33, "road-labels-clear": 33, asks: 33 };
+
+/* 並べる数の既定（2026年11月7日、M4）。待ちの多い台本ばかりなので、コアの1.5倍まで並べても揺れず、
+   全部は 4コアで 16.3分 → 9.7分（3本→6本）。門・名前で絞ったとき（WebKit の列など）は3本のまま——
+   門は落ちると配信が止まり、WebKit の top-tap は時間に敏感なので、揺れの余地を足さない。 */
+const JOBS = Math.max(3, Math.round(require("os").cpus().length * 1.5));
 
 function parseArgs(argv) {
-  const o = { jobs: 3, gate: false, quick: false, verbose: false, names: [] };
+  const o = { jobs: 0, gate: false, quick: false, verbose: false, names: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--gate") o.gate = true;
@@ -74,6 +81,7 @@ function parseArgs(argv) {
     else if (a === "-j") o.jobs = Math.max(1, Number(argv[++i]) || 3);
     else o.names.push(a.replace(/\.js$/, "").replace(/^tests\//, ""));
   }
+  if (!o.jobs) o.jobs = o.gate || o.quick || o.names.length ? 3 : JOBS;
   return o;
 }
 
@@ -153,6 +161,11 @@ async function main() {
   const bad = results.filter((r) => !r.ok).map((r) => r.name);
   const min = ((Date.now() - t0) / 60000).toFixed(1);
   console.log(`\nrun-all: ${results.length - bad.length}/${results.length} 通った（${min}分、${o.jobs}本ずつ）`);
+  /* KN_TIMES=ファイル で一本ごとの秒を JSON に（長い順）。SLOW の表を測り直すときに。 */
+  if (process.env.KN_TIMES) {
+    const times = Object.fromEntries(results.slice().sort((a, b) => b.sec - a.sec).map((r) => [r.name, Math.round(r.sec)]));
+    fs.writeFileSync(process.env.KN_TIMES, JSON.stringify(times, null, 1));
+  }
   if (bad.length) {
     console.log(`落ちた：${bad.join(" ")}`);
     process.exitCode = 1;

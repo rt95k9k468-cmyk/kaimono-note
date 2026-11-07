@@ -118,9 +118,7 @@ const t = checker("fold");
     T.slice(0, 200));
   const R = T;
   t.check("見直すに「節気の初日に揃える」が出ない", !R.includes("節気") && R.includes("いつか"), R.slice(0, 120));
-  const O = await textOf("dailyExportRows");
-  t.check("書き出しに「月ぶんを書き出す」が出ない（期間・年の本は出る）",
-    !O.includes("月ぶん") && O.includes("期間を選んで書き出す") && O.includes("年の本"), O);
+  /* 月ぶんが無いことは settings・daily-range が見る（11月7日に外した）。 */
   const L = await textOf("lookRows");
   t.check("外観に「並べ方」「探す窓」が出ない", !/並べ方|探す窓/.test(L) && L.includes("空の写真"), L.slice(-160));
 
@@ -136,15 +134,7 @@ const t = checker("fold");
     s.settings.calShortcut = false; s.settings.reviewSekki = false; s.settings.layout = "rows"; s.settings.searchBar = false;
   }));
 
-  /* 買うものの足す紙：やることらしい字でも行き先の札は出ない。押せば買うものへ入るまま。 */
-  await page.evaluate(() => KN.app.showScreen("list"));
-  await wait(400);
-  await page.evaluate(() => document.querySelector('button[aria-label="買うものを追加"]').click());
-  await page.waitForSelector(".sheet .js-name");
-  await wait(300);
-  await page.fill(".sheet .js-name", "明日 19:00 歯医者");
-  await wait(150);
-  t.check("買うものに行き先の札が無い", await page.evaluate(() => !document.querySelector(".sheet .js-dest")));
+  /* 買うものの行き先の札が無いことは capture が見る（11月7日に外した）。 */
 
   /* 見直しの紙の頭：置き直しの控えは言わず、期限は言う。控え（slips）は記録に残ったまま。 */
   const facts = await page.evaluate(() => {
