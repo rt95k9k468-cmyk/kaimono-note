@@ -1274,6 +1274,11 @@
       const cur = editing && store.getTodo(todoId);
       return cur && cur.repeat ? store.subStatus(cur, x, subDay).done : !!x.done;
     };
+    /* できなかった（−）。済んだ印と同じく、記録（単発は subs・くり返しはその日の subState）から読む。 */
+    const subSkip = (x) => {
+      const cur = editing && store.getTodo(todoId);
+      return cur && cur.repeat ? store.subStatus(cur, x, subDay).skipped : !!x.skipped;
+    };
     const subHost = body.pick(".js-subs");
     function paintSubs(focusAt) {
       subHost.textContent = "";
@@ -1286,8 +1291,8 @@
                   です。掴むための場所を別に置いたぶん、待たせる理由も
                   無くなりました。 */""}
             <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
-            <button type="button" class="sub-check js-sub-check ${subOn(s) ? "is-on" : ""}" role="checkbox"
-                    aria-checked="${String(subOn(s))}" aria-label="${i + 1}つめの手順を済ませる">${icon("check")}</button>
+            <button type="button" class="sub-check js-sub-check ${subOn(s) || subSkip(s) ? "is-on" : ""}" role="checkbox"
+                    aria-checked="${subOn(s) ? "true" : subSkip(s) ? "mixed" : "false"}" aria-label="${i + 1}つめの手順を済ませる${subSkip(s) ? "（できなかった）" : ""}">${subSkip(s) && !subOn(s) ? icon("minus") : icon("check")}</button>
             <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う" data-blank-ok
                    aria-label="${i + 1}つめの手順" autocomplete="off" enterkeyhint="enter">
             <button type="button" class="icon-btn js-sub-del"
