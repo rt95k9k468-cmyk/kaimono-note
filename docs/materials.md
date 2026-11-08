@@ -31,8 +31,8 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 **絵**
 - UI：Phosphor Regular v2.1.1（MIT）。体重計だけ手描き。
 - 品物（708キー）：単色シルエット。借り先は Phosphor Fill・Material Symbols（rounded fill）・MingCute Fill・Tabler Filled・
-  Remix Icon Fill・Boxicons Solid・Bootstrap Icons Fill・Fluent（filled）。描き起こしが6枚。
-- こと（108枚）：Phosphor Fill 90・よそのセット 14・手描き 4。空の画面：手描き 4枚（`empty-art.js`）。
+  Remix Icon Fill・Boxicons Solid・Bootstrap Icons Fill・Fluent（filled）・Pinhead。描き起こしが3枚（まな板・ティッシュ・らっぷ）。
+- こと（108枚）：Phosphor Fill とよそのセット（手描きは無い）。空の画面：手描き 4枚（`empty-art.js`）。
 - ノートの地：歌川広重『名所江戸百景』72枚（NDL イメージバンク・PDM）。
 - daily の紙：Wikimedia Commons の写真72枚。帯の空：同じく20枚（季節×時間帯。CC BY／BY-SA ほか）。
 - 水彩の挿絵：`img/think` 4枚・`img/set` 10枚（利用者の素材）。
@@ -107,18 +107,17 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 アプリの部品として入れるのは可（2.3）。**してはいけない**のは、単体で配る・競合するアイコン集を作る・**アプリの印やロゴにする**（3.3）。
 品物とことに入っている Remix の絵は部品なので、そのままでよい。`js/icons-goods.js` の頭にある「Remix Icon Fill（Apache 2.0）」は古い表示。
 
-**探し済み**（ICON-SILHOUETTE.md・ICON-DEIMAGINE.md・ICON-TODO.md）：Phosphor（`ph`）・Material Symbols（`material-symbols`）・Tabler Icons（`tabler`）・Remix Icon（`ri`）・Bootstrap Icons（`bi`）・Fluent UI System Icons（`fluent`）・MingCute Icon（`mingcute`）・IonIcons（`ion`）・BoxIcons v2 Solid（`bxs`）・Huge Icons（`hugeicons`）・Health Icons（`healthicons`）・Iconoir（`iconoir`）・Maki（`maki`）・Noto Emoji (v1)（`noto-v1`）・Fluent Emoji High Contrast（`fluent-emoji-high-contrast`）
+**探し済み**（ICON-SILHOUETTE.md・ICON-DEIMAGINE.md・ICON-TODO.md）：Phosphor（`ph`）・Material Symbols（`material-symbols`）・Tabler Icons（`tabler`）・Remix Icon（`ri`）・Bootstrap Icons（`bi`）・Fluent UI System Icons（`fluent`）・MingCute Icon（`mingcute`）・IonIcons（`ion`）・BoxIcons v2 Solid（`bxs`）・Huge Icons（`hugeicons`）・Health Icons（`healthicons`）・Iconoir（`iconoir`）・Maki（`maki`）・Noto Emoji (v1)（`noto-v1`）・Fluent Emoji High Contrast（`fluent-emoji-high-contrast`）・
+Pinhead・Energy Icons・TDesign・Boxicons（新版）・MDI・Feather Icon（`fe`）（2026年11月8日。手描き・描き起こしの代わりを探した）
+- Energy Icons は「面」に数えられるが、線を面に直しただけの**線の見た目**。品物のシルエットには向かない。
+- 日用品が多いのは Pinhead（洗剤・ごみ袋・歯ぶらし）。`fe` は日用品が無い。まな板・ラップ・箱ティッシュはどこにも無い。
 
 **まだ探していない、面のあるセット**（「面」＝線（stroke）を使わない絵の枚数。「和の題材」は名前で当たったもの）
 
 | セット（prefix） | 枚数 | 面 | ライセンス | 和の題材 |
 |---|---:|---:|---|---|
-| Energy Icons（`energy-icons`） | 8252 | 8252 | MIT | 温泉・やかん・凧・灯り・麺・塔・海藻・急須 |
 | coolicons（`coolicons`） | 19860 | 7944 | MIT |  |
-| Material Design Icons（`mdi`） | 7638 | 7637 | Apache | やかん・凧・麺・おでん・ご飯 |
 | Reicon（`reicon`） | 6590 | 5426 | MIT |  |
-| Boxicons（`boxicons`） | 3768 | 3768 | MIT | ご飯・麺・寿司 |
-| Pinhead Map Icons（`pinhead`） | 2889 | 2889 | CC0 | 弁当・箸・温泉・灯り・蓮・麺・神社・寿司・急須・鳥居 |
 | Carbon（`carbon`） | 2789 | 2789 | Apache | 麺 |
 | Griddy Icons（`griddy-icons`） | 2010 | 2010 | MIT | やかん |
 | with icons（`withicons`） | 7000 | 1993 | MIT | 竹・箸・餃子・凧・灯り・蓮・急須 |
@@ -134,7 +133,6 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 | Dinkie Icons（`dinkie-icons`） | 1198 | 1198 | MIT | 竹・桜・栗・ご飯・凧・神社 |
 | Clarity（`clarity`） | 1105 | 1104 | MIT |  |
 | Garden SVG Icons（`garden`） | 1491 | 1098 | Apache |  |
-| TDesign Icons（`tdesign`） | 2366 | 1061 | MIT | たけのこ・麺・大根・ご飯・おにぎり |
 | HeroIcons（`heroicons`） | 1288 | 964 | MIT |  |
 | Octicons（`octicon`） | 963 | 963 | MIT |  |
 | Lineicons（`lineicons`） | 962 | 962 | MIT |  |
@@ -173,7 +171,6 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 | Circum Icons（`circum`） | 288 | 288 | MPL | 麺 |
 | Foundation（`foundation`） | 283 | 283 | MIT |  |
 | Raphael（`raphael`） | 266 | 266 | MIT |  |
-| Feather Icon（`fe`） | 255 | 255 | MIT | 団子・せんべい |
 | EOS Icons（`eos-icons`） | 253 | 253 | MIT |  |
 | Icons8 Windows 10 Icons（`icons8`） | 234 | 234 | MIT |  |
 | Weather Icons（`wi`） | 230 | 230 | OFL |  |
