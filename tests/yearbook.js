@@ -150,9 +150,11 @@ const FORBIDDEN = [
   let dl2 = false;
   page.on("download", () => { dl2 = true; });
   await page.locator(".js-md").click();
-  await page.waitForTimeout(400);
-  const toast = await page.evaluate(() => document.body.innerText);
-  t.check("日記を読めない日は書き出さず、そう言う", !dl2 && toast.includes("年の本は書き出せません"));
+  /* 一言は出るまで待つ（決め打ちの 400ms は混んだ CI で足りなかった。2026年11月8日、西の列）。 */
+  const said = await page.waitForFunction(() => document.body.innerText.includes("年の本は書き出せません"), null, { timeout: 3000 })
+    .then(() => true, () => false);
+  await page.waitForTimeout(200);   // 書き出すなら、ここまでに download が来る
+  t.check("日記を読めない日は書き出さず、そう言う", !dl2 && said);
 
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();

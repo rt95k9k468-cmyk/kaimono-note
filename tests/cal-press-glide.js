@@ -37,7 +37,7 @@ const { open, checker } = require("./lib");
     const tick = () => {
       const hc = document.querySelector("#head .head-cal");
       const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
-      window.__w.push({ h: Math.round(hc.getBoundingClientRect().height), t: (document.querySelector("#head .js-day-title") || {}).textContent || "",
+      window.__w.push({ ms: performance.now(), h: Math.round(hc.getBoundingClientRect().height), t: (document.querySelector("#head .js-day-title") || {}).textContent || "",
         peek: !!document.querySelector("#head .cal.is-peek"), top: Math.round(sc.scrollTop) });
       if (performance.now() - t0 < 600) requestAnimationFrame(tick);
     };
@@ -49,8 +49,9 @@ const { open, checker } = require("./lib");
     const a = w[0].h, z = w[w.length - 1].h, lo = Math.min(a, z) + 3, hi = Math.max(a, z) - 3;
     return new Set(w.map((f) => f.h).filter((h) => h > lo && h < hi)).size;
   };
-  /** 一コマで動いた背のいちばん大きいもの。 */
-  const leap = (w) => Math.max(0, ...w.slice(1).map((f, i) => Math.abs(f.h - w[i].h)));
+  /** 一コマで動いた背のいちばん大きいもの。**一コマ（16.7ms）あたりに直して**測る——滑りは時刻で進むので、
+      混んだ CI でコマが落ちると次のコマにまとめて動く（6本ずつ並べた回に 229px で落ちた。2026年11月8日）。 */
+  const leap = (w) => Math.max(0, ...w.slice(1).map((f, i) => Math.abs(f.h - w[i].h) * 16.7 / Math.max(16.7, f.ms - w[i].ms)));
 
   // 週の面：頭から（今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初）、時刻の列と点の列がそろう、今日の日付は塗り、「仕事だけ」に青い点が無い
   await page.click('#screen-todo .wk-faces [data-face="week"]');
