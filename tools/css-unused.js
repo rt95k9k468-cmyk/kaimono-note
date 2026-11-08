@@ -18,7 +18,7 @@ const { spawnSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "docs", "css-unused.md");
-const FILES = ["base.css", "components.css", "screens.css"];
+const FILES = ["base.css", "components.css", "screens.css", "attire.css"];
 
 /** 規則を拾う。コメントと文字列を飛ばし、波かっこで入れ子を追う。
     返すのは書式の規則だけ（@keyframes・@font-face・@property の中は数えない）。 */
