@@ -95,6 +95,8 @@ const { open, checker } = require("./lib.js");
     host.append(top);
     document.body.append(host);
     window.__edge = [];
+    window.__mv = [];   // 届いた pointermove の時刻（edge-back と同じ performance.now）
+    host.addEventListener("pointermove", () => __mv.push(performance.now()), true);
     KN.edgeBack.wire({
       el: host,
       begin: () => {
@@ -125,8 +127,22 @@ const { open, checker } = require("./lib.js");
   await pull(4, 60, 10, 40);   // 60px を 400ms：0.15px/ms
   c.check("ゆっくり少し引いて離すと戻らない", (await ended()) && (await last()) === "begin,cancel");
 
-  await pull(4, 60, 4, 4);     // 速く払う
-  c.check("同じ長さでも速く払えば戻る", (await ended()) && (await last()) === "begin,commit");
+  /* 速く払う：60px を 30px ずつ二回。速さは最後の二つの move の間で測るので、混んだ CI で
+     その間が 30/FLING_V ms を越えた回は、速く払えていない——数えずに払い直す
+     （2026年11月8日、6本ずつの全部で 15px ずつ四回が遅れて落ちた）。 */
+  const flick = async () => {
+    for (let k = 0; k < 3; k++) {
+      await page.evaluate(() => { __mv.length = 0; });
+      await pull(4, 60, 2, 0);
+      const done = await ended();
+      const got = await last();
+      const gap = await page.evaluate(() => __mv.length >= 2 ? __mv[__mv.length - 1] - __mv[__mv.length - 2] : Infinity);
+      if (gap < 30 / G.FLING_V) return done && got === "begin,commit";
+      await wait(300);
+    }
+    return false;
+  };
+  c.check("同じ長さでも速く払えば戻る", await flick());
 
   await pull(4, G.FLING_MIN - 2, 2, 2);
   c.check("速くても FLING_MIN に届かなければ戻らない", (await ended()) && (await last()) === "begin,cancel");
