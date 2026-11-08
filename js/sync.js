@@ -2,7 +2,8 @@
    くらしノート — 3台の同期・端末の側（docs/sync.md 段2）
    =========================================================
 
-   段2は**影の運用**：部屋につないだ一台（iPhone）だけが送り、誰も読まない（取る・当てるは段3から）。
+   段2は**影の運用**：部屋につないだ一台（iPhone）だけが送る。段3：写しの端末（js/replica.js）は部屋から読める
+   （下の「読む」。印 kn-replica-from が "room" のときだけ。書くのは受け箱のまま）。
    記録の形・書く道（store.update ほか）には触れない。部屋の約束は sync/README.md「約束の形」。
 
    - 入れ物：IndexedDB `kaimono-note-sync`（版1の決め打ち。今の棚の版を上げない）。
@@ -154,8 +155,9 @@
       name: await d("name", { name: "HMAC", hash: "SHA-256", length: 256 }, ["sign"]),
     };
   }
-  /** 鍵の元。この端末に無ければ Dropbox から。どちらにも無ければ作る（Dropbox へは keyOut で）。 */
-  async function ensureKey() {
+  /** 鍵の元。この端末に無ければ Dropbox から。どちらにも無ければ作る（Dropbox へは keyOut で）。
+      make が false（読む端末）なら作らず null。 */
+  async function ensureKey(make = true) {
     if (keys) return keys;
     if (!meta.key) {
       let got;
@@ -163,6 +165,7 @@
       catch (_) { throw new Error("Dropbox から鍵を読めませんでした"); }
       const there = got ? keyOf(got) : null;
       if (got && !there) throw new Error("Dropbox の鍵が読めない形です");
+      if (!there && !make) return null;
       await putMeta({ key: there || b64u(random(32)), keyOut: !!there });
     }
     keys = await deriveKeys(meta.key);
@@ -539,12 +542,136 @@
 
   async function start() {
     if (phase !== "idle") return;
-    if (!window.indexedDB || !window.crypto || !crypto.subtle || store.replica()) { phase = "off"; return; }
+    if (!window.indexedDB || !window.crypto || !crypto.subtle) { phase = "off"; return; }
+    reader = store.replica();
     phase = "loading";
     try { await load(); phase = "on"; } catch (_) { phase = "off"; tell(); return; }
-    begin();
+    if (!reader) begin();
     tell();
   }
+
+  /* ---------------- 読む（段3。写しの端末だけ） ----------------
+     照らすと同じ部品（鍵・名前のハッシュ・番号の続き）で、読んだ番号の続きだけを取り、base に置く
+     （記録ではない。部屋から作り直せる写し）。比べない・送らない。並びは Dropbox の写し（ref）に合わせ、
+     そこに無いものは届いた順。取れない・鍵が無い・作り直された（ahead）・部屋の約束が上なら state なし
+     （js/replica.js が Dropbox の写しへ黙って戻る）。切られた（401）だけは歯車の点。 */
+  let reader = false;
+  const lockRead = (fn) => (navigator.locks && navigator.locks.request
+    ? navigator.locks.request("kaimono-note-sync-read", fn) : fn());
+  async function read(ref) {
+    if (phase !== "on" || !reader || !meta.token || meta.trouble) return { why: "off" };
+    return lockRead(async () => {
+      await load();   // ほかの窓が進めた分
+      if (meta.trouble) return { why: "off" };
+      try { if (!(await ensureKey(false))) return { why: "key" }; } catch (_) { return { why: "key" }; }
+      const items = [];
+      let since = meta.seq || 0, room = "";
+      for (let guard = 0; guard < 1000; guard++) {
+        let r;
+        try { r = await call("GET", `/pull?since=${since}&limit=1000`); } catch (_) { return { why: "far" }; }
+        if (r.status === 401) { await putMeta({ trouble: "who" }); tell(); return { why: "who" }; }
+        if (r.status === 409 && r.body.why === "ahead") { await forget(); return { why: "ahead" }; }
+        if (r.status !== 200 || !Array.isArray(r.body.items)) return { why: "far" };
+        if (r.body.schema > SCHEMA) return { why: "old" };
+        room = r.body.room || "";
+        if (meta.readRoom && room && room !== meta.readRoom) { await forget(); return { why: "ahead" }; }
+        items.push(...r.body.items);
+        since = Number.isInteger(r.body.next) ? r.body.next : since;
+        if (!r.body.more) break;
+      }
+      const byHash = new Map();
+      base.forEach((b) => { if (b.h) byHash.set(b.h, b); });
+      const put = new Map();
+      let n = meta.n || 0;
+      for (const x of items) {
+        const h = x.shelf + "." + x.item;
+        const was = put.get(h) || byHash.get(h);
+        if (x.del) { if (was) put.set(h, { ...was, ver: x.ver, json: null }); continue; }
+        let o;
+        try { o = await unseal(x.body, x.shelf, x.item); } catch (_) { return { why: "key" }; }
+        if (!o || typeof o.s !== "string" || typeof o.i !== "string") return { why: "key" };
+        put.set(h, { k: o.s + "\n" + o.i, ver: x.ver, json: JSON.stringify(o.d), h, n: was ? was.n : ++n });
+      }
+      if (put.size || since !== meta.seq || room !== meta.readRoom) {
+        await run(["base", "meta"], "readwrite", (t) => {
+          const s = t.objectStore("base");
+          put.forEach((b) => { if (b.json === null) s.delete(b.k); else s.put(b); });
+          const m = t.objectStore("meta");
+          m.put({ k: "seq", v: since }); m.put({ k: "n", v: n }); m.put({ k: "readRoom", v: room }); m.put({ k: "readAt", v: Date.now() });
+        });
+        put.forEach((b) => { if (b.json === null) base.delete(b.k); else base.set(b.k, b); });
+        Object.assign(meta, { seq: since, n, readRoom: room, readAt: Date.now() });
+      }
+      const live = [...base.values()].filter((b) => b.json !== null);
+      if (!live.length) return { why: "empty" };
+      tell();
+      return { state: stateOf(live, ref), seq: since };
+    });
+  }
+  /** 作り直された部屋：読んだ覚えを捨てる（次は頭から読む）。 */
+  async function forget() {
+    await run(["base", "meta"], "readwrite", (t) => {
+      t.objectStore("base").clear();
+      ["seq", "n", "readRoom", "readAt"].forEach((k) => t.objectStore("meta").delete(k));
+    });
+    base = new Map();
+    ["seq", "n", "readRoom", "readAt"].forEach((k) => { delete meta[k]; });
+  }
+  /** 一件ずつを記録の形へ戻す（shelvesOf の逆）。並びは ref（Dropbox の写し）の中の位置、無ければ届いた順。 */
+  function stateOf(recs, ref) {
+    const rank = new Map();
+    if (ref && typeof ref === "object") {
+      let i = 0;
+      const keep = unknown;
+      shelvesOf(ref).forEach((m, shelf) => m.forEach((_, key) => rank.set(shelf + "\n" + key, i++)));
+      unknown = keep;
+    }
+    const at = (b) => (rank.has(b.k) ? rank.get(b.k) : Infinity);
+    const list = recs.slice().sort((a, b) => (at(a) - at(b)) || ((a.n || 0) - (b.n || 0)));
+    const s = { schema: (store.get() && store.get().schema) || 2 };
+    for (const b of list) {
+      const [shelf, key] = splitK(b.k);
+      const path = shelf.replace(/:\d{4}$/, "");
+      const dot = path.indexOf(".");
+      const box = dot < 0 ? s : (s[path.slice(0, dot)] = s[path.slice(0, dot)] || {});
+      const f = dot < 0 ? path : path.slice(dot + 1);
+      const v = JSON.parse(b.json);
+      if (key === "_") box[f] = v;
+      else if (key.startsWith("k:") && MAPS.has(path)) (box[f] = box[f] && !Array.isArray(box[f]) ? box[f] : {})[key.slice(2)] = v;
+      else (box[f] = Array.isArray(box[f]) ? box[f] : []).push(v);
+    }
+    return s;
+  }
+
+  /* 開いているあいだは WebSocket で知らせを受ける（{"head":N} だけ）。読んだ番号より先なら fn。
+     閉じたら、見えているときに間をあけてつなぎ直す（つないだら一度読む＝閉じていたあいだの分）。 */
+  let ws = null, wsFn = null, wsTimer = 0, wsTries = 0;
+  function watch(fn) {
+    wsFn = fn;
+    if (!fn) { clearTimeout(wsTimer); if (ws) { const w = ws; ws = null; try { w.close(); } catch (_) { /* もう閉じている */ } } return; }
+    connect();
+  }
+  function connect() {
+    clearTimeout(wsTimer);
+    if (ws || !wsFn || !reader || !meta.token || !meta.url || meta.trouble || typeof WebSocket !== "function") return;
+    if (document.visibilityState === "hidden") return;
+    let w;
+    try { w = new WebSocket(meta.url.replace(/^http/, "ws") + "/ws", ["kn-sync", meta.token]); } catch (_) { return; }
+    ws = w;
+    w.onopen = () => { wsTries = 0; if (wsFn) wsFn(); };
+    w.onmessage = (e) => {
+      let m = null;
+      try { m = JSON.parse(e.data); } catch (_) { return; }
+      if (m && Number.isInteger(m.head) && m.head > (meta.seq || 0) && wsFn) wsFn();
+    };
+    w.onclose = () => {
+      if (ws !== w) return;
+      ws = null;
+      if (wsFn) wsTimer = setTimeout(connect, Math.min(5000 * 2 ** Math.min(wsTries++, 6), 10 * 60000));
+    };
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") connect(); });
+  window.addEventListener("online", () => { wsTries = 0; connect(); });
 
   /* ---------------- 設定から ---------------- */
 
@@ -568,7 +695,8 @@
     let u;
     try { u = new URL(String(url || "").trim()); } catch (_) { throw new Error("URL の形ではありません"); }
     if (u.protocol !== "https:") throw new Error("https:// で始まる URL にしてください");
-    await ensureKey();
+    if (!reader) await ensureKey();
+    else { try { await ensureKey(false); } catch (_) { /* 鍵はあとで（読むときに Dropbox から） */ } }
     const prev = meta.url;
     meta.url = u.origin;
     let r;
@@ -580,10 +708,19 @@
       throw new Error(why === "code" ? "合言葉が合いません" : why === "wait" ? "しばらく待ってから" : why === "old" ? "アプリが古い版です" : "つなげませんでした");
     }
     await putMeta({ url: u.origin, token: r.body.token, device: r.body.device, room: r.body.room, joinedAt: Date.now(), setup: undefined });
+    if (reader) { tell(); return true; }
     begin();
     soon(0);
     tell();
     return true;
+  }
+  /** 二台めをつなぐ合言葉（/pair。10字・10分・一回だけ）。つないである端末で。 */
+  async function pair() {
+    if (phase !== "on" || !meta.token) throw new Error("先にこの端末をつないでください");
+    let r;
+    try { r = await call("POST", "/pair"); } catch (_) { throw new Error("部屋に届きませんでした"); }
+    if (r.status !== 200 || !r.body.code) throw new Error("合言葉を出せませんでした");
+    return r.body.code;
   }
   /** 訊いたことに「送る」。最初の中身・丸ごと・消しすぎ。 */
   async function go() {
@@ -603,9 +740,11 @@
   }
   /** この端末を切る（部屋からも外してみる）。鍵の元は残す（Dropbox と同じ鍵のまま、つなぎ直せる）。 */
   async function leave() {
+    watch(null);
     if (meta.token) { try { await call("DELETE", `/devices/${encodeURIComponent(meta.device || "")}`); } catch (_) { /* 部屋に届かなくても、こちらは忘れる */ } }
     await run(["meta", "base", "out"], "readwrite", (t) => {
-      ["url", "token", "device", "room", "joinedAt", "firstDone", "sentAt", "failSince", "checkDay", "checks", "trouble", "redo"]
+      ["url", "token", "device", "room", "joinedAt", "firstDone", "sentAt", "failSince", "checkDay", "checks", "trouble", "redo",
+        "seq", "n", "readRoom", "readAt"]
         .forEach((k) => t.objectStore("meta").delete(k));
       t.objectStore("base").clear();
       t.objectStore("out").clear();
@@ -629,7 +768,7 @@
     let live = 0;
     view.forEach((m) => { live += m.size; });
     return {
-      phase, joined: !!meta.token, lock: lockHeld, ask, trouble: trouble(), out: out.size, bad: [...out.values()].filter((e) => e.bad).length,
+      phase, reader, joined: !!meta.token, seq: meta.seq || 0, lock: lockHeld, ask, trouble: trouble(), out: out.size, bad: [...out.values()].filter((e) => e.bad).length,
       live, sentAt: meta.sentAt || 0, checks: (meta.checks || []).slice(), keyOut: !!meta.keyOut, firstDone: !!meta.firstDone,
       redo: meta.redo || 0,
     };
@@ -638,7 +777,7 @@
   function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   KN.sync = {
-    start, status, trouble, onChange, setupCode, join, go, leave, SCHEMA,
+    start, status, trouble, onChange, setupCode, join, go, leave, pair, read, watch, SCHEMA,
     /* 試験と門のため（棚の分け方・送らない欄・知らない欄）。 */
     shelvesOf, unknown: () => unknown.slice(), SEND, LOCAL, now: async () => {
       clearTimeout(timer);

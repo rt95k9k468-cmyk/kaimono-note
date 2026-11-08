@@ -7,10 +7,19 @@
 
   const KN = window.KN;
   const S = KN.settingsParts;
-  const { TINT, card, foot, navRow, dangerRow, render, copyText, fieldCard } = S;
+  const { TINT, card, foot, navRow, dangerRow, switchRow, render, copyText, fieldCard } = S;
+  const { html, node } = KN.util;
+
+  /** 畳んだ行（まれな手順。more() の行の版）。 */
+  function fold(title, ...rows) {
+    const d = node(html`<details class="set-more"><summary>${title}</summary></details>`);
+    rows.filter(Boolean).forEach((r) => d.appendChild(r));
+    return d;
+  }
 
   /* 部屋の URL は資格情報。つなぐまで紙の外（ここ）に持ち、つないだら sync の入れ物へ。どこにも書き出さない。 */
   let roomUrl = "";
+  let pairCode = "";
   let joining = false;
 
   const ASK = {
@@ -33,6 +42,7 @@
     const sync = KN.sync;
     const st = sync.status();
     if (st.phase === "off") return [foot("この端末では使えません。")];
+    if (st.reader) return readerRows(st);
     if (!st.joined) {
       return [
         fieldCard({
@@ -79,12 +89,52 @@
       st.checks.length ? `照らした日 ${st.checks.length}日・ずれ ${far}日` : "",
       last ? `最後に照らした日 ${last.day}` : "",
     ].filter(Boolean).join("　") || "送り待ちはありません。"));
+    rows.push(fold("二台めをつなぐ", card(navRow({
+      ico: "copy", tint: TINT.sub, title: "合言葉を出す", act: true,
+      onTap: () => sync.pair().then((c) => copyText(c, "合言葉")).catch((e) => KN.ui.toast(e.message)),
+    }))));
     rows.push(card(dangerRow({
       ico: "trash", title: "この端末を切る",
       onTap: () => KN.ui.confirm({ title: "この端末を切る", message: "", okLabel: "切る", danger: true })
         .then((ok) => { if (ok) sync.leave().then(render); }),
     })));
     return rows;
+  }
+
+  /* 写しの端末（段3）：部屋につないで、写しを部屋から読む（書くのは受け箱のまま）。既定は切ったまま。 */
+  function readerRows(st) {
+    const sync = KN.sync, rep = KN.replica;
+    if (!st.joined) {
+      return [
+        fieldCard({ label: "部屋のURL", value: roomUrl, placeholder: "https://kurashi-sync.….workers.dev", onSave: (v) => { roomUrl = v; render(); } }),
+        fieldCard({ label: "合言葉", value: pairCode, placeholder: "iPhone の「二台めをつなぐ」", onSave: (v) => { pairCode = v; render(); } }),
+        card(navRow({
+          ico: "check", tint: TINT.data, title: "つなぐ", act: true, off: !roomUrl || !pairCode,
+          onTap: () => {
+            if (!roomUrl || !pairCode || joining) return;
+            joining = true;
+            sync.join(roomUrl, pairCode)
+              .then(() => { roomUrl = ""; pairCode = ""; KN.ui.toast("つなぎました"); })
+              .catch((e) => KN.ui.toast((e && e.message) || "つなげませんでした"))
+              .then(() => { joining = false; render(); });
+          },
+        })),
+      ];
+    }
+    const rows = [];
+    if (st.trouble) rows.push(card(navRow({ ico: "download", tint: TINT.warn, title: TROUBLE[st.trouble], alert: true, act: true, onTap: () => {} })));
+    if (rep) rows.push(card(switchRow({ title: "部屋から読む", on: rep.from().want, onTap: (v) => rep.setFrom(v).then(render, render) })));
+    rows.push(card(dangerRow({
+      ico: "trash", title: "この端末を切る",
+      onTap: () => KN.ui.confirm({ title: "この端末を切る", message: "", okLabel: "切る", danger: true })
+        .then((ok) => { if (ok) (rep ? rep.setFrom(false) : Promise.resolve()).then(() => sync.leave()).then(render); }),
+    })));
+    return rows;
+  }
+  /** 写しの端末の Dropbox の紙に置く、畳んだ入口。 */
+  function syncReaderEntry() {
+    if (!KN.sync || !KN.sync.status().reader) return null;
+    return fold("同期の部屋", card(navRow({ title: "同期の部屋", value: KN.sync.status().joined ? "つないであります" : "", onTap: () => S.go("sync") })));
   }
 
   /** 根っこの頭の一行（困ったとき・送るのを待っているときだけ）。 */
@@ -96,7 +146,7 @@
     return card(navRow({ ico: "upload", tint: TINT.warn, title: why, alert: true, onTap: () => S.go("sync") }));
   }
 
-  Object.assign(S, { syncRows, syncValue, syncAlert });
+  Object.assign(S, { syncRows, syncValue, syncAlert, syncReaderEntry });
   /* 同期の様子は store の外で動くので、設定が出ているときだけ組み直す。 */
   if (KN.sync) KN.sync.onChange(() => { if (KN.app.activeScreen && KN.app.activeScreen() === "settings") render(); });
 })();

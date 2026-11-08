@@ -15,6 +15,11 @@
      ほかの道からの書き換えは store の update が写しへ戻す。
    - 困ったときだけ歯車に点（trouble。設定の頭に一行）：読めない（fail）・届かないまま3日（far）・
      写しの元が置かれてから3日（old）。数は出さない。確かめた時刻は OK_KEY（印は store が書き直すので別）。
+   - 段3（docs/sync.md）：出どころを部屋に（FROM が "room" で、部屋につないであるときだけ。既定は切ったまま）。
+     部屋の中身（js/sync.js の read）を見せ、Dropbox の控えは今までどおり読んで、戻る先と inboxSeen
+     （受け箱の重ねを外す印。部屋には送らない欄）・並びの目安に使う。部屋が取れない・鍵が無い・作り直された
+     ときは Dropbox の写しへ黙って戻る。取るのは WebSocket の知らせ・前に出た・電波が戻ったとき。
+     紙が開いているあいだは当てず、15秒おきに待つ（受け箱の取り込みと同じ）。
    ========================================================= */
 (function () {
   "use strict";
@@ -25,6 +30,8 @@
   const META = "replica";
   const EVERY = 3 * 60 * 1000;
   const OK_KEY = "kn-replica-ok";
+  const FROM = "kn-replica-from";   // "room" なら部屋から（記録の外。kn-replica は store が書き直すので別）
+  const WAIT_SHEET = 15000;
   const DAY = 86400000;
   const STUCK = 3;     // 送れないまま3日（backup.js の REMIND_STUCK_DAYS・notes-sync の STUCK）と同じ
   const on = store.replica();
@@ -34,6 +41,9 @@
   let busy = null;
   let failed = "";     // "" | "far"（届かない）| "fail"（届いたが読めない）。いちばん新しい一回
   let need = false;    // Dropbox がつながっていない（待っても直らない）
+  let dbText = "";     // Dropbox の写しの字（部屋から見せているあいだも、戻る先として持つ）
+  let fromRoom = false; // いま見せているのが部屋の中身
+  let roomBusy = null, roomAgain = false, sheetTimer = 0, roomLast = null;
 
   function readMark() {
     try {
@@ -114,7 +124,8 @@
       const d = await db.call(db.CONTENT, "/2/files/download", { arg: { path: LATEST }, raw: true });
       if (!d.res.ok) { ended("far"); return false; }
       text = await d.res.text();
-      show(text);
+      if (fromRoom && roomLast) { JSON.parse(text); dbText = text; show(compose(roomLast)); }
+      else { show(text); dbText = text; }
       info = { rev, at: m.body.server_modified || "" };
       await keep({ ...info, text });
       failed = "";
@@ -197,14 +208,94 @@
       const v = got && got.v;
       if (v && typeof v.text === "string") {
         show(v.text);
+        dbText = v.text;
         info = { rev: v.rev || "", at: v.at || "" };
         changed();
       }
     } catch (err) { console.warn("replica not loaded", err); }
     refresh();
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { refresh(); room(); } });
+    window.addEventListener("online", () => room());
     setInterval(() => { if (document.visibilityState === "visible") refresh(); }, EVERY);
+    whenSync(() => { if (wantRoom()) { room(); KN.sync.watch(() => room()); } });
   }
+
+  /* ---- 段3：部屋から ---- */
+
+  function wantRoom() {
+    let v = "";
+    try { v = localStorage.getItem(FROM) || ""; } catch (_) { /* 印が読めなければ今までどおり */ }
+    const st = v === "room" && KN.sync ? KN.sync.status() : null;
+    return !!(st && st.phase === "on" && st.reader && st.joined);
+  }
+  /* sync.js は app.js が始める（この台本より後に読まれる）。始まってから一度だけ。 */
+  function whenSync(fn) {
+    let done = false;
+    const go = () => {
+      if (done || !KN.sync || KN.sync.status().phase === "idle" || KN.sync.status().phase === "loading") return;
+      done = true;
+      fn();
+    };
+    const wait = () => { if (KN.sync) { KN.sync.onChange(go); go(); } else setTimeout(wait, 200); };
+    wait();
+  }
+  /* 部屋の中身に、Dropbox の写しの inboxSeen を重ねた字（受け箱の重ねを外す印は部屋に無い）。 */
+  function compose(state) {
+    let seen = {};
+    try { const d = dbText ? JSON.parse(dbText) : null; if (d && d.inboxSeen && typeof d.inboxSeen === "object") seen = d.inboxSeen; } catch (_) { /* 印なし */ }
+    return JSON.stringify({ ...state, inboxSeen: seen });
+  }
+  /** 部屋から取って見せる。取れなければ Dropbox の写しへ黙って戻る。 */
+  function room() {
+    if (!on) return Promise.resolve(false);
+    if (roomBusy) { roomAgain = true; return roomBusy; }
+    roomBusy = roomNow().finally(() => {
+      roomBusy = null;
+      if (roomAgain) { roomAgain = false; room(); }
+    });
+    return roomBusy;
+  }
+  async function roomNow() {
+    if (!wantRoom()) { back(); return false; }
+    let ref = null;
+    try { ref = dbText ? JSON.parse(dbText) : null; } catch (_) { ref = null; }
+    let r;
+    try { r = await KN.sync.read(ref); } catch (err) { r = { why: "fail" }; }
+    if (!r || !r.state || !wantRoom()) { back(); return false; }
+    roomLast = r.state;
+    return put();
+  }
+  /* 紙が開いているあいだは当てない（打っている一件が描き直しで動かないように）。閉じてから。 */
+  function put() {
+    clearTimeout(sheetTimer);
+    if (!roomLast) return false;
+    if (KN.ui && KN.ui.sheetsOpen && KN.ui.sheetsOpen()) { sheetTimer = setTimeout(put, WAIT_SHEET); return false; }
+    const text = compose(roomLast);
+    if (fromRoom && text === text0) return false;
+    try { show(text); } catch (err) { console.warn("replica room not shown", err); back(); return false; }
+    fromRoom = true;
+    changed();
+    return true;
+  }
+  /** Dropbox の写しへ戻す（部屋が取れない・切った）。 */
+  function back() {
+    clearTimeout(sheetTimer);
+    roomLast = null;
+    if (!fromRoom) return;
+    fromRoom = false;
+    if (dbText) { try { show(dbText); } catch (err) { console.warn("replica back", err); } }
+    changed();
+  }
+  /** 出どころを部屋に（true）／Dropbox に。記録には触れない。 */
+  function setFrom(v) {
+    try { if (v) localStorage.setItem(FROM, "room"); else localStorage.removeItem(FROM); } catch (_) { /* 書けなければ今までどおり */ }
+    if (!on || !KN.sync) return Promise.resolve(false);
+    if (v && wantRoom()) { KN.sync.watch(() => room()); return room(); }
+    KN.sync.watch(null);
+    back();
+    return Promise.resolve(false);
+  }
+  function fromOn() { try { return localStorage.getItem(FROM) === "room"; } catch (_) { return false; } }
 
   if (on) { hold(); start(); }
 
@@ -213,6 +304,8 @@
     /** 写しの元が Dropbox に置かれた時刻（ISO。まだ無ければ ""）。 */
     at: () => (info && info.at) || "",
     trouble,
+    /** 出どころ（段3）：部屋を望むか・いま部屋の中身を見せているか。 */
+    from: () => ({ want: fromOn(), room: fromRoom }), setFrom, room,
     refresh, redraw, onChange: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
     enable: () => setOn(true), disable: () => setOn(false),
   };
