@@ -88,7 +88,10 @@ const DAY = "2026-10-20";
   const g = await box("会議");
   await page.mouse.move(g.left + 60, g.y + 20);
   await page.mouse.down();
-  await page.waitForTimeout(520);
+  /* 持ち上がる（KN.gesture.HOLD 380ms）まで待つ。決め打ちの 520ms は、並べて混んだ CI で時計が遅れて
+     足りなかった（2026年11月8日、全部を6本ずつ並べた回）。持ち上がらなければ 2秒で落ちる。 */
+  await page.waitForFunction(() => !!document.querySelector("#screen-todo .tl-row.is-lifted"), null, { timeout: 2000 }).catch(() => {});
+  await page.waitForTimeout(140);   // 持ち上がってから動かすまでの間は前と同じ
   const lifted = await page.evaluate(() => !!document.querySelector("#screen-todo .tl-row.is-lifted"));
   c.check("長押しで持ち上がる", lifted);
   for (let k = 1; k <= 8; k++) {

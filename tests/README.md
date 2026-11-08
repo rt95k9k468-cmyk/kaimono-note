@@ -68,7 +68,9 @@
   `domcontentloaded` で数える（tests/desk-windows.js）。
 - **動きの長さを壁時計の合計で測らない。** CI の WebKit は、どの版でも空の頁でも、ときどき一コマだけ 150〜700ms
   止まる。50ms を越えた分を引いて測る（tests/top-tap.js）。位置を置いてから測る台本は、決め打ちの待ちでなく
-  置いた位置が二度続けて合うまで置き直す（tests/scroll-anchor.js の `caretTo`）。
+  置いた位置が二度続けて合うまで置き直す（tests/scroll-anchor.js の `caretTo`）。全部は6本ずつ並べるので
+  （M4）、決め打ちの待ちは狙いの状態を待つ形に（tests/tl-ops.js の持ち上げ）、コマは頁の中で rAF で控える
+  （一コマごとに頁へ往復しない。tests/shop-day.js）。
 - **一言（トースト）は出たところで聞き取る。** 3.6 秒で消えるので、紙が片づくのを待ってから `.toast-msg` を
   見ると、混んだ機械では消えたあと。前に MutationObserver を付ける（tests/diary-chat.js の `listen`）。
 - **localStorage に直に書いてから `reload()` するなら、立ち上げを待つこと。**

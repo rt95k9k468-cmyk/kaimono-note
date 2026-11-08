@@ -137,8 +137,16 @@ const ROOT = path.resolve(__dirname, "..");
        （画面ごと毎フレーム当てはめ直さない。inspection.md の 1）。移る途中で紙を組み直しても、続きから移る。 */
     const fade = await page.evaluate(async () => {
       const el = document.querySelector("#screen-archive");
+      const t0 = performance.now();
       await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 200)));
-      const on = (x) => x.getAnimations().filter((a) => a.effect && a.effect.getKeyframes().some((f) => "--season-k" in f));
+      const on =(x) => x.getAnimations().filter((a) => a.effect && a.effect.getKeyframes().some((f) => "--season-k" in f));
+      /* 動きが**走り出すまで**待つ（1.2s のうち、遅くとも 600ms まで）。並べて混んだ CI では 200ms の時点でまだ
+         始まっておらず（currentTime 0）落ちた（2026年11月8日）。 */
+      for (let i = 0; i < 40; i++) {
+        const x = on(el.querySelector(".tl-sheet.is-daily"))[0];
+        if (!x || x.currentTime > 0 || performance.now() - t0 > 600) break;
+        await new Promise((res) => requestAnimationFrame(res));
+      }
       const sheet = el.querySelector(".tl-sheet.is-daily");
       const a = on(sheet)[0];
       const mid = getComputedStyle(sheet).getPropertyValue("--season-k").trim();
