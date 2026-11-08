@@ -335,33 +335,6 @@
     };
   }
 
-  /* ---------------- 空きへ入れる ---------------- */
-
-  /**
-   * この長さのものが入る空きを、早い順に挙げます。
-   *
-   * Quick Capture が「いつやりますか」と聞かずに済ませるための材料です。
-   * 「10:00〜10:15 が空いています」と出してから聞けば、答えは一押しで済みます。
-   *
-   * @param {object} plan   buildDay の返り
-   * @param {number} minutes  入れたい長さ（分）
-   * @param {string} [after]  この時刻より後だけ（省略時は「いま」以降）
-   * @returns {{at, until, minutes}[]}  最大3つ
-   */
-  function slotsFor(plan, minutes, after) {
-    const len = Math.max(5, Number(minutes) || DEFAULT_MINUTES);
-    const floor = toMin(after) != null ? toMin(after) : toMin(U.nowTime());
-    return plan.free
-      .map((f) => {
-        const at = floor == null ? f.atMin : Math.max(f.atMin, floor);
-        return { at: toTime(at), until: toTime(at + len), minutes: len,
-                 atMin: at, room: f.untilMin - at };
-      })
-      .filter((f) => f.room >= len)
-      .slice(0, 3)
-      .map(({ at, until, minutes: m, atMin }) => ({ at, until, minutes: m, atMin }));
-  }
-
   /* ---------------- 組み直し（3.0 の B3。docs/todo-timeline.md の「組み直し」） ----------------
 
      今日の残り（いま〜一日の終わり）に、まだの用事が入るかを見積もります。**何も書きません**
@@ -493,7 +466,7 @@
   }
 
   KN.plan = {
-    buildDay, slotsFor, humanSpan, toMin, toTime, refit, fill, canFill, GUESSES,
+    buildDay, humanSpan, toMin, toTime, refit, fill, canFill, GUESSES,
     DEFAULT_MINUTES, NEW_MINUTES, minutesOf, DEFAULT_START, DEFAULT_END, MIN_GAP,
   };
 })();

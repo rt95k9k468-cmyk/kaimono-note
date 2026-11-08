@@ -200,28 +200,6 @@
     };
   }
 
-  /**
-   * 目標に届く日の見込み。断定しません——返すのは
-   * 「いまの傾きが続いたとき」の話で、そう書いてある名前にしてあります。
-   */
-  function projection() {
-    const s = weightSummary(90);
-    const base = s.ma7Now != null ? s.ma7Now : (s.latest ? s.latest.kg : null);
-    const target = s.goal.targetKg;
-    const rate = s.trendPerWeek;   // kg/週（減っていれば負）
-    if (base == null || target == null || rate == null) return null;
-    const gap = base - target;
-    if (Math.abs(gap) < 0.05) return { reached: true };
-    // 向きが合っていなければ、日付は出しません。「このままでは着かない」と
-    // だけ言うほうが、遠い未来の日付を出すより正直です。
-    if (gap > 0 && rate >= -0.01) return { stalled: true, rate };
-    if (gap < 0 && rate <= 0.01) return { stalled: true, rate };
-    const weeks = gap / -rate;
-    if (!Number.isFinite(weeks) || weeks <= 0 || weeks > 520) return { far: true, rate };
-    const days = Math.round(weeks * 7);
-    return { day: U.shiftDay(U.todayKey(), days), days, weeks: round(weeks, 1), rate };
-  }
-
   /** 目標日までに必要な週あたりのペース。 */
   function neededPace() {
     const g = store.get().diet.goal;
@@ -1602,7 +1580,7 @@
     URGE, urgeCat, urgeCats, urgeOutcome,
     burnedOf,
     daysBetween, weightPoints, movingAverage, trendLine, slopePerWeek,
-    weightSummary, projection, neededPace,
+    weightSummary, neededPace,
     dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit, countedIntake,
     analyze, coverage,
     EXPORT_COLS, exportRows, exportCsv, exportText,

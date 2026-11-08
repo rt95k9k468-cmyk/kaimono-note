@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, TINT, card, head, navRow, switchRow, dangerRow } = S;
+  const { go, card, head, navRow, switchRow, dangerRow } = S;
 
   /* ---------------- 買うもの ----------------
 

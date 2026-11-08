@@ -31,7 +31,7 @@ const minh = (r) => (r.body.match(/(?:^|[;\s])min-height\s*:\s*([^;]+)/) || [])[
 const TABLE = [
   ["二行", "--row-h-two", [".item-wrap:not(.is-tile-wrap) .item:not(.todo)", ".arc-row", ".arc-log-row", ".price-row"]],
   ["ふつう", "--row-h", [".row", ".set-row", "#screen-settings .row", "#screen-settings .manage-row", ".manage-row",
-    ".d-row", ".act-row", ".tw-row", ".ac-item", ".notes-trash-row", ".log-row"]],
+    ".d-row", ".act-row", ".tw-row", ".notes-trash-row", ".log-row"]],
   ["詰めた", "--row-h-compact", [".urge-row", ".note-pop-item", ".low-row", ".up-row", ".sa-row"]],
 ];
 for (const [name, tok, sels] of TABLE) {
@@ -41,7 +41,7 @@ for (const [name, tok, sels] of TABLE) {
     t.check(`${s} は${name}の段（${tok}）`, v === `var(${tok})`, v || "min-height が無い");
   }
 }
-t.check("当て表は二十", TABLE.reduce((n, x) => n + x[2].length, 0) === 20);
+t.check("当て表は十九", TABLE.reduce((n, x) => n + x[2].length, 0) === 19);
 
 /* 設定のスイッチ行だけ 56 だった——段の外の背丈を、別の名前で戻さない。 */
 t.check(".set-row.is-sw に背丈を持たせない", !rules.some((r) => /\.set-row\.is-sw$/.test(r.sel) && minh(r)));

@@ -49,7 +49,6 @@ const ROWS = [
   ["買うもの", /\.item\b.*:has\(> \.item-body:active\)/],
   ["用事", /^\.tl-row:not\(\.is-lifted\):not\(\.is-dragging \*\):active:not\(:has\(\.check:active/],
   ["ノート", /\.note-row\.is-card:has\(> \.note-open:active\)/],
-  ["アーカイブ", /\.arc-row:has\(> \.arc-row-body:active\)/],
   ["設定", /^\.set-row:active$/],
   ["暦の升", /^\.cal-day:active$/],
 ];
@@ -70,7 +69,7 @@ const QUIET = [
   ["はみ出しの一行", /\.tl-over:active/],
   ["食事の枠", /\.diet-slot-view.*:active/], ["体重", /\.diet-hero-main:active/], ["体の数の三つ", /\.diet-stat:active/],
   ["AI推計の帯", /\.diet-memo-open:active/], ["日記の行", /\.arc-log-row:active/], ["積み上げの行", /\.arc-feed-row:active/],
-  ["記録の種類の札", /\.arc-pick-b:active/], ["本／論文", /\.arc-kind-b:active/], ["ノートの道具", /\.note-tool.*:active/],
+  ["ノートの道具", /\.note-tool.*:active/],
   ["ノートブック", /\.note-nb-btn:active/], ["書いた日時", /\.note-when:active/], ["月の升", /\.mp-cell:active/],
   ["これからの二週間の一枚", /\.up-day:active/], ["日付・時刻の欄", /\.when-btn:active/], ["ドラムの行", /\.note-wheel-row:active/],
   ["切り替え", /\.seg-btn:active/], ["色の丸", /\.accent-dot:active/], ["畳んだ説明の見出し", /\.set-more > summary:active/],

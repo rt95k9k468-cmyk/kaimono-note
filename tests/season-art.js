@@ -101,7 +101,7 @@ const ROOT = path.resolve(__dirname, "..");
     && await page.evaluate((u) => fetch(u).then((x) => x.ok, () => false), imgUrl), imgUrl);
   c.check("紙の地に敷く（中身の後ろ。押す的は増えない）", (r.bg.match(/linear-gradient/g) || []).length === 2, r.bg.slice(0, 120));
   c.check("月のまとめ・Daily Log の段は白く抜けない（地を透かす）", await page.evaluate(() =>
-    [".card.arc-log", ".card.arc-counts", ".card.arc-list"].every((q) => { const e = document.querySelector(`#screen-archive ${q}`);
+    [".card.arc-log", ".card.arc-counts"].every((q) => { const e = document.querySelector(`#screen-archive ${q}`);
       return !e || getComputedStyle(e).backgroundColor === "rgba(0, 0, 0, 0)"; })));
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
     ["todo", "list", "diet"].every((s) => !document.querySelector(`#screen-${s}`).hasAttribute("data-season"))));

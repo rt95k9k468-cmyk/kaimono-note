@@ -132,33 +132,6 @@
   animation: m-add var(--m-state) var(--ease-out);
 }
 
-.ac-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  min-height: var(--row-h);
-  padding: var(--sp-3) var(--sp-4);
-  text-align: left;
-  border-bottom: 1px solid var(--c-border);
-}
-.ac-item:last-child { border-bottom: none; }
-.ac-item.is-active { background: var(--c-primary-soft); }
-/* :hover is gated behind `@media (hover: hover)` throughout — see the note in
-   components.css. On a touch screen the faked hover state never gets cleared. */
-@media (hover: hover) {
-  .ac-item:hover { background: var(--c-primary-soft); }
-}
-.ac-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.ac-name { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ac-sub {
-  font-size: var(--fs-sm);
-  color: var(--c-text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* 買うものの足す紙の候補（V27）。名前の下に横一列の札、横へ送る。打つ前はよく買う物。
    リストにあるものは薄く（押せば選べる）。 */
 .ac-chips {
@@ -3599,17 +3572,6 @@ a.btn { text-decoration: none; }
   overflow: hidden; word-break: break-word;
 }
 
-.arc-then-rows { display: flex; flex-direction: column; gap: 2px; margin-top: var(--sp-1); }
-.arc-then-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.arc-then-row-ico { display: block; line-height: 0; color: var(--arc-c); flex: none; }
-.arc-then-row-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
-.arc-then-row em {
-  font-style: normal; font-size: var(--fs-sm); color: var(--c-text-2);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
-}
-/* 三つ目からは畳みます。「ほか3件」と数えると、その日の量の話になります。 */
-.arc-then-more { font-size: var(--fs-xs); color: var(--c-text-3); padding-left: 21px; }
-
 /* 同じ日の年々（R9）。枠そのものは押せず、年の一行ずつが押せます。 */
 .arc-then.is-years:active { scale: none; }
 .arc-year {
@@ -3870,23 +3832,7 @@ a.btn { text-decoration: none; }
 .arc-log-row.is-chat .js-times:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 
 /* ---- ④積み上げ項目 ---- */
-.arc-stack { margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
-.arc-stack-head { display: flex; align-items: center; gap: var(--sp-2); }
-.arc-stack-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-bold); color: var(--c-text); flex: 1; min-width: 0; letter-spacing: -.01em; }
 
-/* いまの並び順を名乗るボタン。押すと次へ回ります（三つで一周）。
-   札の一列だった三つを、見出しの右へ畳んだもの——常に名前が出ているので、
-   押す前にいまどれなのかが読めます。囲いは付けません。見出しの隣で
-   枠を持つと、二つ目の見出しに見えます。 */
-.arc-sort {
-  display: inline-flex; align-items: center; gap: var(--sp-1);
-  flex: none; padding: 4px 2px;
-  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-2);
-}
-.arc-sort svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); color: var(--c-text-3); }
-.arc-sort:active { opacity: var(--press-fade); }
-
-.arc-list { overflow: hidden; }
 .arc-row {
   display: flex; gap: var(--sp-2); width: 100%; align-items: flex-start;
   min-height: var(--row-h-two); padding: var(--sp-2) var(--sp-4);
@@ -3895,96 +3841,15 @@ a.btn { text-decoration: none; }
 /* 種類の色は、左の細い帯だけが持ちます。行ぜんぶを染めると、五種類が
    並んだときに一覧が縞になって、肝心のタイトルが読みにくくなります。 */
 .arc-row { transition: background var(--m-state) var(--ease); }
-.arc-row:has(> .arc-row-body:active) { background: var(--press-sink); transition-delay: var(--m-press); }
 .arc-row::before {
   content: ""; position: absolute; left: 0; top: 0; bottom: 0;
   width: 3px; background: var(--arc-c);
 }
-.arc-row-body { display: flex; gap: var(--sp-3); flex: 1; min-width: 0; text-align: left; align-items: flex-start; }
-.arc-ico { flex: none; color: var(--arc-c); display: flex; padding-top: 3px; }
-.arc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-top: 1px; }
-.arc-title { font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.45; word-break: break-word; }
-.arc-sub { display: flex; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-.arc-sub span:first-child { color: var(--arc-c); font-weight: var(--fw-bold); }
-.arc-memo { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-ui); white-space: pre-wrap; }
-/* 積み上げのメモは、設定で「数行」を選んだら頭から三行で切ります。続きは押して開く紙で読めます。 */
-.arc-memo.is-clamped {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 /* 行の中の check / fav は、しごとの他の画面（やること・買うもの）と
    同じ部品をそのまま使います。ここでだけ揃えるのは並び位置だけです。 */
 .arc-row .check, .arc-row .fav { margin-top: 1px; flex: none; }
 
 /* ---- 書くシート ---- */
-
-.arc-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-/* 記録の紙の頭の「ノート『…』」（3.0 の A2）。押せば同じノート。 */
-.dest-chip.arc-note-src { align-self: flex-start; margin-top: 0; }
-/* 段6の橋：札・生まれた元（芽）・見つからないときの「つなぎ直す／外す」を一列に。 */
-.arc-bridge { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
-.arc-bridge .dest-chip { margin-top: 0; }
-.arc-bridge .arc-note-from { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.arc-pick-b {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 11px; border-radius: var(--r-full);
-  font-size: var(--fs-sm); font-weight: var(--fw-bold);
-  background: var(--c-surface-2); color: var(--c-text-2);
-  border: 1.5px solid transparent;
-  transition: scale var(--m-press) var(--ease);
-}
-.arc-pick-b svg { color: var(--c-text-3); }
-.arc-pick-b:active { scale: var(--press-wide); }
-/* 札は一列に収める（2026年10月6日・利用者「新規で達成が下へ行く」）。折り返さず、
-   余白を詰めて、余った幅は札どうしで分ける（375px の電話でも日記＋四つが入る）。 */
-.arc-pick { flex-wrap: nowrap; gap: var(--sp-1); }
-.arc-pick-b { flex: 1 1 auto; min-width: 0; justify-content: center; gap: 3px; padding: 7px 6px; white-space: nowrap; }
-.arc-pick-diary { flex: none; gap: 4px; padding: 9px 10px; margin-inline-end: var(--sp-1); }
-.arc-pick-b.is-on {
-  border-color: var(--arc-c); color: var(--arc-c);
-  background: color-mix(in srgb, var(--arc-c) 10%, var(--c-surface));
-}
-.arc-pick-b.is-on svg { color: var(--arc-c); }
-/* 日記の札（新しく書くときだけ、並びの先頭）。種類ではなく行き先なので、
-   同じ大きさにすると埋もれる——一回り大きく、主色の字で、あとに余白。 */
-.arc-pick-diary {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 9px 16px; border-radius: var(--r-full);
-  margin-inline-end: var(--sp-3);
-  font-size: var(--fs-md); font-weight: var(--fw-bold);
-  color: var(--c-primary);
-  background: color-mix(in srgb, var(--c-primary-fill) 12%, var(--c-surface));
-  border: 1.5px solid color-mix(in srgb, var(--c-primary) 45%, transparent);
-  transition: scale var(--m-press) var(--ease);
-}
-.arc-pick-diary svg { color: var(--c-primary); }
-.arc-pick-diary:active { scale: var(--press-wide); }
-
-/* 本／論文の切り替え。arc-pick-b と同じ見た目にし、種類の色ではなく
-   主色（primary）で選ばれたことを言います——読書という種類はもう
-   arc-pick で選んであるので、ここは「読書の中のどちら」の話です。 */
-.arc-kind { display: flex; gap: var(--sp-2); }
-.arc-kind-b {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 8px 14px; border-radius: var(--r-full);
-  font-size: var(--fs-sm); font-weight: var(--fw-bold);
-  background: var(--c-surface-2); color: var(--c-text-2);
-  border: 1.5px solid transparent;
-  transition: scale var(--m-press) var(--ease);
-}
-.arc-kind-b svg { color: var(--c-text-3); }
-.arc-kind-b:active { scale: var(--press-wide); }
-.arc-kind-b.is-on { border-color: var(--c-primary); color: var(--c-primary-ink); background: var(--c-primary-soft); }
-.arc-kind-b.is-on svg { color: var(--c-primary); }
-
-.arc-pages-hint { font-size: var(--fs-sm); color: var(--c-text-2); font-weight: var(--fw-bold); margin: 0; white-space: nowrap; }
-/* 開始・終了・ページ数を一行に。幅は数字が入るぶんだけ。 */
-.arc-pages { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--sp-3); align-items: end; }
-.arc-pages .field { min-width: 0; }
-.arc-pages-hint { padding-bottom: 14px; min-width: 3.5em; }
 
 .arc-times { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
 
@@ -5532,8 +5397,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    （あれは種類ではなく「これは過去から来たものだ」という別の合図で、
    ほかの行と混ざってはいけないので）。 */
 .card.arc-log,
-.card.arc-counts,
-.card.arc-list {
+.card.arc-counts {
   margin-left: 0;
   margin-right: 0;
   border-radius: 0;
@@ -5549,10 +5413,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: var(--c-sheet);
 }
 .card.arc-log { padding-left: var(--sp-4); padding-right: var(--sp-6); }
-
-.arc-stack { margin-left: 0; margin-right: 0; }
-.arc-stack-head { padding: 0 var(--sp-4); }
-.arc-stack > .chip-row { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 
 /* 「あの日」は端から端の帯をやめ、写真の上のガラスの札になった（2026年10月8日。上の .arc-then）。 */
 
@@ -5631,8 +5491,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    色が無いときと見た目は同じ）。まとめは上に置かれる前提で、白く抜けないこと。 */
 #screen-archive[data-season] .tl-sheet.is-daily > .tl-grip,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-log,
-#screen-archive[data-season] .tl-sheet.is-daily .card.arc-counts,
-#screen-archive[data-season] .tl-sheet.is-daily .card.arc-list { background: transparent; }
+#screen-archive[data-season] .tl-sheet.is-daily .card.arc-counts { background: transparent; }
 #screen-archive[data-season] .tl-sheet.is-daily > .tl-grip { box-shadow: none; }
 /* まとめの札も写真を透かす（2026年10月10日・利用者「まとめも透過させて」）。 */
 #screen-archive[data-season] .tl-sheet.is-daily .arc-counts-item { background: color-mix(in srgb, var(--c-surface-2) 55%, transparent); }
@@ -5812,13 +5671,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
 /* thinking は灰の archive と並ぶので、赤みの紫を濃いめに（10月16日、利用者「見分けづらい」）。 */
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="reading"] { --shelf: #007B43; }
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="teaching"] { --shelf: #ED6D3D; }
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="learning"] { --shelf: #00A3AF; }
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="living"] { --shelf: #F0908D; }
-:is(.nt-shelf, .nt-dot, .nb-ico)[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
-:is(.nt-dot, .nb-ico)[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
+:is(.nt-shelf, .nb-ico)[data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
+:is(.nt-shelf, .nb-ico)[data-shelf="reading"] { --shelf: #007B43; }
+:is(.nt-shelf, .nb-ico)[data-shelf="teaching"] { --shelf: #ED6D3D; }
+:is(.nt-shelf, .nb-ico)[data-shelf="learning"] { --shelf: #00A3AF; }
+:is(.nt-shelf, .nb-ico)[data-shelf="living"] { --shelf: #F0908D; }
+:is(.nt-shelf, .nb-ico)[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
+.nb-ico[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shelf-x: 1.8; --shelf-to: #fff; } }
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
 /* ホームの木は詰める（10月16日、利用者「Notion くらい狭く」。閉じなくても全体が見える）。字はほかの面より一回り大きく
@@ -5869,8 +5728,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-ico { display: inline-flex; flex: none; color: var(--c-text-3); }
 .nt-add { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
 .nt-add:active { background-color: var(--press-sink); }
-.nt-dot { margin: 0 var(--sp-2) 0 var(--sp-3); }
-.nt-dot.is-blank { visibility: hidden; }
 /* ★・最近直した：色の丸ではなく、ノートブックの絵を小さく（10月16日、利用者）。 */
 .nt-row.is-flat .nb-ico { width: var(--ico); justify-content: center; margin: 0 var(--sp-1) 0 var(--sp-1); }
 .nt-row.is-flat .nb-ico svg { width: calc(var(--ico-sm) - 2px); height: calc(var(--ico-sm) - 2px); }
@@ -6666,9 +6523,6 @@ button.note-when:active { opacity: var(--press-fade); }
 .arc-foot { display: flex; align-items: center; gap: var(--sp-1); width: 100%; }
 .arc-foot > .note-tool { flex: none; width: 44px; }
 .arc-foot > .btn-block { flex: 1 1 auto; width: auto; margin-inline-start: var(--sp-1); }
-.arc-date-field { flex-direction: row; align-items: center; gap: var(--sp-3); }
-.arc-date-field > .input { flex: 1 1 auto; min-width: 0; }
-.arc-date-field > .field-label { flex: none; white-space: nowrap; }
 /* キーボードを出してメモ（日記）を打っているあいだは、メモ欄だけにする。札・日付・起床就寝・
    「メモ」の字を畳み、余った高さはぜんぶメモ欄へ（2026年10月6日・利用者「メモ欄が狭すぎる。
    中心に大きく」）。キーボードを下げれば元に戻る。電話の幅だけ（`.kb-open` は欄に触れただけで付く）。 */
@@ -7290,14 +7144,6 @@ button.note-when:active { opacity: var(--press-fade); }
 @media (hover: hover) {
   .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
 }
-/* 道の上の長さ（3.0 の A1）。積み上げの行の尻に小さく、枠の頭にその日の合計。 */
-.arc-feed-row.has-len { grid-template-columns: 42px 1fr auto; }
-.arc-feed-len, .arc-feed-sum {
-  font-size: var(--fs-xs); color: var(--c-text-3); font-weight: var(--fw-regular, 400);
-  font-variant-numeric: tabular-nums;
-}
-.arc-feed-sum { margin-left: .6em; }
-
 /* ---------------- ◯月のまとめ ----------------
 
    Daily Log のすぐ下に置きます。数だけが単独で立つと「その月の成績」に
@@ -8302,7 +8148,6 @@ button.note-when:active { opacity: var(--press-fade); }
 .gap-2 { gap: var(--sp-2); }
 .gap-3 { gap: var(--sp-3); }
 .gap-4 { gap: var(--sp-4); }
-.mt-1 { margin-top: var(--sp-1); }
 .mt-2 { margin-top: var(--sp-2); }
 .mt-3 { margin-top: var(--sp-3); }
 .sheet-text { color: var(--c-text-2); line-height: var(--lh-ui); }

@@ -3395,13 +3395,6 @@
       s.todos = s.todos.filter((x) => !made.includes(x.id)).map((x) => (x.id === id ? snap : x));
     });
   }
-  /** 置き直しの紙の「今日は15分だけ」「時間を変える」（3.0 の B2）。控えは書かない（日を後ろへ動かさないので）。 */
-  function replan(id, patch) {
-    const undo = keepFields(id);
-    updateTodo(id, patch, { slip: false });
-    update((s) => { const t = s.todos.find((x) => x.id === id); if (t) delete t.carried; });
-    return undo;
-  }
   /** 見直しの紙・置き直しの紙の「今日」「明日」「別の日」（元に戻すつき）。time は今日の空きの時刻（無ければ時刻なし）。 */
   function planOn(id, day, time) {
     const undo = keepFields(id);
@@ -3458,9 +3451,6 @@
     } else if (where === "later") updateTodo(id, { due: null, weekMark: null }, { slip: false });
     return undo;
   }
-
-  /** Done or put away — the drawer at the bottom. */
-  const closedTodos = () => get().todos.filter((t) => t.done || t.archived);
 
   /** The day a closed todo was closed, whichever way it closed. */
   const todoClosedAt = (t) => t.doneAt || t.archivedAt || null;
@@ -3631,13 +3621,6 @@
       if (fallsOn(t, day)) return day;
     }
     return null;
-  }
-
-  /** Today's timed todos whose time has not come round yet — waiting, not due. */
-  function todosWaiting() {
-    const now = KN.util.nowTime();
-    return openTodos().filter((t) =>
-      t.due && t.time && KN.util.daysUntil(t.due) === 0 && t.time > now);
   }
 
   /* ---- 「もう言った」 ----
@@ -4295,10 +4278,6 @@
     return rec;
   }
 
-  function removeUserFood(id) {
-    update((s) => { s.diet.foods = s.diet.foods.filter((f) => f.id !== id); });
-  }
-
   /** その人の食品を先に、無ければ成分表から。直した値のほうが本人には正しい。 */
   function findFood(name) {
     const key = KN.util.foldKana(String(name || "").trim());
@@ -4442,11 +4421,6 @@
     update((s) => { s.diet.sync = { ...s.diet.sync, lockedAt: new Date().toISOString() }; });
   }
 
-  /** ダイエットの記録だけを消す。買い物とやることには触れません。 */
-  function clearDiet() {
-    update((s) => { s.diet = emptyDiet(); });
-  }
-
   /* ---------------- daily ---------------- */
 
   /* 日付は「日のかぎ」（YYYY-MM-DD）で持ちます。today() は時刻まで持つので、
@@ -4509,13 +4483,6 @@
     return row;
   }
 
-  /** 記録を一件足し、置いた直後の「元に戻す」を添えて返す（道具箱・3.0 の A3。済ませた直後の actDone と
-      同じ考え：まだ誰も書き足していないので、足したものだけを外す）。一件を消すのは delMenu から。 */
-  function addEntryUndoable(e) {
-    const row = addEntry(e);
-    return { entry: row, undo: () => update((s) => { s.archive.entries = s.archive.entries.filter((x) => x.id !== row.id); }) };
-  }
-
   /* 開始・終了ページから、読んだページ数を出します。120→150 なら 31ページ。
      終了が開始より小さい・どちらか欠けている、のときは何も計算しません
      ——当てずっぽうの数を出すより、空のほうがまだ正直です。 */
@@ -4529,38 +4496,6 @@
     } else {
       row.amount = null;
     }
-  }
-
-  function updateEntry(id, patch) {
-    update((s) => {
-      const row = s.archive.entries.find((x) => x.id === id);
-      if (!row) return;
-      Object.assign(row, patch);
-      if (patch.date !== undefined) row.date = dayKeyOf(patch.date);
-      if ("minutes" in patch) row.minutes = cleanMinutes(patch.minutes);
-      if ("at" in patch && !KN.util.isTime(row.at)) row.at = null;
-      if ("todo" in patch && !(typeof row.todo === "string" && row.todo)) row.todo = null;
-      if (patch.pageFrom !== undefined) {
-        row.pageFrom = (patch.pageFrom === "" || patch.pageFrom == null) ? null : Number(patch.pageFrom);
-        if (!isFinite(row.pageFrom)) row.pageFrom = null;
-      }
-      if (patch.pageTo !== undefined) {
-        row.pageTo = (patch.pageTo === "" || patch.pageTo == null) ? null : Number(patch.pageTo);
-        if (!isFinite(row.pageTo)) row.pageTo = null;
-      }
-      if (row.type === "reading") {
-        applyReadingPages(row);
-      } else if (patch.amount === "" || patch.amount == null) {
-        row.amount = null;
-      } else if (!isFinite(Number(row.amount))) {
-        row.amount = null;
-      } else {
-        row.amount = Number(row.amount);
-      }
-      // 直した時刻。並び順はこれで決まります。お気に入りの付け外しはここを
-      // 通らないので（toggleFavorite）、中身を直したときだけ動きます。
-      row.updatedAt = stamp();
-    });
   }
 
   function removeEntry(id) {
@@ -4657,96 +4592,6 @@
     const hit = list.find((g) => g.up) || null;
     markGone([]);
     return hit;
-  }
-
-  /** 種を達成に変えます。書いた時刻は残し、種だった記憶だけ畳みます。 */
-  function promoteSeed(id) {
-    update((s) => {
-      const row = s.archive.entries.find((x) => x.id === id);
-      if (!row || row.type !== "seed") return;
-      row.type = "done";
-      row.updatedAt = stamp();
-    });
-  }
-
-  /* お気に入りの付け外し。**直した時刻は動かしません**——星を付けることは
-     中身の書き直しではないので、「直: 」の印がここでは出てほしくないのと、
-     並び順（最後に触った順）が星ひとつで乱れてほしくないためです。 */
-  function toggleFavorite(id) {
-    update((s) => {
-      const row = s.archive.entries.find((x) => x.id === id);
-      if (row) row.favorite = !row.favorite;
-    });
-  }
-
-  /* 記録をノートにつなぐ・外す（段6の橋。docs/bridge-design.md）。★と同じく直した時刻も並びも
-     動かさない。入れるのは空でない文字か null だけ。fromNote には触れない。 */
-  function setEntryNote(id, noteId) {
-    const v = typeof noteId === "string" && noteId ? noteId : null;
-    update((s) => {
-      const row = s.archive.entries.find((x) => x.id === id);
-      if (row) row.note = v;
-    });
-  }
-  /** そのノートにつながる・そのノートで生まれた記録（最後に触った順）。そのつど引く（写さず引く）。 */
-  const entriesOfNote = (id) => (id ? archive().entries
-    .filter((e) => e.note === id || e.fromNote === id).slice().sort(byRecent) : []);
-
-  /* 並びは **最後に触った順**。書いた順ではありません——去年の本に一行
-     足したなら、いまのあなたはその本のことを考えているので、上に来ます。 */
-  const byRecent = (a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
-
-  const entriesOfMonth = (ym) =>
-    archive().entries.filter((e) => String(e.date).slice(0, 7) === ym).slice().sort(byRecent);
-  const entriesOfDay = (day) =>
-    archive().entries.filter((e) => e.date === day).slice().sort(byRecent);
-  const openSeeds = () =>
-    archive().entries.filter((e) => e.type === "seed").slice().sort(byRecent);
-
-  /** 種類ごとの数。**総数の比較には使いません**——内訳を並べるだけです。 */
-  function monthCounts(ym) {
-    const out = {};
-    entriesOfMonth(ym).forEach((e) => { out[e.type] = (out[e.type] || 0) + 1; });
-    return out;
-  }
-
-  /**
-   * 読書・論文の、前に打った名前と著者。次に書くときの下敷きにします。
-   *
-   * 別に保存はしません——entries そのものが記録なので、そこから拾えば
-   * 十分です。名前が同じもの（かなの揺れは吸います）は一つにまとめ、
-   * いちばん新しく使ったものを残します。
-   */
-  /* kind（"book"／"paper"）を渡すと、その種類だけ。書籍と論文は別々に覚えます（2026年10月6日）。 */
-  function readingCandidates(kind) {
-    const seen = new Map();
-    archive().entries
-      .filter((e) => e.type === "reading" && e.title && (!kind || (e.kind || "book") === kind))
-      .sort(byRecent)
-      .forEach((e) => {
-        const key = foldKana(e.title.trim());
-        if (!seen.has(key)) {
-          seen.set(key, { title: e.title, author: e.author || "", kind: e.kind || "book", at: e.updatedAt });
-        }
-      });
-    return [...seen.values()];
-  }
-
-  /** いちばん最近書いた読書記録の名前・著者。新規シートの下敷きにします。 */
-  function lastReading(kind) {
-    const list = readingCandidates(kind);
-    return list.length ? list[0] : null;
-  }
-
-  /* 文字でさがす。タイトル・メモ・タグを見ます。かなの揺れは foldKana が
-     吸うので、「ぎんこう」でも「銀行」でも同じところに着きます。 */
-  function searchEntries(q) {
-    const needle = foldKana(String(q || "").trim().toLowerCase());
-    if (!needle) return [];
-    return archive().entries.filter((e) => {
-      const hay = foldKana([e.title, e.memo, (e.tags || []).join(" ")].join(" ").toLowerCase());
-      return hay.indexOf(needle) >= 0;
-    }).slice().sort(byRecent);
   }
 
   /* ---- その日の地の文 ---- */
@@ -5449,32 +5294,30 @@
     productMark, autoMark, productColor,
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
-    productOrder, reorderProducts, sortProductsInCategory, iconKeyOf,
+    reorderProducts, sortProductsInCategory,
     addTodo, buildTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
     calPrefs, setCalPref, dietRange, setDietRange, fallsOn,
-    archiveTodo, openTodos, closedTodos, todoClosedAt, todoPart,
-    todosWaiting, todosToAnnounce, markAnnounced,
-    HEALTH_TYPES, DAILY_TYPES, MEAL_SLOTS,
-    addWeight, updateWeight, removeWeight, sortedWeights, weightOfDay, latestWeight,
+    archiveTodo, openTodos, todoClosedAt, todoPart,
+    todosToAnnounce, markAnnounced,
+    HEALTH_TYPES, MEAL_SLOTS,
+    addWeight, updateWeight, removeWeight, weightOfDay, latestWeight,
     lastWeightCondition,
     addMeal, updateMeal, removeMeal, mealsOfDay, mealWords, dayMemo, setDayMemo, searchDietDays,
     slotMemo, setSlotMemo,
     getIconOverride, setIconOverride, addIconReport, removeIconReport,
     addDrink, updateDrink, removeDrink, drinksOfDay, drinkTotals,
     addUrge, updateUrge, removeUrge, urgesOfDay,
-    addUserFood, removeUserFood, findFood,
+    addUserFood, findFood,
     putHealth, setHealth, clearHealth, removeHealth, healthOfDay, healthValue, healthSeenAt,
-    setGoal, markSynced, markSyncLocked, clearDiet,
-    ARCHIVE_TYPES, archiveType, ACCENTS,
-    addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite, setEntryNote,
+    setGoal, markSynced, markSyncLocked,
+    archiveType, ACCENTS,
+    addEntry, removeEntry,
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, replan, applyRefit, applyFill, importUnfold, slipFacts,
-    readingCandidates, lastReading,
-    entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
+    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, applyRefit, applyFill, importUnfold, slipFacts,
     dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
     setAsks,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
