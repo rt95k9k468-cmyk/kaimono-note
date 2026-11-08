@@ -122,16 +122,28 @@ const SCENES = [
     },
     body: async (page, step) => {
       const SC = ".sheet.is-note .sheet-body";
-      /* n 行目の頭にカーソルを置き、その行を帯の上端から u px 下に置く。 */
-      const caretTo = (n, u) => page.$eval(".sheet.is-note", (s, [k, d]) => {
+      /* n 行目の頭にカーソルを置き、その行を帯の上端から u px 下に置く。
+         **収まるまで置き直す**：キーボードの収まり・欄の伸びが後から来ると、一度だけ送った位置がずれる。
+         毎朝の WebKit の列で、錨ありの側だけ始めの位置が 989px（キーボードの下）になり、アプリが正しく
+         カーソルへ送ったのを跳ねと数えて落ちた（2026年11月7日）。二度続けて ±1px・紙の高さも同じなら置けた。 */
+      const caretTo = (n, u) => page.$eval(".sheet.is-note", async (s, [k, d]) => {
         const ta = s.querySelector(".js-text");
         const lines = ta.value.split("\n");
         const pos = lines.slice(0, k - 1).join("\n").length + (k > 1 ? 1 : 0);
         ta.setSelectionRange(pos, pos);
         const sc = s.querySelector(".sheet-body");
-        const lh = parseFloat(getComputedStyle(ta).lineHeight);
-        const bar = s.querySelector(".note-tools").getBoundingClientRect();
-        sc.scrollTop += ta.getBoundingClientRect().top + (k - 1) * lh - (bar.top + d);
+        const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        let ok = 0, h = -1, off = 0;
+        for (let i = 0; i < 40 && ok < 2; i++) {
+          const lh = parseFloat(getComputedStyle(ta).lineHeight);
+          const bar = s.querySelector(".note-tools").getBoundingClientRect();
+          off = ta.getBoundingClientRect().top + (k - 1) * lh - (bar.top + d);
+          ok = Math.abs(off) <= 1 && sc.scrollHeight === h ? ok + 1 : 0;
+          h = sc.scrollHeight;
+          if (Math.abs(off) > 1) sc.scrollTop += off;
+          await frame();
+        }
+        return off;
       }, [n, u]);
       await caretTo(40, -160);
       await page.waitForTimeout(200);
