@@ -4224,7 +4224,7 @@ button.tl-over:active { opacity: var(--press-fade); }
 /* 詰めるの口（時間割の頭。週の「選ぶ」と同じ字）と紙（docs/todo-timeline.md の「詰める」）。
    右端に寄せない——右下の＋が、頭の一行の右端に重なる高さがある（撮って見つけた）。 */
 .tl-fill {
-  margin: -4px 0; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-pill, 999px);
+  margin: -4px 0; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-full);
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
 }
 .tl-fill:first-child { margin-left: calc(-1 * var(--sp-3)); }   /* 一つだけのときは字を左の線に揃える */
@@ -4234,14 +4234,14 @@ button.tl-over:active { opacity: var(--press-fade); }
 .fill-opt .chip-row { flex-wrap: wrap; }
 .fill-list, .fill-fixed {
   list-style: none; margin: var(--sp-3) 0 0; padding: 0;
-  background: var(--c-sheet); border-radius: 12px;
+  background: var(--c-sheet); border-radius: var(--r-md);
 }
 .fill-row {
-  display: flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-2);
+  display: flex; align-items: center; gap: var(--sp-2); min-height: var(--row-h-compact); padding: 0 var(--sp-2);
   font-size: var(--fs-md); -webkit-user-select: none; user-select: none;
 }
 .fill-row + .fill-row { border-top: 1px solid var(--c-border); }
-.fill-row.reorder-lift { background: var(--c-sheet); border-radius: 10px; }
+.fill-row.reorder-lift { background: var(--c-sheet); border-radius: var(--r-md); }
 .fill-at { flex: none; width: 3.2em; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; color: var(--c-text); }
 .fill-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .fill-m { flex: none; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
