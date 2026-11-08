@@ -3,7 +3,7 @@
    - 押したその場で主色・地・見出しの書体が変わる・読み直しても残る・知らない値は「いま」へ（reconcile）
    - 和紙と墨・季節の手帳は自分の主色を持つので、そのあいだ基調色を出さない
    - 季節は今日の節気を data-sekki に。24の節気どれでも、字の主色が地の上で 4.5 以上
-   - 色は明るい面だけ（暗い面の主色は「いま」と同じ）。カテゴリの色は見た目だけ読み替える
+   - 暗い面は墨の地と、明るくした同じ色相の主色（24の節気も、地の上で 5.5 以上）。カテゴリの色は見た目だけ読み替える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/attire.js */
 const { open, checker } = require("./lib");
 
@@ -93,31 +93,41 @@ const { open, checker } = require("./lib");
   t.check("見出しが明朝になる", headFont === "Hiragino Mincho ProN", headFont);
   const bodyFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily.split(",")[0].trim());
   t.check("本文は今のまま", bodyFont === "-apple-system", bodyFont);
-  const cat = await page.evaluate(() => {
+  const catColor = () => page.evaluate(() => {
     const el = document.createElement("i");
-    el.setAttribute("style", "--cat:#5ea55a");
+    el.setAttribute("style", "--cat:#5ea55a; background: var(--cat)");
     document.body.append(el);
-    const c = getComputedStyle(el).getPropertyValue("--cat").trim();
+    const c = getComputedStyle(el).backgroundColor;
     el.remove();
-    return c;
+    /* rgb(…) でも color(srgb 0〜1 …) でも 0〜255 の三つに。 */
+    const n = (c.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    return /^color\(/.test(c) ? n.map((x) => Math.round(x * 255)) : n;
   });
-  t.check("カテゴリの色を見た目だけ読み替える", cat === "#6b8f55", cat);
+  const near = (a, b) => a.length === 3 && a.every((x, i) => Math.abs(x - b[i]) <= 1);
+  const cat = await catColor();
+  t.check("カテゴリの色を見た目だけ読み替える", near(cat, [107, 143, 85]), String(cat));
 
   await reload();
   t.check("読み直しても朱のまま", (await attr()) === "washi-shu" && (await v("--c-primary")) === "#a93a24");
 
-  /* 暗い面の色は「いま」のまま。 */
-  const darkNow = await page.evaluate(() => {
+  /* 暗い面は墨（css/attire.css の「暗い面」）。 */
+  const night = await page.evaluate(() => {
     const r = document.documentElement;
     r.setAttribute("data-theme", "dark");
-    const withAttire = getComputedStyle(r).getPropertyValue("--c-primary").trim();
-    r.removeAttribute("data-attire");
-    const without = getComputedStyle(r).getPropertyValue("--c-primary").trim();
-    r.setAttribute("data-attire", "washi-shu");
+    const cs = getComputedStyle(r);
+    const out = { bg: cs.getPropertyValue("--c-bg").trim(), p: cs.getPropertyValue("--c-primary").trim(),
+      fill: cs.getPropertyValue("--c-primary-fill").trim(), sh: cs.getPropertyValue("--shadow-1").trim() };
     r.removeAttribute("data-theme");
-    return { withAttire, without };
+    return out;
   });
-  t.check("暗い面の主色は「いま」と同じ", darkNow.withAttire === darkNow.without, JSON.stringify(darkNow));
+  t.check("暗い面の地は墨", night.bg === "#161412", night.bg);
+  t.check("暗い面の朱は明るくした朱", night.p === "#e07b65", night.p);
+  t.check("塗りの朱は明暗で変えない", night.fill === "#d9694a", night.fill);
+  t.check("暗い面でも器は細い線", /^0 0 0 \.5px/.test(night.sh), night.sh);
+  await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
+  const catDark = await catColor();
+  await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
+  t.check("暗い面のカテゴリの色は生成りを混ぜて浮かせる", catDark[1] > cat[1] + 10 && !near(catDark, [94, 165, 90]), String(catDark));
 
   /* 季節の手帳。 */
   await toSettings();
@@ -133,18 +143,20 @@ const { open, checker } = require("./lib");
         .map((x) => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
       return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     };
-    for (let i = 0; i < 24; i++) {
+    for (const [theme, min] of [[null, 4.5], ["dark", 5.5]]) for (let i = 0; i < 24; i++) {
+      if (theme) r.setAttribute("data-theme", theme); else r.removeAttribute("data-theme");
       r.setAttribute("data-sekki", String(i));
       const cs = getComputedStyle(r);
       const p = cs.getPropertyValue("--c-primary").trim(), b = cs.getPropertyValue("--c-bg").trim();
-      if (!/^#[0-9a-f]{6}$/.test(p) || !/^#[0-9a-f]{6}$/.test(b)) { out.push(`${i}:${p}/${b}`); continue; }
+      if (!/^#[0-9a-f]{6}$/.test(p) || !/^#[0-9a-f]{6}$/.test(b)) { out.push(`${theme || "light"}${i}:${p}/${b}`); continue; }
       const k = (Math.max(lum(p), lum(b)) + 0.05) / (Math.min(lum(p), lum(b)) + 0.05);
-      if (k < 4.5) out.push(`${i}:${k.toFixed(2)}`);
+      if (k < min) out.push(`${theme || "light"}${i}:${k.toFixed(2)}`);
     }
+    r.removeAttribute("data-theme");
     r.setAttribute("data-sekki", was);
     return out;
   });
-  t.check("24の節気どれでも、字の主色が地の上で 4.5 以上", !low.length, low.join(" "));
+  t.check("24の節気どれでも、字の主色が地の上で 4.5 以上（暗い面は 5.5 以上）", !low.length, low.join(" "));
 
   /* 今の磨き：色は今の主色のまま・基調色は出る。 */
   await btn("polish").click();

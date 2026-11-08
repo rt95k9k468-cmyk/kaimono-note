@@ -92,8 +92,8 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 
 393×852・2倍で、試しの記録・明暗・時刻・特大・紙を開く・差し替えの style を組み合わせて撮り、差し替えを横に並べて
 番号を書いた `compare.png` を作る。使い方は頭のコメント（`--screens`・`--theme`・`--size`・`--clock`・`--sheet`・
-`--scroll`・`--css 'B=…'`）。試しの記録は無難な字だけ。
-差し替えなしの列は「今」。装いの見本（13節の改0）は `tools/attire/*.css` を `--css 名前=ファイル` で。
+`--scroll`・`--attire`・`--css 'B=…'`）。試しの記録は無難な字だけ。
+差し替えなしの列は「今」。装い（css/attire.css）は `--attire washi-shu,season` で列に足す（改0の見本 tools/attire は改3で外した）。
 この機械には日本語の明朝が無く、明朝の見出しがゴシックに落ちる——見るときは `apt-get install -y fonts-ipafont-mincho`。
 
 ## vendor/
