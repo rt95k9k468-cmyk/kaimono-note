@@ -108,7 +108,7 @@ const { open, checker } = require("./lib");
   await back();
   await into("表示・操作");
   t.check("明るさは三枚の絵（自動・ライト・ダーク。いまのものに印）",
-    (await page.locator(`${top} .theme-pick`).count()) === 3
+    (await page.locator(`${top} .theme-pick[data-theme]`).count()) === 3
       && (await page.locator(`${top} .theme-pick[data-theme="auto"]`).getAttribute("aria-checked")) === "true");
   await page.locator(`${top} .theme-pick[data-theme="dark"]`).click();
   await page.waitForTimeout(200);
