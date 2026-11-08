@@ -227,24 +227,27 @@ const touch = (cdp) => async (x, y, dx) => {
   await page.click('.tab[data-tab="list"]');
   await page.waitForTimeout(1200);
   c.check("帯の shopping で価格へ", await page.evaluate(() => KN.app.faceAt() === 1));
-  const t0 = Date.now();
-  await page.click('.tab[data-tab="list"]');
-  const frames = [];
-  while (Date.now() - t0 < 900) {
-    frames.push(await page.evaluate(() => {
+  /* 毎コマ**頁の中で**控える（rAF）。前は一コマごとに頁へ往復して控えていたので、並べて混んだ CI では
+     往復が遅れて最後の 12px のコマを一つも拾えず落ちた（2026年11月8日、全部を6本ずつ並べた回）。 */
+  await page.evaluate(() => {
+    const out = window.__frames = [];
+    const t0 = performance.now();
+    const tick = () => {
       const s = document.querySelector("#screen-list .tl-sheet");
       const f = document.querySelector("#screen-prices .js-filter");
-      const scr = document.getElementById("screens");
-      const p = parseFloat(scr.style.getPropertyValue("--face-p"));
       const sh = getComputedStyle(s).boxShadow;
       const a = sh === "none" ? 0 : parseFloat((sh.match(/rgba\([^)]*,\s*([\d.]+)\)/) || [0, 1])[1]);
       const back = document.getElementById("screen-prices");
-      return { t: performance.now(), top: s.getBoundingClientRect().top, a,
+      out.push({ t: performance.now(), top: s.getBoundingClientRect().top, a,
         op: f && back.classList.contains("is-face-back") && !back.hidden ? parseFloat(getComputedStyle(f).opacity) : 0,
-        settling: s.closest(".screen").classList.contains("is-face-settle") };
-    }));
-    await page.waitForTimeout(16);
-  }
+        settling: s.closest(".screen").classList.contains("is-face-settle") });
+      if (performance.now() - t0 < 1200) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.click('.tab[data-tab="list"]');
+  await page.waitForTimeout(1300);
+  const frames = await page.evaluate(() => window.__frames);
   const moving = frames.filter((f) => f.settling);
   const rest = frames[frames.length - 1].top;
   const near = moving.filter((f) => f.top - rest < 12);
