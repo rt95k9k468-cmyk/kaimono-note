@@ -33,14 +33,15 @@
    `icons-todo.js` / `icons-food.js` と同じ器です——並べたときに大きさが揃うように。
    **倍率と移動量はスクリプトが実測して出したものです。手でいじらないこと。**
 
-   借りたセット（MIT / Apache 2.0 / CC0）
+   借りたセット（MIT / Apache 2.0 / CC0 / Remix Icon License）
    -----------------------------------
    ・Boxicons Solid（MIT）
    ・Material Symbols (rounded fill)（Apache 2.0）
    ・MingCute Fill（Apache 2.0）
    ・Phosphor Fill（MIT）
    ・Pinhead Map Icons（CC0）
-   ・Remix Icon Fill（Apache 2.0）
+   ・Remix Icon Fill（Remix Icon License v1.0。2026年1月に Apache 2.0 から変わった。
+     アプリの部品としてだけ使う——単体で配らない・印やロゴにしない。docs/materials.md 3-1）
    ・Tabler Filled（MIT）
    ・IconOven（MIT・© 2026 Appic Marketing LLC）— 線の絵を面に直して3枚
 
