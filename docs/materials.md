@@ -29,10 +29,10 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 - 数字：`--font-num`＝`ui-rounded`（iPhone・Mac の Safari で SF Pro Rounded）。明朝では効かせない。
 
 **絵**
-- UI：Phosphor Regular v2.1.1（MIT）。体重計だけ手描き。
+- UI：Phosphor Regular v2.1.1（MIT）。体重計だけ IconOven（線・MIT）。
 - 品物（708キー）：単色シルエット。借り先は Phosphor Fill・Material Symbols（rounded fill）・MingCute Fill・Tabler Filled・
   Remix Icon Fill・Boxicons Solid・Bootstrap Icons Fill・Fluent（filled）・Pinhead・IconOven（線を面に直した3枚：まな板・ティッシュ・らっぷ）。描き起こしは無い。
-- こと（108枚）：Phosphor Fill とよそのセット（手描きは無い）。空の画面：手描き 4枚（`empty-art.js`）。
+- こと（108枚）：Phosphor Fill とよそのセット（手描きは無い）。空の画面 4枚（`empty-art.js`）：IconOven 3枚・andrsrxn 1枚（線・MIT）。
 - ノートの地：歌川広重『名所江戸百景』72枚（NDL イメージバンク・PDM）。
 - daily の紙：Wikimedia Commons の写真72枚。帯の空：同じく20枚（季節×時間帯。CC BY／BY-SA ほか）。
 - 水彩の挿絵：`img/think` 4枚・`img/set` 10枚（利用者の素材）。
@@ -248,7 +248,7 @@ Solar（8706）・Game Icons（4133）・Streamline（3000）・Font Awesome Sol
 
 - **利用者の水彩**（使用中）がいちばん合う。新しい挿絵も、まず利用者の素材から。
 - Open Peeps（手描きの人。CC0）・Open Doodles（CC0 と紹介されているが、配布元の規約のページは確かめられなかった）。
-- Oreo Doodle Icons（`doodle-icons`。MIT・手描き風の線 204 枚）— 空の画面の手描きと手触りが近い。
+- Oreo Doodle Icons（`doodle-icons`。MIT・手描き風の線 204 枚）。
 - unDraw（独自規約。一枚ずつ使うのは可、束ねて配る・取り込む道具を作るのは不可）→ 入れるなら数枚まで。
 - Humaaans（規約の情報が食い違う）→ 配布元で確かめるまで置かない。
 - いらすとや：点数の上限（商用は一つの制作物に20点までと紹介されてきた）と、素材そのものの再配布の禁止がある。画像を挿し込む

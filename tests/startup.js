@@ -51,7 +51,7 @@ const { open, checker } = require("./lib");
   c.check("前からの語で引ける（牛乳）", !!r.milk, r.milk);
   c.check("品物の絵が出る", r.mark);
   c.check("体重計（Phosphor に無い一枚）は icons-phosphor.js から出る", r.scale);
-  c.check("空の絵（icon-system.js を使う）は使っている4枚だけ", r.emptyArt === "basket,donePad,notebook,priceTag", r.emptyArt);
+  c.check("空の絵は使っている4枚だけ", r.emptyArt === "basket,donePad,notebook,priceTag", r.emptyArt);
   await browser.close();
   c.done();
 })();

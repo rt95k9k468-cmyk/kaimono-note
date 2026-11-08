@@ -41,10 +41,10 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
   Regular だと消えかけるので Bold）。
 - 塗りは svg ではなく **path** に書く。画面に残っている
   `svg { fill:none }` / `svg { stroke:… }` に消されたり太らされたりしないため。
-- 体重計（`scale`）だけ Phosphor に適切な代替が無く、手描きのまま
-  （`scales` は天びんで、買うものの「比べる」と紛れる）。その一枚は
-  `icons-phosphor.js` のいちばん下に、線の絵（mode: stroke・24升）として置いてある。
-- 手で描いた絵で**いまも画面に出ている**のは、体重計・空の画面の4枚（`empty-art.js`：かご・済んだノート・値札・帳面）だけ。
+- 体重計（`scale`）だけ Phosphor に適切な代替が無い（`scales` は天びんで、買うものの「比べる」と紛れる）。
+  線の IconOven `weight-scale`（線1.5＝Phosphor Regular と同じ）を `icons-phosphor.js` のいちばん下に stroke で置く。
+- 空の画面の4枚（`empty-art.js`）も線のセット（IconOven・andrsrxn）。色は `.empty-art` の `--c-primary`。
+  **画面に出る手描きの絵はもう無い**（2026年11月8日）。`icon-system.js` は使う絵が無くなった。
 - 経緯と A/B/C/D の対応表は `ICON-PHOSPHOR.md`。
 - まだ探していないセットとライセンスの目録は `docs/materials.md`（Remix Icon は 2026年1月から独自の規約）。
 

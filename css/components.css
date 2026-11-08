@@ -649,10 +649,10 @@ button, [role="tab"] {
   color: var(--c-text-2);
 }
 
-/* 絵文字を置いていた枠です。いまは描いた絵が入ります（empty-art.js）。
-   下地は淡い緑のまま——絵のほうが色を持っているので、下地まで主張すると
-   二重になります。 */
+/* 絵文字を置いていた枠です。いまは線の絵が入ります（empty-art.js）。
+   線は字と同じ主色、下地は淡い緑。 */
 .empty-art {
+  color: var(--c-primary);
   width: 104px; height: 104px;
   display: grid;
   place-items: center;
