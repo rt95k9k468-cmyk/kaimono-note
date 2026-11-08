@@ -4578,43 +4578,8 @@
     const outHost = box.querySelector(".refit-out");
     let handle = null;
     r.out.forEach((f) => {
-      const t = f.todo;
-      const row = node(html`
-        <div class="carry-row refit-row" data-id="${t.id}">
-          <div class="carry-head">
-            <span class="carry-title">${t.title}</span>
-            <span class="carry-was">${span(f.minutes)}</span>
-          </div>
-          <div class="js-to"></div>
-        </div>
-      `);
-      const paint = () => {
-        const c = choice.get(t.id);
-        const opts = [
-          { id: "tomorrow", label: "明日" },
-          { id: "day", label: c.to === "day" && c.day ? formatDay(c.day) : "後日" },
-          { id: "next", label: "これから" },
-          { id: "someday", label: "いつか" },
-          !t.repeat && f.minutes >= 45 ? { id: "half", label: "今日は半分" } : null,
-          KN.unfold ? { id: "split", label: "分ける" } : null,
-        ].filter(Boolean);
-        KN.ui.chipRow(row.querySelector(".js-to"), opts, {
-          activeId: c.to,
-          onPick: (id) => {
-            if (id === "split") { if (handle) handle.close(); setTimeout(() => KN.unfold.open(t.id), 40); return; }
-            if (id === "day") {
-              const b = row.querySelector('.chip[data-id="day"]');
-              KN.ui.popCalendar(b || row, { value: c.day || null, label: "後日", onPick: (d) => {
-                if (d <= day) return;
-                choice.set(t.id, { to: "day", day: d }); KN.motion.fire("select"); paint();
-              } });
-              return;
-            }
-            choice.set(t.id, { to: id }); KN.motion.fire("select"); paint();
-          },
-        });
-      };
-      paint();
+      const row = outRow(f.todo, f.minutes);
+      outPicks(row, f.todo, f.minutes, choice, day, { half: true, split: true, close: () => { if (handle) handle.close(); } });
       outHost.append(row);
     });
     const foot = r.out.length ? node(html`<button type="button" class="btn btn-primary btn-block js-apply">この形にする</button>`) : null;
@@ -4626,6 +4591,212 @@
       KN.motion.fire("save");
       if (handle) handle.close();
       KN.ui.toast(`${moves.length}件を組み直しました`, { action: { label: "元に戻す", onClick: undo } });
+    });
+  }
+
+  /** 入らないものの一行（組み直し・詰めるの紙）。行き先の札は outPicks が `.js-to` に置く。 */
+  function outRow(t, minutes) {
+    return node(html`
+      <div class="carry-row refit-row" data-id="${t.id}">
+        <div class="carry-head">
+          <span class="carry-title">${t.title}</span>
+          <span class="carry-was">${KN.plan.humanSpan(minutes)}</span>
+        </div>
+        <div class="js-to"></div>
+      </div>
+    `);
+  }
+  /** 入らないものの行き先の札。choice は id → { to, day }。o.half・o.split で「今日は半分」「分ける」を足す
+      （o.close は「分ける」が紙を閉じる手）。 */
+  function outPicks(row, t, minutes, choice, day, o) {
+    const paint = () => {
+      const c = choice.get(t.id);
+      const opts = [
+        { id: "tomorrow", label: "明日" },
+        { id: "day", label: c.to === "day" && c.day ? formatDay(c.day) : "後日" },
+        { id: "next", label: "これから" },
+        { id: "someday", label: "いつか" },
+        o.half && !t.repeat && minutes >= 45 ? { id: "half", label: "今日は半分" } : null,
+        o.split && KN.unfold ? { id: "split", label: "分ける" } : null,
+      ].filter(Boolean);
+      KN.ui.chipRow(row.querySelector(".js-to"), opts, {
+        activeId: c.to,
+        onPick: (id) => {
+          if (id === "split") { if (o.close) o.close(); setTimeout(() => KN.unfold.open(t.id), 40); return; }
+          if (id === "day") {
+            const b = row.querySelector('.chip[data-id="day"]');
+            KN.ui.popCalendar(b || row, { value: c.day || null, label: "後日", onPick: (d) => {
+              if (d <= day) return;
+              choice.set(t.id, { to: "day", day: d }); KN.motion.fire("select"); paint();
+            } });
+            return;
+          }
+          choice.set(t.id, { to: id }); KN.motion.fire("select"); paint();
+        },
+      });
+    };
+    paint();
+  }
+
+  /* ---------------- 詰める（Sorted のオートスケジュールに当たる。docs/todo-timeline.md の「詰める」） ----------------
+
+     その日のまだのやることを、並びの順に始める時刻から置き、あいだにゆとりを空ける（KN.plan.fill）。紙の中で長く押して
+     並べ替え、押せば「今回は動かさない」「予定にする」。予定・くり返し・毎朝毎晩は動かさない。一日の終わりに入らない
+     ものには行き先の札（組み直しと同じ）。「この時刻にする」で全部を一度に書き、元に戻す一回で全部戻る。閉じれば
+     何も変わらない（ゆとりと長さも、書いたときに覚える）。 */
+  const FILL_GAPS = [0, 5, 10, 15];
+  const FILL_FROM = ["09:00", "13:00", "19:00"];
+  function fillSheet(day) {
+    const P = KN.plan;
+    const s = store.get().settings;
+    const isToday = day === todayKey();
+    const now = isToday ? planNow() : null;
+    let fromId = isToday ? "now" : FILL_FROM[0];
+    let picked = null;   // 「ほか」で選んだ時刻
+    let gap = FILL_GAPS.includes(Number(s.fillGap)) ? Number(s.fillGap) : 5;
+    let guess = P.GUESSES.includes(Number(s.fillGuess)) ? Number(s.fillGuess) : P.DEFAULT_MINUTES;
+    let order = null;    // 並べ替えたら、動かすものの id の並び
+    const keep = new Set(), toEvent = new Set();   // 今回は動かさない・予定にする（書くのは「この時刻にする」で）
+    const choice = new Map();                       // 入らないものの行き先
+    const fromOf = () => (fromId === "now" ? now : fromId === "pick" ? picked : fromId);
+    const box = node(html`
+      <div class="fill">
+        <div class="fill-opt"><span class="fill-k">始める</span><div class="js-from"></div></div>
+        <div class="fill-opt"><span class="fill-k">ゆとり</span><div class="js-gap"></div></div>
+        <div class="fill-opt"><span class="fill-k">長さ未定</span><div class="js-guess"></div></div>
+        <ol class="fill-list js-list"></ol>
+        <div class="js-fixed"></div>
+        <div class="js-out"></div>
+      </div>
+    `);
+    const list = box.querySelector(".js-list");
+    const foot = node(html`<button type="button" class="btn btn-primary btn-block js-apply">この時刻にする</button>`);
+    let handle = null, r = null;
+
+    function chips() {
+      const later = FILL_FROM.filter((x) => !isToday || P.toMin(x) > P.toMin(now));
+      KN.ui.chipRow(box.querySelector(".js-from"), [
+        isToday ? { id: "now", label: `いま ${wkClock(now)}` } : null,
+        ...later.map((x) => ({ id: x, label: wkClock(x) })),
+        { id: "pick", label: fromId === "pick" ? wkClock(picked) : "ほか" },
+      ].filter(Boolean), {
+        activeId: fromId,
+        onPick: (id) => {
+          if (id === "pick") {
+            const b = box.querySelector('.js-from .chip[data-id="pick"]');
+            KN.ui.popTime(b || box, { value: fromOf(), label: "始める", onPick: (v) => {
+              picked = v; fromId = "pick"; KN.motion.fire("select"); paint();
+            } });
+            return;
+          }
+          fromId = id; KN.motion.fire("select"); paint();
+        },
+      });
+      KN.ui.chipRow(box.querySelector(".js-gap"), FILL_GAPS.map((g) => ({ id: String(g), label: g ? `${g}分` : "なし" })), {
+        activeId: String(gap), onPick: (id) => { gap = Number(id); KN.motion.fire("select"); paint(); },
+      });
+      KN.ui.chipRow(box.querySelector(".js-guess"), P.GUESSES.map((g) => ({ id: String(g), label: `${g}分` })), {
+        activeId: String(guess), onPick: (id) => { guess = Number(id); KN.motion.fire("select"); paint(); },
+      });
+    }
+
+    function paint() {
+      const st = store.get().settings;
+      const rows = store.openTodos().filter((t) => store.fallsOn(t, day));
+      r = P.fill(day, rows, { from: fromOf(), gap, guess, keep: [...keep, ...toEvent], order,
+                              start: st.dayStart, end: st.dayEnd, now });
+      chips();
+      const seq = r.placed.map((p) => ({ todo: p.todo, at: p.at, minutes: p.minutes, guess: p.guess }))
+        .concat(r.out.map((f) => ({ todo: f.todo, at: null, minutes: f.minutes, guess: !(Number(f.todo.minutes) > 0), out: true })));
+      list.replaceChildren(...seq.map((x) => node(html`
+        <li class="fill-row ${x.out ? "is-out" : ""}" data-id="${x.todo.id}" role="button" tabindex="0">
+          <span class="fill-at">${x.at ? wkClock(x.at) : ""}</span>
+          ${wkDot(x.todo)}
+          <span class="fill-t">${x.todo.title}</span>
+          <span class="fill-m ${x.guess ? "is-guess" : ""}">${P.humanSpan(x.minutes)}</span>
+        </li>
+      `)));
+
+      /* 動かさないもの。この紙で止めたもの（今回は動かさない・予定にする）は押せば戻る。 */
+      const fx = box.querySelector(".js-fixed");
+      fx.replaceChildren();
+      if (r.fixed.length) {
+        const ul = node(html`<ul class="fill-fixed"></ul>`);
+        r.fixed.forEach((f) => {
+          const t = f.todo;
+          const mine = keep.has(t.id) || toEvent.has(t.id);
+          const li = node(html`
+            <li class="fill-row is-fixed ${mine ? "is-mine" : ""}" data-id="${t.id}">
+              <span class="fill-at">${wkClock(f.at)}</span>
+              ${wkDot({ kind: toEvent.has(t.id) ? "event" : t.kind })}
+              <span class="fill-t">${t.title}</span>
+            </li>
+          `);
+          if (mine) {
+            li.setAttribute("role", "button"); li.tabIndex = 0;
+            li.addEventListener("click", () => { keep.delete(t.id); toEvent.delete(t.id); haptic(); paint(); });
+          }
+          ul.append(li);
+        });
+        fx.append(node(html`<h3 class="refit-h">動かさない <span class="cat-head-count">${r.fixed.length}</span></h3>`), ul);
+      }
+
+      /* 入らないもの。行き先は組み直しと同じ札（既定は明日、3回以上置き直したものは「これから」）。 */
+      const oh = box.querySelector(".js-out");
+      oh.replaceChildren();
+      if (r.out.length) {
+        oh.append(node(html`<h3 class="refit-h">入らない <span class="cat-head-count">${r.out.length}</span></h3>`));
+        r.out.forEach((f) => {
+          const t = f.todo;
+          if (!choice.has(t.id)) choice.set(t.id, { to: (t.slips || []).length >= 3 ? "next" : "tomorrow" });
+          const row = outRow(t, f.minutes);
+          outPicks(row, t, f.minutes, choice, day, {});
+          oh.append(row);
+        });
+      }
+      foot.disabled = !r.placed.length && !r.out.length && !toEvent.size;
+    }
+
+    /* 長く押して並べ替え（買うものの一覧と同じ手つき）。並びは紙の中だけ——書くのは時刻。 */
+    KN.reorder.attach(list, {
+      item: ".fill-row",
+      onDrop: (from, to) => {
+        const ids = [...list.children].map((li) => li.dataset.id);
+        const [m] = ids.splice(from, 1);
+        ids.splice(to, 0, m);
+        order = ids;
+        haptic(12);
+        paint();
+      },
+    });
+    list.addEventListener("click", (e) => {
+      const li = e.target.closest(".fill-row");
+      const t = li && store.getTodo(li.dataset.id);
+      if (!t) return;
+      haptic();
+      KN.ui.popMenu(li, [
+        { label: "今回は動かさない", onPick: () => { keep.add(t.id); paint(); } },
+        KN.util.isTime(t.time) ? { label: "予定にする", onPick: () => { toEvent.add(t.id); paint(); } } : null,
+      ].filter(Boolean));
+    });
+
+    paint();
+    handle = KN.ui.sheet({ title: "詰める", content: box, footer: foot, onClose: () => { handle = null; } });
+    foot.addEventListener("click", () => {
+      if (!r || foot.disabled) return;
+      const outIds = new Set(r.out.map((f) => f.todo.id));
+      const n = r.placed.length;
+      const undo = store.applyFill({
+        day,
+        times: r.placed.map((p) => ({ id: p.todo.id, time: p.at })),
+        events: [...toEvent],
+        outs: [...choice.entries()].filter(([id]) => outIds.has(id)).map(([id, c]) => ({ id, to: c.to, day: c.day })),
+        gap, guess,
+      });
+      haptic([16, 40, 16]);
+      KN.motion.fire("save");
+      if (handle) handle.close();
+      KN.ui.toast(n ? `${n}件を詰めました` : "組み直しました", { action: { label: "元に戻す", onClick: undo } });
     });
   }
 
@@ -4982,7 +5153,9 @@
       ? restOf(nowMin, plan.endMin) : null;
     if (rest && restLeft > 0) rest.fresh = true;   // いま最後の一件を済ませた（開いただけなら咲くのは arrive）
     if (isToday) restLeft = plan.items.length;
-    /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。 */
+    /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。
+       詰めるの口は、今日と先の日に動かせるやることが一つでもあれば、いつも（2026年11月8日、利用者）。 */
+    const fillable = day >= todayKey() && rows.some((t) => P.canFill(t, day));
     const sec = node(html`
       <div class="tl${rest ? " is-rest" : ""}">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
@@ -4992,13 +5165,14 @@
               超過（はみ出し）だけは残します——これは「読めば分かる」では
               なく、**詰め込みすぎている**という注意なので、他の事実とは
               性格が違います。 */""}
-        ${plan.over
+        ${plan.over || fillable
           ? html`<div class="tl-sum">
               ${/* 押せば組み直しの紙（3.0 の B3）。今日だけ。 */""}
               ${plan.over ? (isToday
                 ? html`<button type="button" class="tl-over js-refit">寝る時刻を ${P.humanSpan(plan.over)} すぎます${icon("chevron")}</button>`
                 : html`<span class="tl-over">寝る時刻を ${P.humanSpan(plan.over)} すぎます</span>`)
                 : ""}
+              ${fillable ? html`<button type="button" class="tl-fill js-fill">詰める</button>` : ""}
             </div>` : ""}
         <ol class="tl-list js-tl"></ol>
       </div>
@@ -5008,6 +5182,8 @@
     sec.__done = doneItems.length ? doneList(doneItems) : null;
     const rf = sec.querySelector(".js-refit");
     if (rf) rf.addEventListener("click", () => { haptic(); refitSheet(); });
+    const fb = sec.querySelector(".js-fill");
+    if (fb) fb.addEventListener("click", () => { haptic(); fillSheet(day); });
 
     /* 縦軸は時間（docs/timeline-scale-design.md）。位置・高さ・列は tl-layout が決め、
        ここは札に CSS 変数（--top・--h・--lane・--lanes。px）を置くだけ。重なりは列が言う。

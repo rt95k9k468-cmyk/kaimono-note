@@ -4221,6 +4221,35 @@ button.tl-over:active { opacity: var(--press-fade); }
 .refit-m { flex: none; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .refit-ok { margin: var(--sp-3) 0 0; color: var(--c-text-2); }
 .refit-row .chip-row { flex-wrap: wrap; }
+/* 詰めるの口（時間割の頭。週の「選ぶ」と同じ字）と紙（docs/todo-timeline.md の「詰める」）。
+   右端に寄せない——右下の＋が、頭の一行の右端に重なる高さがある（撮って見つけた）。 */
+.tl-fill {
+  margin: -4px 0; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-full);
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
+}
+.tl-fill:first-child { margin-left: calc(-1 * var(--sp-3)); }   /* 一つだけのときは字を左の線に揃える */
+.tl-fill:active { opacity: var(--press-fade); }
+.fill-opt { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-2); }
+.fill-k { flex: none; width: 4.4em; white-space: nowrap; font-size: var(--fs-sm); color: var(--c-text-2); }
+.fill-opt .chip-row { flex-wrap: wrap; }
+.fill-list, .fill-fixed {
+  list-style: none; margin: var(--sp-3) 0 0; padding: 0;
+  background: var(--c-sheet); border-radius: var(--r-md);
+}
+.fill-row {
+  display: flex; align-items: center; gap: var(--sp-2); min-height: var(--row-h-compact); padding: 0 var(--sp-2);
+  font-size: var(--fs-md); -webkit-user-select: none; user-select: none;
+}
+.fill-row + .fill-row { border-top: 1px solid var(--c-border); }
+.fill-row.reorder-lift { background: var(--c-sheet); border-radius: var(--r-md); }
+.fill-at { flex: none; width: 3.2em; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; color: var(--c-text); }
+.fill-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fill-m { flex: none; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+/* 長さを決めていないものは、時間割の「ごろ」の縁と同じく点線で */
+.fill-m.is-guess { text-decoration: underline dotted; text-underline-offset: 3px; }
+.fill-row.is-out .fill-t, .fill-row.is-fixed .fill-t { color: var(--c-text-2); }
+.fill-row.is-fixed .fill-at { font-weight: var(--fw-regular); color: var(--c-text-2); }
+.fill-row.is-mine { cursor: pointer; }
 
 .tl-list { list-style: none; margin: 0; padding: 0; }
 
@@ -4979,7 +5008,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    色は種類で分ける（予定・時間を取ったやること・締切。2026年10月19日、利用者）。仕事の色は「仕事だけ」の札だけ。
    暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
 /* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
-#screen-todo, #head { --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
+#screen-todo, #head, .fill { --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); }
 /* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。**掴み手の下に**貼りつく（掴み手の背 29px
    から 1px 重ねる）。前は top:0 で掴み手に重なり、送ると掴み手が消えていた。地は紙と同じ一色——透かしてぼかすと、
