@@ -81,9 +81,18 @@
   }
 
   /* 人が決めた長さ → くり返しの用事なら、いつもの長さ（段4。済ませた記録から
-     store がそのつど引く）→ 30分。道は決めた長さしか描かないので、ここだけの話。 */
+     store がそのつど引く）→ 決めていない長さ（設定 fillGuess。詰めるの紙で選ぶ 15分か30分。無ければ30分）。
+     時間割の「ごろ」・組み直し・詰めるで同じ数を使う——違うと、詰めた札どうしが重なって描かれる。
+     道は決めた長さしか描かないので、ここだけの話。 */
   const usualOf = (t) => (KN.store && KN.store.usualMinutes ? KN.store.usualMinutes(t) : null);
-  const minutesOf = (t) => (t && t.minutes) || usualOf(t) || DEFAULT_MINUTES;
+  const GUESSES = [15, 30];
+  let guessNow = null;   // 詰めるの紙で選んでいる長さ（書く前の見積もりのあいだだけ。fill が付けて外す）
+  const guessOf = () => {
+    if (guessNow) return guessNow;
+    const v = KN.store && KN.store.get ? Number(KN.store.get().settings.fillGuess) : NaN;
+    return GUESSES.includes(v) ? v : DEFAULT_MINUTES;
+  };
+  const minutesOf = (t) => (t && t.minutes) || usualOf(t) || guessOf();
 
   /* ---------------- 並べる ---------------- */
 
@@ -401,8 +410,90 @@
     return { avail, busy, left, fit, out };
   }
 
+  /* ---------------- 詰める（Sorted のオートスケジュールに当たる。docs/todo-timeline.md の「詰める」） ----------------
+
+     並びの順に、始める時刻から一つずつ置き、あいだに「ゆとり」を空けます。動かさないもの（予定・くり返し・
+     毎朝毎晩・今回は動かさないと選んだもの）はよけます。一日の終わりに入らないものが出たら、そこから後ろは
+     全部「入らない」（組み直しと同じ。並びの意味を崩さない）。**何も書きません**——書くのは本人が
+     「この時刻にする」を押したとき（store.applyFill）。上の「導いた時刻は保存しない」の例外は、その一押しだけ。 */
+
+  /** 詰めるで動かすもの：その日のまだのやること。予定・くり返し・毎朝毎晩・写しは動かさない。 */
+  const canFill = (t, day) => !!t && !t.done && !t.archived && !t.trace && !t.repeat
+    && t.kind !== "event" && t.part !== "dawn" && t.part !== "dusk" && t.due === day;
+
+  /**
+   * @param {string} day
+   * @param {object[]} todos  その日のまだのもの（くり返しは fallsOn で開いたもの）
+   * @param {object} [opts]
+   *   from  … 始める「HH:MM」（無ければ now、それも無ければ一日の始まり）
+   *   gap   … ゆとり（分）。前後の用事とのあいだ（動かさないものとのあいだも）
+   *   guess … 決めていない長さ（15 か 30。無ければ設定）
+   *   keep  … 今回は動かさない id の並び
+   *   order … 動かすものの並び（id）。無ければ時間割の上から（過ぎた時刻のもの → 「ごろ」と時刻の順）
+   *   start / end / now … buildDay と同じ
+   * @returns {{ from, fromMin, end, endMin, gap, placed, fixed, out }}
+   *   placed … { todo, at, until, atMin, untilMin, minutes, guess }（guess は長さを決めていない）
+   *   fixed  … { todo, at }（動かさないもの。at は時刻を持たなければ null）
+   *   out    … { todo, minutes }
+   */
+  function fill(day, todos, opts) {
+    const g = Number(opts && opts.guess);
+    guessNow = GUESSES.includes(g) ? g : null;
+    try { return fillWith(day, todos, opts || {}); } finally { guessNow = null; }
+  }
+  function fillWith(day, todos, o) {
+    const keep = new Set(o.keep || []);
+    const gap = Math.max(0, Math.round(Number(o.gap) || 0));
+    const endMin = Math.min(toMin(o.end) != null ? toMin(o.end) : toMin(DEFAULT_END), 24 * 60);
+    const fromMin = toMin(o.from) != null ? toMin(o.from)
+      : toMin(o.now) != null ? toMin(o.now) : (toMin(o.start) != null ? toMin(o.start) : toMin(DEFAULT_START));
+    const open = (todos || []).filter((t) => t && !t.done && !t.archived && !t.trace);
+    const moves = (t) => canFill(t, day) && !keep.has(t.id);
+    const plan = buildDay(day, open, { start: o.start, end: o.end, now: o.now });
+
+    let list = plan.items.map((it) => it.todo).filter(moves);
+    if (o.order && o.order.length) {
+      const rank = new Map(o.order.map((id, i) => [id, i]));
+      const r = (t) => (rank.has(t.id) ? rank.get(t.id) : Infinity);
+      list = list.slice().sort((a, b) => r(a) - r(b));
+    }
+
+    /* よけるのは、時刻を持つもの（毎朝・毎晩は組み立てが端に置いた場所）だけ。時刻の無い動かさないもの
+       （時刻なしのくり返し・今回は動かさない時刻なし）は、書いたあと組み立てが空きへ置き直す。 */
+    const blocks = [];
+    const fixed = [];
+    plan.items.forEach((it) => {
+      const t = it.todo;
+      if (moves(t)) return;
+      const anchored = U.isTime(t.time) || t.part === "dawn" || t.part === "dusk";
+      fixed.push({ todo: t, at: anchored ? it.at : null, atMin: anchored ? it.atMin : null });
+      if (anchored) blocks.push({ start: it.atMin - gap, end: it.untilMin + gap });
+    });
+    blocks.sort((a, b) => a.start - b.start);
+    fixed.sort((a, b) => (a.atMin == null) - (b.atMin == null) || (a.atMin || 0) - (b.atMin || 0));
+
+    const placed = [], out = [];
+    let c = fromMin, full = false;
+    list.forEach((t) => {
+      const len = minutesOf(t);
+      if (!full) {
+        const at = firstGap(c, len, blocks);
+        if (at + len <= endMin) {
+          placed.push({ todo: t, atMin: at, untilMin: at + len, at: toTime(at), until: toTime(at + len),
+                        minutes: len, guess: !(Number(t.minutes) > 0) });
+          c = at + len + gap;
+          return;
+        }
+        full = true;
+      }
+      out.push({ todo: t, minutes: len });
+    });
+    return { from: toTime(fromMin), fromMin, end: toTime(endMin), endMin, gap, placed,
+             fixed: fixed.map(({ todo, at }) => ({ todo, at })), out };
+  }
+
   KN.plan = {
-    buildDay, slotsFor, humanSpan, toMin, toTime, refit,
+    buildDay, slotsFor, humanSpan, toMin, toTime, refit, fill, canFill, GUESSES,
     DEFAULT_MINUTES, NEW_MINUTES, minutesOf, DEFAULT_START, DEFAULT_END, MIN_GAP,
   };
 })();

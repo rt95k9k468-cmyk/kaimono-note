@@ -3329,6 +3329,42 @@
     return () => undos.slice().reverse().forEach((u) => u());
   }
   /**
+   * 詰めるを一度に書く（docs/todo-timeline.md の「詰める」。Sorted のオートスケジュールに当たる）。o は
+   *   day    … その日
+   *   times  … [{ id, time }]。その日のその時刻へ（日を後ろへ動かさないので控えは書かない）
+   *   events … [id]。予定にする（もう詰めるで動かない）
+   *   outs   … [{ id, to, day }]。入らないもの（applyRefit と同じ行き先）
+   *   gap / guess … ゆとり・決めていない長さ。設定に覚える（次も使う値なので、元に戻すでは戻さない）
+   * 予定・くり返し・済んだものの時刻は書かない。**元に戻す一回で全部戻る。**
+   * @returns {() => void}
+   */
+  function applyFill(o) {
+    const U = KN.util;
+    const day = o && o.day;
+    const undos = [];
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day || "")) return () => {};
+    (o.times || []).forEach((m) => {
+      const t = getTodo(m.id);
+      if (!t || t.repeat || t.done || t.trace || t.kind === "event" || !U.isTime(m.time)) return;
+      undos.push(keepFields(m.id));
+      updateTodo(m.id, { due: day, time: m.time }, { slip: false });
+    });
+    (o.events || []).forEach((id) => {
+      const t = getTodo(id);
+      if (!t || t.kind === "event") return;
+      undos.push(keepFields(id));
+      undos.push(() => update((s) => { const x = s.todos.find((y) => y.id === id); if (x) delete x.kind; }));
+      updateTodo(id, { kind: "event" }, { slip: false });
+    });
+    if (o.outs && o.outs.length) undos.push(applyRefit(o.outs));
+    const gap = Number(o.gap), guess = Number(o.guess);
+    update((s) => {
+      if ([0, 5, 10, 15].includes(gap)) s.settings.fillGap = gap;
+      if ([15, 30].includes(guess)) s.settings.fillGuess = guess;
+    });
+    return () => undos.slice().reverse().forEach((u) => u());
+  }
+  /**
    * AI とほどいた答えを取り込む（3.0 の C1）。選んだものだけ。o は
    *   subs  … この用事の手順に足す題の並び
    *   todos … 別の用事としてこれからへ（[{ title, minutes }]）
@@ -5436,7 +5472,7 @@
     addEntry, addEntryUndoable, updateEntry, removeEntry, promoteSeed, toggleFavorite, setEntryNote,
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
-    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, replan, applyRefit, importUnfold, slipFacts,
+    stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, replan, applyRefit, applyFill, importUnfold, slipFacts,
     readingCandidates, lastReading,
     entriesOfMonth, entriesOfDay, entriesOfNote, openSeeds, monthCounts, searchEntries,
     dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
