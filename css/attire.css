@@ -1,0 +1,129 @@
+/* =========================================================
+   装い（設定 → 外観 → 装い。docs/look.md の「装い」・docs/log/design-review.md 13節）
+
+   形も動きも替えず、色・字・角・線だけを替える。札は <html data-attire>（「いま」は札なし）：
+     washi-shu   和紙と墨・朱       washi-enji  和紙と墨・臙脂
+     season      季節の手帳（和紙と墨に、二十四節気の主色と地。data-sekki="0〜23"、春分から。js/app.js）
+     polish      今の磨き（今の色と丸みのまま、影とカテゴリの色を一段おとなしく）
+   - 色は明るい面だけ（暗い面は今のまま。13節の改3で揃える）。色の中身は --a-* に置き、明るい面のときだけ
+     --c-* へ渡す——暗い面の規則と同じ詳細度で取り合わないため（docs/traps.md）。
+   - 字の主色は地の上で 4.5 以上（季節の24色は 4.6 以上。tests/attire.js が見張る）。
+   ========================================================= */
+
+:root:is([data-attire^="washi"], [data-attire="season"]) {
+  --a-bg: #f3efe5; --a-surface: #fbf9f3; --a-surface-2: #e6e0d2; --a-surface-3: #d9d1c0;
+  --a-text: #1f1d1a; --a-text-2: #5a554b; --a-text-3: #5d584e;
+  --a-border: #ddd6c7; --a-border-2: #c8bfac;
+  --font-head: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", serif;
+  --r-sm: 4px; --r-md: 6px; --r-lg: 8px; --r-xl: 11px;
+}
+:root[data-attire="washi-shu"]  { --a-primary: #a93a24; --a-primary-2: #96331f; --a-primary-soft: #f6e2da; --a-primary-ink: #84301f; --a-primary-fill: #d9694a; }
+:root[data-attire="washi-enji"] { --a-primary: #9e3443; --a-primary-2: #8c2e3b; --a-primary-soft: #f3e1e2; --a-primary-ink: #7c2935; --a-primary-fill: #c46a74; }
+/* 季節：daily の下地の色（js/season-art.js の SEKKI_C）の色相から、字に使える濃さを引いた。地はその色を 14% 差す。 */
+:root[data-attire="season"][data-sekki="0"] { --a-bg: #f3e9e2; --a-primary: #9f4f6c; --a-primary-2: #944562; --a-primary-soft: #fce9ee; --a-primary-ink: #853955; --a-primary-fill: #d38da3; } /* 春分 4.61 */
+:root[data-attire="season"][data-sekki="1"] { --a-bg: #f2ebe5; --a-primary: #8c5587; --a-primary-2: #814b7c; --a-primary-soft: #f8e9f6; --a-primary-ink: #743f6f; --a-primary-fill: #c094ba; } /* 清明 4.73 */
+:root[data-attire="season"][data-sekki="2"] { --a-bg: #eeede1; --a-primary: #49742f; --a-primary-2: #3f6924; --a-primary-soft: #e8f2e3; --a-primary-ink: #335c15; --a-primary-fill: #8cb278; } /* 穀雨 4.67 */
+:root[data-attire="season"][data-sekki="3"] { --a-bg: #ecede1; --a-primary: #227849; --a-primary-2: #136e40; --a-primary-soft: #e4f3e8; --a-primary-ink: #036035; --a-primary-fill: #75b68c; } /* 立夏 4.61 */
+:root[data-attire="season"][data-sekki="4"] { --a-bg: #efeede; --a-primary: #62711b; --a-primary-2: #58670b; --a-primary-soft: #ecf1e1; --a-primary-ink: #4c5a08; --a-primary-fill: #9ead6c; } /* 小満 4.61 */
+:root[data-attire="season"][data-sekki="5"] { --a-bg: #ebece2; --a-primary: #127666; --a-primary-2: #0c6b5c; --a-primary-soft: #e0f4ee; --a-primary-ink: #005e50; --a-primary-fill: #6db5a5; } /* 芒種 4.63 */
+:root[data-attire="season"][data-sekki="6"] { --a-bg: #ebebe5; --a-primary: #186ea0; --a-primary-2: #026495; --a-primary-soft: #e2f1fc; --a-primary-ink: #015782; --a-primary-fill: #6facd8; } /* 夏至 4.65 */
+:root[data-attire="season"][data-sekki="7"] { --a-bg: #e9ebe4; --a-primary: #117283; --a-primary-2: #0c6877; --a-primary-soft: #dff3f7; --a-primary-ink: #015a68; --a-primary-fill: #59b4c6; } /* 小暑 4.65 */
+:root[data-attire="season"][data-sekki="8"] { --a-bg: #f3ecdc; --a-primary: #88630a; --a-primary-2: #7d5a03; --a-primary-soft: #f6edde; --a-primary-ink: #6d4e04; --a-primary-fill: #c19f61; } /* 大暑 4.65 */
+:root[data-attire="season"][data-sekki="9"] { --a-bg: #f2ecdd; --a-primary: #7d6705; --a-primary-2: #715d0c; --a-primary-soft: #f3efde; --a-primary-ink: #635100; --a-primary-fill: #b7a461; } /* 立秋 4.67 */
+:root[data-attire="season"][data-sekki="10"] { --a-bg: #f1ebdb; --a-primary: #856305; --a-primary-2: #785a0c; --a-primary-soft: #f5eede; --a-primary-ink: #6a4d01; --a-primary-fill: #bfa061; } /* 処暑 4.66 */
+:root[data-attire="season"][data-sekki="11"] { --a-bg: #efede5; --a-primary: #526d81; --a-primary-2: #486376; --a-primary-soft: #e8f0f6; --a-primary-ink: #3c5669; --a-primary-fill: #92a8b9; } /* 白露 4.64 */
+:root[data-attire="season"][data-sekki="12"] { --a-bg: #f1eadc; --a-primary: #935d0d; --a-primary-2: #865305; --a-primary-soft: #f9ecdf; --a-primary-ink: #754805; --a-primary-fill: #ca9a65; } /* 秋分 4.60 */
+:root[data-attire="season"][data-sekki="13"] { --a-bg: #f1e7db; --a-primary: #995424; --a-primary-2: #8e4a18; --a-primary-soft: #fbebe1; --a-primary-ink: #803d04; --a-primary-fill: #d2956f; } /* 寒露 4.71 */
+:root[data-attire="season"][data-sekki="14"] { --a-bg: #efe9de; --a-primary: #97591e; --a-primary-2: #8c4f0f; --a-primary-soft: #faebe0; --a-primary-ink: #7c4402; --a-primary-fill: #ca9972; } /* 霜降 4.62 */
+:root[data-attire="season"][data-sekki="15"] { --a-bg: #eeeae0; --a-primary: #726748; --a-primary-2: #685d3f; --a-primary-soft: #f1eee6; --a-primary-ink: #5b5032; --a-primary-fill: #ada48c; } /* 立冬 4.66 */
+:root[data-attire="season"][data-sekki="16"] { --a-bg: #efece4; --a-primary: #576b83; --a-primary-2: #4d6178; --a-primary-soft: #e9eff6; --a-primary-ink: #41546b; --a-primary-fill: #96a6bb; } /* 小雪 4.64 */
+:root[data-attire="season"][data-sekki="17"] { --a-bg: #eeebe5; --a-primary: #526a8c; --a-primary-2: #496082; --a-primary-soft: #e8eff9; --a-primary-ink: #3d5374; --a-primary-fill: #93a6c1; } /* 大雪 4.65 */
+:root[data-attire="season"][data-sekki="18"] { --a-bg: #edebe4; --a-primary: #59688b; --a-primary-2: #505e80; --a-primary-soft: #eaeef8; --a-primary-ink: #435273; --a-primary-fill: #98a5c0; } /* 冬至 4.66 */
+:root[data-attire="season"][data-sekki="19"] { --a-bg: #efebe2; --a-primary: #7b644d; --a-primary-2: #705a43; --a-primary-soft: #f4ede6; --a-primary-ink: #634e37; --a-primary-fill: #b4a18e; } /* 小寒 4.68 */
+:root[data-attire="season"][data-sekki="20"] { --a-bg: #f0ece5; --a-primary: #656884; --a-primary-2: #5c5e7a; --a-primary-soft: #edeef6; --a-primary-ink: #4f516d; --a-primary-fill: #a0a3bb; } /* 大寒 4.61 */
+:root[data-attire="season"][data-sekki="21"] { --a-bg: #f2ebe3; --a-primary: #8f5a66; --a-primary-2: #84505d; --a-primary-soft: #faeaed; --a-primary-ink: #764450; --a-primary-fill: #c297a0; } /* 立春 4.65 */
+:root[data-attire="season"][data-sekki="22"] { --a-bg: #efede3; --a-primary: #4d715d; --a-primary-2: #436753; --a-primary-soft: #e8f1eb; --a-primary-ink: #375a47; --a-primary-fill: #91ac9c; } /* 雨水 4.66 */
+:root[data-attire="season"][data-sekki="23"] { --a-bg: #f0eee1; --a-primary: #5e721f; --a-primary-2: #556811; --a-primary-soft: #ecf1e1; --a-primary-ink: #495b04; --a-primary-fill: #9bae6e; } /* 啓蟄 4.62 */
+
+/* 明るい面のときだけ、--a-* を渡す。 */
+@media (prefers-color-scheme: light) {
+  :root:is([data-attire^="washi"], [data-attire="season"]):not([data-theme="dark"]) {
+    --c-bg: var(--a-bg); --c-sheet: var(--a-bg); --c-sheet-edge: var(--a-surface);
+    --c-bg-elev: var(--a-surface); --c-surface: var(--a-surface); --c-surface-2: var(--a-surface-2); --c-surface-3: var(--a-surface-3);
+    --c-text: var(--a-text); --c-text-2: var(--a-text-2); --c-text-3: var(--a-text-3);
+    --c-border: var(--a-border); --c-border-2: var(--a-border-2);
+    --c-primary: var(--a-primary); --c-primary-2: var(--a-primary-2); --c-primary-soft: var(--a-primary-soft);
+    --c-primary-ink: var(--a-primary-ink); --c-primary-fill: var(--a-primary-fill);
+    --c-accent: #2b4f78; --c-accent-soft: #e2e8ef; --c-accent-ink: #213d5d; --c-danger: #b23a2c;
+    --glass-cast: #d6cfc0; --glass-cast-lit: #ece6d9; --ic-line: #3d3630;
+    --cat-fill: 18%; --cat-line: 30%;
+    /* 器は影より細い線 */
+    --shadow-1: 0 0 0 .5px var(--c-border-2);
+    --shadow-2: 0 0 0 .5px var(--c-border-2);
+    --shadow-3: 0 0 0 .5px var(--c-border-2), 0 8px 20px rgba(40, 30, 20, .07);
+  }
+  :root[data-attire="polish"]:not([data-theme="dark"]) {
+    --shadow-1: none;
+    --shadow-2: 0 1px 2px rgba(20, 20, 20, .05);
+    --shadow-3: 0 6px 18px rgba(20, 20, 20, .08);
+    --c-border: #ebe8e2;
+    --cat-fill: 14%; --cat-line: 24%;
+  }
+}
+:root:is([data-attire^="washi"], [data-attire="season"])[data-theme="light"] {
+  --c-bg: var(--a-bg); --c-sheet: var(--a-bg); --c-sheet-edge: var(--a-surface);
+  --c-bg-elev: var(--a-surface); --c-surface: var(--a-surface); --c-surface-2: var(--a-surface-2); --c-surface-3: var(--a-surface-3);
+  --c-text: var(--a-text); --c-text-2: var(--a-text-2); --c-text-3: var(--a-text-3);
+  --c-border: var(--a-border); --c-border-2: var(--a-border-2);
+  --c-primary: var(--a-primary); --c-primary-2: var(--a-primary-2); --c-primary-soft: var(--a-primary-soft);
+  --c-primary-ink: var(--a-primary-ink); --c-primary-fill: var(--a-primary-fill);
+  --c-accent: #2b4f78; --c-accent-soft: #e2e8ef; --c-accent-ink: #213d5d; --c-danger: #b23a2c;
+  --glass-cast: #d6cfc0; --glass-cast-lit: #ece6d9; --ic-line: #3d3630;
+  --cat-fill: 18%; --cat-line: 30%;
+  --shadow-1: 0 0 0 .5px var(--c-border-2);
+  --shadow-2: 0 0 0 .5px var(--c-border-2);
+  --shadow-3: 0 0 0 .5px var(--c-border-2), 0 8px 20px rgba(40, 30, 20, .07);
+}
+:root[data-attire="polish"][data-theme="light"] {
+  --shadow-1: none;
+  --shadow-2: 0 1px 2px rgba(20, 20, 20, .05);
+  --shadow-3: 0 6px 18px rgba(20, 20, 20, .08);
+  --c-border: #ebe8e2;
+  --cat-fill: 14%; --cat-line: 24%;
+}
+
+/* 見出しだけ明朝（本文と数字は今のまま）。 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is(.topbar-title, .tab-title, .sheet-title, .section-title,
+  .todo-head, .set-title, .hero-title, .arc-stack-head h2, .arc-log-head h2, .note-head-t, .shelf-head, h1, h2) {
+  font-family: var(--font-head);
+}
+/* 空の写真は窓の枠に収める（帯の後ろの一枚を、角を丸めた窓で切る）。 */
+:root:is([data-attire^="washi"], [data-attire="season"]) .head[data-sky]::before {
+  clip-path: inset(calc(var(--safe-t) + 6px) 10px calc(var(--r-xl) + var(--sky-more) + 6px) 10px round var(--r-md));
+}
+
+/* カテゴリの色（store.js の CATEGORY_COLORS）を、くすんだ伝統色へ読み替える。色は記録の中の値なので、
+   書き換えずに見た目だけ（inline の --cat に勝つため !important）。暗い面もこのまま。 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#5ea55a"], [style*="--cat: #5ea55a"]) { --cat: #6b8f55 !important; } /* 若竹 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#d4695f"], [style*="--cat: #d4695f"]) { --cat: #b8604a !important; } /* 柿 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#d79a4a"], [style*="--cat: #d79a4a"]) { --cat: #c4973a !important; } /* 山吹 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#5b9bd5"], [style*="--cat: #5b9bd5"]) { --cat: #3e5f86 !important; } /* 藍 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#4fb3c4"], [style*="--cat: #4fb3c4"]) { --cat: #4d8a94 !important; } /* 浅葱 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#9b7ede"], [style*="--cat: #9b7ede"]) { --cat: #8a76a6 !important; } /* 藤 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#48b39a"], [style*="--cat: #48b39a"]) { --cat: #5a8a76 !important; } /* 青竹 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#e07fa8"], [style*="--cat: #e07fa8"]) { --cat: #b26e82 !important; } /* 梅 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#8d968f"], [style*="--cat: #8d968f"]) { --cat: #8b867c !important; } /* 鼠 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#c2853f"], [style*="--cat: #c2853f"]) { --cat: #a07a44 !important; } /* 黄土 */
+:root:is([data-attire^="washi"], [data-attire="season"]) :is([style*="--cat:#7a8fd4"], [style*="--cat: #7a8fd4"]) { --cat: #6870a0 !important; } /* 桔梗 */
+/* 今の磨き：色相は今のまま、鼠を混ぜて一段おとなしく。 */
+:root[data-attire="polish"] :is([style*="--cat:#5ea55a"], [style*="--cat: #5ea55a"]) { --cat: color-mix(in oklab, #5ea55a 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#d4695f"], [style*="--cat: #d4695f"]) { --cat: color-mix(in oklab, #d4695f 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#d79a4a"], [style*="--cat: #d79a4a"]) { --cat: color-mix(in oklab, #d79a4a 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#5b9bd5"], [style*="--cat: #5b9bd5"]) { --cat: color-mix(in oklab, #5b9bd5 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#4fb3c4"], [style*="--cat: #4fb3c4"]) { --cat: color-mix(in oklab, #4fb3c4 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#9b7ede"], [style*="--cat: #9b7ede"]) { --cat: color-mix(in oklab, #9b7ede 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#48b39a"], [style*="--cat: #48b39a"]) { --cat: color-mix(in oklab, #48b39a 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#e07fa8"], [style*="--cat: #e07fa8"]) { --cat: color-mix(in oklab, #e07fa8 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#8d968f"], [style*="--cat: #8d968f"]) { --cat: color-mix(in oklab, #8d968f 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#c2853f"], [style*="--cat: #c2853f"]) { --cat: color-mix(in oklab, #c2853f 60%, #9a968e) !important; }
+:root[data-attire="polish"] :is([style*="--cat:#7a8fd4"], [style*="--cat: #7a8fd4"]) { --cat: color-mix(in oklab, #7a8fd4 60%, #9a968e) !important; }

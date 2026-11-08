@@ -26,7 +26,7 @@ const crypto = require("crypto");
 const ROOT = __dirname;
 const OUT_DIR = path.join(ROOT, "dist");
 
-const CSS = ["css/base.css", "css/components.css", "css/screens.css"];
+const CSS = ["css/base.css", "css/components.css", "css/screens.css", "css/attire.css"];
 
 // Load order matters: utilities, then state, then UI, then screens, then boot.
 const JS = [

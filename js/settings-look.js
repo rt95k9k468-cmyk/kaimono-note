@@ -166,6 +166,28 @@
 
     /* ホーム画面のアイコンの数は、通知の一枚へ移した（2026年11月5日。settings-todo.js の badgeRows）。 */
 
+    /* 装い（css/attire.css）。押せば画面ぜんぶがその場で変わる。和紙と墨・季節の手帳は自分の主色を持つので、
+       そのあいだ基調色は出さない。 */
+    const attire = s.attire || "now";
+    const ATTIRE_NAMES = [["now", "いま"], ["washi-shu", "朱"], ["washi-enji", "臙脂"], ["season", "季節"], ["polish", "磨き"]];
+    const attires = node(html`
+      <div class="set-card is-pad">
+        <div class="seg">
+          ${ATTIRE_NAMES.map(([id, label]) => html`<button class="seg-btn" data-attire="${id}" aria-pressed="${String(attire === id)}">${label}</button>`)}
+        </div>
+      </div>
+    `);
+    attires.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.attire;
+        store.update((x) => { x.settings.attire = v; });
+        KN.app.applyAttire(v);
+        haptic();
+        render();
+      });
+    });
+    const ownColor = ["washi-shu", "washi-enji", "season"].includes(attire);
+
     /* 文字の大きさ。明るさと同じで、動かしたその場で画面ぜんぶが変わる
        ——いま読んでいるこの一枚の字で、大きさを確かめられるように。 */
     const sizes = sizeCard(s.textSize || "std");
@@ -197,7 +219,8 @@
        題は出るものの名前だけにする（「〜を出す」を六回くり返さない）。 */
     return [
       head("明るさ"), seg,
-      head("基調色"), accents,
+      head("装い"), attires,
+      ...(ownColor ? [] : [head("基調色"), accents]),
       head("文字の大きさ"), sizes,
       head("書体"), fonts,
       head("上の帯"),

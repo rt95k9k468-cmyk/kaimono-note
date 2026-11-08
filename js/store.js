@@ -42,6 +42,8 @@
   ];
 
   const OTHER_CATEGORY = "c-other";
+  /* 装いの札（css/attire.css）。知らない値は「いま」へ（reconcile）。 */
+  const ATTIRES = ["now", "washi-shu", "washi-enji", "season", "polish"];
 
   function emptyState() {
     return {
@@ -118,6 +120,8 @@
         showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
         /* 書体。"gothic"（端末のゴシック）・"maru"・"mincho"（docs/look.md の「書体は三つ」）。 */
         font: "gothic",
+        /* 装い。"now"（いま）・"washi-shu"・"washi-enji"・"season"・"polish"（css/attire.css・docs/look.md の「装い」）。 */
+        attire: "now",
         /* 季節のひとこと（二十四節気・七十二候、R2）。既定は出す。設定で消せる。 */
         showSeason: true,
         /* 新しく付ける見直す日を、日数を過ぎた最初の節気の初日に揃える（roadmap-3.1 の K3）。既定は今のまま。 */
@@ -803,6 +807,7 @@
     /* 文字の大きさも、知らない値は既定（いままでと同じ大きさ）へ。 */
     if (!["std", "l", "xl", "auto"].includes(out.settings.textSize)) out.settings.textSize = "std";
     if (!["gothic", "maru", "mincho"].includes(out.settings.font)) out.settings.font = "gothic";
+    if (!ATTIRES.includes(out.settings.attire)) out.settings.attire = "now";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];

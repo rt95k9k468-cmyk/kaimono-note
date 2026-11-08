@@ -179,6 +179,19 @@
   }
   KN.app.applyFont = applyFont;
 
+  /* 装い（css/attire.css）。札は data-attire、「いま」は札なし。季節の手帳は、今日の節気（春分から 0〜23）を
+     data-sekki に——日が替わったら onMinute が付け直す。 */
+  function applyAttire(attire) {
+    const root = document.documentElement;
+    const on = ["washi-shu", "washi-enji", "season", "polish"].includes(attire);
+    if (on) root.setAttribute("data-attire", attire);
+    else root.removeAttribute("data-attire");
+    const s = attire === "season" && KN.season ? KN.season.of(KN.util.todayKey()) : null;
+    if (s) root.setAttribute("data-sekki", String(Math.floor(s.k / 3)));
+    else root.removeAttribute("data-sekki");
+  }
+  KN.app.applyAttire = applyAttire;
+
   /* ---------------- tabs ---------------- */
 
   function buildTabs() {
@@ -1403,6 +1416,7 @@
     applyAccent(store.get().settings.accent || "orange");
     applyTextSize(store.get().settings.textSize || "std");
     applyFont(store.get().settings.font);
+    applyAttire(store.get().settings.attire);
     /* 「端末に合わせる」なら、戻ってくるたびに読み直す（アプリを離れて
        iPhone の文字サイズを変えてきた、に追いつくため）。 */
     document.addEventListener("visibilitychange", () => {
@@ -1603,7 +1617,7 @@
     let dueNow = store.todosDue().length;
     KN.app.onMinute = () => {
       const key = KN.util.todayKey();
-      if (key !== dayNow) store.rescheduleOverdue();
+      if (key !== dayNow) { store.rescheduleOverdue(); applyAttire(store.get().settings.attire); }
       const due = store.todosDue().length;
       if (key === dayNow && due === dueNow) return;
       dayNow = key;
