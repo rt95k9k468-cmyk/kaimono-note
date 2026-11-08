@@ -8,7 +8,7 @@
      --clock 21:30            その時刻から時計を進めて開く（既定は今）
      --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）
      --scroll 400             送る器を下へ（px）
-     --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。A（今のまま）はいつも撮る
+     --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。「今」（差し替えなし）はいつも撮る
      --empty                  試しの記録を入れない
      --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）
      --out <dir>              置き場（既定 /tmp/kn-shots）
@@ -37,7 +37,7 @@ const EMPTY = process.argv.includes("--empty");
 const [VW, VH] = String(arg("view", "393x852")).split("x").map(Number);
 const VIEW = { width: VW, height: VH };
 const DPR = +arg("dpr", 2);
-const VARIANTS = [{ name: "A", css: "" }, ...all("css").map((s) => {
+const VARIANTS = [{ name: "今", css: "" }, ...all("css").map((s) => {
   const i = s.indexOf("=");
   const name = s.slice(0, i), body = s.slice(i + 1);
   return { name, css: fs.existsSync(body) ? fs.readFileSync(body, "utf8") : body };
