@@ -275,10 +275,6 @@
     return "night";
   }
 
-  /** 「19:30」 as it is written on a row. Kept 24-hour: 「19:30」 is one glance
-      and 「午後7時30分」 is a sentence. */
-  const formatTime = (hhmm) => (isTime(hhmm) ? String(hhmm) : "");
-
   /** The clock right now, in the same 「19:30」 shape, so 「もう過ぎたか」 is a
       string comparison rather than two Date objects and a timezone. */
   function nowTime() {
@@ -904,7 +900,7 @@
     uid, clamp, debounce,
     yen, yenFine, parseNum,
     today, formatDate, formatStamp, relativeDate, foldKana, foldRuns, hasWord, wordAt,
-    isTime, partOfTime, formatTime, nowTime,
+    isTime, partOfTime, nowTime,
     dayKey, todayKey, dayDate, daysUntil, shiftDay, shiftMonth, weekOf, outDays, weekdayJa, formatDay,
     dayOfWeek, WEEKDAYS, WEEKDAY_COLS, nthWeekdayOf, weekdayNth,
     dayTitleParts, dayTitleText, dayTitleBar, paintDayTitleInto, dayShare, setVar, fitFields,

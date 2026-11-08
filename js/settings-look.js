@@ -10,7 +10,7 @@
   const { html, node, icon, haptic } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { TINT, card, head, foot, navRow, switchRow, pickRow, choose, render, copyText } = S;
+  const { TINT, card, head, foot, navRow, switchRow, render, copyText } = S;
 
   /** 写して、言葉を一つ出す（写せなければ欄を出して選んでおく。KN.util.copy）。 */
   function copyOut(text) {

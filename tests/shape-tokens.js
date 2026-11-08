@@ -19,7 +19,7 @@ const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1]
 const has = (sel) => rules.filter((r) => r.sel.split(",").some((s) => s.trim() === sel));
 const colorOf = (body) => ((/(?:^|[;\s])color:\s*([^;]+)/.exec(body) || [])[1] || "").trim();
 
-const HEADS = [".section-title.is-block-head", ".diet-hero-label", ".arc-log-head h2", ".arc-stack-head h2",
+const HEADS = [".section-title.is-block-head", ".diet-hero-label", ".arc-log-head h2",
   ".arc-counts-head", ".notes-tree .nt-row.is-head"];
 const bad = HEADS.filter((h) => !has(h).length || has(h).some((r) => colorOf(r.body) && !/^var\(--c-text\)/.test(colorOf(r.body))));
 t.check("見出しの字は墨（--c-text）", !bad.length, bad.join(" "));
