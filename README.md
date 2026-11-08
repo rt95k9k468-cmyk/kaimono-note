@@ -887,7 +887,7 @@ js/                     読み込み順は index.html のとおり
   settings-*.js         設定の中身（look・todo・list・daily・notes・diet・relay・backup）
   絵
   icons.js / icons-phosphor.js  UIアイコン
-  icon-system.js / icons-v2-keys.js / product-icons.js  商品の絵の語彙・言葉・引き方
+  icons-v2-keys.js / product-icons.js  商品の絵の言葉・引き方
   icons-goods.js / icons-food.js  単色シルエット（道具など／食材）
   icons-todo.js         「こと」の絵
   empty-art.js          空の画面の絵

@@ -48,7 +48,6 @@ const JS = [
   "js/season.js",
   "js/holiday.js",
   "js/season-art.js",
-  "js/icon-system.js",
   "js/icons-v2-keys.js",
   "js/product-icons.js",
   "js/shun.js",

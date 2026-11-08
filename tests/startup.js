@@ -29,6 +29,7 @@ const { open, checker } = require("./lib");
     long: window.__long,
     fcp: Math.round((performance.getEntriesByName("first-contentful-paint")[0] || {}).startTime || 0),
     v2: !!KN.iconsV2,
+    sys: !!KN.iconSystem,
     keys: (KN.iconsV2Keys || []).length,
     hospital: KN.productIcons.findKey("病院に行く"),
     milk: KN.productIcons.findKey("牛乳"),
@@ -44,6 +45,7 @@ const { open, checker } = require("./lib");
 
   c.check("起動でエラーが出ない", errors.length === 0, errors.join("\n"));
   c.check("色つきの絵（icons-v2.js）は無い", !loaded.includes("icons-v2.js") && !r.v2);
+  c.check("絵の語彙（icon-system.js）は無い", !loaded.includes("icon-system.js") && !r.sys);
   c.check("手描きの「こと」（icons-todo-hand.js）と入れ替える口は無い", !loaded.includes("icons-todo-hand.js") && !r.hand);
   c.check("手描きのUIアイコン（icons-legacy.js）は無い", !loaded.includes("icons-legacy.js") && !r.legacy);
   c.check("キーワード（iconsV2Keys）は読んでいる", r.keys > 100, `${r.keys} 件`);

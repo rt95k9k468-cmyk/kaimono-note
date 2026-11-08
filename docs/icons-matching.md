@@ -151,7 +151,7 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 同じ理由で、品物辞書にある語（プリンター・折り紙・母の日）はこと辞書に裸で置かない
 ——「プリンタの」「カラープリンタ」のように絞る（2026年11月5日、絵の見つからない一覧から語を足したとき）。
 
-**この表を回す道具（node harness）は `js/icon-system.js` → `js/icons-v2-keys.js`
+**この表を回す道具（node harness）は `js/icons-v2-keys.js`
 → `js/util.js` → `js/product-icons.js` → `js/icons-todo.js` →
 `js/food-data.js` の順で読み込むこと。**（言葉の表は2026年9月27日に
 `icons-v2.js` から `icons-v2-keys.js` へ分けた。C3。絵のほうの `icons-v2.js` は

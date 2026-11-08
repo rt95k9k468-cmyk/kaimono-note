@@ -44,7 +44,7 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 - 体重計（`scale`）だけ Phosphor に適切な代替が無い（`scales` は天びんで、買うものの「比べる」と紛れる）。
   線の IconOven `weight-scale`（線1.5＝Phosphor Regular と同じ）を `icons-phosphor.js` のいちばん下に stroke で置く。
 - 空の画面の4枚（`empty-art.js`）も線のセット（IconOven・andrsrxn）。色は `.empty-art` の `--c-primary`。
-  **画面に出る手描きの絵はもう無い**（2026年11月8日）。`icon-system.js` は使う絵が無くなった。
+  **画面に出る手描きの絵はもう無い**（2026年11月8日）。`icon-system.js` は 2026年11月8日に消した。
 - 経緯と A/B/C/D の対応表は `ICON-PHOSPHOR.md`。
 - まだ探していないセットとライセンスの目録は `docs/materials.md`（Remix Icon は 2026年1月から独自の規約）。
 
