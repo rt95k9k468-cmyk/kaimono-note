@@ -36,7 +36,7 @@
 
 ## テスト
 
-- Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`（`open()` を使う）。一覧 `tests/INDEX.md` は一行600字——名前だけ引く（`grep 言葉 tests/INDEX.md | cut -s -d'|' -f2`）、中身は台本の頭。
+- Playwright。台本は `tests/`、書き方と「試験の罠」は `tests/README.md`（`open()` を使う）。一覧 `tests/INDEX.md`（一行60字・grep で引く）、中身は台本の頭。台本は増やさず既存に足す。
 - `NODE_PATH=/opt/node22/lib/node_modules node tests/<台本>.js`。全部は `tests/run-all.js`（約11分。Bash の `run_in_background` で）。
 - 触った画面の主要テストと `tests/daily-rules.js` は毎回走らせる。画面を三つ以上またぐ変更・共通の部品（`ui.js`・`app.js`・`util.js`・`store.js`・`sw.js`・共通の css）を触ったあとは全部——**待たない**：先に main まで流し、全部は裏で。赤ならすぐ直して流し直す。
 
@@ -50,5 +50,5 @@
 保存・`backup.js`・`idb.js`・日記の写し → storage ／ 動き → motion ／ ガラス → glass ／ 色・字・`--z-*`・絵文字 → look ／
 絵：系統 → icons、描く → icons-drawing、引き当て → icons-matching ／ 開発・テスト → dev ／ 計画・やらないこと → plan ／ パソコン・幅の広い画面 → desk
 
-- コメントの「CLAUDE.md の『〜』」は `grep -rn '〜' docs/` で出る。新しい決めごとは該当する docs に**短く**（決めごと・罠・理由だけ。経過や数字の羅列は書かない）。commit の本文も数行。
+- コメントの「CLAUDE.md の『〜』」は `grep -rn '〜' docs/` で出る。新しい決めごとは該当する docs に**短く**（決めごと・罠・理由だけ）。経過は commit の本文だけ。3月以後は足すなら同じだけ外す（docs/dev.md「一手を軽く」）。
 - 一区切りついたら、新しいセッションのほうが安いか判断し、そうならタイミングと貼れるプロンプトを示す（モデル・effort の目安は docs/dev.md）。
