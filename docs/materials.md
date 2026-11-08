@@ -105,7 +105,7 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 
 **Remix Icon の規約が変わった**（2026年1月の「Remix Icon License v1.0」。npm と Iconify の索引は Apache 2.0 のまま）。
 アプリの部品として入れるのは可（2.3）。**してはいけない**のは、単体で配る・競合するアイコン集を作る・**アプリの印やロゴにする**（3.3）。
-品物とことに入っている Remix の絵は部品なので、そのままでよい。`js/icons-goods.js` の頭にある「Remix Icon Fill（Apache 2.0）」は古い表示。
+品物とことに入っている Remix の絵は部品なので、そのままでよい。出典の表示（`js/icons-goods.js` の頭・icons-drawing.md）は v1.0 に直した。
 
 **探し済み**（ICON-SILHOUETTE.md・ICON-DEIMAGINE.md・ICON-TODO.md）：Phosphor（`ph`）・Material Symbols（`material-symbols`）・Tabler Icons（`tabler`）・Remix Icon（`ri`）・Bootstrap Icons（`bi`）・Fluent UI System Icons（`fluent`）・MingCute Icon（`mingcute`）・IonIcons（`ion`）・BoxIcons v2 Solid（`bxs`）・Huge Icons（`hugeicons`）・Health Icons（`healthicons`）・Iconoir（`iconoir`）・Maki（`maki`）・Noto Emoji (v1)（`noto-v1`）・Fluent Emoji High Contrast（`fluent-emoji-high-contrast`）・
 Pinhead・Energy Icons・TDesign・Boxicons（新版）・MDI・Feather Icon（`fe`）（2026年11月8日。手描き・描き起こしの代わりを探した）

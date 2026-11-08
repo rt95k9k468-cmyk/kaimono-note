@@ -1180,7 +1180,7 @@
       title: "iPhone の写しを見る", on: rep.on(), onTap: (v) => (v ? rep.enable() : rep.disable()),
     })) : null;
     if (rep && rep.on()) {
-      return [mirror, foot(rep.at() ? `${whenText(rep.at())}の控え` : "読んでいます"), card(cutRow())];
+      return [mirror, foot(rep.at() ? `${whenText(rep.at())}の控え` : "読んでいます"), card(cutRow()), S.syncReaderEntry ? S.syncReaderEntry() : null];
     }
     const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
     const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。` : "";

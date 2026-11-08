@@ -135,6 +135,7 @@ function summarize(r) {
 
 async function main() {
   const o = parseArgs(process.argv.slice(2));
+  if (o.gate || o.quick) process.env.KN_GATE = "1";  // 大きさの上限は門では警報だけ（registry.js）
   if (o.verbose) process.env.KN_VERBOSE = "1";  // 台本の ok の行も出す（lib.js の checker）
   const names = listScripts(o);
   if (!o.quick) await ensureServer();

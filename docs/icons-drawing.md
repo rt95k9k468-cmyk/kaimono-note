@@ -15,7 +15,7 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
    直すたびに骨格がずれて別物になる。`npm pack` で取れる
    （proxyの`noProxy`にnpmがあるので通る。phosphoricons.comやjsdelivrは403）。
    手持ちの候補：Phosphor Fill（MIT）、Material Symbols rounded fill
-   （Apache 2.0）、Tabler filled（MIT）、Remix Icon fill（Apache 2.0）、
+   （Apache 2.0）、Tabler filled（MIT）、Remix Icon fill（Remix Icon License v1.0・部品としてだけ）、
    Bootstrap Icons fill（MIT）。
    - Phosphor 由来は `P(d)` を使い、**`fill-rule` を付けない**（Phosphorは
      穴を逆回りで描くnonzeroの作り。evenoddにすると重なりが打ち消されて崩れる）。
