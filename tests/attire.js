@@ -23,7 +23,7 @@ const { open, checker } = require("./lib");
     const a = lum(cs.getPropertyValue("--c-primary").trim()), b = lum(cs.getPropertyValue("--c-bg").trim());
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   });
-  const btn = (id) => page.locator(`.set-layer:last-child .seg-btn[data-attire="${id}"]`);
+  const btn = (id) => page.locator(`.set-layer:last-child .attire-pick[data-pick="${id}"]`);
   const hasAccents = () => page.locator(".set-layer:last-child .js-accents").count();
   const toSettings = async () => {
     await page.evaluate(() => KN.app.showScreen("settings"));
@@ -43,7 +43,7 @@ const { open, checker } = require("./lib");
   t.check("「いま」では札を付けない", (await attr()) === null && (await attr("data-sekki")) === null);
 
   await toSettings();
-  t.check("装いのボタンが五つ", (await page.locator(".set-layer:last-child .seg-btn[data-attire]").count()) === 5);
+  t.check("装いのボタンが五つ", (await page.locator(".set-layer:last-child .attire-pick[data-pick]").count()) === 5);
   t.check("「いま」が選ばれている", (await btn("now").getAttribute("aria-pressed")) === "true");
   t.check("「いま」では基調色が出る", (await hasAccents()) === 1);
 
@@ -57,6 +57,35 @@ const { open, checker } = require("./lib");
   t.check("記録に残る", (await page.evaluate(() => KN.store.get().settings.attire)) === "washi-shu");
   t.check("押したボタンが選ばれている", (await btn("washi-shu").getAttribute("aria-pressed")) === "true");
   t.check("自分の主色を持つあいだ、基調色は出さない", (await hasAccents()) === 0);
+  /* 選ぶところの絵（css/attire.css の「装いの絵」）：どれを着ていても、絵は自分の装いの色で描く。 */
+  const shots = await page.evaluate(() => {
+    const bg = (id) => {
+      const el = document.querySelector(`.set-layer:last-child .attire-pick[data-pick="${id}"] .attire-shot`);
+      return el ? getComputedStyle(el).backgroundColor : "";
+    };
+    const title = document.querySelector('.set-layer:last-child .attire-pick[data-pick="washi-shu"] .as-title');
+    const nowTitle = document.querySelector('.set-layer:last-child .attire-pick[data-pick="now"] .as-title');
+    return { now: bg("now"), shu: bg("washi-shu"), polish: bg("polish"), n: document.querySelectorAll(".set-layer:last-child .attire-shot").length,
+      mincho: title ? /Mincho|明朝|serif/i.test(getComputedStyle(title).fontFamily) : false,
+      nowGothic: nowTitle ? !/Mincho|明朝/i.test(getComputedStyle(nowTitle).fontFamily) : false };
+  });
+  t.check("五つの装いに絵がある", shots.n === 5, String(shots.n));
+  t.check("朱を着ていても「いま」の絵は今の地、朱の絵は和紙", shots.now === "rgb(242, 242, 245)" && shots.shu === "rgb(243, 239, 229)", JSON.stringify(shots));
+  t.check("絵の見出しは装いの書体（和紙は明朝・いまはゴシック）", shots.mincho && shots.nowGothic, JSON.stringify(shots));
+  /* 筆の✓・墨の線（和紙と墨・季節の手帳だけ）。 */
+  const ink = await page.evaluate(() => {
+    const host = document.createElement("div");
+    host.innerHTML = '<button class="check" aria-checked="true"><svg></svg></button><button class="check" aria-checked="mixed"><svg></svg></button>'
+      + '<div class="item is-striking"><span class="item-name">あ</span></div>';
+    document.body.append(host);
+    const mask = (el) => { const cs = getComputedStyle(el); return cs.maskImage || cs.webkitMaskImage || "none"; };
+    const out = { done: mask(host.querySelector('[aria-checked="true"] svg')), mixed: mask(host.querySelector('[aria-checked="mixed"] svg')),
+      strike: getComputedStyle(host.querySelector(".item-name")).animationName };
+    host.remove();
+    return out;
+  });
+  t.check("和紙では✓を筆の形で抜く（できなかったの −は今のまま）", /^url/.test(ink.done) && ink.mixed === "none", JSON.stringify(ink));
+  t.check("和紙では取り消し線を墨の一筆で引く", ink.strike === "ink-strike", ink.strike);
   const headFont = await page.evaluate(() => {
     const h = document.querySelector(".topbar-title") || document.querySelector("h1, h2");
     return h ? getComputedStyle(h).fontFamily.split(",")[0].replace(/"/g, "").trim() : "";

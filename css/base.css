@@ -580,6 +580,8 @@
   /* 一度だけ、そこを見てほしい（足した行がどこへ入ったかを示す光）。
      他のどれよりも長いのは、**目が探しに行く時間**だからです。 */
   --m-flash: 1.4s;
+  /* 暦の日の一度きり（js/moment.js）：節気の初日に窓を流れる粒の、最初から最後まで。光は --m-flash。 */
+  --m-moment: 4.2s;
   /* 道の人の一歩（やることを開いたとき、前に見た点から「いま」まで四歩で
      追いつく。day-road.js の「歩く」）。上がり下がりの台形を足して、全体で
      1.5s（2.0s から。2.0 の roadmap の V6「長くても約1.5秒」）。 */
@@ -1298,6 +1300,24 @@ a { color: var(--c-primary); }
   scale: calc(1 + var(--sky-pull, 0) * .1);
 }
 .head.is-sky-pull[data-sky]::before { will-change: scale; }
+
+/* 暦の日の一度きり（js/moment.js・docs/motion.md）。帯の上に一枚だけ重ね、終われば外す。動きは WAAPI の transform と opacity。 */
+.moment { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.moment-grain { position: absolute; top: 0; border-radius: 50%; will-change: transform, opacity; }
+.moment.is-snow  .moment-grain { background: #fff; box-shadow: 0 0 0 .5px rgba(90, 110, 140, .28); }
+.moment.is-petal .moment-grain { background: #f4c4cf; border-radius: 80% 0 80% 0; }
+.moment.is-leaf  .moment-grain { background: #8cb56f; border-radius: 0 80% 0 80%; }
+.moment.is-maple .moment-grain { background: #d47a3c; border-radius: 0 80% 0 80%; }
+.moment.is-maple .moment-grain:nth-child(3n) { background: #c9a03a; }
+.moment-light {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .55) 50%, transparent 80%);
+  will-change: transform, opacity;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .moment-light { background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .16) 50%, transparent 80%); }
+}
+:root[data-theme="dark"] .moment-light { background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .16) 50%, transparent 80%); }
 
 /* ノートは上から一枚の絵（2026年10月11日、利用者の頼み「タイトル行とシートで分けずに」）。
    空は出さず、帯の上端から画面の下まで一枚（帯の後ろ、空より手前）に広重を敷く。画面は地を塗らず

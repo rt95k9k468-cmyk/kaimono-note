@@ -87,6 +87,7 @@ const JS = [
   "js/cal-grid.js",
   "js/head.js",
   "js/sky.js",
+  "js/moment.js",
   "js/upcoming.js",
   "js/search-all.js",
   "js/notify.js",

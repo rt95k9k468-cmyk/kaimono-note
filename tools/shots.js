@@ -99,6 +99,7 @@ async function shoot(browser, v, combo) {
   await ctx.addInitScript((face) => {
     try {
       localStorage.setItem("kn-export-nudge", "9999-12-31");
+      localStorage.setItem("kn-moment-seen", "9999-12-31");
       sessionStorage.setItem("kn-book-first", "off");
       sessionStorage.setItem("kn-todo-face", face === "today" ? "today" : "week");
     } catch (_) {}

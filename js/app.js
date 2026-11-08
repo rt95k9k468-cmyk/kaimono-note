@@ -1618,6 +1618,7 @@
     KN.app.onMinute = () => {
       const key = KN.util.todayKey();
       if (key !== dayNow) { store.rescheduleOverdue(); applyAttire(store.get().settings.attire); }
+      if (KN.moment) KN.moment.maybe();   // 暦の日の一度きり（js/moment.js）
       const due = store.todosDue().length;
       if (key === dayNow && due === dueNow) return;
       dayNow = key;

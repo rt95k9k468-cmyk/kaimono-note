@@ -77,7 +77,7 @@ function clockAt(hms) {
     unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。
     stamps：時計を止めても、事象の時刻（e.timeStamp）は本物のまま（CDP の timestamp が届く）。playwright の時計は
     e.timeStamp を「頁が初めて読んだ時刻」にすり替えるので、重い機械では指の速さが読み違えられる（tests/README.md）。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, bookFirst = false, weekFirst = false, live = false, unfold = [], scrollbars = false, stamps = false } = {}) {
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, moment = false, bookFirst = false, weekFirst = false, live = false, unfold = [], scrollbars = false, stamps = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
@@ -103,6 +103,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   /* 週に一度の控えのトースト（settings-backup.js）は、ほかの台本の邪魔をしないよう
      止めておく。確かめる台本だけ `nudge: true`。 */
   if (!nudge) await ctx.addInitScript(() => { try { localStorage.setItem("kn-export-nudge", "9999-12-31"); } catch (_) {} });
+  /* 暦の日の一度きり（js/moment.js）も同じく止めておく。確かめる台本だけ `moment: true`。 */
+  if (!moment) await ctx.addInitScript(() => { try { localStorage.setItem("kn-moment-seen", "9999-12-31"); } catch (_) {} });
   /* ＋の新しいノートは先にノートブックの小窓（2026年10月15日）。確かめる台本だけ `bookFirst: true`。 */
   if (!bookFirst) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-book-first", "off"); } catch (_) {} });
   /* ノートの本文は、ほかの台本では印の書く欄（.js-text）で打つ（見たままは 2026年10月21日から既定。js/note-live.js）。

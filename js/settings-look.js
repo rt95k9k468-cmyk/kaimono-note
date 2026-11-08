@@ -167,19 +167,35 @@
     /* ホーム画面のアイコンの数は、通知の一枚へ移した（2026年11月5日。settings-todo.js の badgeRows）。 */
 
     /* 装い（css/attire.css）。押せば画面ぜんぶがその場で変わる。和紙と墨・季節の手帳は自分の主色を持つので、
-       そのあいだ基調色は出さない。 */
+       そのあいだ基調色は出さない。字の札ではなく、明るさと同じく小さな画面の絵で選ぶ（絵は css/attire.css の
+       「装いの絵」。絵の札 data-attire が、その装いの色を絵の中だけに効かせる）。季節の絵は今日の節気の色。 */
     const attire = s.attire || "now";
     const ATTIRE_NAMES = [["now", "いま"], ["washi-shu", "朱"], ["washi-enji", "臙脂"], ["season", "季節"], ["polish", "磨き"]];
+    const today = KN.season ? KN.season.of(KN.util.todayKey()) : null;
+    const sekki = today ? String(Math.floor(today.k / 3)) : "";
+    const swatch = (store.ACCENTS.find((a) => a.id === (s.accent || "orange")) || store.ACCENTS[0]).swatch;
     const attires = node(html`
       <div class="set-card is-pad">
-        <div class="seg">
-          ${ATTIRE_NAMES.map(([id, label]) => html`<button class="seg-btn" data-attire="${id}" aria-pressed="${String(attire === id)}">${label}</button>`)}
+        <div class="theme-picks attire-picks" role="radiogroup" aria-label="装い">
+          ${ATTIRE_NAMES.map(([id, label]) => html`
+            <button type="button" class="theme-pick attire-pick" data-pick="${id}" role="radio"
+                    aria-checked="${String(attire === id)}" aria-pressed="${String(attire === id)}">
+              <span class="attire-shot" data-attire="${id}" data-sekki="${id === "season" ? sekki : ""}"
+                    style="--shot-p:${swatch}" aria-hidden="true">
+                <i class="as-sky"></i><b class="as-title">今日</b>
+                <i class="as-card"><i class="as-row is-done"></i><i class="as-row"></i><i class="as-row"></i></i>
+                <i class="as-dots"><i></i><i></i><i></i></i>
+              </span>
+              <span class="theme-name">${label}</span>
+              <span class="theme-mark" aria-hidden="true">${icon("check")}</span>
+            </button>`)}
         </div>
       </div>
     `);
-    attires.querySelectorAll(".seg-btn").forEach((btn) => {
+    attires.querySelectorAll(".attire-pick").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const v = btn.dataset.attire;
+        const v = btn.dataset.pick;
+        if (v === (store.get().settings.attire || "now")) return;
         store.update((x) => { x.settings.attire = v; });
         KN.app.applyAttire(v);
         haptic();
