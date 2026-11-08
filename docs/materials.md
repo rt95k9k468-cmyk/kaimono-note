@@ -31,7 +31,7 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 **絵**
 - UI：Phosphor Regular v2.1.1（MIT）。体重計だけ手描き。
 - 品物（708キー）：単色シルエット。借り先は Phosphor Fill・Material Symbols（rounded fill）・MingCute Fill・Tabler Filled・
-  Remix Icon Fill・Boxicons Solid・Bootstrap Icons Fill・Fluent（filled）・Pinhead。描き起こしが3枚（まな板・ティッシュ・らっぷ）。
+  Remix Icon Fill・Boxicons Solid・Bootstrap Icons Fill・Fluent（filled）・Pinhead・IconOven（線を面に直した3枚：まな板・ティッシュ・らっぷ）。描き起こしは無い。
 - こと（108枚）：Phosphor Fill とよそのセット（手描きは無い）。空の画面：手描き 4枚（`empty-art.js`）。
 - ノートの地：歌川広重『名所江戸百景』72枚（NDL イメージバンク・PDM）。
 - daily の紙：Wikimedia Commons の写真72枚。帯の空：同じく20枚（季節×時間帯。CC BY／BY-SA ほか）。
@@ -110,7 +110,8 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 **探し済み**（ICON-SILHOUETTE.md・ICON-DEIMAGINE.md・ICON-TODO.md）：Phosphor（`ph`）・Material Symbols（`material-symbols`）・Tabler Icons（`tabler`）・Remix Icon（`ri`）・Bootstrap Icons（`bi`）・Fluent UI System Icons（`fluent`）・MingCute Icon（`mingcute`）・IonIcons（`ion`）・BoxIcons v2 Solid（`bxs`）・Huge Icons（`hugeicons`）・Health Icons（`healthicons`）・Iconoir（`iconoir`）・Maki（`maki`）・Noto Emoji (v1)（`noto-v1`）・Fluent Emoji High Contrast（`fluent-emoji-high-contrast`）・
 Pinhead・Energy Icons・TDesign・Boxicons（新版）・MDI・Feather Icon（`fe`）（2026年11月8日。手描き・描き起こしの代わりを探した）
 - Energy Icons は「面」に数えられるが、線を面に直しただけの**線の見た目**。品物のシルエットには向かない。
-- 日用品が多いのは Pinhead（洗剤・ごみ袋・歯ぶらし）。`fe` は日用品が無い。まな板・ラップ・箱ティッシュはどこにも無い。
+- 日用品が多いのは Pinhead（洗剤・ごみ袋・歯ぶらし）。`fe` は日用品が無い。まな板・ラップ・箱ティッシュは面のセットに無く、線の IconOven にあった（面に直して入れた。
+  線の外形を太さぶんふくらませて塗り、中の線は2本までを穴で抜く。まな板はまっすぐだと電池・カップとぶつかるので斜め）。
 
 **まだ探していない、面のあるセット**（「面」＝線（stroke）を使わない絵の枚数。「和の題材」は名前で当たったもの）
 
