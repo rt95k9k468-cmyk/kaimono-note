@@ -126,6 +126,7 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
 - Windows のゴシックは游ゴシック。名前で呼ぶと Regular（細い）か Medium 一つ（太字は作り物）なので、`@font-face` の
   `"KN Yu Gothic"` に 400＝Medium・700＝Bold の面を `local()` で束ねる（取りに行かない）。丸ゴの無い端末はこのゴシックへ
   （前は `sans-serif` 任せでメイリオなどに落ちていた。P4、`tests/desk-hand.js`）。
+- 入れられる字の目録（端末ごとの字・Google Fonts の日本語 66 書体・数字だけの字）は `docs/materials.md`。
 
 ### 説明は書かない（2026年9月30日）
 

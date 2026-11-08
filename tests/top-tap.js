@@ -53,7 +53,13 @@ const { open, checker } = require("./lib");
   const total = trace.pts[trace.pts.length - 1][0];
   const at = (ms) => (trace.pts.find((p) => p[0] >= ms) || trace.pts[trace.pts.length - 1])[1];
   const firstQuarter = trace.from - at(total * 0.25);
-  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", total >= 450 && total <= 1400, `${Math.round(total)}ms`);
+  /* 長さは**止まったコマを除いて**測る。毎朝の WebKit の列は、どの版でも空の頁でも、ときどき一コマだけ
+     150〜700ms 止まる（2026年11月8日に同じランナーで今の版と前の版を並べて測った）。滑りは時刻で進むので、
+     着く前に止まった分だけ壁時計の合計が延び、1400 を越えて落ちていた。50ms を越えた分を引く。 */
+  const stall = trace.pts.reduce((s, p, i) => s + Math.max(0, p[0] - (i ? trace.pts[i - 1][0] : 0) - 50), 0);
+  const paced = total - stall;
+  t.check("上へ：ひと息かけて着く（ぱっと飛ばない）", paced >= 450 && paced <= 1400,
+    `${Math.round(paced)}ms（止まったコマ ${Math.round(stall)}ms を除く）`);
   const lastQuarter = at(total * 0.75);
   t.check("上へ：出だしは速く、最後はうんと緩める", firstQuarter > trace.from * 0.6 && lastQuarter < trace.from * 0.01,
     `始めの1/4で ${Math.round(firstQuarter)}px、最後の1/4に ${Math.round(lastQuarter)}px（全 ${trace.from}px）`);
