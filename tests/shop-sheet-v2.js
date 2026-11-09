@@ -130,16 +130,21 @@ const { open, checker } = require("./lib");
   t.check("絵を押すと絵を選ぶ紙", await page.evaluate(() => /絵をさがす/.test([...document.querySelectorAll(".sheet.is-open")].pop().innerHTML)));
   await closeTop();
 
-  await page.click(".sheet.is-open .js-menu");
-  await page.waitForTimeout(400);
-  await page.locator(".pop-menu button, .note-pop button", { hasText: "リストから外す" }).first().click();
+  const delInMenu = await (async () => {
+    await page.click(".sheet.is-open .js-menu");
+    await page.waitForTimeout(400);
+    return page.locator(".pop-menu button, .note-pop button", { hasText: "この商品を消す" }).count();
+  })();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  await page.locator(".sheet.is-open .btn-block", { hasText: "リストから外す" }).first().click();
   await page.waitForTimeout(600);
   const gone = await page.evaluate((id) => ({
     gone: !KN.store.get().items.some((i) => i.id === id),
     toast: [...document.querySelectorAll(".toast")].map((x) => x.textContent).join(" "),
     open: document.querySelectorAll(".sheet.is-open").length,
   }), added.id);
-  t.check("⋯ の「リストから外す」で外れ、元に戻せる", gone.gone && /元に戻す/.test(gone.toast) && gone.open === 0, JSON.stringify(gone));
+  t.check("紙の下の「リストから外す」で外れ、元に戻せる。「この商品を消す」は ⋯ の中", delInMenu === 1 && gone.gone && /元に戻す/.test(gone.toast) && gone.open === 0, JSON.stringify(gone));
 
   /* 価格から開いた（行の無い）紙は★を出さない */
   await page.evaluate(() => { const p = KN.store.get().products[0]; KN.productSheet.open(p.id); });

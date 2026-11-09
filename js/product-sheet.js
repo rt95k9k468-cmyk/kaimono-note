@@ -671,11 +671,9 @@
 
   /* ---------------- danger ---------------- */
 
-  function dangerSection(productId, closeSheet) {
-    const btn = node(html`
-      <button class="btn btn-danger btn-block">${icon("trash")} この商品を消す</button>
-    `);
-    btn.addEventListener("click", async () => {
+  /* 商品そのものを消す（価格記録・リスト項目ごと）。滅多にしないので ⋯ の中（赤字）。 */
+  function deleteProduct(productId, closeSheet) {
+    return (async () => {
       const p = store.getProduct(productId);
       const ok = await KN.ui.confirm({
         title: "この商品を消しますか？",
@@ -707,8 +705,7 @@
         });
       } } } : {});
       closeSheet();
-    });
-    return btn;
+    })();
   }
 
   /* openIconPicker も外へ出します——買うものの一覧の丸を直接タップして
@@ -896,23 +893,30 @@
     f.body.append(pricesWrap);
     rerenderPrices();
     f.body.append(historySection(productId));
-    f.body.append(dangerSection(productId, () => handle.close()));
 
-    /* 「リストから外す」は ⋯ の中（前は数量の隣。数量は出さなくなった）。 */
-    const menu = item ? [{
-      id: "unlist",
-      label: () => "リストから外す",
-      icon: "close",
-      onPick: () => {
-        const snapshot = itemOf();
-        if (!snapshot) return;
-        store.update((s) => { s.items = s.items.filter((i) => i.id !== itemId); });
-        KN.ui.toast("リストから外しました", {
-          action: { label: "元に戻す", onClick: () => store.update((s) => { s.items.unshift(snapshot); }) },
-        });
-        handle.close();
-      },
-    }] : null;
+    /* 今回のリストから外す（商品は残る）はよく使うので紙の下にすぐ押せる形で。
+       商品そのものを消すのは滅多にしないので ⋯ の中。 */
+    const unlist = () => {
+      const snapshot = itemOf();
+      if (!snapshot) return;
+      store.update((s) => { s.items = s.items.filter((i) => i.id !== itemId); });
+      KN.ui.toast("リストから外しました", {
+        action: { label: "元に戻す", onClick: () => store.update((s) => { s.items.unshift(snapshot); }) },
+      });
+      handle.close();
+    };
+    if (item) {
+      const out = node(html`<button class="btn btn-block">${icon("close")} リストから外す</button>`);
+      out.addEventListener("click", unlist);
+      f.body.append(out);
+    }
+    const menu = [{
+      id: "delete",
+      label: () => "この商品を消す",
+      icon: "trash",
+      danger: true,
+      onPick: () => deleteProduct(productId, () => handle.close()),
+    }];
 
     /* 書いた先から残す紙なので、閉じたときに一言（開いたときと変わっていれば）。
        名前とメモは打ち終わりを待って書くので、まだ書いていない字も比べる。 */
