@@ -141,7 +141,7 @@
 | `diary-out.js` | 日記の本文を記録から外す（2b、2026年10月4日、docs/storage.md の「段2の案」）。 |
 | `road-wake.js` | 一日の道の10月2日の手直し（docs/todo-timeline.md）。 |
 | `reactions.js` | 反応を足す（docs/motion.md の「反応を足す」・2026年10月8日）。 |
-| `heavy-pace.js` | 大きな記録での重さ（2026年10月8日の総点検、docs/log/inspection.md）。 |
+| `heavy-pace.js` | 大きな記録での重さ（手で回す）。SWEEP=1 で押せるもの全部を一巡り。 |
 | `typeface.js` | 書体（docs/look.md の「書体は三つ」）。 |
 | `export-nudge.js` | 週に一度の控え。記録が少ないうちは出さない・手の書き出しから7日で「週に一度の控え」（6日は出さない）・「あとで」「保… |
 | `look-1008.js` | 見た目の三つ（2026年10月8日）。体重の数・帯の日付の書体は ui-rounded が先頭、明朝で外れる／買うもの… |

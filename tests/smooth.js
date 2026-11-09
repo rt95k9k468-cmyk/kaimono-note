@@ -10,6 +10,8 @@
    - daily は同じ日なら、組み直しても読んでいた位置のまま。別の日へ移れば頭から
    - 紙の中で打っているあいだ、後ろの画面は組み直さない。紙を閉じれば組み直す
    - 円の書式は前と同じ字
+   - daily の探す窓で打っても、画面は組み直さない（打った字は「ぜんぶをさがす」へ渡すだけ）
+   - からだの推移の期間を押すと、紙は一度だけ組む
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/smooth.js */
 const fs = require("fs");
@@ -265,6 +267,41 @@ const t = checker("smooth");
   })));
   const off = yen.filter((y) => y.a !== y.b || y.c !== y.d);
   t.check("円の書式は前と同じ字", off.length === 0, JSON.stringify(off));
+
+  /* ---- daily の探す窓で打っても、画面は組み直さない（絞らない窓。2026年11月10日） ---- */
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(700);
+  await page.click("#head .js-search-btn");
+  await page.waitForTimeout(500);
+  const typed = await sheetsBuilt(async () => {
+    for (const ch of ["さ", "ん", "ぽ"]) { await page.keyboard.type(ch); await page.waitForTimeout(120); }
+  });
+  t.check("daily の探す窓で打っても、紙は組み直さない", typed === 0, String(typed));
+  t.check("…打った字は欄に入っている", await page.evaluate(() => document.querySelector("#screen-archive .js-search").value) === "さんぽ");
+  await page.evaluate(() => { const c = document.querySelector("#screen-archive .js-search-clear"); c && c.click(); });
+
+  /* ---- からだの推移の期間を押すと、紙は一度だけ組む（前は二度。docs/traps.md の「store を書いたあとに」） ---- */
+  await page.evaluate(() => {
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      KN.store.addWeight({ day: KN.util.dayKey(d), time: "07:00", kg: 60 + i / 10 });
+    }
+    KN.app.showScreen("diet");
+  });
+  await page.waitForTimeout(700);
+  const ranged = await page.evaluate(async () => {
+    let n = 0;
+    const mo = new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((x) => {
+      if (x.nodeType === 1 && x.matches(".tl-sheet")) n++;
+    })));
+    mo.observe(document.getElementById("screen-diet"), { childList: true, subtree: true });
+    const b = [...document.querySelectorAll("#screen-diet .js-range .seg-btn")].find((x) => x.dataset.id === "90");
+    if (b) b.click();
+    await new Promise((ok) => setTimeout(ok, 300));
+    mo.disconnect();
+    return { n, found: !!b, range: KN.store.dietRange() };
+  });
+  t.check("からだの推移の期間を押すと、紙は一度だけ組む", ranged.found && ranged.n === 1 && ranged.range === 90, JSON.stringify(ranged));
 
   t.check("エラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();

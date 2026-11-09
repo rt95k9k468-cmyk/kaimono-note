@@ -949,7 +949,8 @@
     `);
 
     sec.querySelectorAll(".js-range .seg-btn").forEach((b) => b.addEventListener("click", () => {
-      range = Number(b.dataset.id); store.setDietRange(range); render();
+      /* 組み直すのは store を書いた拍の subscribe（app.js）。ここで render() を重ねると二度組む（docs/traps.md）。 */
+      range = Number(b.dataset.id); store.setDietRange(range);
     }));
 
     const drawn = chartEl || chart();

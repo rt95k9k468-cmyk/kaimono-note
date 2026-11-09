@@ -34,6 +34,7 @@
   真なら測らない（CSS の `field-sizing: content` が伸ばす。roadmap-3.1 の S2）。
 - **store を書いたあとに自分で `render()` を呼ばない。** 出ている画面は app.js の subscribe が組み直すので、
   呼ぶと二度組む（daily で 約100ms）。出ていない画面だけ自分で。（motion の「押した一拍を軽く」）
+  探すのは `SWEEP=1 node tests/heavy-pace.js`——押せるもの全部を押して、二度組んだ手と遅い手を並べる。
 - **測るのは書く前に、まとめて。** class や style を書いたあとに `getBoundingClientRect`・`offsetWidth`・
   `getComputedStyle`・`scrollTop` を読むと、その場で並べ直してから答える。行ごとに測って書くと行の数だけ
   並べ直す。（motion の「押した一拍を軽く」）
