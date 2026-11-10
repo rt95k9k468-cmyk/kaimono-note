@@ -87,7 +87,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   `connect-src` の `https:` は中継所（利用者の入れる URL）・同期の部屋のため、`wss://*.workers.dev` は部屋の知らせ（docs/sync.md）。
 - 道具の頁（`tools/calendar.html`・`diary-import.html`）は `default-src 'none'`。直書きのスクリプトは sha256 で許す——
   **中身を一字でも直したら meta の値も直す**（門が落ちて、入れる値を出す）。
-- 見本（`tools/notes-proto*.html`・`todo-proto.html`）は配らない（deploy が消す）。手元のサーバーで開く。
+- 見本（`tools/notes-proto*.html`・`todo-proto.html`・`redesign-proto.html`）は配らない（deploy が消す）。手元のサーバーで開く。
 - `js/`・`sw.js` に `eval`・`new Function`・外から読むスクリプトを置かない。通信してよいのは自分と Dropbox
   （api・content・www・notify）と、利用者が入れた中継所だけ。
 - `relay/` は `package-lock.json` を持つ。入れるのは `npm ci`、上げるときだけ `npm install` して lock ごとコミット。
@@ -245,7 +245,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   行は「名前｜60字まで」（詳しくは台本の頭のコメントが正）。
 - **一手を軽く**（2026年11月8日、利用者が決めた）。経過は commit の本文だけに。`docs/log/` は訊いた案と
   答えだけ。`docs/plan.md` は段の切り替わりだけ。台本は増やさず、近い既存の台本に足す（試験の数を成果にしない）。
-  **2027年3月以後は、足すなら同じだけ外す。** 大きさの上限は `tests/registry.js` の `CAP`（JS（試験除く）・
+  **2027年3月以後は、足すなら同じだけ外す**（2026年11月10日、利用者：全面リデザイン＝docs/redesign.md では、この縛りと
+  「3月まで足さない」を考えない）。大きさの上限は `tests/registry.js` の `CAP`（JS（試験除く）・
   CSS・docs・CLAUDE.md の字、試験の本数、INDEX の一行）。上限は警報で、門では落とさず毎日の全部で赤になる
   ——必要な直しは止めない。上げるのは利用者の OK を得てから。
 - **大きい docs は丸ごと読まない**（2026年10月4日、利用者が決めた）。まず

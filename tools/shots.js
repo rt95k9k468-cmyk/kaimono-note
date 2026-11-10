@@ -13,6 +13,7 @@
      --empty                  試しの記録を入れない
      --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）
      --out <dir>              置き場（既定 /tmp/kn-shots）
+     --page 'tools/x.html#a,…' 見本の頁をそのまま撮る（記録を入れない・並べた一枚は作らない。--view・--dpr は効く）
 
    一枚ずつの画像のほかに、差し替えを横・組み合わせを縦に並べ、番号を書いた compare.png を作る（393×852・2倍）。
    試しの記録は無難な字だけ。日記の本文は入れない（CLAUDE.md）。 */
@@ -38,6 +39,7 @@ const EMPTY = process.argv.includes("--empty");
 const [VW, VH] = String(arg("view", "393x852")).split("x").map(Number);
 const VIEW = { width: VW, height: VH };
 const DPR = +arg("dpr", 2);
+const PAGES = list("page", "");
 const VARIANTS = [{ name: "今", css: "" }, ...list("attire", "").map((a) => ({ name: a, css: "", attire: a })), ...all("css").map((s) => {
   const i = s.indexOf("=");
   const name = s.slice(0, i), body = s.slice(i + 1);
@@ -166,6 +168,17 @@ async function compare(browser, rows) {
   await ensureServer();
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await require("playwright").chromium.launch();
+  if (PAGES.length) {
+    const page = await (await browser.newContext({ serviceWorkers: "block", viewport: VIEW, deviceScaleFactor: DPR })).newPage();
+    for (const p of PAGES) {
+      await page.goto(URL.replace("index.html", p));
+      await page.reload();   // # だけ違う頁へは移らないので読み直す
+      await page.waitForTimeout(700);
+      await page.screenshot({ path: path.join(OUT, `${p.replace(/^.*\//, "").replace(/[^\w-]+/g, "-")}.png`) });
+    }
+    await browser.close();
+    return console.log(`${PAGES.length} 枚 → ${OUT}`);
+  }
   const combos = [];
   for (const s of SCREENS) for (const theme of THEMES) for (const size of SIZES) {
     const [screen, face] = s.split(":");
