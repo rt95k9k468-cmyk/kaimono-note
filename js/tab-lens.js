@@ -154,19 +154,9 @@
     lens.className = "tab-lens";
     lens.setAttribute("aria-hidden", "true");
     lens.hidden = true;
-    /* **縁の屈折（`.tab-edge`）のすぐあと**に置きます。レンズは z-index 0
-       なので、順番がそのまま重なりの順——縁の屈折・丸薬・押した光・そして
-       席の絵と字（z-index 1）。**席の絵と字より前に出してはいけません。**
-
-       前は「いちばん先」でした。すると縁の屈折（幅 14px の輪に blur(5px)）が
-       **丸薬の上下 6px を後ろの景色としてぼかし**、印の上下がにじんで帯の
-       ふちへ溶け出していました（丸薬 48px ／ カプセル 64px なので、上下の
-       余白は 8px しかない）。明るい面の薄い印では目立たず、帯が夜になった
-       とき（暗い丸薬）に、にじんだ影として見えました（2026年9月27日）。
-       屈折が曲げるのは**帯の後ろの景色**で、帯に載っている印ではありません。 */
-    const edge = bar.querySelector(".tab-edge");
-    if (edge) edge.after(lens);
-    else bar.prepend(lens);
+    /* 席のあと（buildTabs が席を並べたすぐあとに呼ぶ）に置く。レンズは z-index 0 なので、順番がそのまま重なりの順——
+       丸薬・押した光・そして席の絵と字（z-index 1）。**席の絵と字より前に出してはいけません。** */
+    bar.append(lens);
     at = null;
     held = false;
     seats = null;

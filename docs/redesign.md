@@ -156,7 +156,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | 段 | 何 | 主に触る所 | 直す試験（主なもの） | 重さ |
 |---|---|---|---|---|
 | R0 | 計画と見本（11月10日 済み） | この文書・`tools/redesign-proto.html` | — | — |
-| R1 | 土台：色・字・形・面の札と共通の部品（カード・ボタン・札・選ぶ帯・行・丸・欄・一言）。ガラスを外す・**装いを二つに（手帳・モダン）**・明暗 | base.css `:root`・components.css・attire.css（外す）・`applyAttire`・settings-look.js・store.js（`headFont`）・theme-color | look-tokens・shape-tokens・legibility・attire・typeface・sky・text-size・css-unused | 大 |
+| R1 | **済み（11月10日）**。土台：色・字・形・面の札と共通の部品（カード・ボタン・札・選ぶ帯・行・丸・欄・一言）。ガラスを外す・**装いを二つに（手帳・モダン）**・明暗 | base.css `:root`・components.css・attire.css（外す）・`applyAttire`・settings-look.js・store.js（`headFont`）・theme-color | look-tokens・shape-tokens・legibility・attire・typeface・sky・text-size・css-unused | 大 |
 | R2 | 骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
 | R3 | tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
 | R4 | health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
@@ -168,6 +168,9 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | RI | **絵・写真・挿絵の検討**（下。最後に） | season-art.js・sky.js・empty-art.js・絵の一族・表紙 | season-art・sky・attire | 中 |
 | R8 | 設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
 
+- R1 で決めたこと（細目は docs/look.md「装いは二つ・基調色は九つ」）：基調色は id のまま 朱・藍・松葉・江戸紫・山吹・浅葱・柿・臙脂＋季節。
+  モダンは基調色と見出しの書体を出さない。theme-color は起動前の二本のまま。札 36／30px・行 56px・丸 30px。**R1 で外して先の段へ送ったもの**：
+  カテゴリの色の読み替え（→ R5）・道の塗りは朱のまま濃い（→ R3 で畳む）・直書きの色は絵と写真の幕に残る（→ R2・RI）。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。

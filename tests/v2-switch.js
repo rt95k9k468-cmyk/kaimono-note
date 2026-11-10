@@ -3,7 +3,7 @@
    - 記録に v2: true が残っていても読み込めて、鍵は消えない（後方互換）
    - 四つのタブが開いてエラーが出ない
    - daily の紙の下の角は丸い（V21）・日記の抜き出しは五行（V21）・切った Daily Log は終わりの五行（10/6）
-   - ノートの道具の帯は白を少し透かした面（V10・V26。--glass-* は読まない）
+   - ノートの道具の帯は塗った面（2026年11月10日、docs/redesign.md 2節。前は白を少し透かしてぼかした面）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/v2-switch.js */
 const { open, checker } = require("./lib");
 
@@ -67,8 +67,8 @@ const { open, checker } = require("./lib");
   t.check("切った Daily Log は既定で終わりの五行・両端揃えにしない",
     Math.abs(parseFloat(clamped.mh) - 5 * parseFloat(clamped.lh)) < 1 && clamped.align === "start", JSON.stringify(clamped));
   const tools = await probe("note-tools", "div");
-  t.check("道具の帯は白を少し透かした面（ガラスの重ねは読まない）",
-    /blur/.test(tools.blur) && tools.img === "none" && /(rgba\(.*, 0\.\d+\)|\/ 0\.\d+\))$/.test(tools.bg), JSON.stringify(tools));
+  t.check("道具の帯は塗った面（ぼかさない・透かさない・重ねの絵も無い）",
+    !/blur/.test(tools.blur) && tools.img === "none" && /^rgb\(/.test(tools.bg), JSON.stringify(tools));
 
   t.check("エラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

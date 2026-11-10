@@ -42,7 +42,7 @@ const files = ["css/base.css", "css/components.css", "css/screens.css",
   ...fs.readdirSync(path.join(ROOT, "js")).filter((f) => f.endsWith(".js")).map((f) => `js/${f}`)];
 const RULES = [
   ["字の太さは札で（400/700 も直に書かない）", /font-weight:\s*\d/],
-  ["角は札と同じ値を直に書かない", /border-radius:\s*(8|12|16|22|999)px\s*[;}!]/],
+  ["角は札と同じ値を直に書かない", /border-radius:\s*(10|14|20|28|999)px\s*[;}!]/],
   ["行の高さは札と同じ値を直に書かない", /line-height:\s*(1\.2|1\.6|1\.75)\s*[;}!]/],
   ["19px・24px の字は札で", /calc\((19|24)px \* var\(--fs-k\)\)/],
 ];

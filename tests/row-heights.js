@@ -1,6 +1,6 @@
 /* 行の背丈は三つの見張り（roadmap-unify の U12、docs/look.md の「行の背丈は三つ」）。
 
-   一、base.css の :root に --row-h-compact 44・--row-h 52・--row-h-two 64 がある。
+   一、base.css の :root に --row-h-compact 44・--row-h 56・--row-h-two 64 がある。
    二、当て表の行は、どれも決めた段の札で min-height を持つ（数の直書きでなく）。
    三、名前が行（-row・.row・-item）の規則に、36〜72px の min-height の直書きが戻ってこない。
       時間割の棒（.tl-rail）は物差しの高さなので外す。
@@ -18,7 +18,7 @@ const read = (f) => strip(fs.readFileSync(path.join(ROOT, f), "utf8"));
 
 const base = read("css/base.css");
 const root = base.slice(base.indexOf(":root {"), base.indexOf("}", base.indexOf(":root {")));
-for (const [n, v] of [["--row-h-compact", 44], ["--row-h", 52], ["--row-h-two", 64]]) {
+for (const [n, v] of [["--row-h-compact", 44], ["--row-h", 56], ["--row-h-two", 64]]) {
   t.check(`:root に ${n}: ${v}px`, new RegExp(`${n}\\s*:\\s*${v}px`).test(root));
 }
 

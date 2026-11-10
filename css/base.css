@@ -32,330 +32,91 @@
 :root {
   color-scheme: light;
 
-  /* --- surfaces ---
+  /* --- 札は「一冊の手帳」（docs/redesign.md 4節。見本 tools/redesign-proto.html の :root が正）---
+     生成りの紙・墨の字・朱の一色。面は塗る（ぼかさない）。装い「モダン」は下で同じ名前を差し替えるだけ。 */
+  --c-bg:          #f4efe5;   /* 地：生成り */
+  --c-rail:        #eee7d9;   /* 左の列（広い画面） */
+  --c-bg-elev:     #fffdf8;
+  --c-surface:     #fffdf8;   /* 札・カード：温かい白（地との比 1.13） */
+  --c-surface-2:   #ebe4d6;   /* 沈んだ面（選ぶ帯の地・絵の台） */
+  --c-surface-3:   #ded5c3;
+  --c-sheet:       #f4efe5;   /* 紙の地は地と同じ */
+  --c-sheet-edge:  #fffdf8;
 
-     地は**白に近い、わずかに温かいニュートラル**（OKLCH の色相 約90・彩度 .005）。
-     その上にまっ白な紙が乗ります。前は参考画面（Structured）の**うっすら紫がかった
-     灰**（#f0eff3）で、画面がくすんで見えた（2026年11月1日に変えた。docs/look.md の
-     「明るい面の地」）。灰と線と字も同じ色相へ揃え、明るさは前のまま——緑や紫へ
-     寄せない。地と紙の差がこの一段だけなので、紙のふちを線で囲わなくても
-     「一枚乗っている」と読めます。 */
-  --c-bg:          #f7f6f2;
-  --c-bg-elev:     #ffffff;
-  --c-surface:     #ffffff;
-  --c-surface-2:   #ebe9e4;   /* 手順の丸薬・選ぶ札の地。紙との差 1.12 を保つ */
-  --c-surface-3:   #dfddd6;
+  /* --- 墨 --- */
+  --c-text:        #25201a;
+  --c-text-2:      #5a5146;
+  --c-text-3:      #6f6558;
+  --c-text-on:     #ffffff;   /* 塗った札の上の字。暗い面は地の黒 */
 
-  /* --- 紙の地と、そのふち ---
+  --c-border:      #e5ddce;
+  --c-border-2:    #cfc5b2;
 
-     紙（.tl-sheet・下から出る .sheet）の地だけ、純白から下げます（250）。
-     ふちには前から純白の一本が引いてありました（.tl-grip の
-     `inset 0 1px 0`。いまは .tl-sheet の border-top）が、地も純白だったので
-     **一度も見えていません**でした——白の上に白を引いていたわけです。
+  /* --- 朱。**字にも塗りにも同じ一色**（地の上 4.6・白字 5.3）。-fill は名前だけ残して同じ値。
+     薄い朱（-soft）・沈んだ面の上の朱い字は -ink（朱のままだと 4.2）。基調色は下の「基調色」で差し替える。 */
+  --c-primary:     #bf4128;
+  --c-primary-2:   color-mix(in srgb, var(--c-primary) 88%, #000);
+  --c-primary-soft:#f7e3da;
+  --c-primary-ink: #8e2e1b;
+  --c-primary-fill:var(--c-primary);
+  --c-now:         var(--c-primary);   /* いまの線。モダンは赤 */
+  --c-sun:         var(--c-primary);   /* 日曜・祝日。モダンは赤 */
 
-     地を下げると、その一本が「紙のいちばん上で光が当たっている」ふちとして
-     立ちます。落ち影ではなく **inset（内側の一本）** なので、紙が浮いて
-     見えるようにはなりません（丸角にもそのまま沿います）。
+  /* --- 役目の色（字／-fill は塗り／-soft は薄い地）。藍＝予定・値段、若竹＝やること・済、山吹＝お酒・最安、藤＝睡眠、柿＝消費 --- */
+  --c-ai:          #2b5a8c;
+  --c-ai-soft:     #dfe8f2;
+  --c-take:        #2a7354;
+  --c-take-soft:   #dcebe2;
+  --c-yamabuki:    #8a6410;
+  --c-yamabuki-fill:#dfa32b;
+  --c-yamabuki-soft:#f6ead0;
+  --c-fuji:        #5d4c98;
+  --c-fuji-soft:   #e7e2f2;
+  --c-kaki:        #a04d17;
+  --c-kaki-fill:   #d9732e;
+  --c-kaki-soft:   #f8e4d3;
 
-     暗いほうは、逆に地より**明るい**灰でなぞります。暗い面に純白を引くと
-     線だけが浮き上がって、紙のふちではなく別の部品に見えます。 */
-  --c-sheet:       #f7f6f2;   /* 地と同じ */
-  --c-sheet-edge:  #ffffff;
+  /* 値札（いちばん安い）と割引は藍から引く。基調色が藍のときは藍と朱が入れ替わる（下）。 */
+  --c-accent:      var(--c-ai);
+  --c-accent-soft: var(--c-ai-soft);
+  --c-accent-ink:  var(--c-ai);
+  --c-cool-soft:   #dfe8f2;
+  --c-cool-ink:    #1e4268;
 
-  /* --- text ---
-
-     字も地と同じ色相の灰。副題と左の時刻は --c-text-2——本文とのあいだが
-     一段しかないので、読む順が「題 → その他」の二段でまとまります。 */
-  --c-text:        #1c1b19;
-  --c-text-2:      #615e58;   /* 副題・時刻 */
-  --c-text-3:      #64615b;
-  /* 塗った札（下の帯の数の札・選んだ札）の上の字。明るい面は白、暗い面は地の黒
-     （roadmap-seamless の N15。暗い面の塗りは明るいので、白では 2.2:1 しか出ない）。 */
-  --c-text-on:     #ffffff;
-
-  /* --- lines --- */
-  --c-border:      #e7e4de;
-  --c-border-2:    #d0cdc8;
-
-  /* --- brand ---
-
-     コーラルを既定の基調にします（緑 → オレンジ → いまここ）。この四つ
-     （primary / -2 / -soft / -ink）が「いまの基調色」という**役目**を
-     持つ場所です。基調を変えるときは、この四行と塗り（下の -fill）、
-     それに accent だけを差し替えればアプリ全体が追随します——95%以上の
-     場所は var(--c-primary) 系を参照していて、色を直に書いている場所は
-     ほとんど残っていません。
-
-     数値は参考にした画面（Structured）の実測 #f2938e に合わせました。
-     設定の札の id は "orange" のまま置いてあります——保存してある値を
-     変えずに済み、`reconcile()` も触らずに色だけが入れ替わるので。
-
-     **字の色なので、アプリの地の上で 4.5 に届く濃さにしてあります**（前の地
-     #f0eff3 で 4.50、いまの地 #f7f6f2 で 4.77）。もとの #bf4f49 は前の地で
-     4.14 でした。OKLCH で色相と彩度を保ったまま、明るさだけを下げた値です。
-     灰の札（--c-surface-2）の上では 4.25 なので、そこに乗る字は
-     --c-primary-ink を使います（.low-add）。暗い面は別の値で、変えていません。 */
-  --c-primary:     #b84944;
-  --c-primary-2:   #a84240;
-  --c-primary-soft:#fdeceb;
-  --c-primary-ink: #8f3833;
-
-  /* **塗るための色**。丸・背骨・印の輪はこれです。
-
-     実測の #f2938e は白の上で 2.25:1 しかありません——参考画面がこの色を
-     **字に使っていない**のはそのためで、あちらも塗りだけに使っています。
-     一方 --c-primary は39か所で字の色として使われている（リンク・タブ・
-     電卓の記号…）ので、そちらは読める濃さ（地の上で 4.5:1）に留めます。
-     同じ色の濃淡ではなく、**役目が二つある**ということです。
-
-     **参考画面（Structured）と同じ #f49e98 に揃えました。** 濃さは
-     4.28 → 3.10 → 2.72 → **2.06:1**（白の上）と下げてきた終点です。あちらの
-     丸は中の絵が白抜きで地はべた塗り、その地がこの色でした——**同じ絵を
-     出すなら、同じ地に乗せるのが素直**、という判断です。
-
-     **白抜きは、そのぶん薄くなります**（2.72 → 2.06）。丸薬の中の絵と、
-     暦の日の下の丸の中身がそれです。読めなくなったと感じたら、上げるのは
-     この一行だけ——`--c-primary` は39か所で**字**の色として使われている
-     ので、そちらを塗りに使わないこと（役目が二つある、の意味）。 */
-  --c-primary-fill:#f49e98;
-
-  /* --- accent = "best価格" ---
-
-     もとはオレンジでした（#d8722f）。基調色そのものがオレンジになった
-     ので、そのままだと「いちばん安い」の札が普通のボタンと同じ色に
-     埋もれます。ここだけ寒色（青）へ振って、基調と競わないようにします
-     ——割引（cool-soft/-ink）に寒色を当てたのと同じ考え方です。
-
-     値札の ¥ は字なので、--c-primary と同じく地の上で 4.5 に届く濃さに
-     しています（#2f7fb8 → #2072ab、地で 4.52・紙で 4.75）。これも OKLCH で
-     色相と彩度を保ち、明るさだけ下げた値です。ほかの基調（ローズ・
-     マスタード・アプリコット）の規則には #2f7fb8 が残っていますが、
-     あちらは今回は触っていません。 */
-  --c-accent:      #2072ab;
-  --c-accent-soft: #e4f1fa;
-  --c-accent-ink:  #1c5678;
-
-  --c-danger:      #cf4f45;
-  --c-danger-soft: #fdecea;
+  --c-danger:      #b3261e;
+  --c-danger-soft: #fbe4e0;
   --c-warn:        #c98a12;
 
-  /* 「弾み」の色（--c-warmth）はここにありました。本当に良い方向へ動いた
-     ときだけ出す金色で、考え方は正しかったのですが、出番が「目標があり・
-     標本が足りて・実際に近づいている」ときだけで、ほとんどの日は画面に
-     現れませんでした。色を一つ増やして、その色を見た人がほとんどいない
-     ——覚えられない色は、意味を持てません。役目はからだのリングが毎日
-     果たしています。火花と体重グラフの帯は主色の緑へ移しました。 */
+  /* --- からだの四つ（歩数＝若竹・総消費＝柿・睡眠＝藤・飲酒＝山吹）。-lit は目標を超えたぶん --- */
+  --c-m-steps:     #2a7354;
+  --c-m-steps-lit: #6fb596;
+  --c-m-burn:      #cf6a25;
+  --c-m-burn-lit:  #eda070;
+  --c-m-sleep:     #5d4c98;
+  --c-m-sleep-lit: #9a8bd0;
+  --c-m-drink:     #b9820f;
+  --c-m-drink-lit: #dfa32b;
 
-  /* --- からだの四つの指標 ---
-
-     歩数・総消費・睡眠・飲酒。リングの色で、どれの話かが一目で分かる
-     ようにします。色相をできるだけ離してあります（隣り合って並ぶので）。
-     -lit のほうは「目標を超えたぶん」を上に重ねる色で、同じ色相の
-     明るいほうへ振ってあります——超えたことが、足された明るさとして
-     見えるように。 */
-  --c-m-steps:     #12907e;
-  --c-m-steps-lit: #57c9b6;
-  --c-m-burn:      #dd6b20;
-  --c-m-burn-lit:  #f5a462;
-  --c-m-sleep:     #4b5bc4;
-  --c-m-sleep-lit: #8e99e8;
-  /* 飲酒。紫でしたが、カレンダーの休肝日バー（#4a8fd9）と別の色でした——
-     同じ「お酒の話」を、上の輪と下の暦で違う色で言っていたことになります。
-     そちらに揃えます。睡眠（藍 #4b5bc4）とは明度と彩度で分かれます。 */
-  --c-m-drink:     #4a8fd9;
-  --c-m-drink-lit: #8fbdea;
-
-  /* --- 割引 = money off the sticker price. Cool on purpose: it sits beside
-         the warm 税 keys on the pad, and one adds while the other takes
-         away — the two must never be pressed by mistake for each other. --- */
-  --c-cool-soft:   #dfeaf7;
-  --c-cool-ink:    #21527e;
-
-  /* --- 食事の区分（朝・昼・夜・間食） ---
-
-     積み上げの帯と、書き込む枠の地の色に使います。四つは帯の中で
-     隣り合うので、色相をできるだけ離します——前は昼が緑・夜が青で、
-     どちらも中くらいの濃さの寒色だったため、境目が見えませんでした。
-     ここは信号ではなく内わけなので、彩度は抑えます。
-     soft のほうは、同じ色をうんと薄くした地の色です。 */
-  --c-slot-b:      #e0a02f;   /* 朝：黄 */
-  --c-slot-l:      #2e9bd6;   /* 昼：空色（明るい） */
-  --c-slot-d:      #2b3a8f;   /* 夜：紺（暗い） */
-  --c-slot-s:      #c0559b;   /* 間食：赤紫 */
+  /* --- 食事の区分（朝・昼・夜・間食）。帯の中で隣り合うので色相を離す（R4 で見直す） --- */
+  --c-slot-b:      #e0a02f;
+  --c-slot-l:      #2e9bd6;
+  --c-slot-d:      #2b3a8f;
+  --c-slot-s:      #c0559b;
   --c-slot-b-soft: #fbf1dc;
   --c-slot-l-soft: #dcf0fb;
   --c-slot-d-soft: #e0e4f6;
   --c-slot-s-soft: #f8e4f2;
 
-  /* --- 絵の大きさ、二段階 ---
-
-     画面の絵（util.js の icon()）は、置き場所ごとに 12〜26px の16通りの
-     大きさと、1.7〜3.2 の9通りの太さで書かれていました。全部が少しずつ
-     違うと、どれが大事かは何も言っていないのと同じです——目が最初に行く
-     先が決まりません。
-
-     二段階だけにします。「押せるもの・目印になるもの」と「文字に寄り添う
-     もの」。中間はありません。決まった大きさの入れもの（丸ボタン、キー、
-     チェックの輪、タブの丸）の中身だけが例外で、そこは入れものが大きさを
-     決めます——それぞれの場所に理由を書いてあります。 */
-  --ico:    20px;   /* 主：押せるもの・目印になるもの */
+  /* --- 絵の大きさ、二段階（主＝押せるもの・目印／添え＝文字に寄り添うもの）。入れものの中身だけ例外 --- */
+  --ico:    20px;
   --ico-w:  2.2;
-  --ico-sm: 15px;   /* 添え：文字に寄り添うもの */
+  --ico-sm: 15px;
   --ico-sm-w: 1.8;
 
-  /* --- effects --- */
-  --shadow-1: 0 1px 2px rgba(20, 40, 28, .06), 0 1px 3px rgba(20, 40, 28, .04);
-  --shadow-2: 0 2px 6px rgba(20, 40, 28, .07), 0 6px 16px rgba(20, 40, 28, .06);
-  --shadow-3: 0 8px 24px rgba(20, 40, 28, .12), 0 2px 8px rgba(20, 40, 28, .08);
-
-  /* --- ガラス（下の帯・＋・＋から立ち上がる札） ---
-
-     この三つは**同じ高さに浮いている一枚のガラス**です。材が違うと、同じ
-     高さに見えません。だから材はここ一か所から出します。
-
-     **ここは三か所に手で写してありました**（背景3枚＋ぼかし＋縁の光＋
-     暗い面の上書きで、合わせて18ブロック）。そして**すでに割れていました**
-     ——`-webkit-backdrop-filter` の側にだけ `brightness` が無く、つまり
-     iPhone では「ガラスの効きどころ」と自分で書いた一手が、一度も効いて
-     いませんでした。一つの変数から出せば、次に割れようがありません。
-
-     四枚に分けてあるのは、重なる順に意味が違うからです：
-
-       --glass-sheen  面のつや。上から下へ引く光。
-       --glass-crown  上の縁で拾う光。厚みのあるガラスは、ここが明るい。
-       --glass-base   地。透けていることが見える濃さ（52%）。
-       --glass-rim-ring  縁の一本。**上下で明るさが違う輪**です——ガラスの縁は
-                      上で空を映し、下で地面を映し、いちばん下でまた薄く
-                      光ります。一様な白い線だと、プラスチックの縁取り。
-       --glass-rim-spec  その輪の上を横へ走る鏡面の山。居場所は
-                      `--glass-sweep`。**二つを並べるのは使う側**です
-                      （`.tabbar::after` ほか5つ）——`:root` で一枚に
-                      すると、そこの `--glass-sweep` が焼きつくうえに、
-                      書き換えが文書ぜんぶを巻き込みます。
-
-     `--glass-tint` は、地に色を差したいとき（＋のボタン）だけ差し替える
-     ための札です。既定では `--glass-base` そのもの。
-
-     **三枚を一つの札（--glass-fill）にまとめてはいけません。** いちどそう
-     書いて、＋のコーラルが消えました——`var()` の中身は**その変数を書いた
-     要素の上で**解決されるので、`:root` で組んだ一枚は `:root` の
-     `--glass-tint` を焼きつけて配られます。＋が自分の `--glass-tint` を
-     上書きしても、もう手遅れです。**三枚は、使う側で並べること。** */
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 38%);
-  --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .26), transparent 58%);
-  /* **ガラス自身の色。** 地（--c-bg-elev、明るい面では純白）をそのまま
-     使っていましたが、それだと**明るい画面でガラスが見えません**。
-
-     実測（2026年9月20日、iPhone 390×844）：カプセルの中は 254,254,254、
-     すぐ外の紙は 245,245,245 ——**差はたった 9階調**。ガラスが透かして
-     いないのではありません（帯の裏に青い板を置くと、カプセルの中は
-     99階調ぶん青へ寄りました）。**後ろに白い紙しか無い**うえに、
-     `--glass-blur` の `brightness(1.06)` がその白を 255 まで押し上げる
-     ので、白の上に白を 52% 重ねることになっていました。
-
-     だからガラスの側に色を持たせます。差すのは**地と同じ色相**の灰を
-     もう一段深くしたもの——主色（コーラル）ではありません。
-     あれは＋が `--glass-tint` で差している色で、帯まで同じ色にすると
-     ＋が帯に埋もれます。 */
-  --glass-cast:  #d1cfc9;
-  /* 押した／指を乗せたときの姿。「ガラスが、より多くの光を拾った」を
-     言うので、**色は薄いほうへ**振ります。
-     **ここを一つの札で持つ理由**：`--glass-base` は `:root` で組まれる
-     ので、`.add-fab:active` 側で「白をひとさじ足す」と書いても効きません
-     （自分を参照する循環になる）。使う側は `--glass-base` を組み直す
-     ことになるので、そのときの色をここから引けるようにしてあります。 */
-  --glass-cast-lit: #ebe8e2;
-  /* 地の濃さ（透けていることが見える濃さ）。**一つの札で持つ**のは、
-     「後ろが暗い」と分かったときに、材ぜんぶを夜のほうへ差し替える
-     から（下の --glass-night-*）。 */
-  --glass-a:     52%;
-  --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-  --glass-tint:  var(--glass-base);
-  /* brightness を少しだけ上げるのが、iOS 26 のガラスの効きどころです
-     ——後ろのものを暗くせずに拾い上げるので、重ねても画面が沈みません。
-     彩度も上げます（ぼかすと色は濁るので、戻してやらないと灰色の靄）。 */
-  --glass-blur:  saturate(240%) brightness(1.06) blur(22px);
-  /* **縁の屈折。** ガラスには厚みがあるので、縁では後ろの景色が乱れます。
-     いまは面ぜんぶが同じだけぼけていて、縁が「薄い膜」に見えていました。
-
-     本物の屈折（景色をずらす）は CSS では書けません——`feDisplacementMap`
-     を `backdrop-filter: url(…)` で呼ぶ道は、Safari で当てになりません。
-     かわりに**縁の帯だけ、もう一段ぼかして明るく**します。縁のところで
-     後ろのものが解像しなくなる、というのが目には厚みとして読めます。
-     幅は `--glass-edge-w`。 */
-  --glass-edge:   blur(5px);
-  --glass-edge-w: 14px;
-  /* **鏡面光の居場所**（0〜1）。ガラスは**まわりを映す**ので、まわりが
-     動けば映りこみも動きます。だから固定のグラデではなく、この一つの数で
-     光の山を横へ走らせます。数を書くのは `js/app.js`（送っている器の
-     scrollTop から）。
-
-     **書き込む先は `:root` ではありません。ガラスの器そのものです。**
-
-     ここは長いあいだ `:root` でした——`--glass-rim` がここで組まれるので、
-     同じところに居ないと焼きつくから、という理由で。理屈は正しいのですが、
-     **代償を測っていませんでした**。カスタムプロパティは継承するので、
-     `:root` に書き換えが入ると、それを読む5つの器だけでなく**文書の
-     すべての要素**が style を計算し直します。実測（2026年9月20日、
-     CPU 4倍・390×844）：
-
-       縦に一覧を送る … p90 **50.0ms**、96フレーム中 **21落ち**
-       この一行を止めるだけで … p90 **16.7ms**、**0落ち**
-       書き換え1回あたり **48.9ms**（帯の裏を読む backdropLum は 2ms しか
-       かかっていない＝重いのは読むほうではなく、**書くほう**）
-
-     つまり「どの画面でもうっすら重い」の正体が、この一行でした。だから
-     **組み立てるのを使う側へ移し**（下の `--glass-rim-spec` / `-ring`）、
-     数もその器へ書きます。材は `:root` の一か所のまま、**並べるのだけが
-     使う側**——`--glass-fill` で踏んだ罠と、同じ決めごとの裏返しです。 */
-  --glass-sweep: .5;
-  /* **縁の白は、ガラスの地に釣り合わせること。**
-
-     ここは長いあいだ「白の上の白」でした——地が純白だったので、縁の一本は
-     **一度も見えていません**でした（実測：カプセルの中 250、縁も 250。
-     段差 0）。その見えない線に合わせて白を強く（.62／.95）置いてあった
-     ので、C4 で地を一段落とした（250 → 225）とたん、**縁だけが明るい
-     輪郭線として立ちました**（段差 +12。＋は -5 → +9）。
-
-     そうなると、ガラスの縁ではなく「濃い板のまわりに白い線を引いたもの」
-     に見えます——実際そう見えました。**地を動かしたら、縁も動かすこと。**
-
-     **二つに分けてあります。**動くのは鏡面（`-spec`）だけで、輪
-     （`-ring`）は動きません。分けたのは、`var(--glass-sweep)` を含む一枚を
-     `:root` で組むと、そこで焼きついたうえに**文書ぜんぶを巻き込む**から
-     です（一つ上の `--glass-sweep` の節）。**材はここ一か所**のまま、
-     並べるのは使う側（下の `.tabbar::after` ほか）。 */
-  --glass-rim-spec: rgba(255, 255, 255, .4);
-  --glass-rim-ring:
-    linear-gradient(180deg,
-      rgba(255, 255, 255, .34),
-      rgba(255, 255, 255, .1) 34%,
-      rgba(255, 255, 255, .04) 62%,
-      rgba(255, 255, 255, .2));
-
-  /* ---- 夜のガラス。**二人が同じここを見ます** ----
-
-     一人は、暗い面のテーマ（下の `@media` と `[data-theme="dark"]`）。
-     もう一人は、**明るい面で「帯の後ろが暗い」と分かったとき**
-     （`.is-on-dark`。iOS 26 でいう adaptive contrast ——ガラスは後ろに
-     応じて明暗を入れ替えます。`js/app.js` の `watchBackdrop`）。
-
-     この二人に別々の材を書くと、片方だけ直した日に、同じ「夜のガラス」が
-     二通りになります。**材は一か所。** */
-  --glass-night-sheen: linear-gradient(180deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, 0) 40%);
-  --glass-night-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 58%);
-  --glass-night-cast:     #1c1c22;
-  --glass-night-cast-lit: #33333d;
-  --glass-night-a:        62%;
-  /* 夜も同じ分け方（鏡面と輪）。片方だけ分けると、明るい面と暗い面で
-     組み立て方が変わって、次に触る人がどちらかを見落とします。 */
-  --glass-night-rim-spec: rgba(255, 255, 255, .42);
-  --glass-night-rim-ring:
-    linear-gradient(180deg,
-      rgba(255, 255, 255, .18),
-      rgba(255, 255, 255, .07) 34%,
-      rgba(255, 255, 255, .03) 62%,
-      rgba(255, 255, 255, .13));
+  /* --- 影。カードは 1、浮くもの（帯・＋・紙）だけ 2・3 --- */
+  --shadow-1: 0 1px 2px rgba(60, 40, 15, .05), 0 6px 18px -10px rgba(60, 40, 15, .18);
+  --shadow-2: 0 2px 6px rgba(60, 40, 15, .08), 0 14px 32px -12px rgba(60, 40, 15, .26);
+  --shadow-3: 0 10px 40px rgba(40, 25, 10, .22);
 
   /* ---- 重なりの順。**名前で持ちます** ----
 
@@ -389,8 +150,8 @@
   --z-pad:   400;
   --z-top:   600;
 
-  /* --- radii --- */
-  --r-sm: 8px;
+  /* --- 角：小 10・中 14・カード 20・紙 28 --- */
+  --r-sm: 10px;
   /* 上に重なる一枚を、下の一枚がどれだけ控えて受けるか。**一つの数から
      出すこと**——js/edge-back.js の PARALLAX と揃っていないと、押して
      戻るのと指で戻るのとで、同じ一段が二通りの遠さに見えます。 */
@@ -398,9 +159,9 @@
   --push-e: cubic-bezier(.32, .72, 0, 1);
   --push-shadow: -10px 0 24px rgba(0, 0, 0, .14);
 
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 22px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
   --r-full: 999px;
 
   /* --- spacing --- */
@@ -411,7 +172,7 @@
      一覧の行は三つのどれか（docs/look.md の「行の背丈は三つ」に当て表）。どれも
      min-height——字を大きくした行は、そのぶん伸びる。上下の余白は段に収まる量
      （二行の行は --sp-2。二行＋12×2 では 64 を越える）。tests/row-heights.js が見張る。 */
-  --row-h-compact: 44px; --row-h: 52px; --row-h-two: 64px;
+  --row-h-compact: 44px; --row-h: 56px; --row-h-two: 64px;
 
   /* --- type ---
 
@@ -649,14 +410,10 @@
   --safe-r: env(safe-area-inset-right, 0px);
 }
 /* マウスの端末（パソコン）は弾みと光を控えめに（design-review 10節の P7。docs/motion.md）。指の下で返す手ごたえは
-   指の端末のもの。曲線と材の札を替えるだけ（動きは足さない・消さない）。暗い面の札より前に置く（あとの規則が夜の一組を選ぶ）。 */
+   指の端末のもの。曲線の札を替えるだけ（動きは足さない・消さない）。暗い面の札より前に置く（あとの規則が夜の一組を選ぶ）。 */
 @media (pointer: fine) {
   :root {
     --spring: cubic-bezier(.34, 1.16, .5, 1);
-    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 38%);
-    --glass-rim-spec: rgba(255, 255, 255, .24);
-    --glass-night-sheen: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 40%);
-    --glass-night-rim-spec: rgba(255, 255, 255, .25);
   }
 }
 
@@ -690,173 +447,108 @@
    読めない環境（Safari のほか）は --font のまま。明朝を選んだ人には効かせない。 */
 :root { --font-num: ui-rounded, var(--font); }
 :root[data-font="mincho"] { --font-num: var(--font); }
-.mono-num, .topbar-title, .cal-n, .day-d, .diet-hero-value b, .hero-fact.is-subs i,
+.mono-num, .cal-n, .day-d, .diet-hero-value b, .hero-fact.is-subs i,
 .due-time, .carry-was, .carry-n, .row-times, .when-btn, .price-amount, .log-price,
 .tl-time, .tl-band-time, .time-label, .up-time, .road-carry-time, .urge-row-time,
-.arc-then-date, .arc-year-y, .arc-log-day b, .arc-log-times, .arc-times { font-family: var(--font-num); }
+.arc-then-date, .arc-year-y, .arc-log-times, .arc-times { font-family: var(--font-num); }
 
+/* 見出しは明朝（docs/redesign.md 4節）：帯の日付・小見出し・紙の題・ノートの題・日記の日にち。本文と押すものは --font、
+   数は --font-num。設定の「見出しの書体」を「本文と同じ」にした人（data-head="same"）と装い「モダン」は本文の書体に揃う。
+   明朝の太字は端末の W6（取りに行かない。字が欠けない、は本文と同じ約束）。 */
+:root { --font-display: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", serif; }
+:root[data-head="same"] { --font-display: var(--font); }
+.topbar-title, .sheet-title, .section-title.is-block-head, .arc-log-head h2, .arc-log-day b, .note-head-t, .shelf-head { font-family: var(--font-display); }
+
+/* ---- 暗い面（墨）。システムに従う @media と、自分で選んだ [data-theme="dark"] は一行も違えない（tests/look-tokens.js）。
+   塗り（-fill）は --c-primary を引くので、暗い面では明るい朱に白ではなく地の黒が乗る（--c-text-on）。 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --c-bg:          #121216;
-    --c-bg-elev:     #1a1a1f;
-    --c-surface:     #1c1c22;
-    --c-surface-2:   #26262d;
-    --c-surface-3:   #303038;
-    --c-sheet:       #1c1c22;
-    --c-sheet-edge:  #33333c;
-    --c-text:        #ececed;
-    --c-text-2:      #a6a6ab;
-    --c-text-3:      #92929a;
-    --c-border:      #2e2e36;
-    --c-border-2:    #3e3e48;
-    /* 暗い地の上のコーラル。明るい面と同じ考え方——彩度を保ちつつ、
-       暗い地に沈まないよう明るいほうへ振ります。明るい面と違って、
-       暗い地の上ならこの色は字にも耐えます（8.25:1）ので、塗りと
-       字がここでは同じ濃さで足ります。 */
-    --c-primary:     #f2938e;
-    --c-primary-2:   #f5a9a4;
-    --c-primary-soft:#3a201f;
-    --c-primary-ink: #f8c5c1;
-    --c-primary-fill:#f49e98;
-    --c-text-on:     #121216;
-    /* accent も同じ理由で青へ。暗い地でも基調色と競わないように。 */
-    --c-accent:      #6fb6e8;
-    --c-accent-soft: #17293a;
-    --c-accent-ink:  #a9d4f1;
-    --c-danger:      #e8776c;
-    --c-danger-soft: #33201e;
-    /* 暗い面に黒い影を落としても見えません。重なりの境目は、地より明るい
-       一本で言います——影ではなく、**ふち**として。 */
+    --c-bg: #1b1916; --c-rail: #161412; --c-bg-elev: #262320; --c-surface: #262320; --c-surface-2: #322e29; --c-surface-3: #403a33;
+    --c-sheet: #1b1916; --c-sheet-edge: #37322c;
+    --c-text: #f1ebdf; --c-text-2: #c2b9aa; --c-text-3: #a39a8b; --c-text-on: #1b1916;
+    --c-border: #37322c; --c-border-2: #4b443b;
+    --c-primary: #ee8468; --c-primary-2: color-mix(in srgb, var(--c-primary) 88%, #fff); --c-primary-soft: #46261d; --c-primary-ink: #f6b29f;
+    --c-ai: #8db5e2; --c-ai-soft: #1f3147; --c-take: #7cc7a2; --c-take-soft: #1d3a2d;
+    --c-yamabuki: #e3b95a; --c-yamabuki-soft: #3d3118; --c-fuji: #b3a5e6; --c-fuji-soft: #2e2848; --c-kaki: #eb9a62; --c-kaki-soft: #43291a;
+    --c-cool-soft: #1f3147; --c-cool-ink: #a9c8ea;
+    --c-danger: #f08a7c; --c-danger-soft: #3d1f1b; --c-warn: #dcae4a;
+    --c-m-steps: #7cc7a2; --c-m-steps-lit: #b0e2c9; --c-m-burn: #eb9a62; --c-m-burn-lit: #f6c4a0;
+    --c-m-sleep: #b3a5e6; --c-m-sleep-lit: #d3caf3; --c-m-drink: #e3b95a; --c-m-drink-lit: #f0d596;
+    --c-slot-b: #e8b258; --c-slot-l: #4fd0e0; --c-slot-d: #8878f0; --c-slot-s: #e28ad0;
+    --c-slot-b-soft: #332a1a; --c-slot-l-soft: #142b36; --c-slot-d-soft: #1f2244; --c-slot-s-soft: #33203a;
     --push-shadow: -1px 0 0 rgba(255, 255, 255, .14), -14px 0 28px rgba(0, 0, 0, .5);
-    --c-warn:        #dcae4a;
-    /* 暗い地の上では沈むので、四つとも明るいほうへ振ります。 */
-    --c-m-steps:     #3fc4ae;
-    --c-m-steps-lit: #8fe4d6;
-    --c-m-burn:      #f0955a;
-    --c-m-burn-lit:  #f8c39b;
-    --c-m-sleep:     #8b96ec;
-    --c-m-sleep-lit: #bcc3f5;
-    --c-m-drink:     #6fa9e4;
-    --c-m-drink-lit: #a9cef1;
-    --c-cool-soft:   #1f3346;
-    --c-cool-ink:    #97c6ec;
-    /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
-       地の色（soft）は「薄い」ではなく「暗い」で作ります。 */
-    --c-slot-b:      #e8b258;
-    --c-slot-l:      #4fd0e0;
-    --c-slot-d:      #8878f0;
-    --c-slot-s:      #e28ad0;
-    --c-slot-b-soft: #332a1a;
-    --c-slot-l-soft: #142b36;
-    --c-slot-d-soft: #1f2244;
-    --c-slot-s-soft: #33203a;
-    /* ---- 夜のガラス ----
-       白いまま置くと、縁だけが浮いて輪郭線に見えます（夜のガラスは、昼と
-       同じようには光りません）。地のほうは逆に少し濃くします——暗い背景に
-       暗いガラスを重ねると、境目が消えるので。
-       **ぼかし（--glass-blur）は変えません**。明暗で変わるのは光のほうで、
-       ガラスの厚みではないからです。 */
-    /* 材は `--glass-night-*` の一組から（:root のガラスの節）。明るい面で
-       「後ろが暗い」と分かったときも、同じここを見ます。
-       暗い面ではガラスに色を差す必要がありません——地が暗いので、明るい
-       ガラスはそれだけで浮きます（C4 は明るい面の話）。 */
-    --glass-sheen: var(--glass-night-sheen);
-    --glass-crown: var(--glass-night-crown);
-    --glass-cast:     var(--glass-night-cast);
-    --glass-cast-lit: var(--glass-night-cast-lit);
-    --glass-a:        var(--glass-night-a);
-    --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-    --glass-rim-spec: var(--glass-night-rim-spec);
-    --glass-rim-ring: var(--glass-night-rim-ring);
-    --shadow-1: 0 1px 2px rgba(0,0,0,.4);
-    --shadow-2: 0 2px 8px rgba(0,0,0,.45);
-    --shadow-3: 0 10px 30px rgba(0,0,0,.55);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .3); --shadow-2: 0 8px 24px rgba(0, 0, 0, .45); --shadow-3: 0 10px 40px rgba(0, 0, 0, .55);
   }
 }
-
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --c-bg:          #121216;
-  --c-bg-elev:     #1a1a1f;
-  --c-surface:     #1c1c22;
-  --c-surface-2:   #26262d;
-  --c-surface-3:   #303038;
-  --c-sheet:       #1c1c22;
-  --c-sheet-edge:  #33333c;
-  --c-text:        #ececed;
-  --c-text-2:      #a6a6ab;
-  --c-text-3:      #92929a;
-  --c-border:      #2e2e36;
-  --c-border-2:    #3e3e48;
-  --c-primary:     #f2938e;
-  --c-primary-2:   #f5a9a4;
-  --c-primary-soft:#3a201f;
-  --c-primary-ink: #f8c5c1;
-  --c-primary-fill:#f49e98;
-  --c-text-on:     #121216;
-  --c-accent:      #6fb6e8;
-  --c-accent-soft: #17293a;
-  --c-accent-ink:  #a9d4f1;
-  --c-danger:      #e8776c;
-  --c-danger-soft: #33201e;
-  /* 暗い面に黒い影を落としても見えません。重なりの境目は、地より明るい
-     一本で言います——影ではなく、**ふち**として。 */
+  --c-bg: #1b1916; --c-rail: #161412; --c-bg-elev: #262320; --c-surface: #262320; --c-surface-2: #322e29; --c-surface-3: #403a33;
+  --c-sheet: #1b1916; --c-sheet-edge: #37322c;
+  --c-text: #f1ebdf; --c-text-2: #c2b9aa; --c-text-3: #a39a8b; --c-text-on: #1b1916;
+  --c-border: #37322c; --c-border-2: #4b443b;
+  --c-primary: #ee8468; --c-primary-2: color-mix(in srgb, var(--c-primary) 88%, #fff); --c-primary-soft: #46261d; --c-primary-ink: #f6b29f;
+  --c-ai: #8db5e2; --c-ai-soft: #1f3147; --c-take: #7cc7a2; --c-take-soft: #1d3a2d;
+  --c-yamabuki: #e3b95a; --c-yamabuki-soft: #3d3118; --c-fuji: #b3a5e6; --c-fuji-soft: #2e2848; --c-kaki: #eb9a62; --c-kaki-soft: #43291a;
+  --c-cool-soft: #1f3147; --c-cool-ink: #a9c8ea;
+  --c-danger: #f08a7c; --c-danger-soft: #3d1f1b; --c-warn: #dcae4a;
+  --c-m-steps: #7cc7a2; --c-m-steps-lit: #b0e2c9; --c-m-burn: #eb9a62; --c-m-burn-lit: #f6c4a0;
+  --c-m-sleep: #b3a5e6; --c-m-sleep-lit: #d3caf3; --c-m-drink: #e3b95a; --c-m-drink-lit: #f0d596;
+  --c-slot-b: #e8b258; --c-slot-l: #4fd0e0; --c-slot-d: #8878f0; --c-slot-s: #e28ad0;
+  --c-slot-b-soft: #332a1a; --c-slot-l-soft: #142b36; --c-slot-d-soft: #1f2244; --c-slot-s-soft: #33203a;
   --push-shadow: -1px 0 0 rgba(255, 255, 255, .14), -14px 0 28px rgba(0, 0, 0, .5);
-  --c-warn:        #dcae4a;
-  --c-m-steps:     #3fc4ae;
-  --c-m-steps-lit: #8fe4d6;
-  --c-m-burn:      #f0955a;
-  --c-m-burn-lit:  #f8c39b;
-  --c-m-sleep:     #8b96ec;
-  --c-m-sleep-lit: #bcc3f5;
-  --c-m-drink:     #6fa9e4;
-  --c-m-drink-lit: #a9cef1;
-  --c-cool-soft:   #1f3346;
-  --c-cool-ink:    #97c6ec;
-  /* 暗い地の上では同じ色が沈むので、明るいほうへ振ります。
-     地の色（soft）は「薄い」ではなく「暗い」で作ります。 */
-  --c-slot-b:      #e8b258;
-  --c-slot-l:      #4fd0e0;
-  --c-slot-d:      #8878f0;
-  --c-slot-s:      #e28ad0;
-  --c-slot-b-soft: #332a1a;
-  --c-slot-l-soft: #142b36;
-  --c-slot-d-soft: #1f2244;
-  --c-slot-s-soft: #33203a;
-  /* 夜のガラス（上の @media と同じ。自分で「暗い」を選んだときにも効かせます）。 */
-  --glass-sheen: var(--glass-night-sheen);
-  --glass-crown: var(--glass-night-crown);
-  --glass-cast:     var(--glass-night-cast);
-  --glass-cast-lit: var(--glass-night-cast-lit);
-  --glass-a:        var(--glass-night-a);
-  --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-  --glass-rim-spec: var(--glass-night-rim-spec);
-  --glass-rim-ring: var(--glass-night-rim-ring);
-  --shadow-1: 0 1px 2px rgba(0,0,0,.4);
-  --shadow-2: 0 2px 8px rgba(0,0,0,.45);
-  --shadow-3: 0 10px 30px rgba(0,0,0,.55);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .3); --shadow-2: 0 8px 24px rgba(0, 0, 0, .45); --shadow-3: 0 10px 40px rgba(0, 0, 0, .55);
 }
 
-/* ---- ぼかしの効かない環境の受け皿。**ここ一か所です** ----
-
-   `backdrop-filter` が無いと、ガラスは**半分透けただけの板**になります
-   ——下の行がそのまま素通しで読めて、帯の字と重なる。受け皿が用意して
-   あったのは**トーストだけ**でした（下の帯も＋も札も、透けたまま）。
-
-   直しかたは一つ、**地を濃くする**こと。材は `--glass-a` の一つから
-   出しているので、そこを上げれば三つとも——あとから足したものも——
-   まとめて受かります。ぼかしも光も、そのまま無害に残ります。 */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root {
-    --glass-a:       96%;
-    --glass-night-a: 94%;
+/* ---- 装い「モダン」（設定 → 外観 → 装い。js/app.js の applyLook が data-attire="modern" を付ける）----
+   形・働き・動きは「手帳」と同じで、**替わるのは札の組だけ**——ここで形を変える規則を書かない（docs/redesign.md 4節）。
+   主色は墨（白字）、いまの線と日曜は赤、見出しはゴシック。基調色は効かせない（applyLook が data-accent を外す）。
+   暗い面より後ろに置く（同じ詳細度なので、あとに書いたほうが効く）。 */
+:root[data-attire="modern"] {
+  --c-bg: #f3f2ee; --c-rail: #eceae5; --c-bg-elev: #ffffff; --c-surface: #ffffff; --c-surface-2: #e9e7e1; --c-surface-3: #dbd8d0;
+  --c-sheet: #f3f2ee; --c-sheet-edge: #ffffff;
+  --c-text: #16171a; --c-text-2: #50525a; --c-text-3: #686a72;
+  --c-border: #e8e6e0; --c-border-2: #cdcac2;
+  --c-primary: #1c1d21; --c-primary-soft: #e6e5e0; --c-primary-ink: #1c1d21; --c-now: #c93636; --c-sun: #c93636;
+  --c-ai: #2b59d9; --c-ai-soft: #e3eafc; --c-take: #17734c; --c-take-soft: #dcefe5;
+  --c-yamabuki: #8a5a00; --c-yamabuki-fill: #e2a81f; --c-yamabuki-soft: #f8edcf; --c-fuji: #5b45c9; --c-fuji-soft: #e8e4fa;
+  --c-kaki: #a8480f; --c-kaki-fill: #e0672a; --c-kaki-soft: #fbe6d8;
+  --c-cool-soft: #e3eafc; --c-cool-ink: #1f3f9c;
+  --c-m-steps: #17734c; --c-m-steps-lit: #62b890; --c-m-burn: #d05f22; --c-m-burn-lit: #f0a274;
+  --c-m-sleep: #5b45c9; --c-m-sleep-lit: #9c8cf0; --c-m-drink: #b98408; --c-m-drink-lit: #e2a81f;
+  --shadow-1: 0 1px 2px rgba(20, 20, 30, .05), 0 6px 20px -10px rgba(20, 20, 30, .16);
+  --shadow-2: 0 2px 6px rgba(20, 20, 30, .07), 0 16px 36px -14px rgba(20, 20, 30, .24);
+  --r-lg: 22px; --r-xl: 30px; --font-display: var(--font);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"])[data-attire="modern"] {
+    color-scheme: dark;
+    --c-bg: #131416; --c-rail: #0f1012; --c-bg-elev: #1e1f23; --c-surface: #1e1f23; --c-surface-2: #2a2b30; --c-surface-3: #383a40;
+    --c-sheet: #131416; --c-sheet-edge: #2c2e33;
+    --c-text: #f2f2f3; --c-text-2: #b9bac0; --c-text-3: #9a9ca4; --c-text-on: #131416;
+    --c-border: #2c2e33; --c-border-2: #44464d;
+    --c-primary: #f2f2f3; --c-primary-soft: #2f3136; --c-primary-ink: #f2f2f3; --c-now: #ff6b6b; --c-sun: #ff8a8a;
+    --c-ai: #8fb0ff; --c-ai-soft: #1c2a4d; --c-take: #6fd0a0; --c-take-soft: #17362a;
+    --c-yamabuki: #f0c458; --c-yamabuki-soft: #3b3013; --c-fuji: #b1a3ff; --c-fuji-soft: #2a2550; --c-kaki: #ff9a62; --c-kaki-soft: #45261a;
+    --c-cool-soft: #1c2a4d; --c-cool-ink: #b3c8ff;
+    --c-m-steps: #6fd0a0; --c-m-steps-lit: #a8e6c8; --c-m-burn: #ff9a62; --c-m-burn-lit: #ffc4a0;
+    --c-m-sleep: #b1a3ff; --c-m-sleep-lit: #d2c9ff; --c-m-drink: #f0c458; --c-m-drink-lit: #f7dd98;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .3); --shadow-2: 0 8px 24px rgba(0, 0, 0, .45);
   }
-  /* トーストは自分の濃さを持っています（読ませるためのガラスなので）。 */
-  .toast {
-    background: var(--glass-night-sheen), var(--glass-night-crown),
-                color-mix(in srgb, var(--glass-night-cast) 97%, transparent);
-  }
+}
+:root[data-theme="dark"][data-attire="modern"] {
+  color-scheme: dark;
+  --c-bg: #131416; --c-rail: #0f1012; --c-bg-elev: #1e1f23; --c-surface: #1e1f23; --c-surface-2: #2a2b30; --c-surface-3: #383a40;
+  --c-sheet: #131416; --c-sheet-edge: #2c2e33;
+  --c-text: #f2f2f3; --c-text-2: #b9bac0; --c-text-3: #9a9ca4; --c-text-on: #131416;
+  --c-border: #2c2e33; --c-border-2: #44464d;
+  --c-primary: #f2f2f3; --c-primary-soft: #2f3136; --c-primary-ink: #f2f2f3; --c-now: #ff6b6b; --c-sun: #ff8a8a;
+  --c-ai: #8fb0ff; --c-ai-soft: #1c2a4d; --c-take: #6fd0a0; --c-take-soft: #17362a;
+  --c-yamabuki: #f0c458; --c-yamabuki-soft: #3b3013; --c-fuji: #b1a3ff; --c-fuji-soft: #2a2550; --c-kaki: #ff9a62; --c-kaki-soft: #45261a;
+  --c-cool-soft: #1c2a4d; --c-cool-ink: #b3c8ff;
+  --c-m-steps: #6fd0a0; --c-m-steps-lit: #a8e6c8; --c-m-burn: #ff9a62; --c-m-burn-lit: #ffc4a0;
+  --c-m-sleep: #b1a3ff; --c-m-sleep-lit: #d2c9ff; --c-m-drink: #f0c458; --c-m-drink-lit: #f7dd98;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .3); --shadow-2: 0 8px 24px rgba(0, 0, 0, .45);
 }
 
 /* Category tints: the same mix reads as almost nothing against a dark surface,
@@ -1249,7 +941,7 @@ a { color: var(--c-primary); }
   --sky-veil: linear-gradient(to bottom, var(--sky-v1) calc(var(--safe-t) + 34px), var(--sky-v2) calc(var(--safe-t) + 56px));
   --sky-blend: screen;
   --sky-ink: #000;
-  --sky-was-2: var(--c-text-2); --sky-was-3: var(--c-text-3); --sky-was-d: var(--c-danger); --sky-was-p: var(--c-primary);
+  --sky-was-2: var(--c-text-2); --sky-was-3: var(--c-text-3); --sky-was-d: var(--c-danger); --sky-was-p: var(--c-primary); --sky-was-s: var(--c-sun);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .head[data-sky-img] {
@@ -1272,7 +964,8 @@ a { color: var(--c-primary); }
   --c-text-3: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-3));
   --c-danger: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-d));
   --c-primary: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-p));
-  --cal-blue: color-mix(in srgb, var(--sky-ink) 50%, #4a8fd9);
+  --c-sun: color-mix(in srgb, var(--sky-ink) 50%, var(--sky-was-s));
+  --cal-blue: color-mix(in srgb, var(--sky-ink) 50%, var(--c-ai));
 }
 /* 今日の丸の塗りは字ではないので、もとの基調色のまま。 */
 .head[data-sky-img] .cal-day.is-here.is-today .cal-n { background: var(--sky-was-p); }
@@ -1727,203 +1420,20 @@ a { color: var(--c-primary); }
   pointer-events: none;
   z-index: var(--z-bar);
 }
-/* 帯の裏の幕（上の .tabbar の background。design-review の Y7・柱F。2026年10月22日）。送った中身の字がガラス越しに読めて席の名前と
-   重なっていた。地の色から透明への一枚で、下三割だけ地のまま。ぼかしは足さない（重くしない）。
-   上へ行くほど透けるので「まだ続きがある」は残る。後ろが暗いと読んだ帯（.is-on-dark。暗い面ではいつも）は
-   夜の色の幕——明るい幕は暗い地の上に白く浮く。ノートと設定は紙を持たないので地の色（--c-bg）。 */
-.tabbar.is-on-dark { --bar-veil: var(--glass-night-cast); }
+/* 帯の裏の幕（上の .tabbar の background。design-review の Y7・柱F）。地の色から透明への一枚で、下三割だけ地のまま。
+   上へ行くほど透けるので「まだ続きがある」は残る。ノートと設定は紙を持たないので地の色（--c-bg）。 */
 /* 印は js（`.head.is-…` と `data-screen`）。大きな入れ物に :has を掛けない——中の出入りのたびに入れ物ごと見直しになる。 */
 :root:is([data-screen="notes"], [data-screen="settings"]) .tabbar { --bar-veil: var(--c-bg); }
 
-/* カプセル本体。
-
-   すりガラスにするのは飾りではなく、下を流れていくものが透けて見えることで
-   「まだ続きがある」と分かるからです。だから **透けていることが見えなければ
-   意味がありません**。最初は地を 86% で置いていて、これはほとんど白い板と
-   同じでした——ぼかしを 20px かけても、ぼかす先が見えていませんでした。
-
-   58% まで落とします。下の一覧の色（買うものの札は行ごとに色が違います）が
-   帯の向こうで動くので、そこで初めて「ガラスだ」と読めます。ぼかしは 26px、
-   彩度は 200% ——ぼかすと色は濁るので、少し戻してやらないと灰色の靄に
-   なります。
-
-   字が読めなくなる心配は、この帯に関しては小さいものです。載っているのは
-   11px の太字と絵だけで、その下には**もう一枚**、白い縁（--c-border）と
-   影があります。念のため、選ばれていないほうの字は薄墨（--c-text-3）では
-   なく本文の濃さに寄せてあります（下の .tab を参照）。 */
+/* カプセル本体。**塗った面**（札の色＋線＋影2。ぼかさない——送るたびの描き直しを無くす。docs/redesign.md 2節）。 */
 .tabbar::before {
   content: "";
   position: absolute;
   inset: 2px var(--sp-3) var(--tab-drop);
   border-radius: var(--r-full);
-  /* 材は `--glass-*` から。三枚重ね（地・面のつや・上の縁の光）の中身と、
-     なぜ三枚なのかは :root のガラスの節にあります。 */
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--shadow-3);
+  background: var(--c-surface);
+  box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-2);
 }
-
-/* 縁の光。**一本の線ではなく、上下で明るさの違う輪**です。
-
-   ガラスの縁は、上では空を映して明るく、下では地面を映して暗くなり、
-   いちばん下でまた薄く光ります（下から回り込んだ光）。一様な白い線を
-   引くと、そこだけプラスチックの縁取りに見えます。
-
-   作り方は、1px の余白に色を敷いて、内側をマスクで抜く——border では
-   一色しか置けないので、こうします。指は素通りさせます。 */
-/* **縁の光は、三つとも同じ一枚です。** 違うのは器の形（inset と丸み）
-   だけなので、そこだけ各々が言います。
-
-   ＋（.add-fab）と ＋の札（.fab-menu-b）は screens.css に居ますが、材の
-   話なのでここに書きます——**材は一か所**、というのがこの節の言い分です。 */
-/* **鏡面光の数は、受け継がない名前**（2026年10月9日。docs/motion.md の「押した一拍を軽く」）。
-   app.js が送るたびに器へ書く数で、使うのは器の `::after` だけ。受け継ぐ名前のままだと、書くたびに
-   器の中ぜんぶ（帯なら席・絵・字の 48 個）が様式を計算し直していた——送るあいだ毎フレーム 約2ms
-   （1年ぶんの記録・CPU 1倍）。受け継がない名前にして、`::after` だけが器から取りにいく（下の
-   `inherit`）。`@property` を読めない端末では受け継ぐ名前のままで、見た目は同じ。
-   docs/traps.md の「受け継ぐ値を毎フレーム書かない」と同じ手（`--season-k`）。 */
-@property --glass-sweep { syntax: "<number>"; inherits: false; initial-value: .5; }
-.tabbar::after,
-.add-fab::after,
-.fab-menu-b::after,
-.toast::after,
-.search-bar::after {
-  --glass-sweep: inherit;
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  /* **ここで並べます。`:root` ではありません。**
-
-     `var()` はそれを**書いた要素の上で**解決されるので、`--glass-sweep` を
-     含む一枚を `:root` で組むと、そこの数が焼きついて配られます
-     （`--glass-fill` で一度踏んだ罠）。かつてはそれを「だから数も `:root`
-     へ書く」で通していましたが、`:root` の書き換えは**文書ぜんぶ**の style
-     再計算を呼ぶので、送るたびに一覧が粘っていました（`--glass-sweep` の節の
-     実測）。並べるのを使う側へ移せば、数もこの器へ書けて、巻き込むのは
-     この器の中だけで済みます。 */
-  background:
-    radial-gradient(42% 150% at calc(var(--glass-sweep) * 100%) 0%,
-      var(--glass-rim-spec), rgba(255, 255, 255, 0) 62%),
-    var(--glass-rim-ring);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  pointer-events: none;
-}
-/* 帯だけは、カプセルが帯そのものより内側にいるので、形を言い直します。 */
-.tabbar::after {
-  inset: 2px var(--sp-3) var(--tab-drop);
-  border-radius: var(--r-full);
-}
-
-/* ---- 縁の屈折。**これも三つで一枚の規則**です ----
-
-   ガラスには厚みがあります。厚みのあるものの縁では、後ろの景色が
-   折れ曲がって、そこだけ解像しなくなる——それが「厚い」の見え方です。
-   いままでは面ぜんぶが同じだけぼけていたので、縁は「薄い膜」でした。
-
-   本物の屈折（景色をずらす）は CSS では書けません。`feDisplacementMap` を
-   `backdrop-filter: url(…)` で呼ぶ道はありますが、Safari では当てに
-   なりません。かわりに**縁の帯だけ、もう一段ぼかして明るく**します
-   （`--glass-edge`）。**輪の作り方は縁の光（一つ上）と同じ**——padding で
-   内側を抜いた、幅 `--glass-edge-w` の輪です。
-
-   重ね順は「地 → 屈折 → 縁の光」。屈折は地の**上**に乗らないと、地の
-   ぼかしをもう一度かけたことになりません。帯は ::before と ::after を地と
-   光で使いきっているので、`.tab-edge` という本物の一枚が受けます。
-
-   **着せるのは帯のカプセルだけです。** ＋・札・トーストからは外しました
-   ——あれらは小さくて丸く、**自分の落ち影がすぐ真下にいます**。帯は影を
-   いっしょにぼかすので、縁の帯だけが影を吸い込んで**暗い輪**になり、
-   丸の中にもう一つ丸が入っているように見えました（実測：＋の斜めの断面で、
-   帯の内ふちに 7〜9階調の段差。カプセルでは 1階調以下）。
-   ここは**ぼかしだけ**にしてあります（brightness も saturate も外しました）
-   ——一様な地の上では何も変えず、後ろにものが流れてきたときだけ縁で
-   にじむ、というのが本来の見え方なので。明るくして「効いているように
-   見せる」と、ただの白い縁取りになります（それが実際に起きました）。 */
-.tab-edge {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: var(--glass-edge-w);
-  backdrop-filter: var(--glass-edge);
-  -webkit-backdrop-filter: var(--glass-edge);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  pointer-events: none;
-  z-index: 0;
-}
-/* 帯は、カプセルが帯そのものより内側にいるので、形を言い直します
-   （縁の光とまったく同じ inset・丸み——同じ輪の上に重なるので）。 */
-.tab-edge {
-  inset: 2px var(--sp-3) var(--tab-drop);
-  border-radius: var(--r-full);
-}
-
-/* ---- 後ろが暗ければ、ガラスも夜になる ----
-
-   iOS 26 のガラスは、**後ろに来たものに応じて明暗を入れ替えます**。
-   この画面でそういう相手を持っているのは、帯とドックだけです（＋も札も
-   ドックの中に居ます）。
-
-   見張るのは `js/app.js` の `watchBackdrop` ——帯の裏を三点つまんで、地を
-   持っている要素の明るさを見ます。**行きつ戻りつしないよう、境目は二つ**
-   （暗いと決めるのは .42 未満、明るいへ戻すのは .52 超え）。
-
-   **いまの明るい面では、まず立ちません。** 帯の裏に来るのは紙か地
-   （どちらも #f7f6f2）で、明るいので。暗い面と、これから暗いものが
-   帯の裏を通るようになったときのための仕掛けです——**仕掛けだけ先に
-   置いておくのではなく**、暗い面ではいま現に効きます（夜のテーマでも、
-   帯の裏が明るい紙のことがあるので）。
-
-   材は `--glass-night-*` の一組から。ここで言うのは「夜を選んだ」ことだけ
-   で、夜の材そのものではありません。 */
-.tabbar.is-on-dark,
-.dock.is-on-dark {
-  --glass-sheen: var(--glass-night-sheen);
-  --glass-crown: var(--glass-night-crown);
-  --glass-cast:     var(--glass-night-cast);
-  --glass-cast-lit: var(--glass-night-cast-lit);
-  --glass-a:        var(--glass-night-a);
-  --glass-base:  color-mix(in srgb, var(--glass-cast) var(--glass-a), transparent);
-  --glass-rim-spec: var(--glass-night-rim-spec);
-  --glass-rim-ring: var(--glass-night-rim-ring);
-  /* 字も一緒に返すこと。ガラスだけ暗くして字を黒のままにすると、
-     読めるようにするための仕掛けが、読めなくするだけのものになります。 */
-  --c-text:   #ececed;
-  --c-text-2: #b4b4ba;
-  --c-text-3: #92929a;
-}
-/* 選ばれている席の色は、**選んだ基調色から出す**こと。`--c-primary` を
-   夜の値で上書きすると、基調色を変えている人の帯だけコーラルに戻ります
-   （`applyAccent` が `:root` に書いた色を、ここで消してしまうので）。
-   白をひとさじ混ぜるのは `color:` の側でやります——`--c-primary` 自身に
-   混ぜると自分を参照する循環になって、一行まるごと効きません。 */
-.tabbar.is-on-dark .tab[aria-selected="true"] {
-  color: color-mix(in srgb, #fff 38%, var(--c-primary));
-}
-/* **いま居る席の印（`.tab-lens`）の地も、一緒に夜へ返すこと。**
-
-   明るい面の `--c-primary-soft` は **#fdeceb** ——ほとんど白の桜色です。
-   帯が夜になると、選ばれている席の字はすぐ上の一行で**白を38%混ぜた薄い
-   コーラル**へ振られるので、その字が白い丸薬の上に乗ります（実測
-   rgb(215,146,142) 対 rgb(253,236,235) ＝ **1.9:1**。読めません）。
-
-   **これは印が席ぜんぶを覆うようになって、はじめて出た。** 小さな丸だった
-   ころ、丸は絵の後ろにあるだけで、名前は帯の地の上に乗っていました
-   ——字と丸が重ならないので、丸が明るいままでも困らなかった。
-
-   **`#3a201f` のような決め打ちに戻さないこと**（暗い面のテーマが持って
-   いる値ですが、基調色を変えている人の帯だけ色が外れます——`--c-primary`
-   を上書きしてはいけないのと、まったく同じ理由）。基調色から出します。 */
-.tabbar.is-on-dark { --c-primary-soft: color-mix(in srgb, var(--c-primary) 30%, #1a1a20); }
 
 /* ---- 押しているあいだ、その席がふくらむ ----
 
@@ -2150,7 +1660,7 @@ a { color: var(--c-primary); }
    はみ出しますが、それでいい——下地は「いま居るほう」の印なので、
    待っているほうが外にいるのは正しい絵です。 */
 
-.tab[aria-selected="true"] { color: var(--c-primary); }
+.tab[aria-selected="true"] { color: var(--c-primary-ink); }   /* 薄い朱（席の印）の上の字は -ink。絵は朱 */
 /* **地はもうここが持ちません。** いま居る席の印は、席ごとの丸ではなく
    **席から席へ滑る一枚**（`.tab-lens`、下の節）になりました。
    ここに `background` を戻すと、レンズの下にもう一枚の丸が出ます
@@ -2160,7 +1670,7 @@ a { color: var(--c-primary); }
    （`.tab.is-held .tab-ico`）はそのまま残します。前者は絵の座りの話、
    後者は**指の下で起きること**で、どちらもレンズとは別の仕事です。 */
 .tab[aria-selected="true"] .tab-ico { transform: translateY(-1px); }
-.tab[aria-selected="true"] svg { stroke-width: 2.3; }
+.tab[aria-selected="true"] svg { stroke-width: 2.3; color: var(--c-primary); }
 
 /* いま居るところは、線ではなく面で言います。
 
@@ -2371,7 +1881,7 @@ a { color: var(--c-primary); }
 @media (min-width: 640px) and (max-width: 839.98px) {
   :root { --bar-x: max(var(--sp-3), calc((100% - 600px) / 2)); }
   .tabbar { padding-inline: var(--bar-x); }
-  .tabbar::before, .tabbar::after, .tab-edge, .tab-hold { inset-inline: var(--bar-x); }
+  .tabbar::before, .tab-hold { inset-inline: var(--bar-x); }
   .has-fab .dock { right: var(--bar-x); }
 }
 
@@ -2411,7 +1921,7 @@ a { color: var(--c-primary); }
     background: var(--c-bg);
     border-right: 1px solid var(--c-border);
   }
-  .tabbar::before, .tabbar::after, .tab-edge, .tab-hold { display: none; }
+  .tabbar::before, .tab-hold { display: none; }
   .tab {
     flex: none; flex-direction: row; justify-content: flex-start; gap: var(--sp-3);
     padding: 0 var(--sp-3); border-radius: var(--r-sm);
@@ -2512,233 +2022,65 @@ a { color: var(--c-primary); }
 @keyframes desk-out-dn { 40%, 100% { opacity: 0; transform: translateY(var(--desk-shift)); } }
 
 /* =========================================================
-   基調色（accent themes）
+   基調色（設定 → 外観 → 基調色。装い「手帳」のとき）
 
-   明暗（data-theme）とは別の軸です。「青の、暗い面」のように二つは
-   掛け合わさるので、札を分けてあります。
-
-   差し替えるのは brand の五つ（primary / -2 / -soft / -ink /
-   **-fill**）と、値札の accent だけ。ほかは触りません——からだの四つの輪
-   （歩数・総消費・睡眠・飲酒）と手描きアイコンの配色は、それぞれ「どの
-   指標か」「何の品物か」を言うための色で、アプリの基調色とは別の仕事を
-   しています。基調が変わるたびに卵の黄身の色が変わったら困る。
-
-   **--c-primary-fill も基調ごとに差し替えます。** 時間割の丸薬・背骨・
-   経過線・暦の日の丸はここから塗りを取っているので（screens.css の
-   `--tl-fill` / `--tl-wait` を参照）、ここを差し替えないと基調を変えても
-   「時間割だけコーラルのまま」になります。値は設定の見本の一色と
-   同じ——見本で選んだ色が、そのまま時間割に塗られます。
-
-   **値札（--c-accent）は、基調色と必ず色相を離します。** ここは「いちばん
-   安い」を言う場所で、ふつうのボタンと同じ色になると埋もれます。だから
-   基調が暖色なら値札は寒色、基調が寒色なら値札は暖色、と組にしてあります。
-
-   濃淡は、基調ごとに描き直したわけではありません。**どの基調も同じ物差し
-   （文字色は白地で4.6:1、背景の薄色は1.2:1、濃い文字色は8.8:1……という
-   狙いの対比）で色相だけを差し替えて出しています**——そうしないと、
-   基調によって「淡さ」や「読みやすさ」の手触りがばらつくので。緑系の
-   暗い面だけは彩度を大きく落としてあります（同じ彩度・明度でも、緑は
-   目に刺さって見えるため）。
-
-   既定のオレンジ（コーラル）には規則がありません（:root の素の値が
-   そのまま効きます）。 */
-
-/* ---- セージ（もとの「みどり」） ---- */
-:root[data-accent="green"] {
-  --c-primary:     #28853d;
-  --c-primary-2:   #226c33;
-  --c-primary-soft:#c6f7d2;
-  --c-primary-ink: #185626;
-  --c-primary-fill:#82a98b;
-  --c-accent:      #d8722f;
-  --c-accent-soft: #fdefe3;
-  --c-accent-ink:  #9c4c14;
-}
-/* ---- オーシャン（もとの「あお」） ---- */
-:root[data-accent="blue"] {
-  --c-primary:     #327ba6;
-  --c-primary-2:   #2a6587;
-  --c-primary-soft:#dbeefa;
-  --c-primary-ink: #1e4f6b;
-  --c-primary-fill:#6fa8c9;
-  --c-accent:      #d8722f;
-  --c-accent-soft: #fdefe3;
-  --c-accent-ink:  #9c4c14;
-}
-/* ---- ラベンダー（もとの「むらさき」） ---- */
-:root[data-accent="violet"] {
-  --c-primary:     #7d62d0;
-  --c-primary-2:   #5c3cc1;
-  --c-primary-soft:#ede9fc;
-  --c-primary-ink: #4f31ae;
-  --c-primary-fill:#9a8fbd;
-  --c-accent:      #d8722f;
-  --c-accent-soft: #fdefe3;
-  --c-accent-ink:  #9c4c14;
-}
-/* ---- ローズ（もとの「ももいろ」。色味を描き直し） ---- */
-:root[data-accent="rose"] {
-  --c-primary:     #c84760;
-  --c-primary-2:   #aa354c;
-  --c-primary-soft:#fbe6ea;
-  --c-primary-ink: #882639;
-  --c-primary-fill:#c98592;
-  --c-accent:      #2f7fb8;
-  --c-accent-soft: #e4f1fa;
-  --c-accent-ink:  #1c5678;
-}
-/* ---- マスタード ---- */
-:root[data-accent="mustard"] {
-  --c-primary:     #926f2c;
-  --c-primary-2:   #775c25;
-  --c-primary-soft:#f8eace;
-  --c-primary-ink: #5d471a;
-  --c-primary-fill:#d6ad5c;
-  --c-accent:      #2f7fb8;
-  --c-accent-soft: #e4f1fa;
-  --c-accent-ink:  #1c5678;
-}
-/* ---- スカイ ---- */
-:root[data-accent="sky"] {
-  --c-primary:     #2b7f8f;
-  --c-primary-2:   #256875;
-  --c-primary-soft:#d0f1f8;
-  --c-primary-ink: #1a515c;
-  --c-primary-fill:#82bfcb;
-  --c-accent:      #d8722f;
-  --c-accent-soft: #fdefe3;
-  --c-accent-ink:  #9c4c14;
-}
-/* ---- アプリコット ---- */
-:root[data-accent="apricot"] {
-  --c-primary:     #ab6233;
-  --c-primary-2:   #8b512c;
-  --c-primary-soft:#fae8dd;
-  --c-primary-ink: #6e3e1f;
-  --c-primary-fill:#e9a477;
-  --c-accent:      #2f7fb8;
-  --c-accent-soft: #e4f1fa;
-  --c-accent-ink:  #1c5678;
-}
-
-/* ---- 暗い面 ----
-   同じ考え方で、暗い地に沈まないよう明るいほうへ振ります。
-   自動（システムに従う）と、自分で暗いを選んだとき、両方に効かせます。
-   **--c-primary-fill は明暗で変えません**（コーラルも同じ考え方——丸薬の
-   塗りは一日を通して同じ色であるべきなので）。 */
+   明暗とは別の軸。差し替えるのは主色の三つ（primary・-soft・-ink。-2 と -fill はそこから出る）。
+   今の八つの id のまま、同じ濃さの伝統色に引き直した（地の上の字 4.5 以上・白字 5 以上）。「季節」は今日の節気の色
+   （js/app.js が data-sekki を付ける）。既定の朱には規則が無い（:root の素の値）。
+   明るい面の値（--a-p・-s・-i）と暗い面の値（--a-np・-ns・-ni）を一行で持ち、下の三つの規則が面に合うほうを渡す
+   ——基調ごとに暗い面を二度書かない。
+   ========================================================= */
+:root[data-accent="blue"]    { --a-p: #2b5a8c; --a-s: #dfe8f2; --a-i: #1e4268; --a-np: #8db5e2; --a-ns: #1f3147; --a-ni: #b9d2ee; }  /* 藍 */
+:root[data-accent="green"]   { --a-p: #3f6b2f; --a-s: #e3ecd9; --a-i: #2c4d20; --a-np: #9cc487; --a-ns: #26351d; --a-ni: #c3dcb5; }  /* 松葉 */
+:root[data-accent="violet"]  { --a-p: #6b4a94; --a-s: #ebe3f3; --a-i: #4d3370; --a-np: #b9a2e0; --a-ns: #30264a; --a-ni: #d5c6ee; }  /* 江戸紫 */
+:root[data-accent="rose"]    { --a-p: #9e3443; --a-s: #f5e1e3; --a-i: #742431; --a-np: #e58a95; --a-ns: #3f2025; --a-ni: #f1b8be; }  /* 臙脂 */
+:root[data-accent="mustard"] { --a-p: #8a6410; --a-s: #f6ead0; --a-i: #654809; --a-np: #e3b95a; --a-ns: #3d3118; --a-ni: #efd596; }  /* 山吹 */
+:root[data-accent="sky"]     { --a-p: #1c6f80; --a-s: #d9ecef; --a-i: #124f5c; --a-np: #7cc3d1; --a-ns: #17343a; --a-ni: #b0dbe4; }  /* 浅葱 */
+:root[data-accent="apricot"] { --a-p: #a04d17; --a-s: #f8e4d3; --a-i: #763810; --a-np: #eb9a62; --a-ns: #43291a; --a-ni: #f4c3a0; }  /* 柿 */
+/* 季節：節気（春分から 0〜23）の色。data-sekki が無いあいだ（起動の一拍）は朱のまま。 */
+:root[data-accent="season"][data-sekki="0"] { --a-p: #9f4f6c; --a-s: #fce9ee; --a-i: #853955; --a-np: #d3829d; --a-ns: #361e26; --a-ni: #e7b4c3; }
+:root[data-accent="season"][data-sekki="1"] { --a-p: #8c5587; --a-s: #f8e9f6; --a-i: #743f6f; --a-np: #c089bb; --a-ns: #30202f; --a-ni: #dab7d6; }
+:root[data-accent="season"][data-sekki="2"] { --a-p: #49742f; --a-s: #e8f2e3; --a-i: #335c15; --a-np: #7ca764; --a-ns: #1e2b17; --a-ni: #acc79f; }
+:root[data-accent="season"][data-sekki="3"] { --a-p: #227849; --a-s: #e4f3e8; --a-i: #036035; --a-np: #5eaa7a; --a-ns: #162c1e; --a-ni: #9dc9ab; }
+:root[data-accent="season"][data-sekki="4"] { --a-p: #62711b; --a-s: #ecf1e1; --a-i: #4c5a08; --a-np: #93a356; --a-ns: #242913; --a-ni: #bac698; }
+:root[data-accent="season"][data-sekki="5"] { --a-p: #127666; --a-s: #e0f4ee; --a-i: #005e50; --a-np: #57a897; --a-ns: #142b26; --a-ni: #9ac7bc; }
+:root[data-accent="season"][data-sekki="6"] { --a-p: #186ea0; --a-s: #e2f1fc; --a-i: #015782; --a-np: #57a0d3; --a-ns: #142937; --a-ni: #9ac4e3; }
+:root[data-accent="season"][data-sekki="7"] { --a-p: #117283; --a-s: #dff3f7; --a-i: #015a68; --a-np: #57a5b6; --a-ns: #142a2f; --a-ni: #9ac6d1; }
+:root[data-accent="season"][data-sekki="8"] { --a-p: #88630a; --a-s: #f6edde; --a-i: #6d4e04; --a-np: #ba954f; --a-ns: #2f2510; --a-ni: #d4be95; }
+:root[data-accent="season"][data-sekki="9"] { --a-p: #7d6705; --a-s: #f3efde; --a-i: #635100; --a-np: #ae994c; --a-ns: #2c2610; --a-ni: #ccbf94; }
+:root[data-accent="season"][data-sekki="10"] { --a-p: #856305; --a-s: #f5eede; --a-i: #6a4d01; --a-np: #b8964e; --a-ns: #2f2510; --a-ni: #d3be95; }
+:root[data-accent="season"][data-sekki="11"] { --a-p: #526d81; --a-s: #e8f0f6; --a-i: #3c5669; --a-np: #839eb2; --a-ns: #20282d; --a-ni: #b1c2cf; }
+:root[data-accent="season"][data-sekki="12"] { --a-p: #935d0d; --a-s: #f9ecdf; --a-i: #754805; --a-np: #c58f4f; --a-ns: #332310; --a-ni: #dcba95; }
+:root[data-accent="season"][data-sekki="13"] { --a-p: #995424; --a-s: #fbebe1; --a-i: #803d04; --a-np: #d08a5e; --a-ns: #352114; --a-ni: #e4b89e; }
+:root[data-accent="season"][data-sekki="14"] { --a-p: #97591e; --a-s: #faebe0; --a-i: #7c4402; --a-np: #cc8d59; --a-ns: #342213; --a-ni: #e1ba9b; }
+:root[data-accent="season"][data-sekki="15"] { --a-p: #726748; --a-s: #f1eee6; --a-i: #5b5032; --a-np: #a69b7c; --a-ns: #29261d; --a-ni: #c7c1ae; }
+:root[data-accent="season"][data-sekki="16"] { --a-p: #576b83; --a-s: #e9eff6; --a-i: #41546b; --a-np: #889cb4; --a-ns: #21272e; --a-ni: #b4c1d0; }
+:root[data-accent="season"][data-sekki="17"] { --a-p: #526a8c; --a-s: #e8eff9; --a-i: #3d5374; --a-np: #839cbe; --a-ns: #202731; --a-ni: #b1c1d6; }
+:root[data-accent="season"][data-sekki="18"] { --a-p: #59688b; --a-s: #eaeef8; --a-i: #435273; --a-np: #8a9abd; --a-ns: #222631; --a-ni: #b5bfd6; }
+:root[data-accent="season"][data-sekki="19"] { --a-p: #7b644d; --a-s: #f4ede6; --a-i: #634e37; --a-np: #ae9780; --a-ns: #2c251e; --a-ni: #cdbeb0; }
+:root[data-accent="season"][data-sekki="20"] { --a-p: #656884; --a-s: #edeef6; --a-i: #4f516d; --a-np: #9699b6; --a-ns: #25262e; --a-ni: #bdc0d1; }
+:root[data-accent="season"][data-sekki="21"] { --a-p: #8f5a66; --a-s: #faeaed; --a-i: #764450; --a-np: #c28c97; --a-ns: #312125; --a-ni: #dbb8bf; }
+:root[data-accent="season"][data-sekki="22"] { --a-p: #4d715d; --a-s: #e8f1eb; --a-i: #375a47; --a-np: #7ea28e; --a-ns: #1f2923; --a-ni: #aec4b7; }
+:root[data-accent="season"][data-sekki="23"] { --a-p: #5e721f; --a-s: #ecf1e1; --a-i: #495b04; --a-np: #8da357; --a-ns: #232914; --a-ni: #b7c598; }
+:root[data-accent] { --c-primary: var(--a-p, #bf4128); --c-primary-soft: var(--a-s, #f7e3da); --c-primary-ink: var(--a-i, #8e2e1b); }
+/* 藍を主色にしたら、予定・値段の藍は朱へ（主色と役目の色が同じにならない）。 */
+:root[data-accent="blue"] { --c-ai: #bf4128; --c-ai-soft: #f7e3da; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"])[data-accent="green"],
-  :root[data-theme="dark"][data-accent="green"] {
-    --c-primary: #56b66c; --c-primary-2: #62c579;
-    --c-primary-soft: #1d2f24; --c-primary-ink: #9ddcb8;
-    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-  }
-  :root:not([data-theme="light"])[data-accent="blue"],
-  :root[data-theme="dark"][data-accent="blue"] {
-    --c-primary: #4face2; --c-primary-2: #66baea;
-    --c-primary-soft: #17273a; --c-primary-ink: #a6cdf5;
-    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-  }
-  :root:not([data-theme="light"])[data-accent="violet"],
-  :root[data-theme="dark"][data-accent="violet"] {
-    --c-primary: #ab96ee; --c-primary-2: #c5b6f5;
-    --c-primary-soft: #241e3a; --c-primary-ink: #cfbdf5;
-    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-  }
-  :root:not([data-theme="light"])[data-accent="rose"],
-  :root[data-theme="dark"][data-accent="rose"] {
-    --c-primary: #ea8599; --c-primary-2: #f0a4b3;
-    --c-primary-soft: #391e23; --c-primary-ink: #f6bdc7;
-    --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
-  }
-  :root:not([data-theme="light"])[data-accent="mustard"],
-  :root[data-theme="dark"][data-accent="mustard"] {
-    --c-primary: #d39925; --c-primary-2: #dea534;
-    --c-primary-soft: #2c2517; --c-primary-ink: #efcf8f;
-    --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
-  }
-  :root:not([data-theme="light"])[data-accent="sky"],
-  :root[data-theme="dark"][data-accent="sky"] {
-    --c-primary: #22b2cf; --c-primary-2: #27c3e2;
-    --c-primary-soft: #17282c; --c-primary-ink: #8fdfef;
-    --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-  }
-  :root:not([data-theme="light"])[data-accent="apricot"],
-  :root[data-theme="dark"][data-accent="apricot"] {
-    --c-primary: #e28f5a; --c-primary-2: #e8a274;
-    --c-primary-soft: #312319; --c-primary-ink: #f2c1a2;
-    --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
-  }
+  :root:not([data-theme="light"])[data-accent] { --c-primary: var(--a-np, #ee8468); --c-primary-soft: var(--a-ns, #46261d); --c-primary-ink: var(--a-ni, #f6b29f); }
+  :root:not([data-theme="light"])[data-accent="blue"] { --c-ai: #ee8468; --c-ai-soft: #46261d; }
 }
-/* 自分で「暗い」を選んだときは、システムの設定に関わらず効かせます。 */
-:root[data-theme="dark"][data-accent="green"] {
-  --c-primary: #56b66c; --c-primary-2: #62c579;
-  --c-primary-soft: #1d2f24; --c-primary-ink: #9ddcb8;
-  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-}
-:root[data-theme="dark"][data-accent="blue"] {
-  --c-primary: #4face2; --c-primary-2: #66baea;
-  --c-primary-soft: #17273a; --c-primary-ink: #a6cdf5;
-  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-}
-:root[data-theme="dark"][data-accent="violet"] {
-  --c-primary: #ab96ee; --c-primary-2: #c5b6f5;
-  --c-primary-soft: #241e3a; --c-primary-ink: #cfbdf5;
-  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-}
-:root[data-theme="dark"][data-accent="rose"] {
-  --c-primary: #ea8599; --c-primary-2: #f0a4b3;
-  --c-primary-soft: #391e23; --c-primary-ink: #f6bdc7;
-  --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
-}
-:root[data-theme="dark"][data-accent="mustard"] {
-  --c-primary: #d39925; --c-primary-2: #dea534;
-  --c-primary-soft: #2c2517; --c-primary-ink: #efcf8f;
-  --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
-}
-:root[data-theme="dark"][data-accent="sky"] {
-  --c-primary: #22b2cf; --c-primary-2: #27c3e2;
-  --c-primary-soft: #17282c; --c-primary-ink: #8fdfef;
-  --c-accent: #f0955a; --c-accent-soft: #33241a; --c-accent-ink: #f5b489;
-}
-:root[data-theme="dark"][data-accent="apricot"] {
-  --c-primary: #e28f5a; --c-primary-2: #e8a274;
-  --c-primary-soft: #312319; --c-primary-ink: #f2c1a2;
-  --c-accent: #6fb6e8; --c-accent-soft: #17293a; --c-accent-ink: #a9d4f1;
-}
+:root[data-theme="dark"][data-accent] { --c-primary: var(--a-np, #ee8468); --c-primary-soft: var(--a-ns, #46261d); --c-primary-ink: var(--a-ni, #f6b29f); }
+:root[data-theme="dark"][data-accent="blue"] { --c-ai: #ee8468; --c-ai-soft: #46261d; }
 
 /* ---- iPhone の「コントラストを上げる」（roadmap-seamless の N15 (b)・X19） ----
-   設定 → アクセシビリティ → 画面表示とテキストサイズ。オフの人には何も変わらない。
-   ガラスは不透明の面に（地の濃さは `--glass-a` / `--glass-night-a` の二つから。@supports の受け皿と同じ手）、
-   灰の字と線は一段濃く。明るい面のガラスの色は、いま透けて見えている明るさに寄せる（--glass-cast のまま塞ぐと沈む）。
-   夜のガラスは紙（#1c1c22）と同じ色なので、一段明るくして境目を残す。
-   「透明度を下げる」は Safari では読めない（prefers-reduced-transparency は iOS で未対応）。 */
+   灰の字と線を一段濃く。オフの人には何も変わらない。面は塗ってあるので、ほかに足すものは無い。 */
 @media (prefers-contrast: more) {
-  :root {
-    --c-text-2:   #4a4843;
-    --c-text-3:   #4f4d47;
-    --c-border:   #c7c5bf;
-    --c-border-2: #aba9a3;
-    --glass-a:              100%;
-    --glass-night-a:        100%;
-    --glass-cast:           #e8e6e0;
-    --glass-cast-lit:       #f5f3ed;
-    --glass-night-cast:     #2a2a32;
-    --glass-night-cast-lit: #3a3a44;
-  }
-  :root[data-theme="dark"],
-  .tabbar.is-on-dark,
-  .dock.is-on-dark {
-    --c-text-2: #c6c6ca;
-    --c-text-3: #b4b4ba;
-  }
-  :root[data-theme="dark"] { --c-border: #4a4a54; --c-border-2: #5c5c68; }
+  :root { --c-text-2: #463e34; --c-text-3: #4f463b; --c-border: #bfb39c; --c-border-2: #a89c84; }
+  :root[data-attire="modern"] { --c-text-2: #3c3e45; --c-text-3: #474950; --c-border: #c4c1b9; --c-border-2: #a5a29a; }
+  :root[data-theme="dark"] { --c-text-2: #d8d0c2; --c-text-3: #c4bbac; --c-border: #5a5247; --c-border-2: #6c6357; }
+  :root[data-theme="dark"][data-attire="modern"] { --c-text-2: #d2d3d8; --c-text-3: #bdbec5; --c-border: #4a4c54; --c-border-2: #5e6068; }
 }
 @media (prefers-contrast: more) and (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --c-text-2: #c6c6ca;
-    --c-text-3: #b4b4ba;
-    --c-border: #4a4a54;
-    --c-border-2: #5c5c68;
-  }
+  :root:not([data-theme="light"]) { --c-text-2: #d8d0c2; --c-text-3: #c4bbac; --c-border: #5a5247; --c-border-2: #6c6357; }
+  :root:not([data-theme="light"])[data-attire="modern"] { --c-text-2: #d2d3d8; --c-text-3: #bdbec5; --c-border: #4a4c54; --c-border-2: #5e6068; }
 }

@@ -26,7 +26,7 @@ const crypto = require("crypto");
 const ROOT = __dirname;
 const OUT_DIR = path.join(ROOT, "dist");
 
-const CSS = ["css/base.css", "css/components.css", "css/screens.css", "css/attire.css"];
+const CSS = ["css/base.css", "css/components.css", "css/screens.css"];
 
 // Load order matters: utilities, then state, then UI, then screens, then boot.
 const JS = [
@@ -161,7 +161,7 @@ const manifest = {
   scope: ".",
   display: "standalone",
   background_color: "#f4f6f3",
-  theme_color: "#2f8f5b",
+  theme_color: "#f4efe5",
   icons: [{ src: iconPng, sizes: "180x180", type: "image/png" }],
 };
 const manifestUri =
@@ -173,7 +173,7 @@ const head = `
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>くらしノート</title>
 <meta name="description" content="買い物リストと、店ごとの値段くらべ。どのお店が一番安いかがすぐ分かる買い物メモアプリ。">
-<meta name="theme-color" content="#2f8f5b">
+<meta name="theme-color" content="#f4efe5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="くらしノート">

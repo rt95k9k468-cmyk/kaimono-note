@@ -8,7 +8,7 @@
      --clock 21:30            その時刻から時計を進めて開く（既定は今）
      --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）
      --scroll 400             送る器を下へ（px）
-     --attire washi-shu,season 装い（css/attire.css）を列に足す：washi-shu・washi-enji・season・polish。「今」はいつも撮る
+     --attire modern 装い（base.css の「モダン」）を列に足す。「今」はいつも撮る
      --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。「今」（差し替えなし）はいつも撮る
      --empty                  試しの記録を入れない
      --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）

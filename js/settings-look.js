@@ -52,7 +52,7 @@
   /** 基調色の丸。押すとその場で画面ぜんぶの色が変わります——設定を出たり
       入ったりしないと確かめられない選択は、選びようがないので。 */
   function paintAccents(host) {
-    const now = store.get().settings.accent || "orange";
+    const now = KN.app.lookOf(store.get().settings).accent;
     host.innerHTML = "";
     store.ACCENTS.forEach((a) => {
       const on = a.id === now;
@@ -65,8 +65,9 @@
         </button>
       `);
       b.addEventListener("click", () => {
-        store.update((s) => { s.settings.accent = a.id; });
-        KN.app.applyAccent(a.id);
+        /* 前の装い（朱・臙脂・季節）は基調色へ読み替えている。色を選び直したら、装いは手帳（"now"）に据える。 */
+        store.update((s) => { s.settings.accent = a.id; if (s.settings.attire !== "modern") s.settings.attire = "now"; });
+        KN.app.applyLook();
         KN.motion.fire("select", b);
         paintAccents(host);
       });
@@ -166,25 +167,23 @@
 
     /* ホーム画面のアイコンの数は、通知の一枚へ移した（2026年11月5日。settings-todo.js の badgeRows）。 */
 
-    /* 装い（css/attire.css）。押せば画面ぜんぶがその場で変わる。和紙と墨・季節の手帳は自分の主色を持つので、
-       そのあいだ基調色は出さない。字の札ではなく、明るさと同じく小さな画面の絵で選ぶ（絵は css/attire.css の
-       「装いの絵」。絵の札 data-attire が、その装いの色を絵の中だけに効かせる）。季節の絵は今日の節気の色。 */
-    const attire = s.attire || "now";
-    const ATTIRE_NAMES = [["now", "いま"], ["washi-shu", "朱"], ["washi-enji", "臙脂"], ["season", "季節"], ["polish", "磨き"]];
-    const today = KN.season ? KN.season.of(KN.util.todayKey()) : null;
-    const sekki = today ? String(Math.floor(today.k / 3)) : "";
-    const swatch = (store.ACCENTS.find((a) => a.id === (s.accent || "orange")) || store.ACCENTS[0]).swatch;
+    /* 装いは二つ：手帳とモダン（docs/redesign.md 4節）。押せば画面ぜんぶがその場で変わる。明るさと同じく小さな画面の絵で
+       選ぶ（絵は screens.css の「装いの絵」。絵の札 data-look が、その装いの色を絵の中だけに効かせる）。モダンは自分の
+       主色を持つので、そのあいだ基調色と見出しの書体は出さない。前の装いの値は lookOf が読み替える——手帳から
+       モダンへ移るとき、読み替えていた基調色を settings.accent に写して、戻ったときも同じ色にする。 */
+    const now = KN.app.lookOf(s);
+    const LOOKS = [["techo", "手帳"], ["modern", "モダン"]];
+    const swatch = (store.ACCENTS.find((a) => a.id === now.accent) || store.ACCENTS[0]).swatch;
     const attires = node(html`
       <div class="set-card is-pad">
         <div class="theme-picks attire-picks" role="radiogroup" aria-label="装い">
-          ${ATTIRE_NAMES.map(([id, label]) => html`
+          ${LOOKS.map(([id, label]) => html`
             <button type="button" class="theme-pick attire-pick" data-pick="${id}" role="radio"
-                    aria-checked="${String(attire === id)}" aria-pressed="${String(attire === id)}">
-              <span class="attire-shot" data-attire="${id}" data-sekki="${id === "season" ? sekki : ""}"
-                    style="--shot-p:${swatch}" aria-hidden="true">
+                    aria-checked="${String(now.look === id)}" aria-pressed="${String(now.look === id)}">
+              <span class="attire-shot" data-look="${id}" style="--shot-p:${swatch}" aria-hidden="true">
                 <i class="as-sky"></i><b class="as-title">今日</b>
                 <i class="as-card"><i class="as-row is-done"></i><i class="as-row"></i><i class="as-row"></i></i>
-                <i class="as-dots"><i></i><i></i><i></i></i>
+                <i class="as-fab"></i>
               </span>
               <span class="theme-name">${label}</span>
               <span class="theme-mark" aria-hidden="true">${icon("check")}</span>
@@ -195,14 +194,36 @@
     attires.querySelectorAll(".attire-pick").forEach((btn) => {
       btn.addEventListener("click", () => {
         const v = btn.dataset.pick;
-        if (v === (store.get().settings.attire || "now")) return;
-        store.update((x) => { x.settings.attire = v; });
-        KN.app.applyAttire(v);
+        const cur = KN.app.lookOf(store.get().settings);
+        if (v === cur.look) return;
+        store.update((x) => { x.settings.accent = cur.accent; x.settings.attire = v === "modern" ? "modern" : "now"; });
+        KN.app.applyLook();
         haptic();
         render();
       });
     });
-    const ownColor = ["washi-shu", "washi-enji", "season"].includes(attire);
+    const ownColor = now.look === "modern";
+
+    /* 見出しの書体（帯の日付・小見出し・紙の題）。既定は明朝、「本文と同じ」で下の書体に揃える。 */
+    const headFont = s.headFont === "same" ? "same" : "mincho";
+    const heads = node(html`
+      <div class="set-card is-pad">
+        <div class="seg">
+          <button class="seg-btn" data-head="mincho" aria-pressed="${String(headFont === "mincho")}">明朝</button>
+          <button class="seg-btn" data-head="same" aria-pressed="${String(headFont === "same")}">本文と同じ</button>
+        </div>
+      </div>
+    `);
+    heads.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.head;
+        if (v === (store.get().settings.headFont === "same" ? "same" : "mincho")) return;
+        store.update((x) => { x.settings.headFont = v; });
+        KN.app.applyLook();
+        haptic();
+        render();
+      });
+    });
 
     /* 文字の大きさ。明るさと同じで、動かしたその場で画面ぜんぶが変わる
        ——いま読んでいるこの一枚の字で、大きさを確かめられるように。 */
@@ -238,6 +259,7 @@
       head("装い"), attires,
       ...(ownColor ? [] : [head("基調色"), accents]),
       head("文字の大きさ"), sizes,
+      ...(ownColor ? [] : [head("見出しの書体"), heads]),
       head("書体"), fonts,
       head("上の帯"),
       card(

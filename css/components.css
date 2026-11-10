@@ -9,10 +9,10 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  height: 44px;
+  height: 52px;
   padding: 0 var(--sp-5);
-  border-radius: var(--r-md);
-  font-size: var(--fs-md);
+  border-radius: 16px;
+  font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
   white-space: nowrap;
   transition: background var(--m-state) var(--ease), transform var(--m-press) var(--ease), scale var(--m-press) var(--ease), opacity var(--m-state);
@@ -38,11 +38,11 @@
    やることの行の題と、食事の四枠は、中心から 44px ではなく空きに合わせて
    広げます（screens.css の `.tl-open` と `.diet-slot-view`）。 */
 .topbar-day,
-.js-filter .chip,
+.chip,
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji,
 .diet-memo-open { position: relative; }
 .topbar-day::after,
-.js-filter .chip::after,
+.chip::after,
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji::after,
 .diet-memo-open::after {
   content: "";
@@ -175,7 +175,7 @@ button, [role="tab"] {
 }
 
 .btn-block { width: 100%; }
-.btn-sm { height: 40px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
+.btn-sm { height: 36px; padding: 0 var(--sp-4); font-size: var(--fs-sm); border-radius: var(--r-sm); }
 
 /* The shared chevron points right, so anything meaning 「戻る」 turns it over.
    The class was being asked for by the back buttons and never existed, which is
@@ -186,7 +186,7 @@ button, [role="tab"] {
   position: relative;   /* anchors the 44px touch box below */
   display: grid;
   place-items: center;
-  width: 38px; height: 38px;
+  width: 40px; height: 40px;
   border-radius: var(--r-full);
   color: var(--c-text-2);
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), transform var(--m-press), scale var(--m-press);
@@ -236,10 +236,10 @@ button, [role="tab"] {
 
 .input, .select, .textarea {
   width: 100%;
-  height: 46px;
+  height: 48px;
   padding: 0 var(--sp-4);
   background: var(--c-surface);
-  border: 1.5px solid var(--c-border);
+  border: 1px solid var(--c-border-2);
   border-radius: var(--r-md);
   font-size: var(--fs-lg);
   color: var(--c-text);
@@ -271,7 +271,7 @@ button, [role="tab"] {
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
   border-color: var(--c-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 18%, transparent);
+  box-shadow: 0 0 0 3px var(--c-primary-soft);
 }
 
 .select {
@@ -341,7 +341,7 @@ button, [role="tab"] {
 .icon-report-toggle.is-on {
   border-color: var(--c-primary);
   background: var(--c-primary-soft);
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
 }
 .icon-report-text { flex: 1; min-width: 0; }
 
@@ -519,13 +519,13 @@ button, [role="tab"] {
   gap: 5px;
   /* Grown from 34px: a horizontal scroller cannot host an overflowing
      touch box, so here the control itself has to carry the height. */
-  height: 40px;
-  padding: 0 var(--sp-3);
+  height: 36px;
+  padding: 0 14px;
   border-radius: var(--r-full);
   background: var(--c-surface);
-  border: 1.5px solid var(--c-border);
-  color: var(--c-text-2);
-  font-size: var(--fs-sm);
+  border: 1px solid var(--c-border-2);
+  color: var(--c-text);
+  font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   white-space: nowrap;
   flex: none;
@@ -652,7 +652,7 @@ button, [role="tab"] {
 /* 絵文字を置いていた枠です。いまは線の絵が入ります（empty-art.js）。
    線は字と同じ主色、下地は淡い緑。 */
 .empty-art {
-  color: var(--c-primary);
+  color: var(--c-primary-ink);
   width: 104px; height: 104px;
   display: grid;
   place-items: center;
@@ -689,32 +689,11 @@ button, [role="tab"] {
 
 /* ---------------- sheet (bottom modal) ---------------- */
 
-/* ---- 覆いのぼかしと、紙のぼかしは、別のことを言っている ----
-
-   **ぼかしは全部ここに置いてありました。** 紙は `transform` で動かすもので、
-   動くものの中の `backdrop-filter` は当てにならない（Safari には、まるで
-   拾わない版があった）——それが理由です。理由は正しいのですが、結果として
-   **紙の縁でぼけが切れません**でした。紙の外も中も、同じだけぼけている。
-   ぼけているのに、その形が紙の形をしていない、ということです。
-
-   分けます。
-
-     覆い（ここ）… **下の画面から気をそらす**ためのぼかし。画面ぜんぶ。
-     紙（下）　　… **その紙の後ろだけ**、もう一段ぼかす。だから縁で切れる。
-
-   覆いのほうは 18px → 12px に下げます（役目が「気をそらす」だけになった
-   ので、それで足ります）。紙は自分のぶんを重ねるので、紙の後ろは前より
-   深くぼけます——**その差が、紙の形**です。
-
-   **もとの但し書きは生きています。** 動くものの中のぼかしが拾われない端末
-   では、紙のぶんだけが効かず、覆いのぼかしがそのまま残ります——つまり
-   **いままでと同じ絵**に落ちるだけで、字が透けて読めなくなることはない。 */
+/* 覆いは塗った幕、紙は塗った面（ぼかさない。docs/redesign.md 2節）。 */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(10, 20, 14, .24);
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  background: rgba(30, 20, 10, .36);
   z-index: var(--z-sheet);
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
@@ -741,11 +720,9 @@ button, [role="tab"] {
      やること・daily の紙と同じ決めごとです。落ち影（--shadow-3）は
      「下の画面より手前にいる」の話、内側の一本は「これが紙のふち」の話で、
      別のことを言っているので両方置きます。 */
-  background: color-mix(in srgb, var(--c-sheet) 76%, transparent);
+  background: var(--c-sheet);
   /* 紙は自分のぶんをぼかします（上の「覆いのぼかしと、紙のぼかしは〜」）。
      丸角にも `border-radius` がそのまま効くので、**ぼけが紙の形に沿い**ます。 */
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--shadow-3), inset 0 1px 0 var(--c-sheet-edge);
   z-index: calc(var(--z-sheet) + 1);
@@ -974,7 +951,7 @@ button, [role="tab"] {
   width: 62px; height: 84px;
   border-radius: 31px;
   background: var(--cat, var(--c-primary-fill));
-  color: #fff;                     /* 粒の中の絵は白のまま（地の字は墨） */
+  color: var(--c-text-on);                     /* 粒の中の絵は白のまま（地の字は墨） */
   box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
 }
 .hero-node .todo-mark,
@@ -1028,7 +1005,7 @@ button.hero-node:active { scale: var(--press-dot); }
   border-bottom: 1.5px solid color-mix(in srgb, var(--c-text) 22%, transparent);
   border-radius: 0;
   color: var(--c-text);
-  font-family: inherit;
+  font-family: var(--font-display);
   font-size: calc(20px * var(--fs-k));
   font-weight: var(--fw-bold);
   line-height: 1.35;
@@ -1517,28 +1494,9 @@ button.hero-node:active { scale: var(--press-dot); }
   padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
   border-radius: var(--r-md);
   position: relative;
-  /* See-through, because it lands on top of the very rows it is talking about
-     — 「「牛乳」を削除しました」 sits over the place 牛乳 just left. Blurred
-     behind, so the text stays readable over anything underneath.
-
-     **材はガラスの一組から**（base.css のガラスの節）。ここは生の暗い緑
-     （rgba(35,42,36,.78) と #8fe0b0）でした——基調がコーラルになったいま、
-     **アプリで唯一の緑**で、基調色を変えてもここだけ付いてきませんでした。
-
-     ただし、明暗は**夜のほうに固定**します（`--glass-night-*`）。これは
-     一覧の上に置かれる短い知らせで、下にどんな行が流れていても白い字が
-     読めることのほうが要るからです。濃さだけ 62% → 82%——帯は「下に続きが
-     ある」を言うためのガラスですが、こちらは**読ませるため**のガラスなので。 */
-  background: var(--glass-night-sheen), var(--glass-night-crown),
-              color-mix(in srgb, var(--glass-night-cast) 82%, transparent);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  /* 縁の一本も夜のほうから。明るい面の縁は白が強いので、暗い地に回すと
-     線だけが浮いて、ガラスのふちではなく別の部品に見えます
-     （紙のふちで同じことを一度やっています——「紙の地は 250」の節）。 */
-  --glass-rim-spec: var(--glass-night-rim-spec);
-  --glass-rim-ring: var(--glass-night-rim-ring);
-  color: #f2f2f4;
+  /* 一言は墨の地（暗い面では生成りの地に墨の字）。「元に戻す」は朱（--c-now を地の色で薄めた字。墨の上で 4.9 以上）。 */
+  background: var(--c-text);
+  color: var(--c-bg);
   box-shadow: var(--shadow-3);
   font-size: var(--fs-md);
   font-weight: var(--fw-bold);
@@ -1547,20 +1505,6 @@ button.hero-node:active { scale: var(--press-dot); }
      takes to read. */
   cursor: pointer;
   animation: toast-in var(--m-add) var(--ease-out);
-}
-
-/* ぼかしの効かない環境の受け皿は、**base.css の一か所**に移しました
-   （`--glass-a` / `--glass-night-a` を上げる）。ここだけに置いてあった
-   ころは、下の帯が「半分透けた板」のまま残って、行の字が素通しでした。
-
-   明るい／暗いの上書きも要りません——材が夜に固定なので、どちらの面でも
-   同じ濃さです（そこが帯や＋と違うところで、上の但し書きの理由）。 */
-
-/* 「コントラストを上げる」では塞ぐ（base.css の末尾。ここは自分の濃さを持つので、ここで言い直す）。 */
-@media (prefers-contrast: more) {
-  .toast {
-    background: var(--glass-night-sheen), var(--glass-night-crown), var(--glass-night-cast);
-  }
 }
 
 .toast.is-out {
@@ -1574,7 +1518,7 @@ button.hero-node:active { scale: var(--press-dot); }
      上なので、白をひとさじ混ぜます（`.is-on-dark` の席と同じ手。
      `--c-primary` 自身に混ぜると自分を参照する循環になるので、
      混ぜるのは `color:` の側で）。 */
-  color: color-mix(in srgb, #fff 42%, var(--c-primary));
+  color: color-mix(in srgb, var(--c-now) 50%, var(--c-bg));
   font-weight: var(--fw-bold);
   padding: 6px 10px;
   border-radius: var(--r-sm);
@@ -1582,7 +1526,7 @@ button.hero-node:active { scale: var(--press-dot); }
 }
 .toast-action:active { opacity: var(--press-fade); }
 @media (hover: hover) {
-  .toast-action:hover { background: rgba(255,255,255,.1); }
+  .toast-action:hover { background: color-mix(in srgb, var(--c-bg) 12%, transparent); }
 }
 
 @keyframes toast-in  { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -1606,6 +1550,7 @@ button.hero-node:active { scale: var(--press-dot); }
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 
@@ -1651,8 +1596,8 @@ button.hero-node:active { scale: var(--press-dot); }
   flex: none;
   position: relative;
   width: 63px; height: 28px;
-  border-radius: 14px;
-  background: #c5c5c7;
+  border-radius: var(--r-md);
+  background: var(--c-border-2);
   transition: background var(--m-state) var(--ease);
 }
 .toggle-knob {
@@ -1693,10 +1638,6 @@ button.hero-node:active { scale: var(--press-dot); }
    光って見えます）。iOS の暗い面のスイッチと同じ濃さ。
    **オフだけに当てる**（2026年10月24日）：`:root…` の付いたこの規則はオンの塗り（上）より詳細度が高く、
    暗い面ではオンの地まで灰になり、オンとオフがつまみの位置でしか分からなかった。 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :not([aria-checked="true"]) > .toggle { background: #39393d; }
-}
-:root[data-theme="dark"] :not([aria-checked="true"]) > .toggle { background: #39393d; }
 
 @media (prefers-reduced-motion: reduce) {
   .toggle, .toggle-knob, .toggle-mark { transition: none; }
@@ -1737,9 +1678,7 @@ button.hero-node:active { scale: var(--press-dot); }
   /* 紙の上に浮いている一枚なので、材はガラスの一組から（base.css）。
      **縁の輪は着せません**——画面いっぱいの板で、角も立っています。
      ここが「境目」だと言っているのは、前からある上の一本のほうです。 */
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--c-surface);
   border-top: 1px solid var(--c-border);
   box-shadow: var(--shadow-3);
   transition: transform var(--m-reorder) var(--ease-out);
@@ -1825,7 +1764,7 @@ button.hero-node:active { scale: var(--press-dot); }
    only the glyph changes, and it changes the moment an operator is typed. */
 .key-ok {
   background: var(--c-primary);
-  color: #fff;
+  color: var(--c-text-on);
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
 }
@@ -1936,7 +1875,7 @@ button.hero-node:active { scale: var(--press-dot); }
 .dest-chip {
   display: inline-flex; align-items: center;
   margin-top: var(--sp-2);
-  min-height: 40px; padding: 0 var(--sp-3);
+  min-height: 36px; padding: 0 var(--sp-3);
   border-radius: var(--r-full);
   border: 1.5px solid color-mix(in srgb, var(--c-primary) 40%, transparent);
   background: color-mix(in srgb, var(--c-primary-fill) 10%, var(--c-surface));
@@ -2046,9 +1985,9 @@ button.hero-node:active { scale: var(--press-dot); }
   display: flex; align-items: center; gap: 10px;
   min-height: 56px;
   padding: 0 28px;
-  border: 0; border-radius: 28px;
+  border: 0; border-radius: var(--r-xl);
   background: var(--c-primary);   /* 白い字を載せるので濃いほう（.btn-primary と同じ） */
-  color: #fff;
+  color: var(--c-text-on);
   font: inherit;
   font-size: 20px;
   font-weight: var(--fw-bold);

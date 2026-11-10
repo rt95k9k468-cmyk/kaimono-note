@@ -191,16 +191,16 @@ const { open, checker } = require("./lib");
       gap: Math.round(s.getBoundingClientRect().bottom - tb.bottom),
       side: Math.round(tb.left - s.getBoundingClientRect().left),
       round: parseFloat(getComputedStyle(s.querySelector(".note-tools")).borderTopLeftRadius) >= tb.height / 2 - 1,
-      glass: getComputedStyle(s.querySelector(".note-tools")).backdropFilter.includes("blur"),
+      solid: (() => { const c = getComputedStyle(s.querySelector(".note-tools")); return !String(c.backdropFilter || "none").includes("blur") && !/rgba\([^)]*,\s*0?\.\d+\)|transparent/.test(c.backgroundColor) && c.backgroundColor !== "rgba(0, 0, 0, 0)"; })(),
       over: getComputedStyle(s.querySelector(".note-tools")).position === "absolute" };
   });
   /* 11 個：取り消す・やり直す・太字（10月7日）・見出し・点・番号・チェック・引用・区切り・上げる・下げる。 */
   /* 12 は段5の画像の絵を足した数（docs/image-design.md）。 */
   t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 12 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
-  t.check("道具の帯は底から少し浮く、丸いガラスの一本", bar.gap === 8 && bar.side === 8 && bar.round && bar.glass && bar.over, JSON.stringify(bar));
+  t.check("道具の帯は底から少し浮く、丸い塗った一本（ぼかさない）", bar.gap === 8 && bar.side === 8 && bar.round && bar.solid && bar.over, JSON.stringify(bar));
   t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
     !document.documentElement.classList.contains("is-note-full")
-    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f7f6f2,#121216"));
+    && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f4efe5,#1b1916"));
 
   /* ---- 欄から出る（キーボードを閉じる）→ 整えた姿 ---- */
   await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());

@@ -105,7 +105,8 @@ const { open, checker } = require("./lib");
     const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.clipPath));
     return a ? a.effect.getKeyframes().slice(-1)[0].clipPath : "";
   });
-  t.check("膨らみきった窓は四隅が丸い", /round 22px( 22px)*\)$/.test(grownTo), grownTo);
+  /* 紙の角は --r-xl（2026年11月10日に 22 → 28px）。 */
+  t.check("膨らみきった窓は四隅が丸い", /round 28px( 28px)*\)$/.test(grownTo), grownTo);
   await page.waitForTimeout(700);
   const on = await box();
   t.check("四隅の丸いカード", on.tl > 0 && on.br > 0 && on.bl > 0, JSON.stringify(on));

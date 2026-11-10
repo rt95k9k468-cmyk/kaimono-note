@@ -93,9 +93,10 @@ const DAY = "2026-10-03";
   const rgb = (v) => { const n = (v || "").match(/[\d.]+/g).map(Number); return v.startsWith("rgb") ? n.map((x) => x / 255) : n; };
   const [sr, sg, sb] = rgb(r.sleptStroke);
   /* 寝ていたぶんは墨の淡い灰（10月22日の Y5・docs/todo-timeline.md）。前は「紫」を見ていて、字の色 #111113 の
-     わずかな青みで通っていただけだった（11月1日、地と字を温かい色相へ移したときに落ちた）。 */
+     わずかな青みで通っていただけだった（11月1日、地と字を温かい色相へ移したときに落ちた）。
+     11月10日に地が生成りになり、灰も温かくなった（色の開きは .04 → .07 まで）。 */
   c.check("5:30〜7:12 と 22:05〜22:30 は墨の淡い灰（寝ていたぶん）",
-    r.slept === 2 && r.sleptStroke !== r.bedInk && Math.max(sr, sg, sb) - Math.min(sr, sg, sb) < 0.04
+    r.slept === 2 && r.sleptStroke !== r.bedInk && Math.max(sr, sg, sb) - Math.min(sr, sg, sb) < 0.07
       && Math.min(sr, sg, sb) > 0.8 && Math.max(sr, sg, sb) < 0.94, JSON.stringify([r.slept, r.sleptStroke, r.bedInk]));
   c.check("寝床の下の時刻は実際の 7:12 と 22:05", JSON.stringify(r.edge) === JSON.stringify(["7:12", "22:05"]), JSON.stringify(r.edge));
   const early = await page.evaluate(() => {

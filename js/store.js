@@ -42,8 +42,9 @@
   ];
 
   const OTHER_CATEGORY = "c-other";
-  /* 装いの札（css/attire.css）。知らない値は「いま」へ（reconcile）。 */
-  const ATTIRES = ["now", "washi-shu", "washi-enji", "season", "polish"];
+  /* 装い（docs/redesign.md 4節）。いま選べるのは二つ——"now"（手帳）と "modern"。前の四つの値は消さずに持ち、
+     js/app.js の lookOf が読み替える（朱・臙脂・季節は手帳の基調色へ、磨きは手帳の既定へ）。知らない値は "now" へ（reconcile）。 */
+  const ATTIRES = ["now", "modern", "washi-shu", "washi-enji", "season", "polish"];
 
   function emptyState() {
     return {
@@ -120,8 +121,10 @@
         showInsight: false, searchBar: false, showDigest: true, digestPos: "bottom",
         /* 書体。"gothic"（端末のゴシック）・"maru"・"mincho"（docs/look.md の「書体は三つ」）。 */
         font: "gothic",
-        /* 装い。"now"（いま）・"washi-shu"・"washi-enji"・"season"・"polish"（css/attire.css・docs/look.md の「装い」）。 */
+        /* 装い。"now"（手帳）・"modern"。前の値（"washi-shu"・"washi-enji"・"season"・"polish"）は読み替える（上の ATTIRES）。 */
         attire: "now",
+        /* 見出しの書体。"mincho"（明朝）・"same"（本文と同じ）。装い「手帳」のとき（docs/redesign.md 4節）。 */
+        headFont: "mincho",
         /* 季節のひとこと（二十四節気・七十二候、R2）。既定は出す。設定で消せる。 */
         showSeason: true,
         /* 新しく付ける見直す日を、日数を過ぎた最初の節気の初日に揃える（roadmap-3.1 の K3）。既定は今のまま。 */
@@ -177,28 +180,20 @@
      id は data-accent の値になります。既定の一色だけは札を付けないので
      （:root の素の値がそのまま効きます）、CSS 側に規則がありません。
 
-     その既定は、いまはコーラルです。**id は "orange" のまま置いてあります**
-     ——保存してある設定の値を書き換えずに色だけを入れ替えられるからで、
-     移行も `reconcile()` の変更も要りません。id は保存された値との約束、
-     label は人に見せる名前、と役目が別です。
-
-     見本の色（swatch）は、その基調の `--c-primary-fill`——時間割の丸薬に
-     実際に塗られる色——と同じ数値にしてあります。見本で選んだ色が、
-     そのまま時間割に出る、という一貫性のためです。
-
-     もとの「みどり／あお／むらさき／ももいろ」の四つも、id は変えずに
-     色味だけ描き直しました（"orange" が過去に一度そうしたのと同じ扱い
-     です）。ここに保存済みの値がある人がいても、id が指す先が変わる
-     だけで、設定は壊れません。 */
+     既定は朱。**id は前のまま**（"orange" ほか）——保存してある設定の値を書き換えずに色だけを引き直せるからで、
+     移行も `reconcile()` の変更も要らない。id は保存された値との約束、label は人に見せる名前。
+     2026年11月10日に八つを同じ濃さの伝統色へ引き直し、「季節」（今日の節気の色）を足した（docs/redesign.md 4節）。
+     見本の色（swatch）は明るい面の `--c-primary` と同じ数値。 */
   const ACCENTS = [
-    { id: "orange",  label: "コーラル",     swatch: "#f49e98" },
-    { id: "blue",    label: "オーシャン",   swatch: "#6fa8c9" },
-    { id: "green",   label: "セージ",       swatch: "#82a98b" },
-    { id: "violet",  label: "ラベンダー",   swatch: "#9a8fbd" },
-    { id: "mustard", label: "マスタード",   swatch: "#d6ad5c" },
-    { id: "sky",     label: "スカイ",       swatch: "#82bfcb" },
-    { id: "apricot", label: "アプリコット", swatch: "#e9a477" },
-    { id: "rose",    label: "ローズ",       swatch: "#c98592" },
+    { id: "orange",  label: "朱",     swatch: "#bf4128" },
+    { id: "blue",    label: "藍",     swatch: "#2b5a8c" },
+    { id: "green",   label: "松葉",   swatch: "#3f6b2f" },
+    { id: "violet",  label: "江戸紫", swatch: "#6b4a94" },
+    { id: "mustard", label: "山吹",   swatch: "#8a6410" },
+    { id: "sky",     label: "浅葱",   swatch: "#1c6f80" },
+    { id: "apricot", label: "柿",     swatch: "#a04d17" },
+    { id: "rose",    label: "臙脂",   swatch: "#9e3443" },
+    { id: "season",  label: "季節",   swatch: "conic-gradient(#9f4f6c, #49742f, #186ea0, #935d0d, #59688b, #9f4f6c)" },
   ];
   const cleanAccent = (v) => (ACCENTS.some((a) => a.id === v) ? v : "orange");
 
@@ -808,6 +803,7 @@
     if (!["std", "l", "xl", "auto"].includes(out.settings.textSize)) out.settings.textSize = "std";
     if (!["gothic", "maru", "mincho"].includes(out.settings.font)) out.settings.font = "gothic";
     if (!ATTIRES.includes(out.settings.attire)) out.settings.attire = "now";
+    if (out.settings.headFont !== "same") out.settings.headFont = "mincho";
     out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
     out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
     out.products = Array.isArray(s.products) ? s.products : [];

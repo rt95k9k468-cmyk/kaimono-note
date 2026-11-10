@@ -758,7 +758,8 @@
       下の一行は電話の幅で一行に収まる長さ（16字まで。二行に割れると入口の背がばらつく）。 */
   function rootRows() {
     const s = store.get();
-    const a = store.ACCENTS.find((x) => x.id === (s.settings.accent || "orange"));
+    const look = KN.app.lookOf(s.settings);
+    const a = look.look === "modern" ? null : store.ACCENTS.find((x) => x.id === look.accent);
     const entry = (o) => navRow({ lead: "icon", ...o });
     return [
       card(

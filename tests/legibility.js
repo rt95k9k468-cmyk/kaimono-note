@@ -184,17 +184,13 @@ function waited(bad, where) {
       }
     }
   }
-  /* iPhone の「コントラストを上げる」（N15 (b)）。オフでは既定のまま、オンではガラスが塞がり灰の字が濃くなり、
-     同じ数え方で0。ガラスの地は帯の中に置いた札で読む（`--glass-base` は帯の上で解決される）。 */
+  /* iPhone の「コントラストを上げる」（N15 (b)）。オフでは既定のまま、オンでは灰の字と線が一段濃くなり、同じ数え方で0。
+     帯は塗った面なので、オフでもオンでも透けない（2026年11月10日。前はガラスがオンで塞がるのを見ていた）。 */
   const probe = () => {
     const bar = document.querySelector(".tabbar");
-    const p = document.createElement("i");
-    p.style.cssText = "position:absolute;width:1px;height:1px;background:var(--glass-base)";
-    bar.appendChild(p);
-    const glass = getComputedStyle(p).backgroundColor;
-    p.remove();
+    const glass = getComputedStyle(bar, "::before").backgroundColor;
     const root = getComputedStyle(document.documentElement);
-    return { glass, t2: root.getPropertyValue("--c-text-2").trim(), t3: root.getPropertyValue("--c-text-3").trim() };
+    return { glass, t2: root.getPropertyValue("--c-text-2").trim(), t3: root.getPropertyValue("--c-text-3").trim(), line: root.getPropertyValue("--c-border").trim() };
   };
   await page.evaluate(() => { KN.store.update((st) => { st.settings.textSize = "std"; }); KN.app.applyTextSize("std"); });
   for (const theme of ["light", "dark"]) {
@@ -209,11 +205,10 @@ function waited(bad, where) {
     await page.waitForTimeout(1500);
     const on = await page.evaluate(probe);
     const opaque = (s) => !/rgba|\/ ?0?\.\d|transparent/.test(s) || /\/ ?1\)/.test(s);
-    t.check(`${theme}：オフの灰の字は既定（${theme === "dark" ? "#a6a6ab・#92929a" : "#615e58・#64615b"}）`,
-      off.t2 === (theme === "dark" ? "#a6a6ab" : "#615e58") && off.t3 === (theme === "dark" ? "#92929a" : "#64615b"), JSON.stringify(off));
-    t.check(`${theme}：オフのガラスは透けている`, !opaque(off.glass), off.glass);
-    t.check(`${theme}：オンでガラスが塞がる`, opaque(on.glass), on.glass);
-    t.check(`${theme}：オンで灰の字が変わる`, on.t2 !== off.t2 && on.t3 !== off.t3, JSON.stringify(on));
+    t.check(`${theme}：オフの灰の字は既定（${theme === "dark" ? "#c2b9aa・#a39a8b" : "#5a5146・#6f6558"}）`,
+      off.t2 === (theme === "dark" ? "#c2b9aa" : "#5a5146") && off.t3 === (theme === "dark" ? "#a39a8b" : "#6f6558"), JSON.stringify(off));
+    t.check(`${theme}：帯は塗った面（オフでもオンでも透けない）`, opaque(off.glass) && opaque(on.glass) && off.glass !== "rgba(0, 0, 0, 0)", `${off.glass} / ${on.glass}`);
+    t.check(`${theme}：オンで灰の字と線が変わる`, on.t2 !== off.t2 && on.t3 !== off.t3 && on.line !== off.line, JSON.stringify(on));
     for (const id of SCREENS) {
       await page.evaluate((id) => KN.app.showScreen(id), id);
       await page.waitForTimeout(500);

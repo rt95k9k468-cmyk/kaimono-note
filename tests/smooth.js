@@ -3,8 +3,7 @@
    - 曲線に linear() を使わない（Safari は linear() の動きを合成に回さず、主の糸で動かす）
    - 開いて落ち着いたら、動きの長さはもう読んである（はじめての席移りで :root の長さを読みにいかない）
    - daily へ移ると、紙は一度だけ組む（前は二度。その日はじめてなら三度）
-   - 送るあいだ、帯の裏の明るさは間合いに一度（毎フレーム三点を当てない）・止まれば読み直して夜になる
-   - 鏡面光の数は受け継がない（帯の中の席は持たず、縁の光だけが器から取る）
+   - 送るあいだも止まったあとも帯の裏を当てない・帯と＋はぼかさない（塗った面。docs/redesign.md 2節）
    - 指で何かした直後の保存は、主の糸が描いている動きが終わるまで待つ（上限つき）。合成に乗る動き・
      くり返す動きは待たない・隠れる瞬間は待たずに書く・指の無い書き換えは待たない
    - daily は同じ日なら、組み直しても読んでいた位置のまま。別の日へ移れば頭から
@@ -136,7 +135,7 @@ const t = checker("smooth");
   t.check("…組み直した daily に打った字が出る", await page.evaluate(() =>
     (document.querySelector("#screen-archive .arc-log-row.is-today") || {}).textContent || "").then((x) => x.includes("さんぽ")));
 
-  /* ---- 送るあいだ、帯の裏の明るさは間合いに一度 ---- */
+  /* ---- 送るあいだ、帯の裏を見張らない ---- */
   await page.evaluate(() => {
     const S = KN.store;
     for (let i = 0; i < 40; i++) { const p = S.addProduct({ name: `品物${i}` }); if (p) S.addItem(p.id); }
@@ -166,31 +165,20 @@ const t = checker("smooth");
   }, [frames, !!probe]);
   const g = await glide(24);
   t.check("（前提）買うものの紙が送れる", g.max > 200, String(g.max));
-  /* 間合い（120ms）に一度・三点ずつ。かかった時間から上限を出す（遅い機械でフレームが間引かれても揺れない）。
-     前は毎フレーム三点で、24フレームなら 72。 */
-  const cap = 3 * (Math.ceil(g.took / 120) + 1);
-  t.check("送るあいだ、帯の裏を毎フレーム当てない（間合いに三点ずつ）", g.during > 0 && g.during <= cap && g.during < 24 * 3 / 2,
-    JSON.stringify({ during: g.during, cap, took: Math.round(g.took) }));
-  t.check("止まったあとの読み直しは一度まで", g.after <= 3, String(g.after));
+  /* 帯・＋は塗った面（2026年11月10日、docs/redesign.md 2節）。送るあいだも止まったあとも、帯の裏を当てない・
+     帯に何も書かない・暗いものが裏へ来ても帯は替わらない。前は間合い（120ms）に三点ずつ当てて、夜のガラスへ替えていた。 */
+  t.check("送るあいだも止まったあとも、帯の裏を当てない", g.during === 0 && g.after === 0, JSON.stringify({ during: g.during, after: g.after, took: Math.round(g.took) }));
   const g2 = await glide(8, true);
-  t.check("送り終わりに帯の裏へ暗いものが来たら、止まったあと夜になる",
-    await page.evaluate(() => document.getElementById("tabbar").classList.contains("is-on-dark")), JSON.stringify(g2));
-  await page.evaluate(() => { document.getElementById("darkprobe").remove(); KN.app.paintGlass(); });
-  t.check("…暗いものが去れば昼へ", !(await page.evaluate(() => document.getElementById("tabbar").classList.contains("is-on-dark"))));
-
-  /* ---- 鏡面光の数は受け継がない ---- */
-  const sweep = await page.evaluate(() => {
-    const bar = document.getElementById("tabbar");
-    bar.style.setProperty("--glass-sweep", "0.123");
-    const tab = bar.querySelector(".tab");
-    const out = { kid: getComputedStyle(tab).getPropertyValue("--glass-sweep").trim(),
-      rim: getComputedStyle(bar, "::after").getPropertyValue("--glass-sweep").trim() };
-    delete bar.dataset.sweep;
-    KN.app.paintGlass();
+  const bar = await page.evaluate(() => {
+    const el = document.getElementById("tabbar"), fab = document.querySelector(".add-fab");
+    const bf = (e, p) => { const c = getComputedStyle(e, p); return c.backdropFilter || c.webkitBackdropFilter || "none"; };
+    const out = { dark: el.classList.contains("is-on-dark"), style: el.getAttribute("style") || "",
+      blur: [bf(el, "::before"), fab ? bf(fab) : "none"].join(), bg: getComputedStyle(el, "::before").backgroundColor };
+    document.getElementById("darkprobe").remove();
     return out;
   });
-  t.check("帯の中の席は、鏡面光の数を受け継がない", parseFloat(sweep.kid) === 0.5, JSON.stringify(sweep));
-  t.check("縁の光は、器の数をそのまま使う", parseFloat(sweep.rim) === 0.123, JSON.stringify(sweep));
+  t.check("帯の裏へ暗いものが来ても、帯は替わらない（印も書き込みも無い）", !bar.dark && !/--glass/.test(bar.style) && g2.during === 0, JSON.stringify({ bar, g2 }));
+  t.check("帯と＋はぼかさない・帯の地は透けない", bar.blur === "none,none" && !/rgba\([^)]*,\s*0?\.\d+\)/.test(bar.bg) && bar.bg !== "rgba(0, 0, 0, 0)", JSON.stringify(bar));
 
   /* ---- 保存は、動きの外で ---- */
   const hand = () => page.evaluate(() => window.dispatchEvent(new PointerEvent("pointerdown")));

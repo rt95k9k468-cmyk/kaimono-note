@@ -47,52 +47,23 @@
 /* The one button on the list screen. Middle and bottom, because that is
    where a thumb is while the other hand is holding a basket.
 
-   下の帯と同じガラスにします。二つは同じ高さに浮いていて、指はこの二つの
-   あいだを行き来します——片方が磨りガラスで、片方が塗りつぶした緑の円盤だと、
-   同じ高さに居るように見えません。
-
-   ただし**まったく同じ材ではありません**。帯は行き先を並べるだけの入れもので、
-   こちらは押すためのものです。ガラスに主色をひとさじ混ぜて、＋そのものを
-   緑にします——iOS 26 のやり方もこれで、ガラスは中立のまま、色は字のほうが
-   持ちます。塗りつぶした緑に白い＋のままガラスにすると、白い字の下に
-   一覧の白が透けて、いちばん押す場所がいちばん読みにくくなります。 */
+   朱の塗りに白い＋（2026年11月10日、docs/redesign.md 2節。前は帯と同じガラスに主色をひとさじ）。 */
 .add-fab {
   width: 56px; height: 56px;
   border-radius: var(--r-full);
-  /* 地は、下の帯（base.css の .tabbar::before）とまったく同じ材です
-     ——二つは同じ高さに浮いているので、材が違うと同じ高さに見えません。
-     だから `--glass-*` の一組から出します（base.css のガラスの節）。
-
-     違うのは**地に主色をひとさじ差す**ことだけ。「押すもの」と分かるぶん
-     だけで、色の板にはしません（＋そのものが色を持ちます）。差す量だけを
-     `--glass-fab` として持ち、暗い面ではそこだけ一段上げます。 */
-  --glass-fab: 12%;
-  --glass-tint: color-mix(in srgb, var(--c-primary) var(--glass-fab), var(--glass-base));
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  color: var(--c-primary);
+  /* ＋は朱の塗りに白い字（暗い面は明るい朱に地の黒）。ぼかさない（docs/redesign.md 2節）。 */
+  background: var(--c-primary);
+  color: var(--c-text-on);
   display: grid;
   place-items: center;
   position: relative;
   /* Deeper than a card's, because it is genuinely above the page now and the
      shadow is the only thing saying so. */
-  box-shadow: var(--shadow-3);
+  box-shadow: 0 10px 22px -8px var(--c-primary), var(--shadow-1);
   /* The one thing in the dock that is meant to be pressed. */
   pointer-events: auto;
   transition: transform var(--m-press) var(--ease), background var(--m-state) var(--ease);
 }
-
-/* 縁の光（`.add-fab::after`）は base.css の一枚が受け持ちます——帯・＋・
-   ＋の札で**まったく同じ一枚**なので、形（丸み）だけ器から継ぎます。
-
-   暗い面の光も、`--glass-rim` が夜の値になるだけで済みます。ここには
-   帯と同じ上書きが丸ごと二組ありましたが、ぜんぶ要らなくなりました。
-   残るのは「主色を差す量」だけ——夜は地が濃いので、一段上げます。 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .add-fab { --glass-fab: 14%; }
-}
-:root[data-theme="dark"] .add-fab { --glass-fab: 14%; }
 
 /* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
    縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
@@ -106,18 +77,9 @@
    主色を濃くする——つまり「ガラスが、より多くの光を拾った」。 */
 .add-fab:active {
   transform: scale(1.06);
-  --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, 0) 42%);
-  --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .4), transparent 60%);
-  --glass-base: color-mix(in srgb, var(--glass-cast-lit) 58%, transparent);
-  --glass-fab: 22%;
 }
 @media (hover: hover) {
-  .add-fab:hover {
-    --glass-sheen: linear-gradient(180deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 38%);
-    --glass-crown: radial-gradient(130% 100% at 50% 0%, rgba(255, 255, 255, .3), transparent 58%);
-    --glass-base: color-mix(in srgb, var(--glass-cast-lit) 54%, transparent);
-    --glass-fab: 20%;
-  }
+  .add-fab:hover { background: var(--c-primary-2); }
 }
 
 /* suggestions, under the name field in the add sheet */
@@ -625,8 +587,8 @@
   color: var(--c-text-3);
   padding-bottom: 3px;
 }
-.cal-wd.is-sun { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-3)); }
-.cal-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 70%, var(--c-text-3)); }
+.cal-wd.is-sun { color: color-mix(in srgb, var(--c-sun) 70%, var(--c-text-3)); }
+.cal-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 70%, var(--c-text-3)); }
 
 .cal-day {
   position: relative;
@@ -660,8 +622,8 @@
 }
 /* 祝日（is-hol。js/holiday.js）は日曜と同じ色。土曜の祝日には is-sat を付けない（cal-grid.js）。 */
 .cal-day.is-sun .cal-n,
-.cal-day.is-hol .cal-n { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
-.cal-day.is-sat .cal-n { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
+.cal-day.is-hol .cal-n { color: color-mix(in srgb, var(--c-sun) 62%, var(--c-text-2)); }
+.cal-day.is-sat .cal-n { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 62%, var(--c-text-2)); }
 
 /* Today, circled. Filled rather than outlined: an outline is one more ring
    among 30 numbers, and the one thing this calendar has to answer without
@@ -1073,7 +1035,7 @@
 .time-row { display: flex; align-items: center; gap: var(--sp-2); }
 .time-label { flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }
-.time-row .chip { flex: none; height: 32px; }
+.time-row .chip { flex: none; height: 30px; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
 
@@ -1120,7 +1082,7 @@
 .swipe-yes {
   padding-left: var(--sp-4);
   background: var(--cat, var(--c-primary));
-  color: #fff;
+  color: var(--c-text-on);
 }
 /* Already on the list: the same swipe takes it off again, so the panel drops
    the category colour — taking off is not the same act as putting on, and
@@ -1183,7 +1145,7 @@
      side, so it never eats a tap meant for the product name. */
   position: relative;
   flex: none;
-  width: 26px; height: 26px;
+  width: 30px; height: 30px;
   border-radius: var(--r-full);
   border: 2px solid var(--c-border-2);
   display: grid;
@@ -1195,14 +1157,14 @@
   content: "";
   position: absolute;
   top: 50%; left: 50%;
-  width: 44px; height: 44px;
+  width: 48px; height: 48px;
   transform: translate(-50%, -50%);
 }
 /* 大きさは輪（18px）が決めます。太さ 3.2 は白い✓が緑に沈まないための
    もので、二段階の外です——輪の中身なので、輪と一緒に決まります。 */
-.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: #fff; opacity: 0; transform: scale(.5); transition: opacity var(--m-state), transform var(--m-state) var(--ease-out); }
+.check svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 3.2; color: var(--c-text-on); opacity: 0; transform: scale(.5); transition: opacity var(--m-state), transform var(--m-state) var(--ease-out); }
 @media (hover: hover) {
-  .check:hover { border-color: var(--c-primary); }
+  .check:hover { border-color: var(--c-take); }
 }
 .check:active { scale: var(--press-dot); }
 /* iPhone で震わせる、見えないつまみ（motion.js の FEEL・C1）。押すもの
@@ -1227,7 +1189,7 @@
   width: calc(100% + 4px); height: calc(100% + 4px);
   border-radius: var(--r-full);
 }
-.check[aria-checked="true"] { background: var(--c-primary); border-color: var(--c-primary); }
+.check[aria-checked="true"] { background: var(--c-take); border-color: var(--c-take); }
 .check[aria-checked="true"] svg { opacity: 1; transform: scale(1); }
 /* ---- ✓は描かれる（2026年9月29日）----
    押した丸の✓が、**ペンで引くように左から**出る（短い払いから長い払いへ）。✓の絵は
@@ -1537,9 +1499,8 @@
      ——あれは浮いているものの話で、ここは面にはめ込まれた欄です。
      浮いていないものに厚みを着せると、どこにも乗っていないのに影だけ
      持っている、という嘘になります。縁の一本だけ回します。 */
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--c-surface);
+  box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-1);
   border-radius: var(--r-md);
   padding: 0 var(--sp-3);
   height: 46px;
@@ -1791,19 +1752,19 @@
   /* 説明は少なく、大きく（2026年9月30日）。13px の薄い字で長く書くのを
      やめて、残した一行を 15px で読めるように。 */
   --set-fs-foot: calc(15px * var(--fs-k));
-  --set-line: rgba(60, 60, 67, .1);
-  --set-chev: #c4c4c8;
+  --set-line: var(--c-border);
+  --set-chev: var(--c-border-2);
   /* 明るく（2026年11月5日、利用者が ChatGPT の画面案を添えて頼んだ）：地は灰ではなく、
      黄みの生成りに基調色をひとしずく。カードは白に、影をうすく一枚。 */
-  --set-bg: color-mix(in srgb, var(--c-primary) 4%, #fcf9f4);
-  --set-card-shadow: 0 1px 2px rgba(110, 70, 30, .05), 0 6px 18px rgba(110, 70, 30, .06);
+  --set-bg: var(--c-bg);
+  --set-card-shadow: var(--shadow-1);
   --set-art-op: 1;
   --set-art-mask: radial-gradient(closest-side, #000 56%, transparent 100%);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; --set-bg: var(--c-bg); --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
+  :root:not([data-theme="light"]) { --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
 }
-:root[data-theme="dark"] { --set-line: rgba(255, 255, 255, .12); --set-chev: #55555c; --set-bg: var(--c-bg); --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
+:root[data-theme="dark"] { --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
 
 /* ---- 一段は、紙の重なり ----
 
@@ -1860,9 +1821,7 @@
   /* 送る箱の上に浮いている一枚なので、材はガラスの一組から（base.css の
      ガラスの節）。**縁の輪は着せません**——画面いっぱいで角も立っている
      ので、境目を言うのは前からある上の一本のほうです。 */
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--set-bg);
   box-shadow: 0 -1px 0 var(--set-line);
 }
 .set-bar > * { width: 100%; }
@@ -2040,7 +1999,7 @@
 .set-card {
   margin: 0 var(--set-gut);
   background: var(--c-surface);
-  border-radius: 20px;
+  border-radius: var(--r-lg);
   box-shadow: var(--set-card-shadow);
   overflow: hidden;
 }
@@ -2304,8 +2263,41 @@
   transition: background var(--m-state) var(--ease), box-shadow var(--m-state) var(--ease);
 }
 .theme-mark svg { width: var(--ico-sm); height: var(--ico-sm); }
-.theme-pick[aria-checked="true"] .theme-mark { background: var(--c-primary-fill); box-shadow: none; color: #fff; }
+.theme-pick[aria-checked="true"] .theme-mark { background: var(--c-primary-fill); box-shadow: none; color: var(--c-text-on); }
 .theme-pick[aria-checked="true"] .theme-name { font-weight: var(--fw-bold); }
+/* ---- 装いの絵（設定 → 外観 → 装い。js/settings-look.js）。絵の札 data-look が、その装いの色を絵の中だけに効かせる。
+   手帳の＋は選んでいる基調色（--shot-p）、モダンは墨。 ---- */
+.attire-picks { grid-template-columns: repeat(2, 1fr); }
+.attire-shot {
+  --s-bg: #f4efe5; --s-card: #fffdf8; --s-text: #25201a; --s-p: var(--shot-p, #bf4128); --s-line: #e5ddce; --s-font: var(--font-display); --s-r: 5px;
+  position: relative;
+  width: 72px; height: 104px;
+  display: flex; flex-direction: column; gap: 5px;
+  border-radius: var(--r-md);
+  background: var(--s-bg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1);
+  overflow: hidden;
+  transition: scale var(--m-press) var(--ease), box-shadow var(--m-state) var(--ease);
+}
+.attire-shot[data-look="modern"] { --s-bg: #f3f2ee; --s-card: #fff; --s-text: #16171a; --s-p: #1c1d21; --s-line: #e8e6e0; --s-font: var(--font); --s-r: 7px; }
+.attire-shot i { display: block; }
+.attire-shot .as-sky { height: 26px; flex: none; background: linear-gradient(#9cc3ea, #e9f2fa); }
+.attire-shot .as-title { padding: 0 6px; font: var(--fw-bold) 11px/1 var(--s-font); color: var(--s-text); text-align: start; }
+.attire-shot .as-card {
+  margin: 0 5px; padding: 6px 5px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--s-card); border-radius: var(--s-r); box-shadow: 0 0 0 1px var(--s-line);
+}
+.attire-shot .as-row { display: flex; align-items: center; gap: 4px; }
+.attire-shot .as-row::before {
+  content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--s-text) 35%, transparent);
+}
+.attire-shot .as-row::after { content: ""; flex: 1; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--s-text) 22%, transparent); }
+.attire-shot .as-row.is-done::before { background: #2a7354; box-shadow: none; }
+.attire-shot .as-fab { position: absolute; right: 6px; bottom: 6px; width: 14px; height: 14px; border-radius: 50%; background: var(--s-p); }
+.theme-pick:active .attire-shot { scale: var(--press-dot); }
+.theme-pick[aria-checked="true"] .attire-shot { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1), 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-primary); }
 
 /* ---- 段のある滑り棒（文字の大きさ。2026年10月24日） ----
    iPhone の「文字サイズ」と同じ形：灰の筋に段の目盛り、白い丸のつまみ、左右に小さな「あ」と大きな「あ」。
@@ -2426,9 +2418,9 @@
 
 .seg-btn {
   padding: var(--sp-2);
-  min-height: 40px;
+  min-height: 36px;
   border-radius: var(--r-sm);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   font-weight: var(--fw-bold);
   color: var(--c-text-2);
   transition: background var(--m-state) var(--ease), color var(--m-state) var(--ease), scale var(--m-press) var(--ease);
@@ -3533,21 +3525,15 @@ a.btn { text-decoration: none; }
   padding: var(--sp-3) var(--sp-4);
   display: flex; flex-direction: column; gap: 3px;
   width: auto; text-align: left;
-  /* 2026年10月8日から、季節の写真の上に置くガラス（利用者が見比べの画像で選んだ・docs/daily.md）。
-     沈んだ地と主色の柱はやめた——写真の上では、透けていることが「いまではない」を言う。地の濃さは
-     --glass-a（ぼかしの効かない環境では @supports が上げる）、ぼかしは --glass-blur（docs/glass.md）。 */
-  background: color-mix(in srgb, var(--c-surface) var(--then-a, calc(var(--glass-a) - 16%)), transparent);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid color-mix(in srgb, var(--c-sheet-edge) 60%, transparent);
-  border-radius: var(--r-xl);
-  box-shadow: var(--shadow-2);
+  /* 季節の写真の上に置く札。塗った面（透かさない・ぼかさない）。 */
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
   transition: transform var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
 .arc-then:active { scale: var(--press-wide); }
 /* ほかのガラスより一段薄く（2026年10月10日・利用者「少し透過させて」）。ぼかしが効かない・コントラストを上げる環境は元の濃さ。 */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .arc-then { --then-a: var(--glass-a); } }
-@media (prefers-contrast: more) { .arc-then { --then-a: var(--glass-a); } }
 
 .arc-then-head { display: flex; align-items: center; gap: 6px; }
 .arc-then-head b { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
@@ -3703,22 +3689,18 @@ a.btn { text-decoration: none; }
 
 /* ---- 思考のホーム・時刻ごとの日記（docs/thinking.md） ----
    三枚の札（日記に書く・ノートを書く・思考）と今日の問い。水彩の絵は img/think/。字は要る一語だけ。
-   札の地は絵の色を面の色に混ぜる（暗い面でも同じ式で沈む）。地は --think-a だけ透かし、後ろの絵が見える程度に軽くぼかす（10月12日・利用者
-   「半透明に」「後ろの絵が見えるように」。ぼかしが効かない・コントラストを上げる環境は透かさない）。 */
-.think-home { --tone-a: 70%; --tone-b: 30%; --think-a: 38%; --think-blur: saturate(140%) blur(6px); margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
+   札の地は絵の色を面の色に混ぜた塗り（暗い面でも同じ式で沈む。透かさない・ぼかさない）。 */
+.think-home { --tone-a: 70%; --tone-b: 30%; margin: 0 var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .think-home { --tone-a: 22%; --tone-b: 10%; } }
 :root[data-theme="dark"] .think-home { --tone-a: 22%; --tone-b: 10%; }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .think-home { --think-a: 100%; } }
-@media (prefers-contrast: more) { .think-home { --think-a: 100%; } }
 .think-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--sp-2); }
 .think-card {
   --tone: #cfe7ea;
   min-width: 0; padding: var(--sp-2) var(--sp-3) var(--sp-3);
   display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1);
   background: linear-gradient(180deg,
-    color-mix(in srgb, color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)) var(--think-a), transparent),
-    color-mix(in srgb, color-mix(in srgb, var(--tone) var(--tone-b), var(--c-surface)) var(--think-a), transparent));
-  -webkit-backdrop-filter: var(--think-blur); backdrop-filter: var(--think-blur);
+    color-mix(in srgb, var(--tone) var(--tone-a), var(--c-surface)),
+    color-mix(in srgb, var(--tone) var(--tone-b), var(--c-surface)));
   border: 1px solid color-mix(in srgb, var(--tone) var(--tone-a), transparent); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
   transition: opacity var(--m-state) var(--ease);
@@ -3731,8 +3713,7 @@ a.btn { text-decoration: none; }
 
 .think-today {
   position: relative; padding: var(--sp-3) var(--sp-4) var(--sp-4); border-radius: var(--r-xl); overflow: hidden;
-  background: color-mix(in srgb, color-mix(in srgb, #cfe7ea var(--tone-b), var(--c-surface)) var(--think-a), transparent);
-  -webkit-backdrop-filter: var(--think-blur); backdrop-filter: var(--think-blur);
+  background: color-mix(in srgb, #cfe7ea var(--tone-b), var(--c-surface));
   border: 1px solid color-mix(in srgb, #cfe7ea var(--tone-a), transparent); box-shadow: var(--shadow-1);
 }
 .think-today-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
@@ -3755,7 +3736,7 @@ a.btn { text-decoration: none; }
 .think-today-go {
   position: relative; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-4);
   border-radius: var(--r-full); color: var(--c-primary); font-size: var(--fs-md); font-weight: var(--fw-bold);
-  background: color-mix(in srgb, color-mix(in srgb, var(--c-primary-fill) 18%, var(--c-surface)) var(--think-a), transparent);
+  background: color-mix(in srgb, var(--c-primary) 14%, var(--c-surface));
   border: 1px solid color-mix(in srgb, var(--c-primary-fill) 45%, transparent);
   transition: opacity var(--m-state) var(--ease);
 }
@@ -3884,10 +3865,8 @@ a.btn { text-decoration: none; }
      まったく同じ材です。この三つは同じ高さに浮いているので、材が違うと
      同じ高さに見えません。＋ を押して立ち上がるものが不透明な板だと、
      ガラスの上に紙を置いたように見えていました。 */
-  background: var(--glass-sheen), var(--glass-crown), var(--glass-tint);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: none;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
   box-shadow: var(--shadow-3);
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
@@ -3942,9 +3921,6 @@ a.btn { text-decoration: none; }
 }
 /* 丸（30px）の中身。入れものが大きさを決めるので、二段階の外です。 */
 .fab-menu-ico svg { width: 17px; height: 17px; stroke-width: 2; }  /* 入れもの：30の丸 */
-
-/* 夜の光の上書きも、丸ごと要らなくなりました——`--glass-*` が夜の値に
-   なるだけで、帯・＋ と同じだけ光が落ちます。 */
 
 /* 開いているあいだの ＋ は、閉じるための × に見えるよう傾けます。
    傾くだけでなく、**一度ふくらみます**——札は ＋ から分かれて出るので、
@@ -4146,7 +4122,7 @@ button.tl-over:active { opacity: var(--press-fade); }
 }
 /* 時刻を自分で決めたものは、濃く。「動かない予定」だと目で分かるように。 */
 .tl-time.is-fixed { color: var(--c-text-2); font-weight: var(--fw-bold); }
-.tl-time.is-now { color: var(--c-primary); font-weight: var(--fw-bold); }
+.tl-time.is-now { color: var(--c-now); font-weight: var(--fw-bold); }
 /* 決めていない時刻の「ごろ」（B6）。時刻の字の真下に浮かせます——入れものの
    高さは変えないので、時刻は丸の中心に残り、clearOfClocks の測る箱も同じ。 */
 .tl-time { position: relative; }
@@ -4220,7 +4196,7 @@ button.tl-over:active { opacity: var(--press-fade); }
      ほうへ流れ出したように見えます。 */
   background: var(--c-surface);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat, var(--c-primary-fill)) 55%, transparent);
-  border-radius: 14px;
+  border-radius: var(--r-md);
 }
 
 .tl-node .todo-mark { width: 32px; height: 32px; }
@@ -4367,7 +4343,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   width: 16px; height: 16px;
   border-radius: 4px;
   background: var(--c-text-2);
-  color: #fff;
+  color: var(--c-surface);
 }
 .tl-subs-box svg { width: 11px; height: 11px; stroke-width: 3.4; }  /* 入れもの：16の□ */
 .tl-subs-arrow {
@@ -4464,14 +4440,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 札は白（2026年10月20日、利用者が見比べで選んだ。種類の色は棒・絵・題だけ。札を塗ると色が面になる）。縁は細い線（時刻を決めたものは実線・決めていないものは点線。下の is-about）。
    進んでいる一件だけ、うすく種類の色。 */
 .tl-row .item.tl-item {
-  align-self: stretch; margin: 3px 0; padding: 5px var(--sp-3) 5px 12px; border-radius: 14px;
+  align-self: stretch; margin: 3px 0; padding: 5px var(--sp-3) 5px 12px; border-radius: var(--r-md);
   background: var(--c-surface);
 }
 /* 題は札の色（2026年10月20日、利用者）。そのままの色では地の上で読めないので、字の色へ寄せる。 */
 .tl-row:not(.is-done):not(.is-someday) .tl-item .item-name { color: color-mix(in srgb, var(--cat) 55%, var(--c-text)); }
 .tl-row .item.tl-item { margin-right: var(--sp-4); }
 /* いまの札（2026年10月21日、利用者）：淡い塗りは背景と同化したので、白い地に札の色の枠で立たせる。 */
-.tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 12%, var(--c-surface)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat) 55%, transparent); border-radius: 14px; }
+.tl-row.is-live .item.tl-item { background: color-mix(in srgb, var(--cat) 12%, var(--c-surface)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cat) 55%, transparent); border-radius: var(--r-md); }
 /* 済ませた札は透かさない（一覧の .item.is-checked の 0.55 が効いて、目盛りの線が札を透けていた）。取り消し線と塗った印で見分ける。 */
 .tl-row .item.tl-item.is-checked { opacity: 1; }
 /* 済ませた札（2026年10月20日・21日、利用者）：札の地を薄く、題・時刻・印・絵を灰へ寄せて抑える。棒は軸と同じ色のまま（灰にしない）。済みはいつも出す（畳まない）。 */
@@ -4494,11 +4470,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-row .tl-item .tl-facts { color: var(--c-text-2); }   /* 色の地の上では text-3 が 4.5:1 に届かない（暗い面） */
 .tl-now::after {
   content: ""; position: absolute; left: 48px; right: 0; top: 0; height: 2px; translate: 0 -50%;
-  background: var(--c-primary); border-radius: 1px; pointer-events: none;
+  background: var(--c-now); border-radius: 1px; pointer-events: none;
 }
 .tl-now .tl-time {
   left: 0; width: auto; min-width: 40px; padding: 2px 6px; border-radius: var(--r-full);
-  background: var(--c-primary); color: var(--c-bg); text-align: center; font-size: var(--fs-xs);
+  background: var(--c-now); color: var(--c-text-on); text-align: center; font-size: var(--fs-xs);
 }
 
 /* 日付の帯は、越えられない境目です。
@@ -4611,7 +4587,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    （tl-layout の open）——ここは中身を高さなりに積むだけ。たたむ途中（段がまだ出ている間）も描く。 */
 .tl-list > li.tl-row > .tl-sub-wrap:not(.is-open):has(> .tl-sub-list[hidden]) { display: none; }
 .tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) {
-  border-radius: 14px;
+  border-radius: var(--r-md);
   background: var(--c-surface);
 }
 .tl-list > li.tl-row:has(> .tl-sub-wrap.is-open) > .item.tl-item { height: auto; }
@@ -4694,7 +4670,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .tl-rest-card {
   flex: 1; min-width: 0;
-  margin: 1px 0 1px 4px; border-radius: 14px;
+  margin: 1px 0 1px 4px; border-radius: var(--r-md);
   background: radial-gradient(130% 85% at 50% 0%, var(--c-primary-soft), var(--c-surface) 72%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: var(--sp-1);
@@ -4704,7 +4680,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   display: grid; place-items: center;
   width: 64px; height: 64px; margin-bottom: var(--sp-2);
   border-radius: var(--r-full);
-  background: var(--tl-fill); color: #fff;
+  background: var(--tl-fill); color: var(--c-text-on);
   box-shadow: 0 0 0 8px color-mix(in srgb, var(--tl-fill) 18%, transparent);
 }
 .tl-rest-art .ui-ico { width: 34px; height: 34px; vertical-align: 0; }  /* 入れもの：みな済ませた札の絵（丸 64px に一枚） */
@@ -4873,7 +4849,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    色は種類で分ける（予定・時間を取ったやること・締切。2026年10月19日、利用者）。仕事の色は「仕事だけ」の札だけ。
    暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
 /* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
-#screen-todo, #head, .fill { --kind-event: #5b9bd5; --kind-task: #4aa88a; --kind-due: #e8923a; }
+#screen-todo, #head, .fill { --kind-event: var(--c-ai); --kind-task: var(--c-take); --kind-due: var(--c-yamabuki-fill); }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); }
 /* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。**掴み手の下に**貼りつく（掴み手の背 29px
    から 1px 重ねる）。前は top:0 で掴み手に重なり、送ると掴み手が消えていた。地は紙と同じ一色——透かしてぼかすと、
@@ -4890,7 +4866,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .wk-work { flex: none; }
 .wk-faces .seg { width: 186px; }
-.wk-faces .seg-btn { min-height: 40px; padding: 0 var(--sp-2); }   /* 札の背丈（look.md。34 だった。design-review の Y2） */
+.wk-faces .seg-btn { min-height: 36px; padding: 0 var(--sp-2); }   /* 札の背丈（look.md。34 だった。design-review の Y2） */
 /* 選んでいる面は `.seg` の白い持ち上げのまま（見方の切り替えは一つの形。2026年10月21日、総点検 Y2 の B。
    前は基調色の塗り）。 */
 .wk .chip-dot { width: 9px; height: 9px; }
@@ -4980,8 +4956,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-day.is-empty { padding-block: 9px 8px; }
 .wk-day.is-empty .wk-dn { font-weight: var(--fw-regular); }
 .wk-day.is-empty:not(.is-today) :is(.wk-dn, .wk-wd) { opacity: .5; }
-.wk-day[data-wd="6"] :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
-.wk-day:is([data-wd="0"], .is-holiday) :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
+.wk-day[data-wd="6"] :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 75%, var(--c-text-2)); }
+.wk-day:is([data-wd="0"], .is-holiday) :is(.wk-dn, .wk-wd) { color: color-mix(in srgb, var(--c-sun) 70%, var(--c-text-2)); }
 /* 今日は暦の今日と同じ塗りの丸（字の色だけだと、日曜・祝日の赤とほぼ同じ色で見分けられなかった。2026年10月25日、利用者
    「見づらい」）。日曜の規則と詳細度を取り合わないよう、一段上げる。 */
 .wk-week .wk-day.is-today .wk-dn, .mo-list .mo-day.is-today .mo-dn {
@@ -5015,8 +4991,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .mo-date:active { background: var(--press-sink); }
 .mo-dn { font-family: var(--font-num); font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
 .mo-wd { font-size: var(--fs-xs); color: var(--c-text-2); }
-.mo-date[data-wd="6"] :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 75%, var(--c-text-2)); }
-.mo-date:is([data-wd="0"], .is-holiday) :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--c-danger) 70%, var(--c-text-2)); }
+.mo-date[data-wd="6"] :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 75%, var(--c-text-2)); }
+.mo-date:is([data-wd="0"], .is-holiday) :is(.mo-dn, .mo-wd) { color: color-mix(in srgb, var(--c-sun) 70%, var(--c-text-2)); }
 .mo-evs { min-height: 44px; }
 /* やることの暦の印は名前（2026年10月20日、利用者。絵の丸はやめた）。日付の数字の真下に、月の面と同じ種類の色の札で
    二つまで（2026年10月25日、利用者「予定を二つ書けるように」。中央に積むと一つの名前の折り返しに見える）。
@@ -5665,9 +5641,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   margin-top: var(--sp-6); padding: 0; background: none; box-shadow: none; overflow: visible; }
 .nt-plain { padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .nt-plain { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
-/* 見出しの字は 66%（70% では明るい面の living・暗い面の thinking が 4.5:1 に届かなかった。10月17日、T1）。 */
+/* 見出しの字は 60%（札の色を替えた 11月10日、66% では暗い面の thinking が 4.47。70% → 66% は 10月17日の T1）。 */
 .nt-shelf { --shelf-a: 8%; --shelf-c: color-mix(in srgb, var(--shelf) 85%, #888);
-  --shelf-ink: color-mix(in srgb, var(--shelf-c) 66%, var(--shelf-to, #000));
+  --shelf-ink: color-mix(in srgb, var(--shelf-c) 60%, var(--shelf-to, #000));
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
 /* thinking は灰の archive と並ぶので、赤みの紫を濃いめに（10月16日、利用者「見分けづらい」）。 */
@@ -5887,7 +5863,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-sub .note-when { margin-top: 0; }
 .note-labels { min-width: 0; }
 .note-labels-in { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.note-labels .chip { height: 32px; font-size: var(--fs-sm); }
+.note-labels .chip { height: 30px; font-size: var(--fs-sm); }
 .note-tag-add { color: var(--c-text-2); }
 /* 選ぶ紙：使われている名前のチップと、新しい名前の欄。 */
 .note-pick { display: flex; flex-direction: column; gap: var(--sp-4); }
@@ -5998,8 +5974,6 @@ textarea.note-title-in {
   }
   .sheet-backdrop.is-clear {
     background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
   }
   /* 2.0（V19）：四隅の丸いカード。左右・上下に同じだけ空けて浮かせる（真ん中は
      left:50% と translate(-50%) なので、左右の空きは揃う）。キーボードが出ている
@@ -6226,11 +6200,8 @@ textarea.note-title-in {
   justify-content: space-around;
   padding: 0 var(--sp-2);
   border-radius: var(--r-full);
-  /* ガラスを外した白い面（V10）。真っ白だと紙が狭く感じるので、少しだけ透かして軽くぼかす
-     （V26、利用者 10月5日）。--glass-* は読まない＝glass.md の数には入らない。 */
-  background: color-mix(in srgb, var(--c-surface) 84%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* 塗った面（ぼかさない）。 */
+  background: var(--c-surface);
   box-shadow: var(--shadow-2);
 }
 .sheet.is-note.is-writing .note-tools { display: flex; }
@@ -6276,7 +6247,7 @@ textarea.note-title-in {
   transition: scale var(--m-press) var(--ease);
 }
 .note-tool svg { width: var(--ico); height: var(--ico); }
-.note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary); }
+.note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary-ink); }
 .note-tool[aria-disabled="true"] { opacity: var(--press-off); }
 .note-tool:not([aria-disabled="true"]):active { scale: var(--press-dot); }
 
@@ -6333,7 +6304,7 @@ textarea.note-title-in {
 .pop-cal-now {
   display: block; margin: 0 auto var(--sp-1); padding: 2px var(--sp-3); min-height: 28px;
   border-radius: var(--r-full); background: var(--c-primary-soft);
-  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary-ink);
 }
 .pop-cal-day.is-today {
   display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;
@@ -6398,7 +6369,7 @@ textarea.note-title-in {
   border: 2px solid var(--c-border-2); color: transparent;
 }
 .sub-check svg { width: 14px; height: 14px; stroke-width: 3; }  /* 入れもの：24の□ */
-.sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: #fff; }
+.sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: var(--c-text-on); }
 .tw-row { min-height: var(--row-h); padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 .tw-row:active { background: none; }
 .tw-field { position: relative; flex: none; }
@@ -6581,7 +6552,7 @@ button.note-when:active { opacity: var(--press-fade); }
   display: grid; place-items: center;
   background: var(--c-primary);
   border-color: var(--c-primary);
-  color: #fff;
+  color: var(--c-text-on);
   cursor: default;
 }
 .tl-row .check.is-trace svg { opacity: 1; }
@@ -6747,7 +6718,7 @@ button.note-when:active { opacity: var(--press-fade); }
   width: 56px; height: 56px;
   border-radius: var(--r-full);
   background: var(--c-danger);
-  color: #fff;
+  color: var(--c-text-on);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .22);
   pointer-events: none;
   animation: tl-ghost-in var(--m-state) var(--ease-out) both;
@@ -6798,7 +6769,7 @@ button.note-when:active { opacity: var(--press-fade); }
   padding: 3px 8px;
   border-radius: var(--r-full);
   background: var(--c-primary);
-  color: #fff;
+  color: var(--c-text-on);
   font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
@@ -6967,7 +6938,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .tl-sub .check.is-sub[aria-checked="mixed"] {
   background: var(--cat, var(--c-primary-fill));
   border-color: var(--cat, var(--c-primary-fill));
-  color: #fff;
+  color: var(--c-text-on);
 }
 /* **印そのものを出します。** `.check svg` は既定で `opacity: 0` で、それを
    1に戻す決めごとは `[aria-checked="true"]` にしかありませんでした——
@@ -7054,7 +7025,7 @@ button.note-when:active { opacity: var(--press-fade); }
    敷いて、一枚として持ち上がるように。 */
 .sub-line.reorder-lift {
   background: var(--c-sheet);
-  border-radius: 10px;
+  border-radius: var(--r-sm);
 }
 
 /* 済ませたものも、**同じ大きさのまま**です。
@@ -7264,8 +7235,8 @@ button.note-when:active { opacity: var(--press-fade); }
   display: grid; place-items: center;
   font-size: var(--fs-xs); color: var(--c-text-2);
 }
-.mp-wd.is-sun { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
-.mp-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
+.mp-wd.is-sun { color: color-mix(in srgb, var(--c-sun) 62%, var(--c-text-2)); }
+.mp-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 62%, var(--c-text-2)); }
 .mp-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2);
 }
@@ -7287,7 +7258,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .mp-cell.is-here {
   background: var(--c-primary-fill);
   border-color: var(--c-primary-fill);
-  color: #fff;
+  color: var(--c-text-on);
 }
 /* 日の升は枠なしの丸。今日は字の色だけ、いま見ている日は塗る（暦と同じ言い方）。
    書いた日には点（暦の log の点と同じ意味）。 */
@@ -7296,10 +7267,10 @@ button.note-when:active { opacity: var(--press-fade); }
   font-size: calc(15px * var(--fs-k)); font-weight: var(--fw-regular); font-variant-numeric: tabular-nums;
   color: var(--c-text-2);
 }
-.mp-grid.is-day .mp-cell.is-sun { color: color-mix(in srgb, var(--c-danger) 62%, var(--c-text-2)); }
-.mp-grid.is-day .mp-cell.is-sat { color: color-mix(in srgb, var(--cal-blue, #4a8fd9) 62%, var(--c-text-2)); }
+.mp-grid.is-day .mp-cell.is-sun { color: color-mix(in srgb, var(--c-sun) 62%, var(--c-text-2)); }
+.mp-grid.is-day .mp-cell.is-sat { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 62%, var(--c-text-2)); }
 .mp-grid.is-day .mp-cell.is-now { color: var(--c-primary); font-weight: var(--fw-bold); }
-.mp-grid.is-day .mp-cell.is-here { background: var(--c-primary-fill); color: #fff; font-weight: var(--fw-bold); }
+.mp-grid.is-day .mp-cell.is-here { background: var(--c-primary-fill); color: var(--c-text-on); font-weight: var(--fw-bold); }
 .mp-grid.is-day .mp-cell.is-log::after {
   content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px;
   border-radius: var(--r-full); background: currentColor; opacity: .55;
@@ -7469,7 +7440,7 @@ button.note-when:active { opacity: var(--press-fade); }
   cursor: pointer;
   position: relative;
   padding: var(--sp-3) var(--sp-3) var(--sp-2) calc(var(--sp-3) + 6px);
-  border-radius: 14px;
+  border-radius: var(--r-md);
   background: color-mix(in srgb, var(--up-c) 9%, var(--c-surface));
   overflow: hidden;
   transition: scale var(--m-press) var(--ease);
@@ -7536,7 +7507,7 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 .sa-link {
   display: inline-flex; align-items: center; gap: 2px;
-  min-height: 32px; padding: 0 var(--sp-3);
+  min-height: 30px; padding: 0 var(--sp-3);
   border: 1px solid var(--c-border); border-radius: var(--r-full);
   background: var(--c-surface); color: var(--c-primary);
   font-size: var(--fs-sm);
@@ -7774,7 +7745,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .road-label.is-later b { font-weight: var(--fw-regular); }
 .road-now {
   transform: translate(-50%, -50%); pointer-events: none;
-  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-primary);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-now);
 }
 .road-edge {
   transform: translateY(-50%); pointer-events: none;
@@ -7817,7 +7788,7 @@ button.note-when:active { opacity: var(--press-fade); }
 /* くぼみの置き場は薄く塗り、丸はゆっくり浮き沈みする（道の外でも見落とさないように）。
    動きは translate で（位置は left/top、写しの .road-ghost は translate を自分で書く）。 */
 .road-hollow {
-  position: absolute; border-radius: 14px; pointer-events: none;
+  position: absolute; border-radius: var(--r-md); pointer-events: none;
   background: color-mix(in srgb, var(--road-go) 12%, transparent);
   transition: background var(--m-state) var(--ease-out);
 }
@@ -7886,7 +7857,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .road-carry-time {
   position: fixed; left: 0; top: 0; z-index: var(--z-lift);
   padding: 3px 8px; border-radius: var(--r-full);
-  background: var(--c-primary); color: #fff;
+  background: var(--c-primary); color: var(--c-text-on);
   font-size: var(--fs-xs); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
   white-space: nowrap; pointer-events: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .18);

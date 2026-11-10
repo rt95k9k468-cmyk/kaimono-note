@@ -99,7 +99,7 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 393×852・2倍で、試しの記録・明暗・時刻・特大・紙を開く・差し替えの style を組み合わせて撮り、差し替えを横に並べて
 番号を書いた `compare.png` を作る。使い方は頭のコメント（`--screens`・`--theme`・`--size`・`--clock`・`--sheet`・
 `--scroll`・`--attire`・`--css 'B=…'`）。試しの記録は無難な字だけ。
-差し替えなしの列は「今」。装い（css/attire.css）は `--attire washi-shu,season` で列に足す（改0の見本 tools/attire は改3で外した）。
+差し替えなしの列は「今」（手帳）。装い「モダン」は `--attire modern` で列に足す。
 見本の頁をそのまま撮るのは `--page 'tools/redesign-proto.html#tasks,…'`（`--view`・`--dpr` は効く）。
 **撮る前に**：この機械の日本語の字は IPA ゴシックだけで、明朝の見出しがゴシックに落ちる（apt には無い）。Noto を `~/.fonts` へ入れてから撮る——
 `curl -sSLo ~/.fonts/NotoSerifJP.ttf 'https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifjp/NotoSerifJP%5Bwght%5D.ttf'`、

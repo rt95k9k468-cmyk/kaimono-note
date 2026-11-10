@@ -1,6 +1,6 @@
 /* 札の高さは二つ・絵は二段の見張り（roadmap-unify の U14、docs/look.md の「札の高さと絵の大きさ」）。
 
-   一、札（.chip・.btn-sm・.seg-btn・.dest-chip ほか）の背丈は 40（ふつう）か 32（行の中の小さい札）。
+   一、札（.chip・.btn-sm・.seg-btn・.dest-chip ほか）の背丈は 36（ふつう）か 30（行の中の小さい札）。当たりは ::after の 44px（docs/redesign.md 4節。前は 40 と 32）。
    二、.seg-btn の角は --r-sm。
    三、絵（svg・.p-icon・.ui-ico・.empty-svg）の大きさを px で直に書くのは「入れもの」だけ——
       その行に /* 入れもの：… *\/ と理由を書く。ほかは var(--ico) か var(--ico-sm)。
@@ -21,9 +21,9 @@ const rules = FILES.flatMap((f) => [...strip(raw[f]).matchAll(/([^{}]+)\{([^{}]*
 const prop = (r, p) => ((r.body.match(new RegExp(`(?:^|[;\\s])${p}\\s*:\\s*([^;]+)`)) || [])[1] || "").trim();
 
 /* 一・二 */
-const CHIPS = [[".chip", "height", "40px"], [".btn-sm", "height", "40px"], [".seg-btn", "min-height", "40px"],
-  [".dest-chip", "min-height", "40px"], [".time-row .chip", "height", "32px"], [".note-labels .chip", "height", "32px"],
-  [".sa-link", "min-height", "32px"]];
+const CHIPS = [[".chip", "height", "36px"], [".btn-sm", "height", "36px"], [".seg-btn", "min-height", "36px"],
+  [".dest-chip", "min-height", "36px"], [".time-row .chip", "height", "30px"], [".note-labels .chip", "height", "30px"],
+  [".sa-link", "min-height", "30px"]];
 for (const [s, p, v] of CHIPS) {
   const r = rules.find((x) => x.sel === s && prop(x, p));
   t.check(`${s} の ${p} は ${v}`, r && prop(r, p) === v, r ? prop(r, p) : "規則が無い");

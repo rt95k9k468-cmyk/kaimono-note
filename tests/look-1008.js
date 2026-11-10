@@ -52,29 +52,29 @@ const { open, checker } = require("./lib");
   t.check("二つ目の行から細い線（品名の頭から）", await page.$eval("#screen-list .cat-group.is-run:nth-child(n) .item-wrap + .item-wrap",
     (w) => getComputedStyle(w).backgroundImage.includes("gradient")));
 
-  // health：数字は丸い字
+  // health：数字は丸い字。帯の日付は見出しの明朝（2026年11月10日、docs/redesign.md 4節。前は丸い字）
   await page.evaluate(() => KN.app.showScreen("diet"));
   await page.waitForTimeout(500);
   const fam = () => page.evaluate(() => [".diet-hero-value b", ".topbar-title"].map((q) => {
     const el = document.querySelector(q); return el ? getComputedStyle(el).fontFamily : "";
   }));
   const f1 = await fam();
-  t.check("体重の数・帯の日付は ui-rounded が先頭", f1.every((f) => /^ui-rounded/.test(f)), f1.join(" / "));
+  t.check("体重の数は ui-rounded が先頭・帯の日付は明朝", /^ui-rounded/.test(f1[0]) && /Mincho/.test(f1[1]), f1.join(" / "));
   await page.evaluate(() => document.documentElement.setAttribute("data-font", "mincho"));
   const f2 = await fam();
   t.check("明朝を選ぶと丸い字は外れる", f2.every((f) => !/ui-rounded/.test(f)), f2.join(" / "));
   await page.evaluate(() => document.documentElement.removeAttribute("data-font"));
 
-  // daily：あの日はガラス
+  // daily：あの日は塗った札（2026年11月10日。前は後ろをぼかすガラス）
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
   const glass = await page.$eval("#screen-archive .arc-then", (el) => {
     const cs = getComputedStyle(el);
-    return { bf: cs.backdropFilter || cs.webkitBackdropFilter, r: parseFloat(cs.borderTopLeftRadius),
+    return { bf: cs.backdropFilter || cs.webkitBackdropFilter || "none", bg: cs.backgroundColor, r: parseFloat(cs.borderTopLeftRadius),
       left: cs.borderLeftColor === cs.borderRightColor, mx: parseFloat(cs.marginLeft) };
   });
-  t.check("あの日は後ろをぼかすガラス・丸い角・左の柱は無い・端から離れる",
-    /blur/.test(glass.bf) && glass.r > 0 && glass.left && glass.mx > 0, JSON.stringify(glass));
+  t.check("あの日は塗った札（ぼかさない・透かさない）・丸い角・左の柱は無い・端から離れる",
+    !/blur/.test(glass.bf) && /^rgb\(/.test(glass.bg) && glass.r > 0 && glass.left && glass.mx > 0, JSON.stringify(glass));
   const photo = await page.waitForSelector("#screen-archive[data-season-img]", { timeout: 8000 }).then(() => true).catch(() => false);
   if (photo) {
     // 候の色は --m-season でゆっくり入る。入り終えてから読む

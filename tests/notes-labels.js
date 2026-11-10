@@ -320,7 +320,7 @@ const { open, checker } = require("./lib");
   t.check("頭の口も棚の絵", await page.$eval(".sheet.is-note .js-nb", (e) => e.textContent.trim() === "thinking" && e.querySelector(".nb-ico").dataset.shelf === "thinking"));
   await escTop();
   await page.evaluate(() => sessionStorage.setItem("kn-book-first", "off"));
-  t.check("閉じたら上の帯（theme-color）は元の灰へ", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).join() === "#f7f6f2,#121216");
+  t.check("閉じたら上の帯（theme-color）は元の地の色へ", (await page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content))).join() === "#f4efe5,#1b1916");
 
   /* ---- 残る・書き出し・localStorage ---- */
   await page.evaluate(() => KN.notes.flush());

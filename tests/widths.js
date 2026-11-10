@@ -79,8 +79,17 @@ const frameFn = () => {
   const app = R(document.querySelector(".app"));
   const bodyBg = getComputedStyle(document.body).backgroundColor;
   const appBg = getComputedStyle(document.querySelector(".app")).backgroundColor;
-  const cap = R(document.querySelector("#tabbar .tab-edge"));
+  /* カプセルは帯の ::before（塗った面）。箱は帯の箱から inset を引いて出す（前は縁の屈折 .tab-edge の箱を読んでいた）。 */
   const bar = R(document.getElementById("tabbar"));
+  const cap = (() => {
+    const el = document.getElementById("tabbar");
+    if (!bar || !el) return null;
+    const cs = getComputedStyle(el, "::before");
+    if (cs.display === "none" || cs.content === "none") return null;
+    const r = el.getBoundingClientRect(), n = (v) => parseFloat(v) || 0;
+    const l = Math.round(r.left + n(cs.left)), rr = Math.round(r.right - n(cs.right));
+    return { l, r: rr, t: Math.round(r.top + n(cs.top)), b: Math.round(r.bottom - n(cs.bottom)), w: rr - l };
+  })();
   const fab = R(document.querySelector(".has-fab .dock .quick-add > button, .has-fab .dock button"));
   /* 読む幅：daily の日の一枚の中身の幅（padding を除いた箱）。 */
   const slide = document.querySelector("#screen-archive .day-slide");

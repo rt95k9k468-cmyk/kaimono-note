@@ -1,7 +1,7 @@
 /* 下の帯とキーボード（2026年9月27日）。
-   - 紙が開いて足もとの主色のボタンが帯の上に来ても、帯は「後ろが暗い」と読まない
-     （帯より手前のものは数えない）。本当に帯の後ろが暗いときは夜になる。
-   - 席の印（.tab-lens）は縁の屈折（.tab-edge）のあとに居る（ぼかされない）。
+   - 帯は塗った面（2026年11月10日、docs/redesign.md 2節）。紙の足もとの主色のボタンが帯の上に来ても、帯の後ろへ
+     暗いものが来ても、帯は替わらない（前は後ろの明るさを読んで夜のガラスへ替えていた）。
+   - 席の印（.tab-lens）は席のあと・押した光（.tab-hold）の前に居る（縁の屈折 .tab-edge は外した）。
    - キーボード：fixed の床が画面の底に残る端末（iOS 26 のホーム画面アプリ。
      innerHeight と可視は縮むのに床は動かない）でも、紙の底はキーボードの上端に来る。
      床も一緒に上がる端末・innerHeight が縮まない端末（Android）も前と同じ。
@@ -38,7 +38,7 @@ const H = 844;
 
   const bar = () => page.evaluate(() => document.getElementById("tabbar").classList.contains("is-on-dark"));
 
-  /* ---- 帯：紙の足もとを「後ろ」と読まない ---- */
+  /* ---- 帯：後ろに何が来ても替わらない ---- */
   await page.click('.tab[data-tab="list"]');
   await page.waitForTimeout(400);
   await page.evaluate(() => {
@@ -53,37 +53,37 @@ const H = 844;
     const els = document.elementsFromPoint(r.left + r.width * .5, r.top + 14);
     return els.some((e) => e.classList.contains("js-save"));
   });
-  await page.evaluate(() => KN.app.paintGlass());
   c.check("紙の「保存」が帯の真上に来ている（試験の前提）", footOverBar);
-  c.check("…それでも帯は夜にならない", !(await bar()));
+  c.check("…それでも帯は替わらない", !(await bar()));
   await page.evaluate(() => window.__h.close());
   await page.waitForTimeout(600);
-  await page.evaluate(() => KN.app.paintGlass());
-  c.check("紙を閉じたあとも帯は昼のまま", !(await bar()));
 
-  const darkBehind = await page.evaluate(() => {
+  const darkBehind = await page.evaluate(async () => {
+    const el = document.getElementById("tabbar");
+    const bg = () => getComputedStyle(el, "::before").backgroundColor;
+    const was = bg();
     const d = document.createElement("div");
     d.id = "darkprobe";
     d.style.cssText = "position:fixed;left:0;right:0;bottom:0;height:140px;background:#123;z-index:5";
     document.getElementById("app").append(d);
-    KN.app.paintGlass();
-    const on = document.getElementById("tabbar").classList.contains("is-on-dark");
+    window.dispatchEvent(new Event("resize"));
+    await new Promise((r) => setTimeout(r, 200));
+    const out = { on: el.classList.contains("is-on-dark"), same: bg() === was, bg: bg(), api: typeof KN.app.paintGlass };
     d.remove();
-    KN.app.paintGlass();
-    return on;
+    return out;
   });
-  c.check("帯の後ろが本当に暗いときは夜になる（仕掛けは生きている）", darkBehind);
-  c.check("暗いものが去れば昼へ戻る", !(await bar()));
+  c.check("帯の後ろが暗くても、帯は同じ塗った面のまま（見張りは無い）", !darkBehind.on && darkBehind.same && /^rgb\(/.test(darkBehind.bg) && darkBehind.api === "undefined", JSON.stringify(darkBehind));
 
-  /* ---- 帯：印は縁の屈折のあと ---- */
+  /* ---- 帯：印は席のあと・押した光の前 ---- */
   const order = await page.evaluate(() => {
     const kids = [...document.getElementById("tabbar").children];
     return { edge: kids.findIndex((k) => k.classList.contains("tab-edge")),
+             tab: kids.map((k) => k.classList.contains("tab")).lastIndexOf(true),
              lens: kids.findIndex((k) => k.classList.contains("tab-lens")),
              hold: kids.findIndex((k) => k.classList.contains("tab-hold")) };
   });
-  c.check("印（.tab-lens）は縁の屈折（.tab-edge）より後・押した光より前",
-    order.edge >= 0 && order.lens > order.edge && order.hold > order.lens, JSON.stringify(order));
+  c.check("印（.tab-lens）は席のあと・押した光より前（縁の屈折は無い）",
+    order.edge < 0 && order.lens > order.tab && order.hold > order.lens, JSON.stringify(order));
   const lensFitsSeat = await page.evaluate(() => {
     const l = document.querySelector(".tab-lens").getBoundingClientRect();
     const t = document.querySelector('.tab[data-tab="list"]').getBoundingClientRect();

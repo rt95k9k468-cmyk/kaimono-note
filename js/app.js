@@ -118,22 +118,24 @@
   }
   KN.app.applyTheme = applyTheme;
 
-  /* 基調色。明暗（data-theme）とは**別の軸**なので、別の札で持ちます
-     ——「青の、暗い面」のように二つは掛け合わさるものだからです。
-
-     既定（オレンジ）のときは札を付けません。付けないほうが :root の素の値が
-     そのまま効いて、規則が一段浅く済みます。 */
+  /* 基調色（base.css の「基調色」）。札は data-accent、既定の朱には付けない。装い「モダン」は自分の主色（墨）を
+     持つので、そのあいだは札を外す。「季節」は今日の節気（春分から 0〜23）を data-sekki に——日が替わったら
+     onMinute が付け直す。 */
   function applyAccent(accent) {
     const root = document.documentElement;
     const known = (KN.store && KN.store.ACCENTS) || [];
     const ok = known.some((a) => a.id === accent);
-    if (ok && accent !== "orange") root.setAttribute("data-accent", accent);
+    const on = ok && accent !== "orange" && root.getAttribute("data-attire") !== "modern";
+    if (on) root.setAttribute("data-accent", accent);
     else root.removeAttribute("data-accent");
+    const s = on && accent === "season" && KN.season ? KN.season.of(KN.util.todayKey()) : null;
+    if (s) root.setAttribute("data-sekki", String(Math.floor(s.k / 3)));
+    else root.removeAttribute("data-sekki");
 
     /* アイコンの地も基調色に合わせます（icons/accent/）。タブの絵はすぐ変わり、
        ホーム画面の絵は「ホーム画面に追加」した時点の色で焼きつきます——
        追加済みの絵を後から塗り替える手段は、ウェブアプリには無いからです。 */
-    const id = ok ? accent : "orange";
+    const id = ok && accent !== "season" ? accent : "orange";
     const fav = document.querySelector('link[rel="icon"]');
     const touch = document.querySelector('link[rel="apple-touch-icon"]');
     /* 一枚にまとめた版（build-standalone.js）は絵を data: で抱えていて、
@@ -179,17 +181,28 @@
   }
   KN.app.applyFont = applyFont;
 
-  /* 装い（css/attire.css）。札は data-attire、「いま」は札なし。季節の手帳は、今日の節気（春分から 0〜23）を
-     data-sekki に——日が替わったら onMinute が付け直す。 */
-  function applyAttire(attire) {
-    const root = document.documentElement;
-    const on = ["washi-shu", "washi-enji", "season", "polish"].includes(attire);
-    if (on) root.setAttribute("data-attire", attire);
-    else root.removeAttribute("data-attire");
-    const s = attire === "season" && KN.season ? KN.season.of(KN.util.todayKey()) : null;
-    if (s) root.setAttribute("data-sekki", String(Math.floor(s.k / 3)));
-    else root.removeAttribute("data-sekki");
+  /* 装いは二つ（docs/redesign.md 4節）：手帳（札なし）とモダン（data-attire="modern"）。替わるのは札の組だけ。
+     前の五つの値は**消さずに読み替える**——朱・臙脂・季節は手帳の基調色へ、いま・磨きは手帳の既定へ（lookOf）。
+     見出しの書体（settings.headFont）は data-head="same" のとき本文と同じ。既定の明朝には札を付けない。 */
+  const ATTIRE_ACCENT = { "washi-shu": "orange", "washi-enji": "rose", season: "season" };
+  function lookOf(settings) {
+    const s = settings || {};
+    return { look: s.attire === "modern" ? "modern" : "techo", accent: ATTIRE_ACCENT[s.attire] || s.accent || "orange" };
   }
+  KN.app.lookOf = lookOf;
+  function applyLook(settings) {
+    const s = settings || store.get().settings;
+    const root = document.documentElement;
+    const { look, accent } = lookOf(s);
+    if (look === "modern") root.setAttribute("data-attire", "modern");
+    else root.removeAttribute("data-attire");
+    if (s.headFont === "same") root.setAttribute("data-head", "same");
+    else root.removeAttribute("data-head");
+    applyAccent(accent);
+  }
+  KN.app.applyLook = applyLook;
+  /* 前からの呼び名（道具・試験）。 */
+  function applyAttire() { applyLook(); }
   KN.app.applyAttire = applyAttire;
 
   /* ---------------- tabs ---------------- */
@@ -235,11 +248,6 @@
       });
       bar.append(btn);
     });
-
-    /* 縁の屈折の一枚（base.css の「縁の屈折」）。帯は ::before と ::after を
-       地と縁の光で使いきっているので、ここだけ本物の一枚が要ります。
-       縁の光より**先に**置くこと——重ね順は「地 → 屈折 → 縁の光」です。 */
-    bar.append(node(html`<i class="tab-edge" aria-hidden="true"></i>`));
 
     /* いま居る席の印。**席ごとの丸ではなく、席から席へ滑る一枚のレンズ**
        です（`js/tab-lens.js`）。ここでは置くだけ——どこへ滑るかは
@@ -321,159 +329,10 @@
     paintTabs();
   }
 
-  /* ---------------- ガラスは、まわりを見ている ----------------
-
-     ガラスが本物に見えるのは、**まわりを映しているから**です。いまの帯は
-     まわりを見ていませんでした——縁の光は上下固定のグラデで、ものが動いても
-     光は動かず、後ろに何が来ても明るさは同じ。
-
-     ここが見るのは二つだけです。
-
-       ① `--glass-sweep`（0〜1）… 鏡面光が縁のどこに居るか。送っている器の
-          位置から出します。世界が動けば、映りこみも動く。
-       ② 帯の裏の明るさ … 暗いものが来たら、ガラスごと夜へ返す
-          （base.css の `.is-on-dark`）。
-
-     **書き込む先は `:root`。** `--glass-rim` は `:root` で組まれるので、
-     `--glass-sweep` も同じところに居ないと、焼きついた既定値のままです
-     （＋のコーラルが消えたのと同じ道理——base.css のガラスの節）。 */
-
-  /* 明るさ（0〜1）。WCAG の相対輝度と同じ式で、比べるためだけに使います。 */
-  function lumOf(r, g, b) {
-    const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
-    return .2126 * f(r) + .7152 * f(g) + .0722 * f(b);
-  }
-
-  /** 帯の裏にあるものの明るさ。地を持っている要素が見つからなければ null。 */
-  function backdropLum() {
-    const bar = document.getElementById("tabbar");
-    if (!bar) return null;
-    const r = bar.getBoundingClientRect();
-    if (!r.width) return null;
-    const y = r.top + 14;
-    let sum = 0, n = 0;
-    [.22, .5, .78].forEach((f) => {
-      const x = r.left + r.width * f;
-      /* 帯とドックは**自分自身**なので飛ばします。地を持っていない要素
-         （背景が透明）も飛ばして、実際に塗られている一枚まで降ります。
-
-         **数えるのは、帯より下に重なっているものだけ。** `elementsFromPoint` は
-         上に重なっているものから返します。紙（`.sheet`）が開いていると、帯の
-         真上に紙の足もと——「保存」の主色のボタン——が来て、それを「後ろが
-         暗い」と読んでいました（主色は明るさ .17〜.27 で、境目 .42 の下）。
-         紙が閉じても、次に送るまで帯は夜のまま残ります（2026年9月27日、
-         買うもの・やることの帯が暗い丸薬で出ていた正体）。帯の席（`.tab`）に
-         当たるまでに出てきたものは、帯の**手前**にあるので飛ばします。
-         席に一度も当たらない点（席のあいだの隙間など）は、従来どおり上から。 */
-      const els = document.elementsFromPoint(x, y) || [];
-      const behind = els.findIndex((el) => el.closest && el.closest("#tabbar"));
-      for (let i = behind >= 0 ? behind : 0; i < els.length; i++) {
-        const el = els[i];
-        if (el.closest && el.closest("#tabbar, #dock")) continue;
-        const m = /^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/
-          .exec(getComputedStyle(el).backgroundColor || "");
-        if (!m) continue;
-        if (m[4] !== undefined && parseFloat(m[4]) < .5) continue;
-        sum += lumOf(+m[1], +m[2], +m[3]); n++;
-        break;
-      }
-    });
-    return n ? sum / n : null;
-  }
-
-  /* 行きつ戻りつしないよう、**境目は二つ**。暗いと決めるのは .42 未満、
-     明るいへ返すのは .52 超え。一つの境目だと、そのあたりを漂う地の上で
-     帯が明滅します。 */
-  let onDark = false;
-
-  /* 鏡面光を読む器（縁の光 `::after` を持つ5つ）。**ここへ書きます——
-     `:root` ではありません。**
-
-     カスタムプロパティは継承するので、`:root` に書き換えが入ると、読む5つ
-     だけでなく**文書のすべての要素**が style を計算し直します。実測
-     （2026年9月20日、CPU 4倍・390×844）で、一覧を縦に送るときの p90 が
-     **50.0ms**、96フレーム中 **21落ち**——この一行を止めるだけで p90
-     **16.7ms**・**0落ち**になりました（1回の書き換えが 48.9ms）。
-     「どの画面でもうっすら重い」の正体がこれです。
-
-     並べるのは CSS の使う側へ移してあります（base.css の
-     `.tabbar::after` ほか＝`--glass-rim-spec` / `-ring`）。だから数は、
-     その器へ書けば届きます。**片方だけ直さないこと**——CSS で `:root` に
-     組み直すと、ここで書いた数は焼きついた既定値に負けて動かなくなります。 */
-  const GLASS = ".tabbar, .add-fab, .fab-menu-b, .toast, .search-bar";
-
-  /* 帯の裏の明るさを読む間合い（docs/motion.md の「押した一拍を軽く」）。読むのは指の
-     下の三点を当てる仕事（`elementsFromPoint`）で、送っているあいだ毎フレーム読むと、
-     一回の送りで 90ms ほどがこれだけに消えていた（1年ぶんの記録・CPU 1倍）。送るあいだは
-     この間合いに一度、止まったら必ず一度。暗いものが帯の裏へ来てから夜へ返るまでが、
-     多くてこのぶん遅れるだけ。 */
-  const LUM_GAP = 120;
-  let lumAt = -Infinity, lumT = 0;
-
-  /** lazy … 送り・大きさの合図から来たとき（帯の裏の明るさは間合いに一度）。ほかの呼び手
-      （席を移った・外から呼ばれた）はその場で読む——帯の裏が変わったと分かっているので。 */
-  function paintGlass(lazy) {
-    /* 鏡面光の居場所。送っている器の位置を、縁の長さに畳んで回します
-       ——「何px 送ったか」ではなく「まわりがどれだけ動いたか」なので、
-       端まで行ったら向こうから戻ってくる形（往復）にします。 */
-    const sc = KN.app.scrollerOf(activeScreen() || document.body);
-    const top = sc ? (sc === document.scrollingElement ? window.scrollY : sc.scrollTop) : 0;
-    /* 止まっているときは**まん中**に居させます。端に寄った姿から始まると、
-       光が当たっているのではなく「左が明るい絵」に見えるので。
-       行って戻る形（sin）にするのは、折り返しで速さが跳ねないため。 */
-    const sweep = (.5 + .38 * Math.sin(top / 115)).toFixed(3);
-
-    /* **読むのは、書く前に。** 下で鏡面光の数を書くと、その器の様式が汚れます。そのあとに
-       帯の箱を測る（backdropLum）と、ブラウザはその場で様式を計算し直してから答えます——
-       毎フレーム一回ぶん余計に。先に読めば、前のフレームのままの安い答えで済みます。 */
-    const now = performance.now();
-    let L = null, read = false;
-    clearTimeout(lumT);
-    if (lazy !== true || now - lumAt >= LUM_GAP) {
-      L = backdropLum();
-      lumAt = now;
-      read = true;
-    } else {
-      /* 間合いのうちに来た送りは、止まったところでもう一度だけ読む。 */
-      lumT = setTimeout(() => requestAnimationFrame(() => paintGlass()), LUM_GAP);
-    }
-
-    /* 同じ数なら書きません。書き換えはその器の中を巻き込むので、止まって
-       いるあいだ（sin の折り返しなど）に同じ数を置き直す意味はありません。 */
-    document.querySelectorAll(GLASS).forEach((el) => {
-      if (el.dataset.sweep === sweep) return;
-      el.dataset.sweep = sweep;
-      el.style.setProperty("--glass-sweep", sweep);
-    });
-
-    if (!read) return;
-    if (L != null) {
-      if (!onDark && L < .42) onDark = true;
-      else if (onDark && L > .52) onDark = false;
-    }
-    ["tabbar", "dock"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.classList.toggle("is-on-dark", onDark);
-    });
-  }
-
+  /* 席の幅が変わったら、いま居る席の印（レンズ）を置きなおす（回転・キーボード）。帯・＋・一言は塗った面なので、
+     後ろの明るさも鏡面の光も見張らない（2026年11月10日、docs/redesign.md 2節。前は送るたびに帯の裏を読んでいた）。 */
   function watchGlass() {
-    let queued = false;
-    const soon = () => {
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(() => { queued = false; paintGlass(true); });
-    };
-    /* scroll は泡立たないので、**捕まえる側**で聞きます——送っているのは
-       画面ごとの紙で、window ではありません（「送る器を変えたら〜」）。 */
-    document.addEventListener("scroll", soon, { capture: true, passive: true });
-    window.addEventListener("resize", soon);
-    /* 席の幅が変わったら、レンズも置きなおします（回転・キーボード）。
-       **送りのたびには呼びません**——あれは席の箱を測るので、
-       `paintGlass` の拍に混ぜると毎フレームのレイアウトが一つ増えます。 */
     window.addEventListener("resize", () => { if (KN.tabLens) KN.tabLens.sync(); });
-    KN.app.paintGlass = paintGlass;
-    paintGlass();
   }
 
   /* 下へ送るあいだ＋は引っ込み、上へ戻す・止まる・上か下の端に着くと出ます
@@ -577,10 +436,6 @@
       // 設定のように席を持たない画面では、印を伏せます（tab-lens.js の clear）。
       else KN.tabLens.clear();
     }
-
-    /* 席が変われば、帯の裏に来るものも変わります。送りの合図は来ないので、
-       ここで一度見直すこと（ガラスは、まわりを見ている）。 */
-    paintGlass();
   }
 
   /* 画面の中で起きたことに、下の帯の席の絵が応える（docs/tabbar.md の「押した席の
@@ -1413,10 +1268,9 @@
 
   function boot() {
     applyTheme(store.get().settings.theme || "auto");
-    applyAccent(store.get().settings.accent || "orange");
+    applyLook(store.get().settings);
     applyTextSize(store.get().settings.textSize || "std");
     applyFont(store.get().settings.font);
-    applyAttire(store.get().settings.attire);
     /* 「端末に合わせる」なら、戻ってくるたびに読み直す（アプリを離れて
        iPhone の文字サイズを変えてきた、に追いつくため）。 */
     document.addEventListener("visibilitychange", () => {
@@ -1617,7 +1471,7 @@
     let dueNow = store.todosDue().length;
     KN.app.onMinute = () => {
       const key = KN.util.todayKey();
-      if (key !== dayNow) { store.rescheduleOverdue(); applyAttire(store.get().settings.attire); }
+      if (key !== dayNow) { store.rescheduleOverdue(); applyLook(store.get().settings); }
       if (KN.moment) KN.moment.maybe();   // 暦の日の一度きり（js/moment.js）
       const due = store.todosDue().length;
       if (key === dayNow && due === dueNow) return;

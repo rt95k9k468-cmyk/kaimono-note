@@ -61,7 +61,8 @@ const { open, checker } = require("./lib");
   const when = await page.$eval(".sheet.is-note .note-when", (e) => e.textContent);
   t.check("書く紙に作った日時（年月日・曜・時刻）", /^\d{4}年\d+月\d+日\(.\) \d+:\d\d$/.test(when), when);
   const bg = await page.$eval(".sheet.is-note", (e) => getComputedStyle(e).backgroundColor);
-  t.check("書く紙は白い一枚（透ける灰ではない）", bg === "rgb(255, 255, 255)", bg);
+  /* 札の色（--c-surface。2026年11月10日から温かい白 #fffdf8）。 */
+  t.check("書く紙は札の色の一枚（透ける灰ではない）", bg === "rgb(255, 253, 248)", bg);
   await page.waitForTimeout(900);
   /* 育つ紙は開く途中で縮んでいるので、開き切ってから測ります。 */
   const tall = await page.$eval(".sheet.is-note", (e) => e.getBoundingClientRect().height / innerHeight);

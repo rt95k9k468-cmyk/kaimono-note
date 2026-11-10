@@ -14,7 +14,6 @@ const ASSETS = [
   "css/base.css",
   "css/components.css",
   "css/screens.css",
-  "css/attire.css",
   "js/frame-guard.js",
   "js/errlog.js",
   "js/util.js",

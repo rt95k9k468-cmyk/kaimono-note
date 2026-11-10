@@ -137,7 +137,7 @@ function rgbOf(s) {
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   c.check("戻ってきたら測り直す（17時は夕方）", await attr() === "evening", String(await attr()));
   const bar = () => page.$$eval('meta[name="theme-color"]', (ms) => ms.map((m) => m.content).join());
-  c.check("時計の帯（theme-color）は空に合わせて変えない（iPhone に映らなかった。docs/sky.md）", await bar() === "#f7f6f2,#121216", await bar());
+  c.check("時計の帯（theme-color）は空に合わせて変えない（iPhone に映らなかった。docs/sky.md）", await bar() === "#f4efe5,#1b1916", await bar());
 
   await page.evaluate(() => KN.store.update((s) => { s.settings.sky = false; }));
   await wait(150);
@@ -414,8 +414,13 @@ function rgbOf(s) {
   const pdiff = Math.max(...pd), pover = pd.filter((v) => v > 12).length;
   c.check("空を下へ伸ばしても、帯の中の写真は動かない", pover <= pd.length / 100, `最大の差 ${pdiff}・12 を超える点 ${pover}/${pd.length}`);
 
-  /* ---- 勢いよく上端に着いても、紙のふち（純白の一本）だけが下りてこない。iPhone の跳ね返りは紙の中身だけを
+  /* ---- 勢いよく上端に着いても、紙のふち（札の色 --c-sheet-edge の一本。前は純白）だけが下りてこない。iPhone の跳ね返りは紙の中身だけを
      下げるので、ふちは中身（掴み手）ではなく紙そのもの（border-top）が持つ。跳ね返りは中身を手で下げてまねる ---- */
+  const edgeC = rgbOf(await page.evaluate(() => {
+    const p = document.createElement("i");
+    p.style.color = "var(--c-sheet-edge)"; document.body.append(p);
+    const c = getComputedStyle(p).color; p.remove(); return c;
+  }));
   for (const id of ["todo", "archive"]) {
     await page.evaluate((i) => KN.app.showScreen(i), id);
     await wait(300);
@@ -431,7 +436,7 @@ function rgbOf(s) {
       [...KN.app.scrollerOf(document.getElementById("screen-" + i)).children].forEach((k) => { k.style.transform = ""; });
     }, id);
     c.check(`${id}：中身が跳ね返って下がっても、紙のふちの一本は紙の上の縁に残る`,
-      ep.some((p) => Math.min(...p) >= 252), JSON.stringify(ep));
+      ep.some((p) => p.slice(0, 3).every((v, k) => Math.abs(v - edgeC[k]) <= 2)), JSON.stringify(ep));
   }
 
   /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
