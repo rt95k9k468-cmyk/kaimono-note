@@ -3,6 +3,7 @@
   全面リデザインの見本（tools/redesign-proto.html。docs/redesign.md）。配らない（deploy が消す）。手元のサーバーで開く：
     http://localhost:8765/tools/redesign-proto.html#tasks   （#daily・#notes・#tasks・#shopping・#health・#settings）
     ?display=gothic（見出しをゴシックに）・?accent=ai（主色を藍に）・?theme=dark・?sheet=task（紙を開いて始める）
+    ?face=month（やることの月の面）・?peek=month（ほかの席で暦を月まで引いた姿）・?cal=photo（月の暦を写真の上に残す案）
   偽の記録は無難な字だけ。本物の記録（localStorage・IndexedDB）には読みも書きもしない。
   読むのは保存に触れない部品だけ（util.js・絵）。色・字・形の札はここの :root が正——作るときは base.css へ写す。
   決まったら消す。
@@ -111,6 +112,38 @@ h1, h2, h3, p { margin: 0; }
 .wk-tag { font-size: 10px; font-weight: 700; line-height: 15px; height: 15px; padding: 0 4px; border-radius: 4px; overflow: hidden; white-space: nowrap;
   background: var(--c-take-soft); color: var(--c-take); }
 .wk-tag.is-plan { background: var(--c-ai-soft); color: var(--c-ai); }
+
+/* 月の暦（暦は 暦なし／週／月 の三段のまま。札は字のまま——点にしない）。ふつうの月は名前二つ、月の面（.is-tall）は入るだけ＋あふれは +n */
+.mo-w { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 11px; line-height: 20px; color: var(--c-text-3); }
+.mo-w .is-sat { color: var(--c-ai); } .mo-w .is-sun { color: var(--c-primary); }
+.mo { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); --mo-h: 62px; }
+.mo.is-tall { --mo-h: 77px; }
+.mo-c { min-height: var(--mo-h); padding: 2px 1px 3px; border-top: 1px solid var(--c-line); border-right: 1px solid var(--c-line); display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.mo-c:nth-child(7n) { border-right: 0; }
+.mo-n { width: 26px; height: 26px; border-radius: 50%; font: 700 15px/26px var(--font-num); text-align: center; flex: none; }
+.mo-c.is-sat .mo-n { color: var(--c-ai); } .mo-c.is-sun .mo-n { color: var(--c-primary); }
+.mo-c.is-out .mo-n { color: var(--c-line-2); }
+.mo-c.is-today .mo-n { background: var(--c-primary); color: var(--c-text-on); box-shadow: 0 3px 8px -3px var(--c-primary); }
+.mo-t { width: 100%; font-size: 10px; font-weight: 700; line-height: 15px; height: 15px; padding: 0 3px; border-radius: 4px; overflow: hidden; white-space: nowrap; flex: none;
+  background: var(--c-take-soft); color: var(--c-take); }
+.mo-t.is-plan { background: var(--c-ai-soft); color: var(--c-ai); }
+.mo-t.is-dead { background: var(--c-yamabuki-soft); color: var(--c-yamabuki); }
+.mo-t.is-past { background: var(--c-surface-2); color: var(--c-text-3); }
+.mo-more { font: 700 10px/12px var(--font-num); color: var(--c-text-3); }
+.card.month { padding: 10px 12px 6px; overflow: hidden; }
+/* 見比べ用（?cal=photo）：月の暦を今と同じく写真の上に残す案。数字は白、札は塗った紙色 */
+:root[data-cal="photo"] .head.is-month .head-sky { height: auto; bottom: -24px; }
+:root[data-cal="photo"] .head.is-month .head-sky::after { background: linear-gradient(180deg, rgba(20, 14, 8, .46), rgba(20, 14, 8, .3)); }
+:root[data-cal="photo"] .head.is-month .tray { background: transparent; }
+:root[data-cal="photo"] .head.is-month :is(.mo-w, .mo-w span, .mo-n) { color: #fff; text-shadow: 0 1px 6px rgba(0, 0, 0, .45); }
+:root[data-cal="photo"] .head.is-month .mo-c { border-color: rgba(255, 255, 255, .26); }
+:root[data-cal="photo"] .head.is-month .mo-c.is-out .mo-n { color: rgba(255, 255, 255, .5); }
+:root[data-cal="photo"] .head.is-month .mo-c.is-sat .mo-n { color: #cfe2ff; } :root[data-cal="photo"] .head.is-month .mo-c.is-sun .mo-n { color: #ffd4c9; }
+:root[data-cal="photo"] .head.is-month .mo-c.is-today .mo-n { color: #fff; text-shadow: none; }
+:root[data-cal="photo"] .head.is-month .mo-t { background: var(--c-surface); }
+:root[data-cal="photo"] .head.is-month .mo-t.is-past { background: rgba(255, 253, 248, .72); }
+:root[data-cal="photo"] .head.is-month .mo-more { color: #fff; }
+:root[data-cal="photo"] .head.is-month + .page { position: relative; background: var(--c-bg); border-radius: 24px 24px 0 0; padding-top: 16px; }
 
 .page { padding: 10px 16px calc(104px + var(--safe-b)); display: flex; flex-direction: column; gap: 14px; }
 .page.is-in { animation: page-in .26s var(--ease); }
@@ -350,6 +383,10 @@ h1, h2, h3, p { margin: 0; }
   .wk-top { display: flex; align-items: center; gap: 6px; }
   .wk-tag { font-size: 12px; line-height: 20px; height: 20px; padding: 0 7px; border-radius: 6px; }
   .wk-tags { min-height: 64px; }
+  .mo { --mo-h: 74px; } .mo.is-tall { --mo-h: 116px; }
+  .mo-w { font-size: 12px; } .mo-c { padding: 4px 3px 4px; gap: 3px; }
+  .mo-t { font-size: 12px; line-height: 20px; height: 20px; padding: 0 6px; border-radius: 6px; }
+  .mo-more { font-size: 11px; }
   .page { padding: 14px 32px 120px; gap: 18px; }
   .cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
   .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -391,6 +428,8 @@ h1, h2, h3, p { margin: 0; }
   .page { padding: 12px 36px 48px; gap: 20px; }
   .cols { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 24px; }
   .cols.is-3 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.15fr); }
+  .cols.is-cal { grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); }
+  .mo.is-tall { --mo-h: 104px; }
   .fab { right: 32px; bottom: 28px; width: 60px; height: 60px; }
   .search kbd { display: block; }
   .shelf { grid-template-columns: repeat(auto-fill, minmax(104px, 124px)); gap: 22px 20px; }
@@ -429,7 +468,7 @@ h1, h2, h3, p { margin: 0; }
   "use strict";
   const q = new URLSearchParams(location.search);
   const root = document.documentElement;
-  ["display", "accent", "theme"].forEach((k) => { if (q.get(k)) root.setAttribute("data-" + k, q.get(k)); });
+  ["display", "accent", "theme", "cal"].forEach((k) => { if (q.get(k)) root.setAttribute("data-" + k, q.get(k)); });
   const $ = (id) => document.getElementById(id);
   const ic = (name, cls) => KN.icons.svg(name, cls) || "";
   const pic = (name) => { try { const P = KN.productIcons; return P.byKey(P.findKey(name)) || ic("cart"); } catch (_) { return ic("cart"); } };
@@ -447,6 +486,22 @@ h1, h2, h3, p { margin: 0; }
     { t: "17:00", s: 17, m: 30, title: "買い物へ行く", kind: "todo", ico: "cart", meta: "30分・くらし" },
     { t: "21:00", s: 21, m: 30, title: "試しの本", kind: "act", ico: "book", meta: "読書・30分" },
   ];
+  const MONTH = { 2: [["歯医者", "plan", "15:00"]], 4: [["資料の下書き", "todo"]], 6: [["支払い", "dead"]], 10: [["病院の予約", "plan", "10:00"], ["資料をまとめる", "todo", "14:00"], ["買い物へ行く", "todo", "17:00"]],
+    11: [["電球を替える", "todo"]], 13: [["打ち合わせ", "plan", "13:00"]], 15: [["掃除", "todo"]], 18: [["打ち合わせ", "plan", "13:00"], ["本を返す", "todo"]], 20: [["通院", "plan", "9:30"]],
+    21: [["旅行", "plan"]], 22: [["旅行", "plan"]], 23: [["旅行", "plan"]], 24: [["書類を出す", "dead"]], 27: [["会食", "plan", "19:00"]], 30: [["月末の振込", "todo"]] };
+  const HOL = [3, 23];   // 文化の日・勤労感謝の日（祝日は日曜と同じ色）
+  const WD = "月火水木金土日";
+  let face = q.get("face") || "today";
+  function monthGrid(tall) {
+    const cells = []; for (let d = 26; d <= 31; d++) cells.push([d, 1]); for (let d = 1; d <= 30; d++) cells.push([d, 0]); for (let d = 1; d <= 6; d++) cells.push([d, 1]);
+    const max = tall ? (mid() ? 4 : 3) : 2;
+    return `<div class="mo-w">${WD.split("").map((w, i) => `<span class="${i === 5 ? "is-sat" : i === 6 ? "is-sun" : ""}">${w}</span>`).join("")}</div>
+      <div class="mo${tall ? " is-tall" : ""}">${cells.map(([d, out], i) => {
+        const items = out ? [] : (MONTH[d] || []), show = items.length > max ? items.slice(0, max - 1) : items, col = i % 7;
+        return `<div class="mo-c${out ? " is-out" : ""}${d === 10 && !out ? " is-today" : ""}${col === 5 ? " is-sat" : ""}${col === 6 || (!out && HOL.includes(d)) ? " is-sun" : ""}"><span class="mo-n">${d}</span>${
+          show.map(([t, k]) => `<span class="mo-t is-${k}${d < 10 && k === "todo" ? " is-past" : ""}">${t}</span>`).join("")}${items.length > show.length ? `<span class="mo-more">+${items.length - show.length}</span>` : ""}</div>`;
+      }).join("")}</div>`;
+  }
   const ANY = [["電球を替える", "前の日から"], ["本を返す", "今週"], ["書類を出す", "11月14日まで"]];
   const SHOP = [
     ["食品", "#2a7354", [["牛乳", "スーパー", 198, true, "3日前", true], ["卵", "スーパー", 248, false, "3日前", false], ["食パン", "スーパー", 158, false, "3日前", false]]],
@@ -471,6 +526,8 @@ h1, h2, h3, p { margin: 0; }
   /* ---- 頭・帯・左の列 ---- */
   function head(seat) {
     const plain = seat === "notes" || seat === "settings";
+    const tall = seat === "tasks" && face === "month", month = !plain && (tall || q.get("peek") === "month");
+    $("head").classList.toggle("is-month", month && !wide());
     const title = seat === "notes" ? "Notes" : '11月10日<small>火曜日</small>';
     const eye = seat === "notes" ? "128 冊のあいだに" : "2026 ・ 立冬";
     const days = WEEK.map(([w, n, tags], i) => `<div class="wk-d${n === 10 ? " is-today" : ""}${i === 5 ? " is-sat" : i === 6 ? " is-sun" : ""}">
@@ -479,7 +536,7 @@ h1, h2, h3, p { margin: 0; }
     $("head").innerHTML = seat === "settings" ? "" : `<div class="head-sky"></div>
       <div class="head-top"><div class="head-names"><div class="head-eye">${seat === "notes" ? "" : eye}</div><h1 class="head-title">${title}</h1></div>
         ${wide() ? "" : `<button class="head-btn press" aria-label="さがす">${ic("search")}</button>`}<button class="head-btn press" data-go="settings" aria-label="設定">${ic("gear")}</button></div>
-      <div class="tray">${plain ? "" : `<div class="wk">${days}</div>`}</div>`;
+      <div class="tray">${plain || (tall && wide()) ? "" : month && !wide() ? monthGrid(tall) : `<div class="wk">${days}</div>`}</div>`;
   }
   function nav(seat) {
     const tabs = SEATS.map(([id, i]) => `<button class="tab press${id === seat ? " is-on" : ""}" data-go="${id}">${ic(i, "tab-ico")}<span>${id}</span>${id === "tasks" ? '<i class="tab-badge">3</i>' : ""}</button>`).join("");
@@ -511,11 +568,17 @@ h1, h2, h3, p { margin: 0; }
       : `<div class="tl-row"><div class="tl-t">${x.t}</div>${taskCard(x)}</div>`).join("")}</div>`;
     const any = `<div class="sec"><h2 class="sec-t">時刻なし</h2><span class="sec-n">${ANY.length}</span></div>
       <div class="card list">${ANY.map(([t, s]) => `<div class="li"><span class="li-main"><span class="li-t">${t}</span><span class="li-s">${s}</span></span><span class="check" data-check>${CHECK}</span></div>`).join("")}</div>`;
-    const tools = `<div class="row-tools"><div class="seg">${["今日", "週", "月"].map((t, i) => `<button class="seg-b${i ? "" : " is-on"}" data-seg>${t}</button>`).join("")}</div><span class="sp"></span>
+    const tools = `<div class="row-tools"><div class="seg">${[["今日", "today"], ["週", "week"], ["月", "month"]].map(([t, f]) => `<button class="seg-b${f === face ? " is-on" : ""}" data-seg data-face="${f}">${t}</button>`).join("")}</div><span class="sp"></span>
       <button class="chip press">仕事だけ</button></div>`;
     const week = `<div class="sec"><h2 class="sec-t">今週</h2><span class="sec-n">11月9日〜15日</span></div><div class="card list">${WEEK.filter(([, n]) => n >= 10).map(([w, n, tags]) =>
       `<div class="week-row${n === 10 ? " is-today" : ""}"><div class="week-d">${n}<small>${w}</small></div><div>${tags.length ? tags.map(([t, p]) =>
         `<div class="week-i"><i class="dot" style="background:var(${p ? "--c-ai" : "--c-take"})"></i>${t}</div>`).join("") : '<div class="week-i" style="color:var(--c-line-2)">—</div>'}</div></div>`).join("")}</div>`;
+    if (face === "month") {
+      const list = `<div class="sec"><h2 class="sec-t">11月の予定</h2><span class="sec-n">${Object.keys(MONTH).length}日</span></div><div class="card list">${Object.keys(MONTH).map((d) =>
+        `<div class="week-row${+d === 10 ? " is-today" : ""}"><div class="week-d">${d}<small>${WD[(+d + 5) % 7]}</small></div><div>${MONTH[d].map(([t, k, at]) =>
+          `<div class="week-i"><i class="dot" style="background:var(${k === "plan" ? "--c-ai" : k === "dead" ? "--c-yamabuki-fill" : "--c-take"})"></i>${at ? `<span class="num">${at}</span>` : ""}${t}</div>`).join("")}</div></div>`).join("")}</div>`;
+      return wide() ? `${tools}<div class="cols is-cal"><div class="col"><div class="card month">${monthGrid(true)}</div></div><div class="col">${list}</div></div>` : tools + list;
+    }
     return mid() ? `${tools}<div class="cols"><div class="col">${strip}${tl}</div><div class="col">${any}${week}</div></div>` : tools + strip + tl + any;
   }
 
@@ -643,6 +706,7 @@ h1, h2, h3, p { margin: 0; }
     if (!t) return;
     if (t.matches("[data-check]")) { e.stopPropagation(); t.classList.toggle("is-done"); const row = t.closest(".task"); if (row) row.classList.toggle("is-done"); return; }
     if (t.matches("[data-go]")) return show(t.dataset.go);
+    if (t.matches("[data-face]")) { face = t.dataset.face === "month" ? "month" : "today"; return show(cur, true); }
     if (t.matches("[data-seg]")) { t.parentNode.querySelectorAll(".seg-b").forEach((b) => b.classList.toggle("is-on", b === t)); return; }
     if (t.matches("[data-close]")) return closeSheet();
     openSheet();
