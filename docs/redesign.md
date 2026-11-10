@@ -2,7 +2,7 @@
 
 利用者の依頼（11月10日）：デザイン・UI・UX・操作の気持ちよさ・描画のなめらかさを全面的に引き上げ、「毎日使いたくなる一冊」にする。
 **「形はそのまま」「装いだけ」「3月まで足さない／足すなら外す」は、この依頼が上書きする**（新しい機能は基本足さず、今ある働きの体験を上げる）。
-作る段のセッションは、まずここを読む。ここに置くのは決めごとと段だけ（経過は commit）。見本は `tools/redesign-proto.html`（配らない。撮り方は 9節）。
+作る段のセッションは、まずここを読む。ここに置くのは決めごとと段だけ（経過は commit）。**働き（機能）を足す計画は `docs/redesign-features.md`**（通しの順はその 6節）。見本は `tools/redesign-proto.html`（配らない。撮り方は 9節）。
 ぜんぶ済んだら見本ごと消し、決めごとは look・motion・tabbar・shared-header・desk ほかへ移す。
 
 ## 1. 守るもの（上書きされない）
@@ -129,7 +129,7 @@
 | R7 | notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
 | R8 | 設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
 
-- **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは重い順：tasks → health → shopping → daily → notes。
+- **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。
 
