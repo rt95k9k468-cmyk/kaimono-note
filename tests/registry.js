@@ -99,7 +99,8 @@ const CAP = { js: 3560000, css: 580000, tests: 245, docs: 900000, claude: 3450, 
   (function walk(rel) {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const p = rel ? `${rel}/${e.name}` : e.name;
-      if (SKIP.has(p)) continue;
+      /* node_modules はどの深さでも数えない：CI は tests/ に playwright を入れるので、その CSS で毎日の全部だけ赤くなった（#45）。 */
+      if (SKIP.has(p) || e.name === "node_modules") continue;
       if (e.isDirectory()) walk(p); else all.push(p);
     }
   })("");
