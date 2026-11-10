@@ -3,7 +3,7 @@
   全面リデザインの見本（tools/redesign-proto.html。docs/redesign.md）。配らない（deploy が消す）。手元のサーバーで開く：
     http://localhost:8765/tools/redesign-proto.html#tasks   （#daily・#notes・#tasks・#shopping・#health・#settings）
     ?display=gothic（見出しをゴシックに）・?accent=ai（主色を藍に）・?theme=dark・?sheet=task（紙を開いて始める）
-    ?face=month（やることの月の面）・?peek=month（ほかの席で暦を月まで引いた姿）・?cal=photo（月の暦を写真の上に残す案）
+    ?look=modern（装い「モダン」。無ければ「手帳」）・?face=month（やることの月の面）・?peek=month（ほかの席で暦を月まで引いた姿）・?cal=photo（月の暦を写真の上に残す案）
   偽の記録は無難な字だけ。本物の記録（localStorage・IndexedDB）には読みも書きもしない。
   読むのは保存に触れない部品だけ（util.js・絵）。色・字・形の札はここの :root が正——作るときは base.css へ写す。
   決まったら消す。
@@ -57,6 +57,31 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 :root[data-display="gothic"] { --font-display: var(--font); }
+/* 装い「モダン」（?look=modern）。札の組だけが違う——形・働き・動きは「手帳」と同じ。主色は墨、いまの線と日曜は赤、絵は写真、表紙は色の面 */
+:root[data-look="modern"] {
+  --c-bg: #f3f2ee; --c-rail: #eceae5; --c-surface: #ffffff; --c-surface-2: #e9e7e1; --c-surface-3: #dbd8d0;
+  --c-line: #e8e6e0; --c-line-2: #cdcac2; --c-text: #16171a; --c-text-2: #50525a; --c-text-3: #686a72;
+  --c-primary: #1c1d21; --c-primary-soft: #e6e5e0; --c-primary-ink: #1c1d21; --c-now: #c93636; --c-sun: #c93636;
+  --c-ai: #2b59d9; --c-ai-soft: #e3eafc; --c-take: #17734c; --c-take-soft: #dcefe5;
+  --c-yamabuki: #8a5a00; --c-yamabuki-fill: #e2a81f; --c-yamabuki-soft: #f8edcf; --c-fuji: #5b45c9; --c-fuji-soft: #e8e4fa;
+  --c-kaki: #a8480f; --c-kaki-fill: #e0672a; --c-kaki-soft: #fbe6d8;
+  --shadow-1: 0 1px 2px rgba(20, 20, 30, .05), 0 6px 20px -10px rgba(20, 20, 30, .16);
+  --shadow-2: 0 2px 6px rgba(20, 20, 30, .07), 0 16px 36px -14px rgba(20, 20, 30, .24);
+  --r-lg: 22px; --r-xl: 30px; --font-display: var(--font);
+}
+:root[data-look="modern"][data-theme="dark"] {
+  --c-bg: #131416; --c-rail: #0f1012; --c-surface: #1e1f23; --c-surface-2: #2a2b30; --c-surface-3: #383a40; --c-line: #2c2e33; --c-line-2: #44464d;
+  --c-text: #f2f2f3; --c-text-2: #b9bac0; --c-text-3: #9a9ca4; --c-primary: #f2f2f3; --c-primary-soft: #2f3136; --c-primary-ink: #f2f2f3; --c-text-on: #131416;
+  --c-now: #ff6b6b; --c-sun: #ff8a8a; --c-ai: #8fb0ff; --c-ai-soft: #1c2a4d; --c-take: #6fd0a0; --c-take-soft: #17362a;
+  --c-yamabuki: #f0c458; --c-yamabuki-soft: #3b3013; --c-fuji: #b1a3ff; --c-fuji-soft: #2a2550; --c-kaki: #ff9a62; --c-kaki-soft: #45261a;
+}
+:root[data-look="modern"] :is(.note-cv, .nl-cv, .book-cv) { background: linear-gradient(140deg, color-mix(in srgb, var(--cv) 76%, #fff), color-mix(in srgb, var(--cv) 90%, #000)); }
+:root[data-look="modern"] :is(.note-cv, .nl-cv, .book-cv)::after { display: none; }
+:root[data-look="modern"] .book-cv { border-radius: 16px; box-shadow: var(--shadow-1); }
+:root[data-look="modern"] .book-lb { left: 12px; right: 10px; top: auto; bottom: 10px; padding: 0; background: none; color: #fff; text-align: left; box-shadow: none; font: 700 15px/1.3 var(--font); }
+:root[data-look="modern"] .kou-art { width: 104px; aspect-ratio: 4 / 5; border-radius: 14px; box-shadow: none; margin: 0; }
+:root[data-look="modern"] .kou-t { letter-spacing: .02em; }
+:root[data-look="modern"] .head-title { letter-spacing: 0; }
 :root[data-accent="ai"] { --c-primary: #2b5a8c; --c-primary-soft: #dfe8f2; --c-primary-ink: #1e4268; --c-ai: #bf4128; --c-ai-soft: #f7e3da; }
 :root[data-theme="dark"] {
   --c-bg: #1b1916; --c-rail: #161412; --c-surface: #262320; --c-surface-2: #322e29; --c-surface-3: #403a33;
@@ -102,10 +127,12 @@ h1, h2, h3, p { margin: 0; }
 .head-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff;
   background: rgba(30, 22, 14, .3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28); }
 .tray { position: relative; background: var(--c-bg); border-radius: 24px 24px 0 0; padding: 12px 8px 2px; min-height: 26px; }
+.cal-grip { display: block; width: 100%; height: 16px; position: relative; }
+.cal-grip::after { content: ""; position: absolute; left: 50%; top: 5px; width: 38px; height: 5px; margin-left: -19px; border-radius: 3px; background: var(--c-line-2); }
 .wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .wk-d { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 2px 6px; min-width: 0; }
 .wk-w { font-size: 11px; line-height: 16px; color: var(--c-text-3); }
-.wk-d.is-sat .wk-w { color: var(--c-ai); } .wk-d.is-sun .wk-w { color: var(--c-primary); }
+.wk-d.is-sat .wk-w { color: var(--c-ai); } .wk-d.is-sun .wk-w { color: var(--c-sun, var(--c-primary)); }
 .wk-n { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; font: 700 17px var(--font-num); }
 .wk-d.is-today .wk-n { background: var(--c-primary); color: var(--c-text-on); box-shadow: 0 4px 10px -4px var(--c-primary); }
 .wk-tags { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 32px; }   /* 札二段ぶんはいつも空ける（週を送っても背が変わらない） */
@@ -115,13 +142,13 @@ h1, h2, h3, p { margin: 0; }
 
 /* 月の暦（暦は 暦なし／週／月 の三段のまま。札は字のまま——点にしない）。ふつうの月は名前二つ、月の面（.is-tall）は入るだけ＋あふれは +n */
 .mo-w { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 11px; line-height: 20px; color: var(--c-text-3); }
-.mo-w .is-sat { color: var(--c-ai); } .mo-w .is-sun { color: var(--c-primary); }
+.mo-w .is-sat { color: var(--c-ai); } .mo-w .is-sun { color: var(--c-sun, var(--c-primary)); }
 .mo { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); --mo-h: 62px; }
 .mo.is-tall { --mo-h: 77px; }
 .mo-c { min-height: var(--mo-h); padding: 2px 1px 3px; border-top: 1px solid var(--c-line); border-right: 1px solid var(--c-line); display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
 .mo-c:nth-child(7n) { border-right: 0; }
 .mo-n { width: 26px; height: 26px; border-radius: 50%; font: 700 15px/26px var(--font-num); text-align: center; flex: none; }
-.mo-c.is-sat .mo-n { color: var(--c-ai); } .mo-c.is-sun .mo-n { color: var(--c-primary); }
+.mo-c.is-sat .mo-n { color: var(--c-ai); } .mo-c.is-sun .mo-n { color: var(--c-sun, var(--c-primary)); }
 .mo-c.is-out .mo-n { color: var(--c-line-2); }
 .mo-c.is-today .mo-n { background: var(--c-primary); color: var(--c-text-on); box-shadow: 0 3px 8px -3px var(--c-primary); }
 .mo-t { width: 100%; font-size: 10px; font-weight: 700; line-height: 15px; height: 15px; padding: 0 3px; border-radius: 4px; overflow: hidden; white-space: nowrap; flex: none;
@@ -201,8 +228,8 @@ h1, h2, h3, p { margin: 0; }
 .strip-past { position: absolute; inset: 0 auto 0 0; background: var(--c-surface-3); opacity: .55; }
 .strip-b { position: absolute; top: 4px; bottom: 4px; border-radius: 5px; background: var(--c-take); min-width: 6px; }
 .strip-b.is-plan { background: var(--c-ai); } .strip-b.is-act { background: transparent; box-shadow: inset 0 0 0 2px var(--c-fuji); }
-.strip-pin { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--c-primary); }
-.strip-pin::after { content: ""; position: absolute; left: -4px; top: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--c-primary); box-shadow: 0 0 0 2px var(--c-surface); }
+.strip-pin { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--c-now, var(--c-primary)); }
+.strip-pin::after { content: ""; position: absolute; left: -4px; top: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--c-now, var(--c-primary)); box-shadow: 0 0 0 2px var(--c-surface); }
 .strip-wrap { position: relative; }
 .strip-tk { display: flex; justify-content: space-between; margin-top: 4px; font: 400 11px var(--font-num); color: var(--c-text-3); padding: 0 1px; }
 .tl { display: flex; flex-direction: column; gap: 8px; }
@@ -217,8 +244,8 @@ h1, h2, h3, p { margin: 0; }
 .task-m { font-size: 13px; color: var(--c-text-2); display: flex; gap: 8px; }
 .task.is-done .task-t { text-decoration: line-through; text-decoration-color: var(--c-text-3); color: var(--c-text-3); }
 .tl-now { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
-.tl-now span { font: 700 12px var(--font-num); color: var(--c-text-on); background: var(--c-primary); padding: 2px 9px; border-radius: 10px; }
-.tl-now::after { content: ""; flex: 1; height: 2px; border-radius: 1px; background: var(--c-primary); }
+.tl-now span { font: 700 12px var(--font-num); color: #fff; background: var(--c-now, var(--c-primary)); padding: 2px 9px; border-radius: 10px; }
+.tl-now::after { content: ""; flex: 1; height: 2px; border-radius: 1px; background: var(--c-now, var(--c-primary)); }
 .tl-gap { margin-left: 56px; font-size: 13px; color: var(--c-text-3); padding: 2px 0 2px 14px; border-left: 2px dotted var(--c-line-2); }
 .list { overflow: hidden; }
 .li { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 14px; }
@@ -431,6 +458,7 @@ h1, h2, h3, p { margin: 0; }
   .cols.is-cal { grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); }
   .mo.is-tall { --mo-h: 104px; }
   .fab { right: 32px; bottom: 28px; width: 60px; height: 60px; }
+  .cal-grip { display: none; }
   .search kbd { display: block; }
   .shelf { grid-template-columns: repeat(auto-fill, minmax(104px, 124px)); gap: 22px 20px; }
   .hs { margin: 0; padding: 2px 0 10px; }
@@ -468,7 +496,7 @@ h1, h2, h3, p { margin: 0; }
   "use strict";
   const q = new URLSearchParams(location.search);
   const root = document.documentElement;
-  ["display", "accent", "theme", "cal"].forEach((k) => { if (q.get(k)) root.setAttribute("data-" + k, q.get(k)); });
+  ["display", "accent", "theme", "cal", "look"].forEach((k) => { if (q.get(k)) root.setAttribute("data-" + k, q.get(k)); });
   const $ = (id) => document.getElementById(id);
   const ic = (name, cls) => KN.icons.svg(name, cls) || "";
   const pic = (name) => { try { const P = KN.productIcons; return P.byKey(P.findKey(name)) || ic("cart"); } catch (_) { return ic("cart"); } };
@@ -491,7 +519,7 @@ h1, h2, h3, p { margin: 0; }
     21: [["旅行", "plan"]], 22: [["旅行", "plan"]], 23: [["旅行", "plan"]], 24: [["書類を出す", "dead"]], 27: [["会食", "plan", "19:00"]], 30: [["月末の振込", "todo"]] };
   const HOL = [3, 23];   // 文化の日・勤労感謝の日（祝日は日曜と同じ色）
   const WD = "月火水木金土日";
-  let face = q.get("face") || "today";
+  let face = q.get("face") || "today", peek = q.get("peek") === "month";
   function monthGrid(tall) {
     const cells = []; for (let d = 26; d <= 31; d++) cells.push([d, 1]); for (let d = 1; d <= 30; d++) cells.push([d, 0]); for (let d = 1; d <= 6; d++) cells.push([d, 1]);
     const max = tall ? (mid() ? 4 : 3) : 2;
@@ -526,7 +554,7 @@ h1, h2, h3, p { margin: 0; }
   /* ---- 頭・帯・左の列 ---- */
   function head(seat) {
     const plain = seat === "notes" || seat === "settings";
-    const tall = seat === "tasks" && face === "month", month = !plain && (tall || q.get("peek") === "month");
+    const tall = seat === "tasks" && face === "month", month = !plain && (tall || peek);
     $("head").classList.toggle("is-month", month && !wide());
     const title = seat === "notes" ? "Notes" : '11月10日<small>火曜日</small>';
     const eye = seat === "notes" ? "128 冊のあいだに" : "2026 ・ 立冬";
@@ -536,13 +564,13 @@ h1, h2, h3, p { margin: 0; }
     $("head").innerHTML = seat === "settings" ? "" : `<div class="head-sky"></div>
       <div class="head-top"><div class="head-names"><div class="head-eye">${seat === "notes" ? "" : eye}</div><h1 class="head-title">${title}</h1></div>
         ${wide() ? "" : `<button class="head-btn press" aria-label="さがす">${ic("search")}</button>`}<button class="head-btn press" data-go="settings" aria-label="設定">${ic("gear")}</button></div>
-      <div class="tray">${plain || (tall && wide()) ? "" : month && !wide() ? monthGrid(tall) : `<div class="wk">${days}</div>`}</div>`;
+      <div class="tray">${plain || (tall && wide()) ? "" : (month && !wide() ? monthGrid(tall) : `<div class="wk">${days}</div>`) + '<button class="cal-grip" data-cal aria-label="暦"></button>'}</div>`;
   }
   function nav(seat) {
     const tabs = SEATS.map(([id, i]) => `<button class="tab press${id === seat ? " is-on" : ""}" data-go="${id}">${ic(i, "tab-ico")}<span>${id}</span>${id === "tasks" ? '<i class="tab-badge">3</i>' : ""}</button>`).join("");
     $("bar").innerHTML = tabs;
     const cal = []; for (let d = 26; d <= 31; d++) cal.push([d, 1]); for (let d = 1; d <= 30; d++) cal.push([d, 0]); for (let d = 1; d <= 6; d++) cal.push([d, 1]);
-    $("rail").innerHTML = `<div class="brand"><span class="brand-m">暮</span><b>くらしノート</b></div>
+    $("rail").innerHTML = `<div class="brand"><span class="brand-m">${q.get("look") === "modern" ? "く" : "暮"}</span><b>くらしノート</b></div>
       <button class="rail-find press">${ic("search")}さがす<kbd>Ctrl K</kbd></button>${tabs}
       <div class="rail-sp"></div>
       <div class="card mini"><div class="mini-h"><span>2026年 11月</span><span class="chev">${ic("chevron")}</span></div>
@@ -584,7 +612,7 @@ h1, h2, h3, p { margin: 0; }
 
   /* ---- daily ---- */
   function daily() {
-    const kou = `<div class="card kou press"><div class="kou-art" style="background-image:url(img/season/k54.webp)"></div><div class="kou-main">
+    const kou = `<div class="card kou press"><div class="kou-art" style="background-image:url(${q.get("look") === "modern" ? "img/season-photo/k45.webp" : "img/season/k45.webp"})"></div><div class="kou-main">
       <div class="kou-eye">二十四節気　立冬</div><div class="kou-t">山茶始開</div><div class="kou-s">つばきはじめてひらく　11月7日〜11日</div>
       <div class="kou-l">山茶花が咲きはじめるころ</div></div></div>`;
     const acts = `<div class="acts"><button class="card act is-main press"><img src="img/think/diary.webp" alt="">日記に書く</button>
@@ -702,10 +730,11 @@ h1, h2, h3, p { margin: 0; }
     if (location.hash.slice(1) !== seat) history.replaceState(null, "", "#" + seat + location.search);
   }
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-check],[data-go],[data-seg],[data-close],[data-sheet],#fab");
+    const t = e.target.closest("[data-check],[data-go],[data-cal],[data-seg],[data-close],[data-sheet],#fab");
     if (!t) return;
     if (t.matches("[data-check]")) { e.stopPropagation(); t.classList.toggle("is-done"); const row = t.closest(".task"); if (row) row.classList.toggle("is-done"); return; }
     if (t.matches("[data-go]")) return show(t.dataset.go);
+    if (t.matches("[data-cal]")) { if (cur === "tasks") face = face === "month" ? "today" : "month"; else peek = !peek; return show(cur, true); }
     if (t.matches("[data-face]")) { face = t.dataset.face === "month" ? "month" : "today"; return show(cur, true); }
     if (t.matches("[data-seg]")) { t.parentNode.querySelectorAll(".seg-b").forEach((b) => b.classList.toggle("is-on", b === t)); return; }
     if (t.matches("[data-close]")) return closeSheet();
