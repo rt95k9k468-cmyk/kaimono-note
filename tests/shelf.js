@@ -16,7 +16,7 @@ const TODAY = "2026-10-06";
 
 (async () => {
   const c = checker("shelf");
-  const { browser, page, errors } = await open({ unfold: ["sekki"],
+  const { browser, page, errors } = await open({ road: true, unfold: ["sekki"],
     before: async (cx, p) => {
       await p.clock.setFixedTime(new Date(2026, 9, 6, 9, 0));
       /* 古い長期タスク（review なし・9月12日に作った）と、新しめの一件 */
@@ -153,7 +153,7 @@ const TODAY = "2026-10-06";
     const s = document.querySelector("#screen-todo .tl-someday-sec");
     return {
       head: s.querySelector(".tl-someday-head").textContent.replace(/\s+/g, " ").trim(),
-      next: [...s.querySelectorAll(":scope > .tl-someday .item-name")].map((x) => x.textContent.trim()),
+      next: [...s.querySelectorAll(".tl-any > .tl-someday .item-name")].map((x) => x.textContent.trim()),
       folds: [...s.querySelectorAll(".tl-shelf-head")].map((x) => x.textContent.replace(/\s+/g, "").trim()),
       wait: [...s.querySelectorAll('.tl-shelf[data-shelf="wait"] .item-name')].map((x) => x.textContent.trim()),
       waitFor: [...s.querySelectorAll('.tl-shelf[data-shelf="wait"] .tl-wait')].map((x) => x.textContent.trim()),
@@ -161,7 +161,7 @@ const TODAY = "2026-10-06";
     };
   });
   let s = await sec();
-  c.check("欄の名は「これから」", /^これから/.test(s.head), s.head);
+  c.check("欄の名は「時刻なし」（R3。前は「これから」）", /^時刻なし/.test(s.head), s.head);
   c.check("待つ・いつかは畳んで「待つ1」「いつか1」", JSON.stringify(s.folds) === '["待つ1","いつか1"]' && !s.wait.length, JSON.stringify(s));
   c.check("これからの行に待つ・いつかは混ざらない", !s.next.includes("見積もりの返事") && !s.next.includes("ギターを習う")
     && s.next.includes("押し入れの整理"), JSON.stringify(s.next));
@@ -339,7 +339,7 @@ const TODAY = "2026-10-06";
   c.check("足す紙を何も書かずに閉じると、＋へ帰る", !!r, JSON.stringify(r));
   await wait(700);
   await closeAll();
-  await page.click("#screen-todo .tl-someday-sec > .tl-someday .tl-row .item-name");
+  await page.click("#screen-todo .tl-someday-sec .tl-any > .tl-someday .tl-row .item-name");
   await wait(450);
   c.check("行を押せば、その行の紙（足す紙ではない）", (await openTitle()) === "やることを直す", await openTitle());
   await closeAll();

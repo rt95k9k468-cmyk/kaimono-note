@@ -31,7 +31,7 @@ const hand = (d) => pts(d)[pts(d).length - 1];
 
 (async () => {
   const c = checker("road-face");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 8, 0)); },
   });
   await page.evaluate((day) => {

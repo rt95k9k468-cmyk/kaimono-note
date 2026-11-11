@@ -12,7 +12,7 @@ const DAY = "2026-10-03";
 
 (async () => {
   const c = checker("road-wake");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 3, 9, 40)); },
   });
   await page.evaluate((day) => {

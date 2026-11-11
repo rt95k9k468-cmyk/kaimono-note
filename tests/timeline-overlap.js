@@ -61,7 +61,8 @@ const PX_MIN = 1.2;
     JSON.stringify({ night, test }));
   c.check("札の頭は始まりの時刻（55分ぶん下）", Math.abs(test.top - night.top - 55 * PX_MIN) < 1,
     JSON.stringify([night.top, test.top]));
-  c.check("高さは長さ（120分＝144px、長さ未定は 44px）", Math.abs(night.h - 120 * PX_MIN) < 1 && Math.abs(test.h - 44) < 1,
+  /* R3：札は最低 60px。長さ未定のテスト（見込み30分＝36px）は時間を持たない継ぎ目 24px を足し、隣の列のルーティンもそのぶん伸びる。 */
+  c.check("高さは長さ（120分＝144px＋隣の継ぎ目 24px、長さ未定は 60px）", Math.abs(night.h - (120 * PX_MIN + 24)) < 1 && Math.abs(test.h - 60) < 1,
     JSON.stringify([night.h, test.h]));
   c.check("ぶつかりの印（is-clash・白い抜き・「前と重なっています」）は無い", r.clash === 0, String(r.clash));
 
@@ -82,8 +83,9 @@ const PX_MIN = 1.2;
   /* 4件目からは「＋n」。 */
   await page.evaluate((day) => {
     const s = KN.store;
-    s.addTodo({ title: "電話", due: day, time: "21:00", minutes: 30 });
-    s.addTodo({ title: "風呂", due: day, time: "21:10", minutes: 30 });
+    /* R3：列は本当の時間の重なりで数える（描いた高さでは数えない）ので、テストと同じ 20:55 に二件。 */
+    s.addTodo({ title: "電話", due: day, time: "20:55", minutes: 30 });
+    s.addTodo({ title: "風呂", due: day, time: "20:55", minutes: 30 });
   }, DAY);
   await page.waitForFunction(() => document.querySelectorAll("#screen-todo .tl-list > .tl-row").length === 3
     && document.querySelector("#screen-todo .tl-more"), null, { timeout: 5000 });

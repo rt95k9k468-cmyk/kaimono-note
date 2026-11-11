@@ -77,7 +77,7 @@ function clockAt(hms) {
     unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。
     stamps：時計を止めても、事象の時刻（e.timeStamp）は本物のまま（CDP の timestamp が届く）。playwright の時計は
     e.timeStamp を「頁が初めて読んだ時刻」にすり替えるので、重い機械では指の速さが読み違えられる（tests/README.md）。 */
-async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, moment = false, bookFirst = false, weekFirst = false, live = false, unfold = [], scrollbars = false, stamps = false } = {}) {
+async function open({ viewport = { width: 390, height: 844 }, before, touch = false, timezoneId, nudge = false, moment = false, bookFirst = false, weekFirst = false, road = false, live = false, unfold = [], scrollbars = false, stamps = false } = {}) {
   await ensureServer();
   /* playwright はここで読む——ブラウザの要らない台本（registry）が、playwright の
      無いところでも走れるように。 */
@@ -112,6 +112,8 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
   if (!live) await ctx.addInitScript(() => { try { localStorage.setItem("kn-note-marks", "1"); } catch (_) {} });
   /* やることは開いたときは今日の面（2026年10月20日。以前は週）。ほかの台本は席の二度押しが何もしない。週の面から始める台本だけ `weekFirst: true`。 */
   await ctx.addInitScript((f) => { try { sessionStorage.setItem("kn-todo-face", f); } catch (_) {} }, weekFirst ? "week" : "today");
+  /* 今日の面の一日の道は畳んだ帯から（R3、2026年11月11日）。道を見る台本は `road: true` で、ひらいた姿から（前の台本をそのまま回す）。 */
+  if (road) await ctx.addInitScript(() => { try { sessionStorage.setItem("kn-todo-road", "open"); } catch (_) {} });
   /* 畳んだ面を開く：util.js が KN.util を置いた瞬間に、その名前を FOLDED から外す（アプリに試験の口を作らない）。 */
   if (unfold.length) await ctx.addInitScript((names) => {
     const KN = (window.KN = window.KN || {});

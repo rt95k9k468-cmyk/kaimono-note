@@ -772,6 +772,12 @@ bfcache からの `pageshow`）に、人が四歩あるいて、いつもの形�
 
 ### 今日の面は時間の物差し（`js/tl-layout.js`・設計は docs/timeline-scale-design.md）
 
+- **R3（2026年11月11日・docs/redesign.md）で上書き**：札は最低 60px（`minH`・`minUnknownH`）。短い札は時間を伸ばさず、下端に
+  **時間を持たない継ぎ目**（手順の継ぎ目と同じ）を足して下を押し下げる——列に割るのは本当の時間が重なるときだけ（下の「36px・44px・
+  描いた高さで数える」は前の決め）。継ぎ目で終わる札は自分のぶんだけ伸びる。時刻の字は札の頭から 16px（`clockSpan`）。背骨は描くが
+  見せない（`visibility: hidden`。`--pass` の計算は残る。1時間の目盛りと畳んだ空きの点線は残す）。札の棒は 5px の色の帯（`--tl-fill` 一色）。道は畳んだ帯（`dayStrip`）が既定で、
+  同じ一日を `KN.tlLayout.strip` が横の 0〜1 へ。
+
 - **縦軸＝時間。** 1分＝1.2px（1時間72px）。札の top は始まり、height は長さ、上限なし。
   位置・高さ・列・畳みは `KN.tlLayout.layout`（純関数。DOM も store も触らない——`tests/tl-layout.js` が表で測る）が
   決め、画面は札に CSS 変数 `--top`・`--h`（px の数）・`--lane`・`--lanes` を置くだけ（`.tl-list` が

@@ -4,7 +4,7 @@
    - どの席も、島の下（左右 59px）に押せるものが無い。月の暦は窓に収まる（最後の週まで）
    - ＋の紙・据えたノート・設定（外観の一枚）を開いたまま縦へ回して戻す：開いたまま・島の下に押せるもの無し
    - 背の低い窓を使い切る：題と週の暦は一段（帯の背 90px まで）・からだと買うものは二段・設定は見出しごとに二段
-   - ＋は列の底・今日は道｜時間割・月は右に立てて紙は題の下の左・棚のカードは段で割れない
+   - ＋は列の底・今日は時間割｜時刻なし・月は右に立てて紙は題の下の左・棚のカードは段で割れない
    - ＋の紙は頭が左・中身が右（窓に収まる）・ノートのホームは二段（左に最近直した、右に木）・日記の「保存する」は開いてすぐ見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
 const { open, checker } = require("./lib");
@@ -104,12 +104,13 @@ function under(safe) {
     await page.click(".tab-todo");
     await wait(600);
     const road = await page.evaluate(() => {
-      const r = document.querySelector("#screen-todo .todo-day.is-tl > .day-road"), l = document.querySelector("#screen-todo .todo-day.is-tl > .tl");
+      // R3：左に帯と時間割、右に時刻なしと今週。
+      const r = document.querySelector("#screen-todo .tk-day > .todo-day"), l = document.querySelector("#screen-todo .tk-day > .tk-side");
       if (!r || !l) return null;
       const a = r.getBoundingClientRect(), b = l.getBoundingClientRect();
       return { side: a.right <= b.left + 1 && b.top < a.bottom, road: Math.round(a.width) };
     });
-    t.check(`${at}：今日は道の右に時間割`, road && road.side && road.road >= 340, JSON.stringify(road));
+    t.check(`${at}：今日は帯と時間割の右に時刻なし`, road && road.side && road.road >= 340, JSON.stringify(road));
 
     /* 2. どの席も島の下に押せるもの無し。 */
     for (const seat of ["archive", "notes", "todo", "list", "diet"]) {

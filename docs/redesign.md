@@ -158,7 +158,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R0 | 計画と見本（11月10日 済み） | この文書・`tools/redesign-proto.html` | — | — |
 | R1 | **済み（11月10日）**。土台：色・字・形・面の札と共通の部品（カード・ボタン・札・選ぶ帯・行・丸・欄・一言）。ガラスを外す・**装いを二つに（手帳・モダン）**・明暗 | base.css `:root`・components.css・attire.css（外す）・`applyAttire`・settings-look.js・store.js（`headFont`）・theme-color | look-tokens・shape-tokens・legibility・attire・typeface・sky・text-size・css-unused | 大 |
 | R2 | **済み（11月11日）**。骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
-| R3 | tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
+| R3 | **済み（11月11日）**。tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
 | R4 | health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
 | R5 | shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
 | R6 | daily・書く紙 | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
@@ -185,6 +185,12 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   **先の段へ送ったもの**：暦を引くあいだの背（cal-peek は height のまま → RM）・ノートの地の広重（画面が敷く → R7・RI）・
   「これからの二週間」の三つめの丸・行の丸薬が頭へ飛ぶ影武者の角（`morphPill` → RM）・紙の中身の並び（→ RS）・
   膨らむ途中の紙のボタン（紙そのものが小さく動くので、0.4 秒のうちに押すと指の下から逃げる。前は clip-path の窓だけが広がった → RM）。
+- R3 で決めたこと（細目は todo-timeline の「物差し」「札の時間割」の頭の一段）：道は畳んだ帯（`dayStrip`・位置は `KN.tlLayout.strip`）、
+  押すと道がひらく（`roadOpen`・セッションのあいだ。試験は `open({ road: true })`）。設定の 上・下・出さない は帯ごと効く。T2 は帯の下に
+  「予定 ◯・空き ◯」（いまから終わりまで・長さを決めたものだけ）。札は最低 60px——足りないぶんは**時間を持たない継ぎ目**で下を押し下げ、
+  列は本当の時間の重なりだけ。背骨と1時間の目盛りは引かない（畳んだ空きの点線は残す）。時刻なし＝前の日から・今週の印・これから を
+  一枚のカード、済ませたものは紙のいちばん下（帯の裏へ送る `doneRest` は 0 になった）。仕事だけ は今日の面にも。中身 768px から二列
+  （窓 768〜839px も）。広い幅（840px〜）の月の面は暦を帯から紙の左のカードへ（`putCal(null)`・`deskMonth`）。紙の中身は R2 のまま（→ RS）。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。

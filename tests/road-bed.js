@@ -16,7 +16,7 @@ const DAY = "2026-10-06";
 const SNORE = "road-snore, road-snore-rest";   // 三回のぼって、最後に出てきて止まる
 
 async function at(h, m, run) {
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, h, m)); },
   });
   await page.evaluate((d) => {

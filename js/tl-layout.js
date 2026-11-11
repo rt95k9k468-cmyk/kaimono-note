@@ -7,6 +7,8 @@
 
    入力：[{ id, atMin, untilMin, known }]（known＝長さを決めた用事か）、opts.open＝{ id: 足す px }
    出力：{ cards, folds, height, y(min), minAt(px) }
+   strip(items, opts)：同じ物差しを横一本に（畳んだ「一日の帯」。docs/redesign.md 6節）。
+     { from, to, x(min)（0〜1）, bars: [{ id, left, width }]（0〜1）, ticks, planned, free }
      cards … 各札の { id, top, height, lane, lanes, more }（px）。
              重なった札は同じ連なりの中で列に分ける（lanes＝その連なりの列数）。
              列の上限を超えた札は札にせず、その時間にいる最後の列の札の `more`（id の配列）へ。
@@ -21,8 +23,8 @@
   const DEFAULTS = {
     start: 5 * 60, end: 23 * 60,
     pxMin: 1.2,          // 1時間 72px
-    minH: 36,            // 決めた長さの短い札の最低の高さ
-    minUnknownH: 44,     // 長さ未定の札（長さは言わない）
+    minH: 60,            // 札の最低の高さ（R3・60px のカード）。足りないぶんは時間を持たない継ぎ目
+    minUnknownH: 60,     // 長さ未定の札（長さは言わない）
     foldMin: 90,         // これ以上の予定なしは畳む
     foldH: 44,           // 畳んだ区間の高さ
     maxLanes: 3,
@@ -32,25 +34,21 @@
     const o = Object.assign({}, DEFAULTS, opts || {});
     const list = (items || []).filter((it) => it && Number.isFinite(it.atMin));
 
-    /* 描く大きさ。短い札は最低高まで伸ばす——重なりは**描いた高さ**で数える
-       （見た目で重なるなら列に分ける）。 */
-    /* 長さ未定の札が最低高（44px）まで伸びるのは、次の用事までが空いているときだけ。組み立て（plan）は長さ未定を
-       仮の30分で続けて置くので、伸ばしきると次の札と 8px 重なり、続けて置いただけの二件が左右の列に割れていた
-       （2026年10月24日）。詰まっているときは次の札の頭まで（それでも短い札の最低高は守る）。 */
+    /* 描く大きさ（R3・2026年11月11日）。札は最低 60px。短い札は時間を伸ばさず、札の下端に**時間を持たない継ぎ目**
+       （手順の継ぎ目と同じ仕組み）を足して下を押し下げる——前は描いた高さを時間に読み替えて重なりを数え、続けて置いた
+       短い二件が左右の列に割れた。重なり（列）は本当の時間で数える。長さ未定の長さは見込み（plan の usualOf）で、
+       次の用事にかかれば次の頭で止める（2026年10月30日、利用者「2列になる必要がない」）。 */
     const starts = list.map((it) => it.atMin).sort((a, b) => a - b);
     const drawn = list.map((it) => {
       const until = Number(it.untilMin) || it.atMin;
       let len = Math.max(0, until - it.atMin);
-      let least = it.known ? o.minH : o.minUnknownH;
       if (!it.known) {
         const next = starts.find((a) => a > it.atMin);
-        /* 長さ未定の長さは見込み（plan の usualOf）。見込みが次の用事にかかっても、次の頭で止める——
-           見込みで決めた予定を横へ押しのけない（2026年10月30日、利用者「2列になる必要がない」）。 */
         if (next != null && next < until) len = next - it.atMin;
-        if (next != null) least = Math.max(o.minH, Math.min(least, (next - it.atMin) * o.pxMin));
       }
-      const h = Math.max(len * o.pxMin, least);
-      return { it, at: it.atMin, end: it.atMin + h / o.pxMin, h };
+      len = Math.max(len, 1);
+      const least = it.known ? o.minH : o.minUnknownH;
+      return { it, at: it.atMin, end: it.atMin + len, lift: Math.max(0, least - len * o.pxMin) };
     }).sort((a, b) => a.at - b.at || b.end - a.end);
 
     // 一日の範囲は、はみ出す札のぶん広げる（寝る時刻をすぎる用事など）。
@@ -75,7 +73,7 @@
     const open = o.open || {};
     const seams = [];
     drawn.forEach((d) => {
-      const px = Number(open[d.it.id]) || 0;
+      const px = (Number(open[d.it.id]) || 0) + d.lift;
       if (px <= 0) return;
       const same = seams.find((s) => s.min === d.end);
       if (same) same.px = Math.max(same.px, px); else seams.push({ min: d.end, px });
@@ -140,9 +138,9 @@
       const lanes = Math.min(laneEnd.length, o.maxLanes);
       made.forEach(({ d, lane }) => {
         if (lane < o.maxLanes) {
-          // 継ぎ目ちょうどで終わる隣の札は伸ばさない（伸びるのはひらいた札だけ）。
-          const seam = (Number(open[d.it.id]) || 0) > 0 ? null : seams.find((s) => s.min === d.end);
-          const bottom = y(d.end) - (seam ? seam.px : 0);
+          // 継ぎ目ちょうどで終わる札は、継ぎ目のうち自分のぶん（ひらいた手順・短い札の足し）だけ伸びる。持たない隣の札は伸ばさない。
+          const seam = seams.find((s) => s.min === d.end);
+          const bottom = y(d.end) - (seam ? seam.px : 0) + (Number(open[d.it.id]) || 0) + d.lift;
           cards.push({ id: d.it.id, top: y(d.at), height: bottom - y(d.at), lane, lanes, more: [] });
           return;
         }
@@ -159,5 +157,27 @@
     return { cards, folds, height, y, minAt, from, to };
   }
 
-  KN.tlLayout = { layout, DEFAULTS };
+  /* 畳んだ「一日の帯」（R3）：同じ一日（DEFAULTS の 5〜23時、はみ出す用事のぶん広げる）を横一本の 0〜1 に。
+     長さ未定の用事は幅 0（見込みを長さのように描かない。画面は最低の幅の点にする）。
+     合計と空き（redesign-features の T2）：now（分）から終わりまでのうち、長さを決めた用事が占める分（重なりは一度だけ）と、
+     残り。now が無ければ一日の始まりから。事実だけ（多い・少ないは言わない）。 */
+  function strip(items, opts) {
+    const o = Object.assign({}, DEFAULTS, opts || {});
+    const list = (items || []).filter((it) => it && Number.isFinite(it.atMin));
+    const endOf = (it) => (it.known ? Math.max(it.atMin, Number(it.untilMin) || it.atMin) : it.atMin);
+    const from = Math.min(o.start, ...list.map((it) => it.atMin));
+    const to = Math.max(o.end, ...list.map(endOf));
+    const x = (min) => Math.min(1, Math.max(0, (min - from) / (to - from)));
+    const bars = list.map((it) => ({ id: it.id, left: x(it.atMin), width: x(endOf(it)) - x(it.atMin) }));
+    const ticks = [];
+    for (let h = Math.ceil(from / 60) * 60; h <= to; h += 180) ticks.push(h);
+    const after = o.now == null ? from : Math.min(to, Math.max(from, o.now));
+    const spans = list.filter((it) => it.known).map((it) => [Math.max(after, it.atMin), Math.min(to, endOf(it))])
+      .filter(([a, b]) => b > a).sort((p, q) => p[0] - q[0]);
+    let planned = 0, reach = after;
+    spans.forEach(([a, b]) => { if (b > reach) { planned += b - Math.max(a, reach); reach = b; } });
+    return { from, to, x, bars, ticks, planned: Math.round(planned), free: Math.round(to - after - planned) };
+  }
+
+  KN.tlLayout = { layout, strip, DEFAULTS };
 })();

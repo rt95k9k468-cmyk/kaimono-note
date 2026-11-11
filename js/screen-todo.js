@@ -2722,7 +2722,7 @@
   function sheetDigest(day) {
     const st = store.get();
     return JSON.stringify([
-      day, todayKey(), face, weekMore, workOnly, laterOpen, pastOpen,
+      day, todayKey(), face, weekMore, workOnly, laterOpen, pastOpen, roadOpen, TWO_COL.matches,
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? planNow() : "",
       st.settings,
@@ -2788,8 +2788,8 @@
        出したまま**——前は外していましたが、帯の暦が消えると帯の厚みが変わり、
        帯は全タブで一つなので「探しているタブだけ帯が縮む」ことになります。 */
     els.cal = monthCalendar(store.openTodos());
-    KN.head.putCal("todo", els.cal);
-    fitTall(els.cal);
+    KN.head.putCal("todo", deskMonth() ? null : els.cal);
+    if (!deskMonth()) fitTall(els.cal);
 
     /* **日の紙も、変わっていなければ組み直しません。** 暦と同じ話で、
        同じ理由で**外しません**（外して付け直すだけで、その木ぶんの
@@ -2815,7 +2815,12 @@
 
     /* 紙がそのままなら、ここでおしまい。中の配線（払う・引く・運ぶ・
        30秒の拍）は紙に付いたままなので、何も起こしません。 */
-    if (keepSheet) { restoreTop(keepTop); settle(); return; }
+    if (keepSheet) {
+      // 広い幅の月の面：暦は紙の左のカードに。盤が組み直されていたら差し替える。
+      const slot = deskMonth() && keepSheet.querySelector(".mo-cal");
+      if (slot && slot.firstChild !== els.cal) { slot.replaceChildren(els.cal); fitTall(els.cal); }
+      restoreTop(keepTop); settle(); return;
+    }
     sheetNode = null;
 
     /* 一日ぶんは、**白い紙**の上に乗ります。
@@ -2881,12 +2886,14 @@
       const car = node(html`<div class="day-car"><div class="day-track"></div></div>`);
       const track = car.querySelector(".day-track");
       track.append(faceSlide(shownDay(), open));
-      sheet.append(car);
+      const cols = deskMonth() ? node(html`<div class="mo-cols"><div class="card mo-cal"></div></div>`) : null;
+      if (cols) { cols.firstChild.append(els.cal); cols.append(car); sheet.append(cols); } else sheet.append(car);
       // 月の面は、送ると暦の輪と題がついてくる（紙は組み直すたびに新しいので、ここで結ぶ）。
       if (monthFace()) sheet.addEventListener("scroll", followMonth, { passive: true });
       /* 指を受けるのは紙ぜんぶ——長期タスクの下の空白からも払えるように
          （day-swipe.js の「受け口は紙ぜんぶ」）。 */
-      wireDaySwipe(car, track, open, sheet);
+      wireDaySwipe(car, track, open, cols ? car : sheet);
+      if (cols) fitTall(els.cal);
       wireCalPull(sheet);
       /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました
          ——紙のどこを持っても下へ引けば暦が出た時期の名残です。段を
@@ -2958,10 +2965,24 @@
   /* 週の面の頭の右の「仕事だけ」。端末ごと（記録にもバックアップにも入れない）。 */
   const WORK_KEY = "kaimono-note-todo-work";
   let workOnly = (() => { try { return localStorage.getItem(WORK_KEY) === "1"; } catch (_) { return false; } })();
+  /** 仕事だけで絞っているなら、仕事の用事だけ（今日・週・月の面で同じ一つ。2026年11月11日 R3 から今日の面にも）。 */
+  const mineT = (t) => !workOnly || t.side === "work";
+  /* 一日の道をひらいているか（R3・docs/redesign.md 2節「道は畳んで一日の帯一本に。押すと今の道がひらく」）。
+     セッションのあいだだけ覚える（開いたときは畳んだ帯）。試験の台本は open({ road: true }) で、ひらいた姿から。 */
+  let roadOpen = (() => { try { return sessionStorage.getItem("kn-todo-road") === "open"; } catch (_) { return false; } })();
   const weekFace = () => oneDay() && face === "week";
   /* 週の面を左右に並べる幅（docs/desk.md の段4。screens.css の「幅の広い画面」の 1200px と同じ数）。またいだら組み直す。 */
   const WEEK_TWO = window.matchMedia("(min-width: 1200px)");
   WEEK_TWO.addEventListener("change", () => { if (root && weekFace()) render(); });
+  /* 今日の面を二列（左に帯と時間割・右に時刻なしと今週）にしうる幅（R3）。並べるかは css が中身の幅 768px で決め、
+     ここは右の段の「今週」を組むかだけ（電話では組まない）。またいだら組み直す。 */
+  const TWO_COL = window.matchMedia("(min-width: 768px)");
+  /* 広い幅（desk・840px〜）の月の面は、左に大きな暦のカード・右にその月の予定（R3・見本 ?face=month）。暦は帯から紙へ移る
+     （帯の暦は putCal(null) で上へしまう。ノートの席と同じ出入り）。電話・iPad の縦は今までどおり帯の月の段。 */
+  const DESK = window.matchMedia("(min-width: 840px)");
+  DESK.addEventListener("change", () => { if (root && monthFace()) render(); });
+  const deskMonth = () => monthFace() && DESK.matches;
+  TWO_COL.addEventListener("change", () => { if (root && oneDay() && face === "today") render(); });
   /* 月の面（2026年10月19日、利用者）。押せば暦が月の段に開き、下はその月の予定・締切を日ごとに。暦を畳めば週の面へ。 */
   const monthFace = () => oneDay() && face === "month";
   /** 題が言っている日（一日ずつの紙ならその日、一覧なら印を付けた日）。 */
@@ -2988,17 +3009,43 @@
   /** その日ぶんの紙まるごと（時間割＋長期タスク）。横に払うと、この一枚が
       隣の日のものと入れ替わります。 */
   function daySlide(day, open) {
-    const el = node(html`<div class="day-slide"></div>`);
+    /* R3（docs/redesign.md 6節）：一日の帯（畳んだ道）→ 時間割 → 時刻なし（前の日から・今週・これからを一枚に）→ 済ませたもの。
+       中身 768px からは左に帯と時間割（と済ませたもの）、右に時刻なしと今週（css の .tk-day）。
+       済ませたものは前は紙のいちばん上で、開くと帯の裏へ送っていた（doneRest）——いまは下の一枚なので送らない。 */
+    open = open.filter(mineT);
+    const el = node(html`<div class="day-slide tk-day"></div>`);
     const sec = daySection(day, open);
-    /* 今日の済ませたもの（doneList）は紙のいちばん上——前の日から・道・物差しより上。開くと帯の裏へ送ってある
-       （doneRest。2026年10月28日、利用者「タスクが多い日には圧迫する」）。上へ戻せば出る。 */
-    if (sec.__done) el.append(sec.__done);
-    const prev = day === todayKey() ? prevSection(open) : null;
-    if (prev) el.append(prev);
     el.append(sec);
-    // 時間割の下に、少し離して。いつやるか決めていないものの置き場です。
-    el.append(somedaySection(open));
+    const side = node(html`<div class="tk-side"></div>`);
+    side.append(somedaySection(open, day === todayKey()));
+    if (TWO_COL.matches) side.append(weekCard(day, open));
+    el.append(side);
+    if (sec.__done) el.append(doneSection(sec.__done));
     return el;
+  }
+
+  /** 済ませたもの（今日）。一行ずつ、済ませた順（doneList）。 */
+  function doneSection(list) {
+    const sec = node(html`<section class="todo-group tl-done-sec" data-group="done"><h2 class="tk-h">済ませたもの</h2></section>`);
+    list.classList.add("card");
+    sec.append(list);
+    return sec;
+  }
+
+  /** 右の段の「今週」（中身 768px から。電話では組まない）。七日の行は週の面と同じ組み（weekDays）、日を押せばその日。 */
+  function weekCard(day, open) {
+    const U = KN.util, today = todayKey(), w = U.weekOf(day);
+    const span = `${mdJa(w.from)}〜${U.dayDate(w.from).getMonth() === U.dayDate(w.to).getMonth() ? `${U.dayDate(w.to).getDate()}日` : mdJa(w.to)}`;
+    const name = w.from === U.weekOf(today).from ? "今週" : "この週";
+    const sec = node(html`<section class="todo-group tk-week wk" data-group="week"><h2 class="tk-h">${name}<span class="tk-h-n">${span}</span></h2></section>`);
+    sec.append(weekDays(w, open, store.get().todos.filter(mineT), today));
+    sec.addEventListener("click", (e) => {
+      const n = e.target.closest(".js-open");
+      if (n) { haptic(); openSheet(n.closest("[data-id]").dataset.id, null); return; }
+      const d = e.target.closest(".js-day, .wk-evs, .wk-card");
+      if (d && d.dataset.day && d.dataset.day !== shownDay()) { haptic(); goDay(d.dataset.day, d.dataset.day > shownDay() ? 1 : -1); }
+    });
+    return sec;
   }
 
   const faceSlide = (d, open) => (monthFace() ? monthSlide(d, open) : weekFace() ? weekSlide(d, open) : daySlide(d, open));
@@ -3015,7 +3062,9 @@
       書いて組み直すのが先で、暦だけが元の姿から滑る——前は一拍で跳んでいた）。 */
   function setFace(to, day) {
     haptic();
-    KN.calPeek.glide(peekOpts, () => {
+    /* 広い幅で月の面へ出入りするときは、暦が帯と紙のあいだを移るので滑らせない（暦の出入りの一拍が受け持つ）。 */
+    const glide = face === "month" && DESK.matches ? (o, w) => w() : KN.calPeek.glide;
+    glide(peekOpts, () => {
       // 月の面を出たら暦は週へ畳む。月の面の暦は札に書かないので、書くのは札が月を開いていたときだけ（組み直しは subscribe が）。
       const fold = face === "month" && to !== "month" && store.calPrefs("todo").open;
       face = to;
@@ -3047,13 +3096,14 @@
   /** 月の面へ。暦は月の段へ、背を高くして開く（月の面の暦は札に書かない——calOpen）。 */
   function openMonth() {
     haptic();
-    KN.calPeek.glide(peekOpts, () => {
+    const glide = DESK.matches ? (o, w) => w() : KN.calPeek.glide;
+    glide(peekOpts, () => {
       face = "month";
       hereDay = shownDay();
       keepAim++;
       render();
       if (root) KN.app.scrollerOf(root).scrollTop = 0;
-      hidePastDays();
+      if (!DESK.matches) hidePastDays();
     });
   }
 
@@ -3066,7 +3116,7 @@
           <button type="button" class="seg-btn" data-face="month" aria-pressed="${String(face === "month")}">月</button>
         </div>
         ${/* 仕事の青（予定の点と同じ青）は、点にも押したときの地にも使わない——「青＝仕事」と読めてしまう（2026年10月25日） */""}
-        ${face !== "today" ? html`<button type="button" class="chip wk-work" aria-pressed="${String(workOnly)}">仕事だけ</button>` : ""}
+        <button type="button" class="chip wk-work" aria-pressed="${String(workOnly)}">仕事だけ</button>
       </div>
     `);
     el.addEventListener("click", (e) => {
@@ -3576,7 +3626,7 @@
        見えることにも意味があるので（今日なら、そこに人が立っています）。 */
     // 道は時間割の上か下（設定。2026年10月19日、利用者）。
     const below = store.get().settings.todoRoadAt === "below";
-    const road = roadOn() ? dayRoad(day, rows.concat(done), open) : null;
+    const road = roadOn() ? dayStrip(day, rows, done, open) : null;
     if (road && !below) sec.append(road);
     if (!rows.length && !done.length) {
       sec.append(node(html`
@@ -3598,6 +3648,57 @@
      2026年9月29日）。組み立ては時間割と同じ `buildDay`——二つが別々に数えると、
      地図と時間割が食い違うので。設定の「一日の道」で 上・下・出さない を選べます。 */
   const roadOn = () => store.get().settings.todoRoad !== false;
+
+  /** 一日の帯（R3・docs/redesign.md 6節）：道を畳んだ一本（5〜23時）。予定は藍・やることは若竹・活動は藤の枠・いまの印・
+      「次は◯◯／あと◯」・合計と空き（redesign-features の T2。事実だけ）。押すと今の道がひらく（roadOpen）。
+      位置は道と同じ物差しから引く（KN.tlLayout.strip——組み立ては時間割・道と同じ buildDay）。 */
+  function dayStrip(day, rows, done, open) {
+    const todos = rows.concat(done);
+    const box = node(html`<section class="card day-strip ${roadOpen ? "is-open" : ""}" data-day="${day}"></section>`);
+    if (roadOpen) {
+      box.append(node(html`<button type="button" class="strip-fold" aria-expanded="true" aria-label="一日の道を畳む">${icon("chevron")}</button>`));
+      box.append(dayRoad(day, todos, open));
+    } else {
+      const s = store.get().settings, isToday = day === todayKey(), act = KN.activity, P = KN.plan;
+      const plan = P.buildDay(day, act ? act.forRoad(day, todos) : todos, { start: s.dayStart, end: s.dayEnd, now: isToday ? planNow() : null });
+      const nowMin = isToday ? P.toMin(KN.util.nowTime()) : null;
+      const S = KN.tlLayout.strip(plan.items.map((it, k) => ({ id: k, atMin: it.atMin, untilMin: it.untilMin, known: !!Number(it.todo.minutes) })), { now: nowMin });
+      const kind = (t) => (t.act ? "act" : t.kind === "event" ? "event" : "task");
+      const pct = (f) => `${(f * 100).toFixed(2)}%`;
+      const shut = (t) => t.done || t.archived;
+      /* 次の一行（道の「次の一行」と同じ読み方：進んでいる一件 → 次の決まった予定）。今日だけ。 */
+      const live = plan.items.filter((it) => !shut(it.todo));
+      const cur = nowMin == null ? null : live.find((it) => Number(it.todo.minutes) && nowMin >= it.atMin && nowMin < it.untilMin);
+      const next = nowMin == null ? null : live.find((it) => it.fixed && it.atMin > nowMin);
+      const left = next ? next.atMin - nowMin : 0;
+      const sum = [S.planned ? `予定 ${P.humanSpan(S.planned)}` : "", `空き ${P.humanSpan(Math.max(0, S.free))}`].filter(Boolean).join("・");
+      box.append(node(html`
+        <button type="button" class="strip-open" aria-expanded="false" aria-label="一日の道をひらく">
+          ${cur || next ? html`<span class="strip-top">
+            <span class="strip-next">${cur ? html`いまは ${cur.todo.title}` : html`次は ${tlClock(next.at)} ${next.todo.title}`}</span>
+            <span class="strip-left">${cur ? `${tlClock(cur.until)}まで` : left > 0 ? `あと${P.humanSpan(left)}` : "いまから"}</span>
+          </span>` : ""}
+          <span class="strip-wrap">
+            <span class="strip-bar">
+              ${nowMin != null ? html`<i class="strip-past" style="--w:${S.x(nowMin).toFixed(4)}"></i>` : ""}
+              ${S.bars.map((b) => html`<i class="strip-b is-${kind(plan.items[b.id].todo)} ${shut(plan.items[b.id].todo) ? "is-done" : ""}" style="left:${pct(b.left)};width:${pct(b.width)}"></i>`)}
+            </span>
+            ${nowMin != null ? html`<i class="strip-pin" style="left:${pct(S.x(nowMin))}"></i>` : ""}
+          </span>
+          <span class="strip-tk">${S.ticks.map((m) => html`<span style="left:${pct(S.x(m))}">${Math.floor(m / 60) % 24}</span>`)}</span>
+          <span class="strip-sum">${sum}</span>
+        </button>`));
+    }
+    box.addEventListener("click", (e) => {
+      if (!e.target.closest(".strip-open, .strip-fold")) return;
+      haptic();
+      roadOpen = !roadOpen;
+      try { if (roadOpen) sessionStorage.setItem("kn-todo-road", "open"); else sessionStorage.removeItem("kn-todo-road"); } catch (_) {}
+      render();
+      if (roadOpen && KN.dayRoad) requestAnimationFrame(() => KN.dayRoad.walk(root));
+    });
+    return box;
+  }
 
   function dayRoad(day, todos, open) {
     const s = store.get().settings;
@@ -3701,23 +3802,30 @@
 
   /* 「これから」（3.0 の B1。前の「長期タスク」）。日の無い用事の欄で、下に「待つ n」「いつか n」を
      畳んで置く（docs/todo-items.md の「五つの状態」）。状態は due と shelf から読むだけ。 */
-  function somedaySection(open) {
+  /** 時刻なし（R3・docs/redesign.md 6節）：前の日から（今日だけ）・今週の印・これから を一枚のカードに。
+      前は「前の日から」が紙の頭、「これから」が時間割の下の別の欄だった。 */
+  function somedaySection(open, withPrev) {
     const all = open.filter((t) => !t.due && !t.done && !t.archived && !t.trace);
+    const today = todayKey();
+    // 今週の印（決めた日の無いもの）を上に。並びの持ち主は order のまま（下の byOrder）。
     const rows = all.filter((t) => !t.shelf);
     const waits = all.filter((t) => t.shelf === "wait");
     const somes = all.filter((t) => t.shelf === "someday");
+    const prev = withPrev ? prevSection(open) : null;
+    const n = rows.length + (prev ? prev.__n : 0);
     const sec = node(html`
       <section class="todo-group tl-someday-sec" data-group="someday">
         <h2 class="todo-head tl-someday-head">
-          <button type="button" class="tl-someday-add" aria-label="これからに足す">
-            <span class="tl-someday-ico" aria-hidden="true">${KN.util.raw(productArt("bulb"))}</span>
-            <span>これから</span>
-            ${rows.length ? html`<span class="cat-head-count">${rows.length}</span>` : ""}
+          <button type="button" class="tl-someday-add" aria-label="時刻なしに足す">
+            <span class="tk-h">時刻なし</span>
+            ${n ? html`<span class="cat-head-count">${n}</span>` : ""}
             <span class="tl-someday-plus">${icon("plus")}</span>
           </button>
         </h2>
       </section>
     `);
+    const card = node(html`<div class="card tl-any"></div>`);
+    if (prev) card.append(prev);
     /* 欄のどこを押しても、日の無い用事を足す紙を開く（行・畳みの頭・ほかの釦は除く）。
        スクロールや運ぶ指では開かない：10px より動いた指は押したことにしない
        （運んだ後の click は wireDrag の eatClick が先に食べる）。 */
@@ -3730,19 +3838,19 @@
       openSheet(null, null, { noDue: true, home: () => document.querySelector("#screen-todo .tl-someday-plus") });
     });
     if (!all.length) {
-      sec.append(node(html`
-        <p class="todo-today-empty">いつかやることを、ここに置いておけます</p>
-      `));
+      if (prev) sec.append(card);
       return sec;
     }
+    sec.append(card);
     /* 並びは**手で決めたもの**（order）です。期限は文字で見えているので、
        並び順まで期限に決めさせると、二つのやり方で同じことを言うことに
        なります——並べ替えられるようにした以上、並びの持ち主は order の
        ほうにします。急ぐものを上に置きたければ、運べば済みます。 */
     const byOrder = (a, b) => (a.order || 0) - (b.order || 0);
+    const week = (t) => (store.inWeek(t, today) ? 0 : 1);
     const list = node(html`<ul class="tl tl-someday"></ul>`);
-    rows.slice().sort(byOrder).forEach((t) => list.append(somedayRow(t)));
-    if (rows.length) sec.append(list);
+    rows.slice().sort((a, b) => week(a) - week(b) || byOrder(a, b)).forEach((t) => list.append(somedayRow(t)));
+    if (rows.length) card.append(list);
     /* 運ぶ手つきは時間割と同じもの。day は渡しません——この欄の行は
        まだどの日のものでもないので、落とした先が日を決めます。 */
     wireDrag(list, null);
@@ -3769,7 +3877,7 @@
         fold.append(ul);
         wireDrag(ul, null);
       }
-      sec.append(fold);
+      card.append(fold);
     });
     return sec;
   }
@@ -3784,11 +3892,9 @@
     const rows = open.filter((t) => t.due && t.due < today && t.due >= from && !t.trace
       && !t.repeat && t.kind !== "event" && !t.shop && !t.shelf);
     if (!rows.length) return null;
-    const sec = node(html`
-      <section class="todo-group tl-prev-sec" data-group="prev">
-        <h2 class="todo-head tl-prev-head">前の日から</h2>
-      </section>
-    `);
+    // 時刻なしのカードの中の一かたまり（R3。見出しは持たない——行の右の札がもとの日を言う）。
+    const sec = node(html`<div class="tl-prev-sec" data-group="prev"></div>`);
+    sec.__n = rows.length;
     // 道へ運べば今日のその時刻に決まる（tl-someday の手つきのまま）。
     const list = node(html`<ul class="tl tl-someday tl-prev"></ul>`);
     rows.slice().sort((a, b) => (a.due === b.due ? (a.order || 0) - (b.order || 0) : a.due < b.due ? 1 : -1))
@@ -3900,6 +4006,13 @@
       facts.prepend(node(html`
         <span class="tl-due ${over ? "is-over" : ""}">${formatDay(t.deadline)}まで</span>
       `));
+    }
+    /* 今週の印（決めた日の無いもの）は「今週」と（R3 の時刻なし）。 */
+    if (store.inWeek(t, todayKey()) && !t.due) {
+      const body = li.querySelector(".tl-body");
+      let facts = li.querySelector(".tl-facts");
+      if (!facts) { facts = node(html`<span class="tl-facts"></span>`); if (body) body.append(facts); }
+      facts.prepend(node(html`<span class="tl-week">今週</span>`));
     }
     /* 待つものは、何を待つかを小さく（B1）。 */
     if (t.shelf === "wait" && t.waitFor) {
@@ -4257,7 +4370,9 @@
     const lo = cell.offsetHeight, dots = cell.querySelector(".cal-dots").offsetTop;
     const top = grid.getBoundingClientRect().top, padB = parseFloat(getComputedStyle(sec).paddingBottom) || 0;
     const rows = Math.ceil(cells.length / 7);
-    const row = Math.floor((window.innerHeight * TALL - top - padB - (rows - 1)) / rows);
+    // 広い幅の月の面（紙の左のカード）は窓の下のきわまで。帯の月の段は窓の 65%。
+    const lim = sec.closest(".mo-cal") ? window.innerHeight - 40 : window.innerHeight * TALL;
+    const row = Math.floor((lim - top - padB - (rows - 1)) / rows);
     if (row <= lo) return;
     sec.style.setProperty("--cal-row", row + "px");
     sec.dataset.rowLo = lo;
@@ -5440,10 +5555,10 @@
     const t = it && it.todo;
     return !!(t && !it.fixed && it.at && !t.done && !t.archived);
   }
-  /** [上, 下]。低い札は縦中央（「ごろ」が付けば時刻とひとかたまりで）、ほかは頭から 3px。 */
+  /** [上, 下]。低い札は縦中央（「ごろ」が付けば時刻とひとかたまりで）、ほかは頭から 16px（R3 の 60px の札の題の高さ。css の .tl-time）。 */
   function clockSpan(c, about, B) {
     const h = B.h + (about ? B.about : 0);
-    const top = c.height < SHORT_CARD ? c.top + c.height / 2 - h / 2 : c.top + 3;
+    const top = c.height < SHORT_CARD ? c.top + c.height / 2 - h / 2 : c.top + 16;
     return [top, top + h];
   }
   const spansMeet = (a, b) => a[0] < b[1] - 1 && b[0] < a[1] - 1;
@@ -6411,6 +6526,7 @@
       if (n) facts.push(html`<span class="tl-shop">★${n}つ</span>`);
     }
     if (t.minutes) facts.push(html`<span class="tl-len">${KN.plan.humanSpan(it.minutes)}</span>`);
+    if (t.side === "work") facts.push(html`<span class="tl-side">仕事</span>`);
     const closed = t.done || t.archived;
     /* 時刻を決めていない（組み立てが詰めた目安の）用事。「ごろ」と、紙に沈めた札（is-about）の両方がこれを見る。 */
     const rough = !it.fixed && !closed && !!it.at;
@@ -6913,7 +7029,7 @@
        ——一覧が物差しを押し下げたまま開いた。ほかの日は、道が上なら頭、でなければ AIM。 */
     const sc = KN.app.scrollerOf(root);
     const today = oneDay() && face === "today" && shownDay() === todayKey();
-    const roadUp = store.get().settings.todoRoadAt !== "below" && root.querySelector(".day-slide:not(.is-peek) .day-road");
+    const roadUp = store.get().settings.todoRoadAt !== "below" && root.querySelector(".day-slide:not(.is-peek) .day-strip");
     if (today || roadUp) {
       const to = Math.min(doneRest(sc), Math.max(0, sc.scrollHeight - sc.clientHeight));
       if (Math.abs(to - sc.scrollTop) >= 1) sc.scrollTop = to;

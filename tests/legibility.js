@@ -121,7 +121,7 @@ function waited(bad, where) {
 (async () => {
   const t = checker("legibility");
   const w = +(process.env.VIEW || 375);
-  const { browser, page, errors } = await open({ viewport: { width: w, height: w === 375 ? 667 : 844 } });
+  const { browser, page, errors } = await open({ road: true, viewport: { width: w, height: w === 375 ? 667 : 844 } });
 
   /* 3週間ぶんの試しの記録。買うもの3つ（帯の数の札）・体重・お酒・時刻のある用事（道の端）。 */
   await page.evaluate(() => {

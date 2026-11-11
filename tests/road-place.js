@@ -8,7 +8,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const c = checker("road-place");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 21, 10, 0)); },
   });
   await page.evaluate(() => {
@@ -19,7 +19,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(400);
   const look = () => page.evaluate(() => {
     const day = document.querySelector("#screen-todo .todo-day");
-    const kids = day ? [...day.children].map((e) => (e.classList.contains("day-road") ? "road" : e.classList.contains("tl") ? "tl" : "")) : [];
+    const kids = day ? [...day.children].map((e) => (e.classList.contains("day-road") || e.classList.contains("day-strip") ? "road" : e.classList.contains("tl") ? "tl" : "")) : [];
     const row = (t) => [...document.querySelectorAll("#screen-todo .tl-row")].find((r) => r.textContent.includes(t));
     const ev = row("打ち合わせ"), td = row("書類を書く");
     const body = ev && ev.querySelector(".tl-body");

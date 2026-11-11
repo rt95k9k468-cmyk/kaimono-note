@@ -19,7 +19,7 @@ const BAN = /遅れ|予定通り|達成|未達|できなかった|急い|%|％/;
 
 (async () => {
   const c = checker("road-lead");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 11, 10)); },
   });
 

@@ -13,7 +13,7 @@ const VIEWS = [{ width: 390, height: 844 }, { width: 375, height: 667 }];
   const c = checker("feel-3");
   for (const vp of VIEWS) {
     const tag = `${vp.width}×${vp.height}`;
-    const { browser, page, errors } = await open({
+    const { browser, page, errors } = await open({ road: true,
       viewport: vp,
       before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 13, 10)); },
     });

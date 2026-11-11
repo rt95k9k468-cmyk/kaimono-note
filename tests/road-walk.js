@@ -45,7 +45,7 @@ const isStill = (r) => r.face === "r" && KEYS.every((k) => r[k] === STILL[k]) &&
 
 (async () => {
   const c = checker("road-walk");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(AT); },
   });
 

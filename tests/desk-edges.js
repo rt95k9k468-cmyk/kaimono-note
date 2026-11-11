@@ -45,7 +45,8 @@ const { open, checker } = require("./lib");
   const roadBeside = async () => {
     await page.evaluate(() => { const b = document.querySelector('#screen-todo .wk-faces .seg-btn[data-face="today"]'); if (b) b.click(); });
     await wait(450);
-    const road = await box("#screen-todo .day-road"), tl = await box("#screen-todo .todo-day.is-tl > .tl");
+    // R3：左に帯と時間割、右に時刻なしと今週。
+    const road = await box("#screen-todo .tk-day > .todo-day"), tl = await box("#screen-todo .tk-day > .tk-side");
     return { on: !!(road && tl && road.r <= tl.l && Math.abs(road.t - tl.t) < 40), road, tl };
   };
   /** からだのカードが同じ高さに二枚以上（段組み）。 */
@@ -89,7 +90,7 @@ const { open, checker } = require("./lib");
       if (!f.ok) wide.push(`${s} ${f.sw}/${f.bw}>${f.w}`);
       if (s === "todo" && (w === 1023 || w === 1024)) {
         const r = await roadBeside();
-        t.check(`${w}px：やることの今日は道と時間割を${w >= 1024 ? "左右に並べる" : "並べない"}`, r.on === (w >= 1024), JSON.stringify(r));
+        t.check(`${w}px：やることの今日は時間割と時刻なしを${w >= 1024 ? "左右に並べる" : "並べない"}`, r.on === (w >= 1024), JSON.stringify(r));
       }
       if (s === "diet" && (w === 1023 || w === 1024)) {
         const c = await dietCols();
@@ -120,7 +121,7 @@ const { open, checker } = require("./lib");
   const fold900 = await seatForm();
   await page.keyboard.press("Control+Backslash");
   await wait(600);
-  t.check("900px：列を開けば一列、畳めば道｜時間割・からだ二段（中身の幅で決まる）",
+  t.check("900px：列を開けば一列、畳めば時間割｜時刻なし・からだ二段（中身の幅で決まる）",
     !open900.road && !open900.diet && fold900.road && fold900.diet, JSON.stringify({ open900, fold900 }));
 
   /* P3b：「すべてのノート」で開いたノートは、中身が 860px（一覧 380＋本文 480）からは一覧の右、狭いと器いっぱい（一覧の上）。

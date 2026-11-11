@@ -70,8 +70,8 @@ const PX_MIN = 1.2;
   c.check("棒は伸ばさない：札の高さのまま（60分＝72px・短い札は最低の高さ）",
     Math.abs(r.routine.h - 60 * PX_MIN) < 2 && Math.abs(r.routine.cardH - 60 * PX_MIN) < 1 && Math.abs(r.water.h - r.water.dataH) < 2,
     JSON.stringify([r.routine, r.water]));
-  c.check("次の札（7:20〜7:50）は y(7:20) のまま",
-    !r.mail.late && Math.abs(r.mail.cardTop - (r.routine.cardTop + 80 * PX_MIN)) < 1 && Math.abs(r.mail.cardH - 30 * PX_MIN) < 1,
+  c.check("次の札（7:20〜7:50）は y(7:20) のまま（30分の札は 60px・R3）",
+    !r.mail.late && Math.abs(r.mail.cardTop - (r.routine.cardTop + 80 * PX_MIN)) < 1 && Math.abs(r.mail.cardH - 60) < 1,
     JSON.stringify(r.mail));
   c.check("時刻は1時間ごと。用事の時刻（5:00・6:00・9:00）と「いま」のそばは出さない",
     r.hours.includes("8:00") && r.hours.includes("7:00") && !r.hours.includes("6:00") && !r.hours.includes("9:00") && !r.hours.includes("5:00"),
@@ -121,7 +121,7 @@ const PX_MIN = 1.2;
   await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
   await page.evaluate(() => KN.app.showScreen("todo"));
   r = await read();
-  c.check("閉じても45分＝54px のまま", Math.abs(r.prep.h - 45 * PX_MIN) < 2, JSON.stringify(r.prep));
+  c.check("閉じても45分＝60px（最低の高さ・R3）のまま", Math.abs(r.prep.h - 60) < 2, JSON.stringify(r.prep));
   /* 残りを続けて済ませると、ずれずに押せて、ぜんぶ済んだら小窓は自分で閉じる。 */
   await page.click(`#screen-todo .tl-row[data-todo-id="${ids.prep}"] .tl-subs-chip`);
   await page.waitForSelector(".note-pop.is-subs.is-open .tl-sub", { timeout: 5000 });

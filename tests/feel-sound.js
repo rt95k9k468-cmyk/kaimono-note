@@ -74,7 +74,7 @@ function iosAudio() {
   c.check("ドラムは turn を返す", /fire\("turn"\)/.test(read("js/ui.js")) && /wakeSound\(\)/.test(read("js/ui.js")));
 
   /* ---------- 動かして ---------- */
-  const { browser, page, errors } = await open({ before: (ctx) => ctx.addInitScript(fakeAudio) });
+  const { browser, page, errors } = await open({ road: true, before: (ctx) => ctx.addInitScript(fakeAudio) });
   const wait = (ms) => page.waitForTimeout(ms);
   const heard = () => page.evaluate(() => window.__snd.slice());
   const clear = () => page.evaluate(() => { window.__snd.length = 0; });
@@ -145,7 +145,7 @@ function iosAudio() {
 
   /* ---------- iPhone のふり：指を離したところで口が開く ---------- */
   {
-    const { browser: b2, page: p2, errors: e2 } = await open({ before: (ctx) => ctx.addInitScript(iosAudio) });
+    const { browser: b2, page: p2, errors: e2 } = await open({ road: true, before: (ctx) => ctx.addInitScript(iosAudio) });
     const heard2 = () => p2.evaluate(() => window.__snd.slice());
     await p2.evaluate(() => {
       const box = document.createElement("div");

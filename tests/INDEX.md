@@ -127,7 +127,7 @@
 | `when-dict.js` | 日付と時刻の入れ方は一つ（roadmap-unify の U8、docs/todo-items.md の「日付と時刻の… |
 | `num-fields.js` | 数の欄は `type="text"`（roadmap-unify の U9）。 |
 | `when-live.js` | やること紙で、打った字の「いつ」を空きを打った時点で欄へ移す（「10:00 病」→ 題は病院・時刻10:00） |
-| `tl-layout.js` | 今日の面の物差し（js/tl-layout.js・純関数）：重なり0〜4件の列・短い札・長さ未定・長い空きの畳み・y(… |
+| `tl-layout.js` | 今日の面の物差し（純関数）：列・短い札は60pxの継ぎ目・長さ未定・畳み・y・一日の帯とT2 |
 | `when-fields.js` | 日付と時刻の欄を画面で、欄ごとに（U8）。 |
 | `words.js` | 言葉の札（roadmap-unify の U10、docs/look.md の「言葉の札」）。 |
 | `del-rule.js` | 消すときの決まり（roadmap-unify の U11、docs/look.md の「消すとき」）。 |

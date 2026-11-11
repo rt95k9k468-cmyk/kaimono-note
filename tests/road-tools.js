@@ -17,7 +17,7 @@ const PREV = "2026-09-29";
 
 (async () => {
   const c = checker("road-tools");
-  const { browser, ctx, page, errors } = await open({
+  const { browser, ctx, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 30, 9, 10)); },
   });
 
@@ -221,7 +221,7 @@ const PREV = "2026-09-29";
   await browser.close();
 
   /* ---- 10. 寝る時刻を過ぎたら、いまの時刻は寝床の下（道具箱に重ならない。10月8日・利用者の声） ---- */
-  const night = await open({ before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 30, 23, 5)); } });
+  const night = await open({ road: true, before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 30, 23, 5)); } });
   await night.page.evaluate((day) => KN.store.addTodo({ title: "病院", due: day, time: "15:00", minutes: 60 }), DAY);
   await night.page.click('.tab[data-tab="todo"]');
   await night.page.waitForTimeout(800);

@@ -10,7 +10,7 @@ const DAY = "2026-10-06";
 
 (async () => {
   const c = checker("road-now-clear");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 6, 40)); },
   });
   await page.evaluate((d) => {

@@ -18,7 +18,7 @@ for (const k of [1, 1.12, 1.25, 1.3]) {
 
 (async () => {
   const c = checker("road-labels-clear");
-  const { browser, page, errors } = await open({ viewport: { width: 393, height: 852 },
+  const { browser, page, errors } = await open({ road: true, viewport: { width: 393, height: 852 },
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 13, 14, 21)); },
   });
   await page.click('.tab[data-tab="todo"]');

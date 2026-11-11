@@ -18,7 +18,7 @@ const BAN = /遅れ|予定通り|達成|未達|速い|遅い|前より|短くな
 
 (async () => {
   const c = checker("usual-pace");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 7, 43)); },
   });
 

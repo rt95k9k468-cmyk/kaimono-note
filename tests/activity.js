@@ -16,7 +16,7 @@ const NEXT = "2026-10-07";
 
 (async () => {
   const c = checker("activity");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 10, 0)); },
   });
   const wait = (ms) => page.waitForTimeout(ms);

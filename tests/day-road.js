@@ -25,7 +25,7 @@ const DAY = "2026-09-29";
 
 (async () => {
   const c = checker("day-road");
-  const { browser, ctx, page, errors } = await open({
+  const { browser, ctx, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 7, 43)); },
   });
 

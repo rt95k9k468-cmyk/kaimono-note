@@ -13,7 +13,7 @@ const DAY = "2026-10-01";
 
 (async () => {
   const c = checker("road-done");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 1, 19, 39)); },
   });
   await page.evaluate((day) => {
@@ -87,7 +87,7 @@ const DAY = "2026-10-01";
      7:30〜9:30 の朝のルーティンを 8:00 に、7:30〜8:30 の朝のBaby を 8:20 に済ませた（前の用事の
      あいだに済ませたので押さずに 7:30 から二つ）。11:50〜12:10 の杏へ電話（12:10）はまん中が 12:00 の角。
      13:15〜14:15 の保育園（14:15）の途中に 13:30〜13:45 の電話（13:45）。 */
-  const b2 = await open({
+  const b2 = await open({ road: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 1, 19, 39)); },
   });
   await b2.page.evaluate((day) => {

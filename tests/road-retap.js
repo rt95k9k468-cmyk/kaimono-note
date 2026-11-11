@@ -4,7 +4,7 @@ const { open, checker } = require("./lib");
 
 (async () => {
   const c = checker("road-retap");
-  const { browser, page, errors } = await open({
+  const { browser, page, errors } = await open({ road: true,
     weekFirst: true,
     before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 6, 9, 40)); },
   });

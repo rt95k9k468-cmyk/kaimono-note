@@ -7165,8 +7165,6 @@ button.note-when:active { opacity: var(--press-fade); }
   background: color-mix(in srgb, var(--c-primary-soft) 45%, var(--c-surface));
 }
 .tl-someday-sec > .todo-head { padding: var(--sp-2) var(--sp-1); font-size: var(--fs-sm); }
-.tl-someday-ico { display: grid; flex: none; color: var(--c-primary); }
-.tl-someday-ico svg { width: var(--ico); height: var(--ico); }
 .tl-someday-head .cat-head-count { display: none; }
 .tl-someday { padding: 0 var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); }
 .tl-row.is-someday { grid-template-columns: 0 0 1fr; }
@@ -7181,7 +7179,6 @@ button.note-when:active { opacity: var(--press-fade); }
 
 /* 前の日から（今日の面の頭・screen-todo.js の prevSection）。これからと同じ箱の形で、地は白（灰は見づらい）。赤くしない。 */
 .tl-prev-sec { margin: var(--sp-3) var(--sp-4) 0; }
-.tl-prev-sec > .todo-head { padding: var(--sp-2) var(--sp-1); font-size: var(--fs-sm); color: var(--c-text-2); }
 .tl-prev { padding: 0 var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
 /* 行き先の札（もとの日。押すとその場で小窓なので印は下向き。10月28日、利用者）。淡い地に灰の字。 */
 .tl-move {
@@ -7862,13 +7859,15 @@ button.note-when:active { opacity: var(--press-fade); }
   @container seat (min-width: 768px) {
     #screen-todo[data-face="today"] .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
     #screen-todo[data-face="today"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
-    /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。道は 400px（電話の 393 より細いと札が切れる）〜580px
-       （中身 1044px＝窓 1276px から。道の絵ごと一回り大きく、時の数字が 11px に届く＝W5）、
-       時間割に 440px を残す（列の幅は器と --desk-wide の小さいほう）。並べる境目 768px は窓 1024px の中身（左の列 256px）＝道 400＋間 24＋時間割 344。 */
-    #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
-    #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(400px, min(100cqi, var(--desk-wide)) - var(--sp-6) - 440px, 580px); }
-    #screen-todo .todo-day.is-tl > .day-road .road-map { max-width: none; }
-    #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
+    /* 今日の面の二列（R3）：左に帯と時間割・済ませたもの、右に時刻なしと今週。境目 768px は窓 1024px の中身（左の列 256px）。 */
+    #screen-todo[data-face="today"] .tk-day {
+      display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); grid-template-rows: auto 1fr;
+      column-gap: var(--sp-5); align-items: start;
+    }
+    #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
+    #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
+    #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
+    #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
     /* からだ：カードを段組みに（上から下へ流れ、段の高さをそろえる）。三段は 380px ずつ入る幅から。 */
     .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
     .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
@@ -8002,12 +8001,14 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   /* daily：写真の帯（desk は 260px から）を窓の半分弱に、三枚は絵を字の左へ（一枚の背 64px の絵＋字 → 48px の一行）。 */
   #screen-archive[data-season] .tl-sheet.is-daily { --season-h: 44vh; }
   /* からだ：カードを二段に（desk は中身 768px から。横の窓の中身は 670〜770px）。 */
-  /* やることの今日：道（左）と時間割（右）。desk の P3a（中身 768px から）より細い道——札は少し詰まる。
-     段組みはどれも、月を右に立てて紙が細いあいだ（.head.is-month。base.css）は電話と同じ一列。 */
-  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-4); align-items: start; }
-  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(340px, 100cqi - 310px, 400px); }
-  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > .day-road .road-map { max-width: none; }
-  .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > :not(.day-road) { grid-column: 2; }
+  /* やることの今日（R3）：左に帯と時間割、右に時刻なしと今週。段組みはどれも、月を右に立てて紙が細い
+     あいだ（.head.is-month。base.css）は電話と同じ一列。 */
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day {
+    display: grid; grid-template-columns: minmax(340px, 1.3fr) minmax(240px, 1fr); grid-template-rows: auto 1fr; column-gap: var(--sp-3); align-items: start;
+  }
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
   .head:not(.is-month) ~ .panes .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
   .head:not(.is-month) ~ .panes .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   .think-card { flex-direction: row; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
@@ -8047,4 +8048,163 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
     background: var(--c-sheet);
     border-bottom-right-radius: var(--r-xl);
   }
+}
+
+/* =========================================================
+   R3 tasks の形（docs/redesign.md 6節・2026年11月11日。見本 tools/redesign-proto.html の #tasks）
+
+   今日：今日｜週｜月と仕事だけ → 一日の帯（畳んだ道・押すとひらく）→ 時間割（左に時刻、右に 60px のカード）→
+   時刻なし（前の日から・今週・これからを一枚に）→ 済ませたもの。中身 768px からは左右二列（上の desk の器と下の窓の幅）。
+   週・月：日ごとの行をカードに。
+   ========================================================= */
+.tk-h {
+  display: flex; align-items: baseline; gap: var(--sp-2); margin: 0;
+  font-family: var(--font-display); font-size: var(--fs-xl); line-height: 1.3; font-weight: var(--fw-bold);
+  letter-spacing: .02em; color: var(--c-text);
+}
+.tk-h-n { font-family: var(--font); font-size: var(--fs-sm); font-weight: var(--fw-regular); letter-spacing: 0; color: var(--c-text-3); }
+.tk-day { padding-bottom: var(--sp-6); }
+.tk-side { min-width: 0; }
+.tk-week { display: none; margin: var(--sp-5) var(--sp-4) 0; }
+.tk-week > .tk-h { padding: 0 var(--sp-1) var(--sp-2); }
+.tk-week > .wk-week { margin: 0; }
+/* 窓 768〜839px（iPad の縦。左の列が無いので窓＝中身）も二列。840px からは desk の器（中身 768px）。 */
+@media (min-width: 768px) and (max-width: 839.98px) {
+  #screen-todo[data-face="today"] .tk-day {
+    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); grid-template-rows: auto 1fr;
+    column-gap: var(--sp-3); align-items: start; padding-inline: var(--sp-3);
+  }
+  #screen-todo[data-face="today"] .wk-faces { padding-inline: var(--sp-6); }
+  #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
+  #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
+  #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
+  #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
+}
+
+/* ---- 一日の帯（畳んだ道。js の dayStrip・KN.tlLayout.strip） ----
+   予定は藍・やることは若竹・活動は藤の枠。過ぎた時間は薄く覆い、いまの印。幅は scale（transform の原則）。 */
+.day-strip { position: relative; margin: var(--sp-2) var(--sp-4) var(--sp-3); }
+.strip-open {
+  display: block; width: 100%; padding: 14px 16px 12px; border: 0; border-radius: inherit;
+  background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
+  transition: scale var(--m-press) var(--ease);
+}
+.strip-open:active { scale: var(--press-wide); }
+.strip-open:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+.strip-top { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: 12px; }
+.strip-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(15px * var(--fs-k)); font-weight: var(--fw-bold); }
+.strip-left { margin-left: auto; flex: none; font-size: var(--fs-sm); color: var(--c-text-2); white-space: nowrap; }
+.strip-wrap { position: relative; display: block; }
+.strip-bar { position: relative; display: block; height: 26px; border-radius: var(--r-sm); background: var(--c-surface-2); overflow: hidden; }
+.strip-past {
+  position: absolute; inset: 0; transform-origin: left center; scale: var(--w, 0) 1;
+  background: var(--c-surface-3); opacity: .55;
+}
+.strip-b {
+  position: absolute; top: 4px; bottom: 4px; min-width: 6px; border-radius: 5px; background: var(--kind-task);
+  transform-origin: left center; animation: stack-grow var(--m-fill) var(--ease-out) both;
+}
+.strip-b.is-event { background: var(--kind-event); }
+.strip-b.is-act { background: transparent; box-shadow: inset 0 0 0 2px var(--c-fuji); }
+.strip-b.is-done { opacity: .5; }
+.strip-pin { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--c-now); }
+.strip-pin::after {
+  content: ""; position: absolute; left: -4px; top: -5px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--c-now); box-shadow: 0 0 0 2px var(--c-surface);
+}
+.strip-tk { position: relative; display: block; height: 15px; margin-top: 4px; font-family: var(--font-num); font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); }
+.strip-tk > span { position: absolute; top: 0; translate: -50% 0; }
+.strip-tk > span:first-child { translate: 0 0; }
+.strip-tk > span:last-child { translate: -100% 0; }
+.strip-sum { display: block; margin-top: 6px; font-size: var(--fs-sm); color: var(--c-text-2); }
+/* ひらいた道（前の道そのもの）。畳む印は右上。入るときは 8px 上がりながら（動きの辞書の「移る」）。 */
+/* ひらいた道は前の道の幅のまま（カードの地も線も持たない。道の札の置き方は紙の幅で数えてある）。 */
+.day-strip.is-open { margin: 0; padding-top: var(--sp-2); background: none; border: 0; box-shadow: none; border-radius: 0; }
+.day-strip.is-open > .day-road { animation: desk-in-up var(--m-face) var(--ease-out) both; --desk-shift: -8px; }
+.strip-fold {
+  position: absolute; top: var(--sp-1); right: var(--sp-1); z-index: 2;
+  display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%;
+  background: none; color: var(--c-text-3); cursor: pointer;
+}
+.strip-fold svg { width: var(--ico-sm); height: var(--ico-sm); rotate: -90deg; }
+.strip-fold:active { scale: var(--press-dot); }
+
+/* ---- 時間割の札（60px のカード：色の帯 5px・絵・題・長さ・丸） ----
+   高さは物差し（tl-layout の minH 60・短い札は時間を持たない継ぎ目）。背骨は引かない（見本）——
+   時刻は左の列の字と1時間ごとの目盛り、時間の空きは畳んだ空きの点線と札のあいだが言う。 */
+#screen-todo .tl-list { --tl-gut: 72px; --tl-right: var(--sp-4); }
+#screen-todo .tl-list > .tl-seg { visibility: hidden; }
+#screen-todo .tl-list > li.tl-row > .tl-time {
+  top: 16px; width: calc(var(--tl-gut) - 10px); padding-right: 0;
+  font-family: var(--font-num); font-size: calc(14px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2);
+}
+#screen-todo .tl-list > li.tl-row > .tl-time:not(.is-fixed) { font-weight: var(--fw-regular); }
+#screen-todo .tl-list > li.tl-row > .tl-rail { width: 5px; z-index: 1; border-radius: var(--r-md) 0 0 var(--r-md); overflow: hidden; }
+/* 過ぎてもまだの線は帯と同じ幅で帯の上を通る（帯と同じ重なり 1・あとに置くので前。押せる）。 */
+#screen-todo .tl-list > .tl-late-line { left: calc(var(--tl-gut) + 2.5px); width: 5px; }
+#screen-todo .tl-list > li.tl-row .tl-node { width: 5px; background: var(--tl-fill); }
+#screen-todo .tl-list > li.tl-row.is-live .tl-node { background: var(--tl-fill); }
+#screen-todo .tl-list > li.tl-row > .item.tl-item {
+  height: calc(100% - 2px); margin: 1px 0; padding: 9px 12px 9px 16px; gap: var(--sp-3);
+  background: var(--c-surface); border-radius: var(--r-md); box-shadow: var(--shadow-1);
+}
+#screen-todo .tl-list > li.tl-row:not(.is-live):not(.is-done) > .item.tl-item { outline: 1px solid var(--c-border); outline-offset: -1px; }
+#screen-todo .tl-list > li.tl-row.is-about:not(.is-live):not(.is-done) > .item.tl-item {
+  background: color-mix(in srgb, var(--c-surface) 40%, var(--c-sheet)); box-shadow: none;
+  outline: 1.5px dashed color-mix(in srgb, var(--c-text-3) 60%, transparent);
+}
+#screen-todo .tl-list > li.tl-row.is-live > .item.tl-item { border-radius: var(--r-md); }
+#screen-todo .tl-row:not(.is-done):not(.is-someday) .tl-item .item-name { color: var(--c-text); }
+#screen-todo .tl-list .tl-item .item-name { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+#screen-todo .tl-list > li.tl-row.is-about .tl-item .item-name { font-weight: var(--fw-regular); }
+#screen-todo .tl-list .tl-ico { color: var(--tl-fill); }
+#screen-todo .tl-list .tl-facts { font-size: var(--fs-sm); }
+.tl-len + .tl-side::before { content: "・"; }
+.tl-side { color: var(--c-text-2); }
+
+/* ---- 時刻なし（前の日から・今週・これからを一枚のカードに） ---- */
+#screen-todo .tl-someday-sec {
+  margin: var(--sp-5) var(--sp-4) 0; padding: 0 0 var(--sp-3); border: 0; border-radius: 0; background: none;
+}
+#screen-todo .tl-someday-sec > .todo-head { padding: 0 var(--sp-1) var(--sp-2); font-size: inherit; }
+#screen-todo .tl-someday-head .cat-head-count { display: inline; font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--c-text-3); }
+.tl-any { overflow: clip; }
+.tl-any > .tl-prev-sec { margin: 0; }
+#screen-todo .tl-any .tl-someday, #screen-todo .tl-any .tl-prev { padding: 0 var(--sp-4); border-radius: 0; background: none; box-shadow: none; }
+.tl-any > * + * { border-top: 1px solid var(--c-border); }
+#screen-todo .tl-any .tl-row.is-someday .item.tl-item { min-height: var(--row-h); padding: 8px 0; align-items: center; }
+#screen-todo .tl-any .tl-row.is-someday .tl-item .item-name { font-size: var(--fs-md); font-weight: var(--fw-bold); }
+#screen-todo .tl-any .tl-row.is-someday .check { order: 0; width: 30px; height: 30px; border-radius: 50%; }
+#screen-todo .tl-any .tl-row.is-someday .check[aria-checked="true"] { background: var(--c-take); border-color: var(--c-take); }
+.tl-any .tl-shelf { padding: 0 var(--sp-4); }
+.tl-week { color: var(--c-text-2); }
+
+/* ---- 済ませたもの（今日。下の一枚） ---- */
+.tl-done-sec { margin: var(--sp-5) var(--sp-4) 0; }
+.tl-done-sec > .tk-h { padding: 0 var(--sp-1) var(--sp-2); }
+.tl-done-sec > .tl-done { padding: var(--sp-1) var(--sp-4); }
+.tl-done-sec .tl-done-row { min-height: var(--row-h-compact); }
+.tl-done-sec .tl-done-row > .tl-doneat { width: 40px; }
+
+/* ---- 週・月：日ごとの行をカードに ---- */
+#screen-todo .wk-week, #screen-todo .mo-list, #screen-todo .wk-list {
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
+  padding: 0 var(--sp-3); overflow: clip;
+}
+#screen-todo .wk-week > .wk-card:first-child, #screen-todo .mo-list > .mo-day:first-child, #screen-todo .wk-list > .wk-row:first-child { border-top: 0; }
+#screen-todo .wk-week > .wk-card.is-last, #screen-todo .mo-list > .mo-day:last-child { border-bottom: 0; }
+
+/* 広い幅（840px〜）の月の面：左に大きな暦のカード、右にその月の予定（js の deskMonth。見本 ?face=month）。 */
+.mo-cols {
+  display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr); column-gap: var(--sp-6); align-items: start;
+  padding: var(--sp-2) max(var(--sp-4), calc((100% - var(--desk-wide, 1180px)) / 2 + var(--sp-4))) var(--sp-6);
+}
+.mo-cols > .mo-cal { padding: var(--sp-2) var(--sp-3) var(--sp-1); overflow: clip; }
+.mo-cols > .day-car { min-width: 0; }
+.mo-cols .day-slide.mo { padding-inline: 0; }
+.mo-cols .day-slide.mo > .wk-h { padding-top: 0; }
+.mo-cols .mo-list { margin-inline: 0; }
+#screen-todo .wk-h:not(.is-sub) { font-family: var(--font-display); font-size: var(--fs-xl); letter-spacing: .02em; }
+@media (min-width: 840px) {
+  #screen-todo[data-face="month"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
 }

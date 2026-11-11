@@ -61,7 +61,7 @@ const DAY = "2026-10-28";
       hours: list ? [...list.querySelectorAll(":scope > .tl-tick:not(.is-quiet):not(.is-near-now) .tl-hour")].map((x) => x.textContent.trim()) : [],
       rows: list ? list.querySelectorAll(":scope > .tl-row").length : 0,
       folds: list ? list.querySelectorAll(":scope > .tl-fold").length : 0,
-      done: scr.querySelectorAll(".day-slide:not(.is-peek) > .tl-done > .tl-done-row").length,
+      done: scr.querySelectorAll(".day-slide:not(.is-peek) .tl-done-sec > .tl-done > .tl-done-row").length,
     };
   });
 

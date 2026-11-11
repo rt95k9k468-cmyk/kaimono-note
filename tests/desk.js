@@ -152,9 +152,10 @@ const { open, checker } = require("./lib");
   await wait(400);
 
   /* やることの今日：道が時間割の左。 */
-  const road = await box("#screen-todo .day-road"), tl = await box("#screen-todo .todo-day.is-tl > .tl");
+  // R3：左に帯と時間割、右に時刻なしと今週（docs/redesign.md 6節）。
+  const road = await box("#screen-todo .tk-day > .todo-day"), tl = await box("#screen-todo .tk-day > .tk-side");
   const face = await page.evaluate(() => document.getElementById("screen-todo").dataset.face);
-  t.check("やることの今日：道は時間割の左に並ぶ", face === "today" && road && tl && road.r <= tl.l && Math.abs(road.t - tl.t) < 40,
+  t.check("やることの今日：帯と時間割（左）の右に時刻なしと今週", face === "today" && road && tl && road.r <= tl.l && Math.abs(road.t - tl.t) < 40,
     JSON.stringify({ face, road, tl }));
 
   /* 週の面：左に日の行、右に期限・やること・これから（段4）。 */

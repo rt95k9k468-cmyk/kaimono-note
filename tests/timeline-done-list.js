@@ -42,12 +42,13 @@ const DAY = "2026-10-28";
       folds: list.querySelectorAll(":scope > .tl-fold").length,
       rest: list.querySelectorAll(":scope > .tl-rest").length,
       now: !!scr.querySelector(".tl-now"),
-      above: (() => { const d = scr.querySelector(".tl-done"); return d ? d.getBoundingClientRect().bottom <= list.getBoundingClientRect().top + 1 : null; })(),
+      // R3（2026年11月11日）：済ませたものは紙のいちばん下（物差しと時刻なしの下）。
+      above: (() => { const d = scr.querySelector(".tl-done"); return d ? d.getBoundingClientRect().top >= list.getBoundingClientRect().bottom - 1 : null; })(),
     };
   });
   let r = await read();
   c.check("済ませた二件は上の一覧に、済ませた順・済ませた時刻", r.done.join("/") === "11:15 見学/14:17 洗濯", JSON.stringify(r.done));
-  c.check("一覧は物差しの上", r.above === true, String(r.above));
+  c.check("一覧は物差しの下（紙のいちばん下・R3）", r.above === true, String(r.above));
   c.check("物差しにはまだの二件だけ", r.ruler.join("/") === "夕ごはん/ゴミ出し", JSON.stringify(r.ruler));
   c.check("物差しの頭はいまの時（16:00）", Number(r.first) === 16 * 60 && r.now, JSON.stringify(r));
 
