@@ -6115,7 +6115,8 @@ textarea.note-title-in {
   padding: var(--sp-1) 0;
   background: var(--c-surface);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-3);
+  /* 小窓は札の色・線・影2（docs/redesign.md 5節。紙＝影3 より一段浅く）。線は内側に（箱の寸法を変えない）。 */
+  box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-2);
   max-height: 60vh;
   overflow-y: auto;
   overscroll-behavior: contain;
