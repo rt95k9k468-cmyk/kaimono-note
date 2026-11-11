@@ -171,10 +171,11 @@ async function seed(page) {
       }
       if (w < 840) {
         const c = fr && fr.cap, p = fr && fr.fab;
-        const capOk = !!c && c.l >= 0 && c.r <= fr.vw && c.b <= fr.vh && (w < 640 || (c.w <= 600 && Math.abs(c.l - (fr.vw - c.r)) <= 1));
-        t.check(`${at}：下の帯は窓の中${w >= 640 ? "・600px で真ん中" : ""}`, capOk, JSON.stringify(c));
-        t.check(`${at}：＋は帯の上、カプセルの右端にそろう`, !!c && !!p && p.b <= c.t && p.r <= c.r + 1 && p.r >= c.r - 24,
-          JSON.stringify({ cap: c, fab: p }));
+        /* 帯と＋はひと組で窓の中（docs/redesign.md 5節）。640px からは 帯 520px＋間 12px＋＋ 56px を真ん中に。 */
+        const capOk = !!c && !!p && c.l >= 0 && p.r <= fr.vw && c.b <= fr.vh && (w < 640 || (c.w <= 520 && Math.abs(c.l - (fr.vw - p.r)) <= 1));
+        t.check(`${at}：下の帯と＋は窓の中${w >= 640 ? "・ひと組で真ん中（帯は 520px まで）" : ""}`, capOk, JSON.stringify({ c, p }));
+        t.check(`${at}：＋は帯と同じ段の右（重ならない・背の真ん中がそろう）`, !!c && !!p && p.l >= c.r && p.l - c.r <= 16
+          && Math.abs((p.t + p.b) / 2 - (c.t + c.b) / 2) <= 2, JSON.stringify({ c, p }));
       } else {
         const b = fr && fr.bar, p = fr && fr.fab;
         t.check(`${at}：左の列は窓の背いっぱい、＋は列にかぶらず窓の中`,

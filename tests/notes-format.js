@@ -459,21 +459,16 @@ const { open, checker } = require("./lib");
 
   /* ---- 段4.3：カードから膨らみ、カードへ縮んで戻る ---- */
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
-  /* 紙の見える窓（clip-path）を、画面の箱に直す。 */
+  /* 紙の箱（カードへ重ねる transform のかかった箱）を、動きの頭／終わりで読む。clip-path は使わない（docs/redesign.md 7節）。 */
   const clipAt = (where) => page.evaluate((w) => {
     const s = document.querySelector(".sheet.is-note");
-    const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.clipPath));
+    const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => /scale\(/.test(k.transform || "")));
     if (!a) return null;
     const t0 = a.currentTime;
     a.pause();
     a.currentTime = w === "start" ? 0 : a.effect.getComputedTiming().duration;
-    const cs = getComputedStyle(s);
-    /* inset() は同じ数を畳んで書き、後ろに round の丸みが続くので、round の前だけを四つに広げる。 */
-    const v = (cs.clipPath.split("round")[0].match(/-?[\d.]+px/g) || []).map(parseFloat);
-    const n = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
     const r = s.getBoundingClientRect();
-    const dy = new DOMMatrixReadOnly(cs.transform).m42;
-    const box = { top: r.top - dy + n[0], right: r.right - n[1], bottom: r.bottom - dy - n[2], left: r.left + n[3] };
+    const box = { top: r.top, right: r.right, bottom: r.bottom, left: r.left };
     a.currentTime = t0;   // play() は終わりにいる動きを頭へ巻き戻すので、元の時刻へ
     a.play();
     return box;
@@ -511,7 +506,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(700);
   t.check("膨らみ終えたら窓は紙いっぱい・カードは戻る", await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
-    return !s.getAnimations().length && getComputedStyle(s).clipPath === "none" && s.style.transition === "";
+    return !s.getAnimations().length && getComputedStyle(s).clipPath === "none" && getComputedStyle(s).opacity === "1" && s.style.transition === "";
   }) && !(await cardBox(second)).hidden);
 
   /* 直す → 先頭へ移ったカードへ縮む（行き先は毎フレーム探し直す）。 */
@@ -558,14 +553,14 @@ const { open, checker } = require("./lib");
   await page.evaluate((sel) => document.querySelector(`${sel} .js-open`).click(), firstSel);
   t.check("動きを減らす設定では、膨らまない", await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
-    return !s.getAnimations().some((x) => x.effect.getKeyframes().some((k) => k.clipPath))
+    return !s.getAnimations().some((x) => x.effect.getKeyframes().some((k) => /scale\(/.test(k.transform || "")))
       && !document.querySelector(".notes-list .note-row[style*='hidden']");
   }));
   await page.waitForTimeout(400);
   await page.click(".sheet.is-note .js-close");
   t.check("動きを減らす設定では、縮まない", await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
-    return !s || !s.getAnimations().some((x) => x.effect.getKeyframes().some((k) => k.clipPath));
+    return !s || !s.getAnimations().some((x) => x.effect.getKeyframes().some((k) => /scale\(/.test(k.transform || "")));
   }));
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
   await page.emulateMedia({ reducedMotion: "no-preference" });

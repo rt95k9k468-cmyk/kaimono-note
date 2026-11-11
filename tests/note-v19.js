@@ -74,19 +74,15 @@ const { open, checker } = require("./lib");
     const r = await page.$eval(".sheet.is-note .sheet-body", (e) => { const q = e.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + 120 }; });
     await swipe(r.x, r.y, 0, my, steps, ms);
   };
-  /* 閉じる動きの終わりの窓（clip-path）を画面の箱に直す。 */
+  /* 閉じる動きの終わりの紙の箱（カードへ重ねる transform のかかった箱）。 */
   const clipEnd = () => page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
-    const a = s && s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.clipPath));
+    const a = s && s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => /scale\(/.test(k.transform || "")));
     if (!a) return null;
     a.pause();
     a.currentTime = a.effect.getComputedTiming().duration;
-    const cs = getComputedStyle(s);
-    /* inset() は同じ数を畳んで書く（左右が同じなら三つ）ので、四つに広げる。 */
-    const v = (cs.clipPath.split("round")[0].match(/-?[\d.]+px/g) || []).map(parseFloat);
-    const n = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
     const r = s.getBoundingClientRect();
-    const out = { top: r.top + n[0], right: r.right - n[1], bottom: r.bottom - n[2], left: r.left + n[3] };
+    const out = { top: r.top, right: r.right, bottom: r.bottom, left: r.left };
     a.play();
     return out;
   });
@@ -100,13 +96,13 @@ const { open, checker } = require("./lib");
   const c2 = await cardBox(second);
   await page.evaluate((s) => document.querySelector(`${s} .js-open`).click(), second);
   await page.waitForSelector(".sheet.is-note.is-open");
-  const grownTo = await page.evaluate(() => {
+  const grownBy = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
-    const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => k.clipPath));
-    return a ? a.effect.getKeyframes().slice(-1)[0].clipPath : "";
+    const a = s.getAnimations().find((x) => x.effect.getKeyframes().some((k) => /scale\(/.test(k.transform || "")));
+    return a ? a.effect.getKeyframes().map((k) => Object.keys(k).filter((n) => !["offset", "easing", "composite", "computedOffset"].includes(n)).join("+")) : null;
   });
-  /* 紙の角は --r-xl（2026年11月10日に 22 → 28px）。 */
-  t.check("膨らみきった窓は四隅が丸い", /round 28px( 28px)*\)$/.test(grownTo), grownTo);
+  /* 膨らむのは transform と opacity だけ（clip-path の窓はやめた。docs/redesign.md 7節）。角は紙そのものが持つ（下）。 */
+  t.check("膨らむ動きは transform と opacity だけ", !!grownBy && grownBy.every((k) => /^(transform\+opacity|opacity\+transform|opacity|transform)$/.test(k)), JSON.stringify(grownBy));
   await page.waitForTimeout(700);
   const on = await box();
   t.check("四隅の丸いカード", on.tl > 0 && on.br > 0 && on.bl > 0, JSON.stringify(on));

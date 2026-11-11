@@ -157,7 +157,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 |---|---|---|---|---|
 | R0 | 計画と見本（11月10日 済み） | この文書・`tools/redesign-proto.html` | — | — |
 | R1 | **済み（11月10日）**。土台：色・字・形・面の札と共通の部品（カード・ボタン・札・選ぶ帯・行・丸・欄・一言）。ガラスを外す・**装いを二つに（手帳・モダン）**・明暗 | base.css `:root`・components.css・attire.css（外す）・`applyAttire`・settings-look.js・store.js（`headFont`）・theme-color | look-tokens・shape-tokens・legibility・attire・typeface・sky・text-size・css-unused | 大 |
-| R2 | 骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
+| R2 | **済み（11月11日）**。骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
 | R3 | tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
 | R4 | health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
 | R5 | shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
@@ -171,6 +171,19 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 - R1 で決めたこと（細目は docs/look.md「装いは二つ・基調色は九つ」）：基調色は id のまま 朱・藍・松葉・江戸紫・山吹・浅葱・柿・臙脂＋季節。
   モダンは基調色と見出しの書体を出さない。theme-color は起動前の二本のまま。札 36／30px・行 56px・丸 30px。**R1 で外して先の段へ送ったもの**：
   カテゴリの色の読み替え（→ R5）・道の塗りは朱のまま濃い（→ R3 で畳む）・直書きの色は絵と写真の幕に残る（→ R2・RI）。
+- R2 で決めたこと（細目は shared-header・tabbar・calendar-swipe・sheet-scroll・desk・sky の頭の一段）：
+  頭＝題の段（`--head-top` 76／96／104px）＋盆（`.head-tray`。写真へ 26px かぶさる）。空は題の段の後ろだけ、幕は左 .56 → 右 0、
+  ボタンは暗い丸（.42）に白い絵——`tests/sky.js` が 20枚ぶん 題 3:1・「年・節気」4.5:1 を見張る。空を切ると墨の字。
+  暦の数字は週も月も 30px の丸に 17px 太（見本は 36／26px。段を引くあいだに升の背が変わらないよう一つに）。札は種類の色の薄い塗り。
+  取っ手 `.cal-grip` は帯に一つ（席は `KN.head.peek(id, o)` で答えを置く）。押すと一段、マウスの端末では出さない。
+  買うもの ⇄ 価格は紙を下げず、紙の頭の リスト｜価格（`KN.app.faceSeg`）と席の二度押しで横に入れ替える。
+  ＋は帯と同じ段（`--fab-room` は帯の右の空き）。送るあいだ引っ込めない。640〜839px は帯 520px と＋のひと組を真ん中に。
+  左の列 256px（引けば 184〜360px）＝印・さがす（帯の虫めがねと同じ口）・席 42px・小さな暦（字だけ・日を選ぶ）・settings。
+  中身の境目は 768px（道｜時間割・からだ二段）・1180px（からだ三段）——窓 1024px・1436px のまま。
+  紙：頭は種類の色 13%・絵の台 60px・題 23px、束は `.d-card`（線と影1）。行から開く・帰るは transform と opacity（`cardShift`）。
+  席を移るときの暦の背の差は、盆が先に背を取り下の画面を translate で（`slidePanes`）。
+  **先の段へ送ったもの**：暦を引くあいだの背（cal-peek は height のまま → RM）・ノートの地の広重（画面が敷く → R7・RI）・
+  「これからの二週間」の三つめの丸・行の丸薬が頭へ飛ぶ影武者の角（`morphPill` → RM）・紙の中身の並び（→ RS）。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。

@@ -1,7 +1,7 @@
 /* やることの紙は、四隅の丸いカード。既にある用事は、その行から広がって出て、その行へ縮んで戻る
-   （2026年10月9日・利用者の希望。ui.js の growCard / shrinkCard / cardWindow、sheet の card）。
+   （2026年10月9日・利用者の希望。ui.js の growCard / shrinkCard / cardShift、sheet の card）。
    - 行から開いても、＋なしで開いても（KN.screens.todo.open）、四隅の丸いカード（is-fab-card）
-   - 開きはじめの見える窓（clip-path）は行の箱、開ききると窓は無い（紙ぜんぶ）
+   - 開きはじめの紙の箱は行の箱（寄せて縮めた transform。clip-path は使わない＝docs/redesign.md 7節）、開ききると紙ぜんぶ
    - 行が紙より上にあっても（紙は中身ぶんの高さで下に浮く）、窓は行から出る（紙ごと寄せる）
    - 閉じると窓は行の箱へ縮み、片づく。行の中に隠したもの（行・丸薬）は残らない
    - 閉じてすぐ別の行を押せる（縮んで帰るあいだ、覆いが指を食べない）
@@ -33,8 +33,8 @@ const { open, checker } = require("./lib");
       && innerHeight - r.bottom >= 6 && parseFloat(cs.borderBottomLeftRadius) > 10
       && parseFloat(cs.borderTopLeftRadius) > 10;
   });
-  /* 紙の見える窓（箱から clip-path の inset を引いたもの）を毎フレーム控える。紙が片づくまで、
-     上限 3 秒。コマはページの中に溜めてあとで読む（fab-home と同じ）。 */
+  /* 紙の見えている箱（transform のかかったあとの箱）を毎フレーム控える。紙が片づくまで、
+     上限 3 秒。コマはページの中に溜めてあとで読む（fab-home と同じ）。clip … 紙を動かす動き（transform）が掛かっているか。 */
   const record = () => page.evaluate(() => {
     const out = window.__rec = [];
     const t0 = performance.now();
@@ -43,13 +43,10 @@ const { open, checker } = require("./lib");
       el = el || document.querySelector(".sheet");
       if (el && el.isConnected) {
         const r = el.getBoundingClientRect();
-        /* 算出値は短く書かれる（左右が同じなら三つ）。 */
-        const m = /inset\(([^r)]+)/.exec(getComputedStyle(el).clipPath);
-        const n = m ? m[1].trim().split(/\s+/).map(parseFloat) : [0];
-        const [tp, rt, bt, lt] = [n[0], n[1] ?? n[0], n[2] ?? n[0], n[3] ?? n[1] ?? n[0]];
-        const v = { l: r.left + lt, t: r.top + tp, r: r.right - rt, b: r.bottom - bt };
+        const m = el.getAnimations().some((a) => a.effect.getKeyframes().some((k) => k.transform));
+        const v = { l: r.left, t: r.top, r: r.right, b: r.bottom };
         out.push({ t: performance.now() - t0, x: (v.l + v.r) / 2, y: (v.t + v.b) / 2, w: v.r - v.l, h: v.b - v.t,
-          clip: !!m, ghosts: document.querySelectorAll(".sheet-morph").length });
+          clip: m, path: getComputedStyle(el).clipPath, ghosts: document.querySelectorAll(".sheet-morph").length });
       }
       if ((!el || el.isConnected) && performance.now() - t0 < 3000) requestAnimationFrame(tick);
       else out.done = true;
@@ -71,10 +68,10 @@ const { open, checker } = require("./lib");
   async function roundTrip(label, title, block) {
     const row = rowOf(title);
     /* "above"：頭に 今日｜週 が載って紙の上端が下がったので（da9bc12）、行の頭をそこへ揃えただけでは
-       紙より上にならない。行の高さの四分の三ぶん、さらに送る。 */
+       紙より上にならない。帯が盆のぶん高くなった（R2）ので、行の高さの一つと四分の一ぶん、さらに送る。 */
     await row.evaluate((el, b) => {
       el.scrollIntoView({ block: b === "above" ? "start" : b });
-      if (b === "above") KN.app.scrollerOf(el.closest(".screen")).scrollTop += el.offsetHeight * 0.75;
+      if (b === "above") KN.app.scrollerOf(el.closest(".screen")).scrollTop += el.offsetHeight * 1.25;
     }, block);
     await page.waitForTimeout(400);
     const from = await boxOf(row);
@@ -98,6 +95,8 @@ const { open, checker } = require("./lib");
     t.check(`${label}：開ききると窓は紙ぜんぶ`, last && !last.clip && Math.abs(last.y - rest.y) < 1, `${fmt(last)} / ${fmt(rest)}`);
     t.check(`${label}：途中は行と紙のあいだ`, opened.some((f) => f.h > from.h + 20 && f.h < rest.h - 20));
     t.check(`${label}：開いたら写しは残らない`, await page.evaluate(() => !document.querySelector(".sheet-morph")));
+    t.check(`${label}：動かすのは transform と opacity（clip-path を使わない）`, opened.every((f) => f.path === "none"),
+      String(opened.filter((f) => f.path !== "none").length));
 
     await record();
     await page.keyboard.press("Escape");
