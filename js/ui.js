@@ -393,12 +393,13 @@
   /* ---- 一覧のカードが膨らんで紙になり、閉じると縮んでカードへ戻る ----
 
      ノートの書く紙（段4.3）。行の丸薬（上）と違って、動くのは**紙そのもの**
-     です：紙は初めから開いた場所にいて、見える窓（clip-path）だけがカードの
-     箱から紙いっぱいへ広がる。字は縮めない（transform で縮めると字がつぶれて
-     見える）ので、紙の中身は窓が広がるあとから現れ、カードの字は写しが
+     です：紙をカードの箱へ重ねたところ（寄せて縮めた transform）から、開いた場所へ
+     広げる。動かすのは transform と opacity だけ（前は見える窓＝clip-path を広げていて、
+     遅い端末で 40コマ中18コマが 20ms を超えた。docs/redesign.md 7節の 1）。縮んだ字が
+     つぶれて見えないよう、紙の中身は広がりきる手前から現れ、カードの字は写しが
      上へ滑りながら薄れます。
 
-     帰りは窓をカードの箱へ戻します。行き先は**毎フレーム探し直す**
+     帰りは紙をカードの箱へ戻します。行き先は**毎フレーム探し直す**
      （grow.back() が id から引く。直したノートは一覧の先頭へ移るので）——
      morphBack と同じ考え方。下へ払っていたら、その場所から戻ります。
 
@@ -416,32 +417,13 @@
     const dx = m ? m.m41 + r.width / 2 : 0;
     return { left: r.left - dx, right: r.right - dx, top: r.top - dy, bottom: r.bottom - dy };
   }
-  const radiusOf = (x) => parseFloat(getComputedStyle(x).borderTopLeftRadius) || 0;
-  /* 窓の角。角の無い行（やることの時間割の行）は、紙の角で（角の立った白い箱に見えないように）。 */
-  const roundOf = (card, el) => radiusOf(card) || radiusOf(el);
   const REST = "translate(-50%, 0px)";
-  /* カードの箱にあたる窓（clip）。カードが紙の箱からはみ出していれば、紙ごとそちらへ寄せ
-     （shift）、窓は紙の中に収める——やることの紙は中身ぶんの高さで下に浮くので、行は紙より
-     上にいることが多い。紙より広い行は、真ん中を合わせて紙の幅に。収まるカード（ノート）は寄せない。 */
-  function cardWindow(s, b, rad) {
+  /* カードの箱へ重ねる transform（紙の真ん中を軸に、寄せて縮める）。 */
+  function cardShift(s, b) {
     const W = s.right - s.left, H = s.bottom - s.top;
-    const w = Math.min(b.width, W), h = Math.min(b.height, H);
-    const L = b.left + (b.width - w) / 2, T = b.top + (b.height - h) / 2;
-    const x = Math.min(Math.max(L - s.left, 0), W - w);
-    const y = Math.min(Math.max(T - s.top, 0), H - h);
-    const dx = L - s.left - x, dy = T - s.top - y;
-    return {
-      shift: Math.abs(dx) + Math.abs(dy) > 0.5 ? `${REST} translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)` : null,
-      clip: `inset(${y}px ${W - x - w}px ${H - y - h}px ${x}px round ${rad}px)`,
-    };
+    const dx = b.left + b.width / 2 - (s.left + W / 2), dy = b.top + b.height / 2 - (s.top + H / 2);
+    return `${REST} translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${(b.width / W).toFixed(4)}, ${(b.height / H).toFixed(4)})`;
   }
-  /* 紙の角は紙から読む（上だけ丸い紙も、四隅の丸いカード＝2.0 の V19 も）。 */
-  const fullClip = (el) => {
-    const cs = getComputedStyle(el);
-    const R = ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"]
-      .map((k) => `${parseFloat(cs[k]) || 0}px`).join(" ");
-    return `inset(0px round ${R})`;
-  };
   const seenBox = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
     && r.right > 0 && r.left < window.innerWidth;
 
@@ -473,12 +455,10 @@
     el.classList.add("is-open");
     const s = restBox(el);
     const timing = { duration: KN.motion.ms("--m-sheet-grow"), easing: KN.motion.ease("--push-e") };
-    const w = cardWindow(s, a, roundOf(card, el));
-    /* 寄せないときは transform を握らない（育つ途中でも下へ払えば、その場所から帰る）。 */
-    const run = el.animate(w.shift
-      ? [{ transform: w.shift, clipPath: w.clip }, { transform: REST, clipPath: fullClip(el) }]
-      : [{ clipPath: w.clip }, { clipPath: fullClip(el) }], timing);
+    const run = el.animate([{ transform: cardShift(s, a), opacity: 0 }, { opacity: 1, offset: .3 }, { transform: REST, opacity: 1 }], timing);
     kids(el).forEach((k) => k.animate([{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], timing));
+    /* 育つ途中で指が触れたら、開ききった姿にして指に渡す（下へ払えば、その場所から帰る）。 */
+    el.addEventListener("pointerdown", () => { if (run.playState === "running") run.finish(); }, { once: true });
     const g = cardGhost(card, a, z + 1, grow.hide);
     /* 写しは窓の角と同じ速さで滑る（薄れるのは前半で）。先に紙の頭まで着くと、紙が行より上に
        開くとき（やること）、写しが窓の外へ出て上の行に重なっていた。 */
@@ -515,8 +495,8 @@
       /* 戻るカードが無い・画面の外：紙がふつうに帰るのと同じ形で。 */
       const to = getComputedStyle(el);
       const run = el.animate([
-        { transform: from.transform, opacity: from.opacity, borderRadius: from.radius },
-        { transform: to.transform, opacity: to.opacity, borderRadius: to.borderRadius },
+        { transform: from.transform, opacity: from.opacity },
+        { transform: to.transform, opacity: to.opacity },
       ], { duration: KN.motion.ms("--m-sheet-close"), easing: KN.motion.ease("--ease-in"), fill: "forwards" });
       return run.effect.getComputedTiming().endTime;
     }
@@ -530,12 +510,7 @@
         height: `${(s.bottom - s.top).toFixed(1)}px`, maxHeight: "none" });
     }
     let b = a;
-    const rad = roundOf(card, el);
-    const full = fullClip(el);
-    const frames = (r) => {
-      const w = cardWindow(s, r, rad);
-      return [{ transform: from.transform, clipPath: full }, { transform: w.shift || REST, clipPath: w.clip }];
-    };
+    const frames = (r) => [{ transform: from.transform, opacity: 1 }, { opacity: 1, offset: .6 }, { transform: cardShift(s, r), opacity: 0 }];
     const timing = { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" };
     const run = el.animate(frames(b), timing);
     kids(el).forEach((k) => k.animate([{ opacity: 1 }, { opacity: 0, offset: .5 }, { opacity: 0 }], timing));
@@ -956,7 +931,7 @@
       let from = null;
       if (shrinks) {
         const cs = getComputedStyle(el);
-        from = { transform: cs.transform, opacity: cs.opacity, radius: cs.borderRadius };
+        from = { transform: cs.transform, opacity: cs.opacity };
         el.getAnimations({ subtree: true }).forEach((a) => a.cancel());
         el.style.transition = "none";
       }

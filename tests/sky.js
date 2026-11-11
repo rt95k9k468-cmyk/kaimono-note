@@ -5,21 +5,21 @@
    - 次に替わる時刻は、その区切りちょうど（夜なら翌朝）
    - 端末の時間帯が日本でなければ、その時間帯の経度で測る（UTC の昼は昼・夜中は夜）
    - #head に札（data-sky）だけ。:root にも #head にもカスタムプロパティを書かない
-   - 帯と暦は地を透かす。札の無いとき（設定で外した）は塗る（いままでどおり）
+   - 空は題の段の後ろだけ（題の段＋盆がかぶさる 26px。docs/redesign.md 5節）。暦は紙色の盆の上。札の無いとき（設定で
+     外した）は空を敷かず、題は墨の字
    - 戻ってきたとき（visibilitychange）に測り直す
    - 時計の帯（theme-color）は空に合わせて変えない
    - 設定で外せる（既定は入）
-   - 字の濃さの比（画面の画素で）：題の段の字と絵は 3:1 以上。暦の字は 4.5:1 以上（もともとそれ未満の
-     字は、空の無いときの比より下げない）。五つの時間帯 × 明るい面・暗い面 × 週・月
-   - ノートへ移るとき、帯の裏へ上がった暦は帯の中に見えない（帯が透けても）
-   - 紙の丸角の外は空。タブを流す途中も、二枚は並んで流れ、あいだの角に空（角は画面が持つ）
-   - いちばん上で引いて紙が下がっても、すき間は空（週・月）。空を下へ伸ばしても帯の中の写真は動かない
-   - 中身が跳ね返って下がっても（勢いよく上端に着いたとき）、紙のふちの一本は紙の上の縁に残る
+   - 字の濃さの比（画面の画素で）：題の白い字とボタンの絵（暗い丸の上）は 3:1 以上、「年・節気」の小さな一行は 4.5:1 以上。
+     暦の字は盆（地の色）の上で、空の無いときと同じ。五つの時間帯 × 明るい面・暗い面 × 週・月
+   - ノートへ移るとき、盆の中を上がった暦は写真の上に見えない
+   - 盆の丸角の外は空、盆の中と下は地の色（紙は盆からそのまま続く＝角を持たない）。タブを流す途中、二枚は並んで流れる
+   - いちばん上で引いて紙が下がっても、すき間は紙の色（空は題の段だけ）
    - 写真（段2）：季節×時間帯の20枚が img/sky/ にあり1枚180KBまで・出典（作者・ライセンス・URL）がそろう・sw.js は
      別の名前のキャッシュへ（ASSETS に入れない）。季節は立春・立夏・立秋・立冬で替わる（夜中の0時に替われば、夜の
      写真も替わる）。読めてから data-sky-img が付き、写真が敷かれる。読めない写真は付かず、描いた空のまま。
      設定で外せば両方の札が外れる。字の濃さの比は、20枚どれを敷いた状態でも同じ決まり。朝の写真の URL は ?v= 付き
-     （同じ名前で日の出の写真を出していた）。どの写真にも地面の色 --sky-g
+     （同じ名前で日の出の写真を出していた）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sky.js */
 const fs = require("fs");
 const path = require("path");
@@ -123,7 +123,12 @@ function rgbOf(s) {
   c.check("写真の URL（?v= 込み）が js と CSS でそろう", cr.every((x) => css.includes(`url("../${x.file}")`)), cr.map((x) => x.file).join(" "));
   /* 朝の名前（<季節>-morning.webp）では前に日の出の写真を出していた。?v= が無いと、覚えた古い写真が出る */
   c.check("朝の写真は ?v= 付き（同じ名前で日の出の写真を覚えている）", cr.filter((x) => x.slot === "morning").every((x) => /\?v=\d+$/.test(x.file)), cr.filter((x) => x.slot === "morning").map((x) => x.file).join(" "));
-  c.check("どの写真にも地面の色 --sky-g（写真の下端より下に続く）", KEYS.every((k) => new RegExp(`data-sky-img="${k}"\\][^}]*--sky-g: #[0-9a-f]{6}`).test(css)));
+  const band = await page.evaluate(() => {
+    const h = document.getElementById("head");
+    return { sky: parseFloat(getComputedStyle(h, "::before").height), top: h.querySelector(".topbar").offsetHeight,
+      tray: getComputedStyle(h.querySelector(".head-tray")).backgroundColor, bg: getComputedStyle(document.getElementById("app")).backgroundColor };
+  });
+  c.check("空は題の段の後ろだけ（題の段＋盆がかぶさる 26px）、盆は地の色", Math.abs(band.sky - band.top - 26) < 1 && band.tray === band.bg, JSON.stringify(band));
   const imgAttr = () => page.evaluate(() => document.getElementById("head").getAttribute("data-sky-img"));
   await page.waitForFunction(() => document.getElementById("head").getAttribute("data-sky-img") === "autumn-day", null, { timeout: 5000 }).catch(() => {});
   c.check("写真が読めたら data-sky-img に写真の札（10/7 の昼は秋の昼）、写真が敷かれる", await imgAttr() === "autumn-day"
@@ -142,8 +147,13 @@ function rgbOf(s) {
   await page.evaluate(() => KN.store.update((s) => { s.settings.sky = false; }));
   await wait(150);
   b = await bgs();
-  c.check("設定で外せば札が無く、帯と暦は地を塗る（いままでどおり）", await attr() === null && await imgAttr() === null && b.top !== "rgba(0, 0, 0, 0)"
-    && b.cal !== "rgba(0, 0, 0, 0)" && !/gradient/.test(b.head), JSON.stringify(b));
+  const ink = await page.evaluate(() => {
+    const p = document.createElement("i"); p.style.color = "var(--c-text)"; document.body.append(p);
+    const want = getComputedStyle(p).color; p.remove();
+    return { want, got: getComputedStyle(document.querySelector("#head .topbar-title")).color };
+  });
+  c.check("設定で外せば札が無く、空は敷かれず、題は墨の字", await attr() === null && await imgAttr() === null
+    && !/gradient|url\(/.test(b.head) && ink.got === ink.want, JSON.stringify({ b, ink }));
   await page.evaluate(() => KN.store.update((s) => { delete s.settings.sky; }));
   await wait(150);
   c.check("既定は入", await attr() === "evening", String(await attr()));
@@ -193,7 +203,8 @@ function rgbOf(s) {
     await wait(60);
   }
 
-  /* 字の箱（題の段：題の字と絵／暦の段：曜日と日の数字。今日を塗った丸の中の字は除く） */
+  /* 字の箱（題：月日と曜日の白い字・ボタンの絵＝3:1／小さい一行「年・節気」＝4.5:1／暦：曜日と日の数字＝盆の上。
+     今日を塗った丸の中の字は除く）。撮るときは字と絵だけ伏せる——ボタンの暗い丸と盆は読ませる側なので残す。 */
   async function measure() {
     const m = await page.evaluate(() => {
       const head = document.getElementById("head");
@@ -211,10 +222,11 @@ function rgbOf(s) {
         return { sel, zone, color: getComputedStyle(e).color, x: r.left - hr.left, y: r.top - hr.top, w: r.width, h: r.height };
       }).filter((x) => x.w > 0 && x.h > 0 && x.y >= 0 && x.y + x.h <= hr.height);
       return { bg, w: hr.width, h: hr.height, top: hr.top, list: [
-        ...pick('.topbar [class^="day-"]', "title"), ...pick(".topbar svg", "title"),
-        ...pick(".cal-wd", "cal"), ...pick(".cal-day:not(.is-here.is-today) .cal-n", "cal")] };
+        ...pick(".topbar-title > [class^=\"day-\"]", "title"), ...pick(".topbar .icon-btn svg", "title"),
+        ...pick(".head-eye > span", "eye"),
+        ...pick(".cal-wd", "cal"), ...pick(".cal-day:not(.is-today) .cal-n", "cal")] };
     });
-    await hide("#head * { visibility: hidden !important; }");
+    await hide("#head .topbar-dayrow, #head .topbar svg, #head .head-tray * { visibility: hidden !important; }");
     const buf = await page.screenshot({ clip: { x: 0, y: m.top, width: m.w, height: m.h } });
     const F = [[0.2, 0.25], [0.8, 0.25], [0.5, 0.5], [0.2, 0.75], [0.8, 0.75]];
     const pts = m.list.flatMap((x) => F.map(([fx, fy]) => [x.x + x.w * fx, x.y + x.h * fy]));
@@ -226,7 +238,7 @@ function rgbOf(s) {
     m.list.forEach((x, i) => {
       const col = rgbOf(x.color);
       const r = Math.min(...px.slice(i * F.length, (i + 1) * F.length).map((p) => ratio(col, p)));
-      const need = x.zone === "title" ? 3 : Math.min(4.5, ratio(col, bg)) - 0.01;
+      const need = x.zone === "title" ? 3 : x.zone === "eye" ? 4.5 : Math.min(4.5, ratio(col, bg)) - 0.01;
       const margin = r - need;
       if (!worst || margin < worst.margin) worst = { margin: Math.round(margin * 100) / 100, r: Math.round(r * 100) / 100, need: Math.round(need * 100) / 100, sel: x.sel, color: x.color };
     });
@@ -260,7 +272,7 @@ function rgbOf(s) {
         const r = await measure();
         if (process.env.KN_VERBOSE) console.log(`      ${theme} ${month ? "月" : "週"} ${photo || slot} ${JSON.stringify(r.worst)}`);
         const name = `${theme === "dark" ? "暗い面" : "明るい面"}・${month ? "月" : "週"}・${photo ? `写真 ${photo}` : slot}`;
-        c.check(`${name}：字の濃さの比（題 3:1・暦は空の無いときより下げない）`, r.n >= 10 && r.worst && r.worst.margin >= 0, JSON.stringify(r));
+        c.check(`${name}：字の濃さの比（題 3:1・小さい一行 4.5:1・暦は盆の上）`, r.n >= 10 && r.worst && r.worst.margin >= 0 && r.edgeOk, JSON.stringify(r));
       }
     }
   }
@@ -271,12 +283,13 @@ function rgbOf(s) {
   await page.evaluate(() => KN.app.showScreen("todo"));
   await wait(500);
 
-  /* ---- ノートへ移る途中：上がった暦は帯の中に見えない ---- */
+  /* ---- ノートへ移る途中：盆の中を上がった暦は、写真（題の段）の上に見えない ---- */
   await page.evaluate(() => document.getElementById("head").setAttribute("data-sky", "night"));
   /* 暦の出入り（head.js の moveCal）を半ばで止めて撮る。 */
   await page.evaluate(() => {
     const c = document.querySelector("#head .head-cal");
     c.style.setProperty("--cal-move", c.getBoundingClientRect().height + "px");
+    document.getElementById("head").classList.add("is-cal-moving");
     c.classList.add("is-cal-out");
     const a = c.getAnimations().find((x) => x.animationName === "cal-out");
     a.pause();
@@ -286,21 +299,22 @@ function rgbOf(s) {
   const tb = await page.evaluate(() => { const r = document.querySelector("#head > .topbar").getBoundingClientRect(); return { x: r.left, y: r.top, width: r.width, height: r.height }; });
   await hide("#head > .topbar * { visibility: hidden !important; }");
   const shotA = await page.screenshot({ clip: tb });
-  await hide("#head > .topbar * { visibility: hidden !important; } #head > .head-cal { visibility: hidden !important; }");
+  await hide("#head > .topbar * { visibility: hidden !important; } #head .head-cal { visibility: hidden !important; }");
   const shotB = await page.screenshot({ clip: tb });
   await hide("");
   const grid = [];
   for (let y = 1; y < tb.height; y += 3) for (let x = 2; x < tb.width; x += 6) grid.push([x, y]);
   const pa = await pixels(shotA, grid), pb = await pixels(shotB, grid);
   const diff = Math.max(...pa.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - pb[i][k])))));
-  c.check("ノートへ移る途中、上がった暦は帯の中に見えない", diff <= 3, `最大の差 ${diff}`);
+  c.check("ノートへ移る途中、盆の中を上がった暦は写真の上に見えない", diff <= 3, `最大の差 ${diff}`);
   await page.evaluate(() => {
     const c = document.querySelector("#head .head-cal");
+    document.getElementById("head").classList.remove("is-cal-moving");
     c.classList.remove("is-cal-out");
     c.style.removeProperty("--cal-move");
   });
 
-  /* ---- 紙の丸角の外にも空（帯の後ろの一枚が紙の角の半径だけ下へはみ出す。地の色の白い角を作らない） ---- */
+  /* ---- 盆の丸角の外は空、盆の中と下は地の色（紙は盆からそのまま続く。角も掴み手も持たない） ---- */
   for (const theme of ["light", "dark"]) {
     await page.evaluate((t) => { if (t === "dark") document.documentElement.setAttribute("data-theme", "dark"); else document.documentElement.removeAttribute("data-theme"); }, theme);
     await page.evaluate(async () => {
@@ -316,18 +330,20 @@ function rgbOf(s) {
       probe.style.color = getComputedStyle(document.documentElement).getPropertyValue("--c-bg").trim();
       const bg = getComputedStyle(probe).color;
       probe.remove();
-      return { hb: document.getElementById("head").getBoundingClientRect().bottom, bg };
+      const sheet = document.querySelector("#screen-todo .tl-sheet");
+      return { hb: document.getElementById("head").getBoundingClientRect().bottom, bg,
+        tt: document.querySelector("#head .head-tray").getBoundingClientRect().top, rad: getComputedStyle(sheet).borderTopLeftRadius };
     });
     const px = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: Math.ceil(k.hb) + 30 } }),
-      [[1, k.hb + 1.5], [388, k.hb + 1.5], [1, k.hb - 3], [388, k.hb - 3]]);
+      [[1, k.tt + 1.5], [388, k.tt + 1.5], [195, k.tt + 3], [1, k.hb + 1.5], [388, k.hb + 1.5], [1, k.hb - 3]]);
     const bgc = rgbOf(k.bg);
     const far = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
-    c.check(`${theme === "dark" ? "暗い面" : "明るい面"}：紙の丸角の外は空（地の色でない・すぐ上の空に近い）`,
-      far(px[0], bgc) > 6 && far(px[1], bgc) > 6 && far(px[0], px[2]) < 40 && far(px[1], px[3]) < 40, JSON.stringify({ px, bg: bgc }));
+    c.check(`${theme === "dark" ? "暗い面" : "明るい面"}：盆の丸角の外は空（地の色でない）、盆の中と下は地の色（紙は角を持たない）`,
+      far(px[0], bgc) > 6 && far(px[1], bgc) > 6 && px.slice(2).every((p) => far(p, bgc) <= 3) && k.rad === "0px", JSON.stringify({ px, bg: bgc, rad: k.rad }));
   }
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
 
-  /* ---- タブを流す途中も丸角（角は画面が持ち、空は画面の後ろ。二枚は同じ曲線で並んで流れる） ---- */
+  /* ---- タブを流す途中、二枚は同じ曲線で並んで流れる ---- */
   await page.emulateMedia({ reducedMotion: "no-preference" });   // ここだけは流す
   await page.evaluate(() => { KN.app.showScreen("todo"); document.getAnimations().forEach((a) => a.finish()); });
   await wait(400);
@@ -348,28 +364,10 @@ function rgbOf(s) {
   c.check("タブを流す途中、二枚は並んで流れる（重ならない）", sl.in > 20 && sl.in < 370 && Math.abs(sl.out - sl.in) < 1, JSON.stringify(sl));
   await page.evaluate(() => document.getAnimations().forEach((a) => a.finish()));
   await wait(400);
-  /* 角の画素は、二枚を手で並べて止めて測る（合成側で走る動きは、止めた時刻と撮った画がずれることがある）。
-     二つの角（左の紙の右上・右の紙の左上）の外、紙の上端から 3px。 */
-  const sj = await page.evaluate(() => {
-    const [a, b] = ["screen-todo", "screen-list"].map((id) => document.getElementById(id));
-    a.hidden = false; a.style.display = "flex"; a.style.transform = "translateX(-200px)"; b.style.transform = "translateX(190px)";
-    const top = (el) => el.querySelector(".tl-sheet").getBoundingClientRect().top;
-    return { hb: document.getElementById("head").getBoundingClientRect().bottom, ta: top(a), tb: top(b) };
-  });
-  await wait(80);
-  const spx = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: Math.ceil(sj.hb) + 30 } }),
-    [[192, sj.tb + 3], [190, sj.hb - 3], [188, sj.ta + 3]]);
-  await page.evaluate(() => {
-    const [a, b] = ["screen-todo", "screen-list"].map((id) => document.getElementById(id));
-    a.style.display = ""; a.style.transform = ""; a.hidden = true; b.style.transform = "";
-  });
-  const sfar = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
-  c.check("タブを流す途中、あいだの角は空（紙の色でない・すぐ上の空に近い）",
-    sfar(spx[0], rgbOf(sl.sheet)) > 6 && sfar(spx[2], rgbOf(sl.sheet)) > 6 && sfar(spx[0], spx[1]) < 40 && sfar(spx[2], spx[1]) < 40, JSON.stringify(spx));
   await page.emulateMedia({ reducedMotion: "reduce" });
 
-  /* ---- いちばん上でさらに引いて紙が下がっても（pull-refresh の give、最大 76px）、すき間は空（地の白を出さない）。
-     月に開いていても（写真の下端より下は写真の地面の色 --sky-g で続く）。空を下へ伸ばしても写真の位置は据え置き ---- */
+  /* ---- いちばん上でさらに引いて紙が下がっても（pull-refresh の give、最大 76px）、すき間は紙の色（空は題の段だけ。
+     紙は盆から続く一色なので、下がった跡に別の色が出ない）。月に開いていても ---- */
   const bgc = await page.evaluate(() => {
     const probe = document.createElement("i");
     document.body.append(probe);
@@ -392,52 +390,12 @@ function rgbOf(s) {
         [[195, hb + 40], [20, hb + 72], [370, hb + 72]]);
       await page.evaluate((i) => { KN.app.scrollerOf(document.getElementById("screen-" + i)).style.transform = ""; }, id);
       const far = (a, b) => Math.max(...a.map((v, k) => Math.abs(v - b[k])));
-      c.check(`${month ? "月" : "週"}・${id}：上で引いて紙が下がっても、すき間は空（地の色でない）`,
-        gp.every((p) => far(p, rgbOf(bgc)) > 12 && far(p, rgbOf(sl.sheet)) > 12), JSON.stringify(gp));
+      c.check(`${month ? "月" : "週"}・${id}：上で引いて紙が下がっても、すき間は紙の色`,
+        gp.every((p) => far(p, rgbOf(sl.sheet)) <= 3), JSON.stringify(gp));
     }
   }
   await page.evaluate(() => KN.store.setCalPref(null, { open: false }));
   await wait(300);
-  const hbs = await page.evaluate(() => Math.floor(document.getElementById("head").getBoundingClientRect().bottom) - 2);
-  const shot1 = await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: hbs } });
-  await page.evaluate(() => document.getElementById("deck").style.setProperty("--sky-more", "0px"));
-  await wait(80);
-  const shot0 = await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: hbs } });
-  await page.evaluate(() => document.getElementById("deck").style.removeProperty("--sky-more"));
-  const pgrid = [];
-  for (let y = 1; y < hbs; y += 4) for (let x = 2; x < 390; x += 8) pgrid.push([x, y]);
-  const q1 = await pixels(shot1, pgrid), q0 = await pixels(shot0, pgrid);
-  /* 描き直しの丸め（位置の端数）で、くっきりした写真ほど細かい差が出る。10月8日に画質を上げてから（1080px・ぼかし 0.9px）
-     伸ばしただけで最大 12・4 を超える点 2.2%・12 を超える点 0。本当に 1px ずれると最大 205・12 を超える点 7%。
-     だから「12 を超える点が 1% まで」で見分ける（前の「4 を超える点が 1% まで・最大 12」は、くっきりした写真では丸めで落ちた）。 */
-  const pd = q1.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - q0[i][k]))));
-  const pdiff = Math.max(...pd), pover = pd.filter((v) => v > 12).length;
-  c.check("空を下へ伸ばしても、帯の中の写真は動かない", pover <= pd.length / 100, `最大の差 ${pdiff}・12 を超える点 ${pover}/${pd.length}`);
-
-  /* ---- 勢いよく上端に着いても、紙のふち（札の色 --c-sheet-edge の一本。前は純白）だけが下りてこない。iPhone の跳ね返りは紙の中身だけを
-     下げるので、ふちは中身（掴み手）ではなく紙そのもの（border-top）が持つ。跳ね返りは中身を手で下げてまねる ---- */
-  const edgeC = rgbOf(await page.evaluate(() => {
-    const p = document.createElement("i");
-    p.style.color = "var(--c-sheet-edge)"; document.body.append(p);
-    const c = getComputedStyle(p).color; p.remove(); return c;
-  }));
-  for (const id of ["todo", "archive"]) {
-    await page.evaluate((i) => KN.app.showScreen(i), id);
-    await wait(300);
-    const st = await page.evaluate((i) => {
-      const sh = KN.app.scrollerOf(document.getElementById("screen-" + i));
-      [...sh.children].forEach((k) => { k.style.transform = "translateY(40px)"; });
-      return Math.round(sh.getBoundingClientRect().top);
-    }, id);
-    await wait(80);
-    const ep = await pixels(await page.screenshot({ clip: { x: 0, y: 0, width: 390, height: st + 60 } }),
-      [[195, st - 1], [195, st], [195, st + 1]]);
-    await page.evaluate((i) => {
-      [...KN.app.scrollerOf(document.getElementById("screen-" + i)).children].forEach((k) => { k.style.transform = ""; });
-    }, id);
-    c.check(`${id}：中身が跳ね返って下がっても、紙のふちの一本は紙の上の縁に残る`,
-      ep.some((p) => p.slice(0, 3).every((v, k) => Math.abs(v - edgeC[k]) <= 2)), JSON.stringify(ep));
-  }
 
   /* ---- 時計の帯は default（black-translucent は iOS 26 で画面の下に塗れない空白を残す。docs/sky.md） ---- */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");

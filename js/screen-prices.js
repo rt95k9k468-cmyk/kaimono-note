@@ -68,6 +68,7 @@
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
     };
+    els.filter.before(KN.app.faceSeg("prices"));
 
     /* 掴み手は**結びません**（そもそも持っていません）。指で動くのは前に
        居る一枚だけで、こちらは動かない地です——動かないから後ろに見えます。

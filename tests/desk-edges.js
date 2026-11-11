@@ -1,11 +1,11 @@
 /* パソコンの境目（docs/desk.md の段12）。desk.js は 390・1100・1440px だけを見るので、形が切り替わる幅の両側と、
    背の低い窓・大きな窓はここが見る。
    - 839｜840：帯は下｜窓の背いっぱいの左の列
-   - 中身の幅（P3a。窓から左の列を引いた幅）791｜792＝窓 1023｜1024：やることの今日は道と時間割を並べない｜並べる。
-     からだのカードは一列｜段組み。左の列を畳めば同じ窓でも並ぶ（900px：中身 668 → 836）
+   - 中身の幅（P3a。窓から左の列を引いた幅）767｜768＝窓 1023｜1024：やることの今日は道と時間割を並べない｜並べる。
+     からだのカードは一列｜段組み。左の列を畳めば同じ窓でも並ぶ（900px：中身 644 → 836）
    - 1279｜1280：買うものは一枚｜買うもの｜価格を左右
    - ノートの席で開いたノート（P3b。中身の幅で）：839 は紙（覆いあり）、840 から右の段（覆いなし）。「すべてのノート」は
-     中身 859｜860＝窓 1091｜1092 で、段が器いっぱい（一覧の上）｜一覧の右。畳めば窓 923｜924 で同じ
+     中身 859｜860＝窓 1115｜1116 で、段が器いっぱい（一覧の上）｜一覧の右。畳めば窓 923｜924 で同じ
    - どの幅でも、どの席も頁が横に伸びない（はみ出して横に送れる頁にならない）
    - 背の低い窓（1024×768・1280×720）：日記の書く紙は窓に収まり、ボタンが窓の外に出ない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-edges.js */
@@ -80,7 +80,7 @@ const { open, checker } = require("./lib");
     const desk = w >= 840;
     const bar = await box("#tabbar");
     t.check(`${w}px：帯は${desk ? "窓の背いっぱいの左の列" : "下"}`,
-      !!bar && (desk ? bar.l === 0 && bar.t === 0 && bar.b === h && bar.w <= 240 : bar.t > h / 2), JSON.stringify(bar));
+      !!bar && (desk ? bar.l === 0 && bar.t === 0 && bar.b === h && bar.w <= 256 : bar.t > h / 2), JSON.stringify(bar));
 
     const wide = [];
     for (const s of SEATS) {
@@ -101,7 +101,8 @@ const { open, checker } = require("./lib");
       }
       if (s === "notes" && (w === 839 || w === 840)) {
         const n = await notePane();
-        const docked = !!n.pane && n.pane.l === 232 && n.pane.r === w && !n.cover;
+        /* 左の列は 256px。840px ちょうどでは中身 600px を残して 240px に縮む（base.css の clamp）。 */
+        const docked = !!n.pane && n.pane.l === Math.min(256, w - 600) && n.pane.r === w && !n.cover;
         t.check(`${w}px：ノートの席で開いたノートは${w >= 840 ? "右の段（木の右・覆いなし）" : "紙（覆いあり）"}`,
           !!n.pane && (w >= 840 ? docked : n.cover && !docked), JSON.stringify(n));
       }
@@ -133,9 +134,9 @@ const { open, checker } = require("./lib");
     if (fold) { await page.keyboard.press("Control+Backslash"); await wait(400); }
     return n;
   };
-  for (const [w, fold, rail] of [[1091, false, 232], [1092, false, 232], [923, true, 64], [924, true, 64]]) {
+  for (const [w, fold, rail] of [[1115, false, 256], [1116, false, 256], [923, true, 64], [924, true, 64]]) {
     const n = await paneAt(w, fold);
-    const three = w === 1092 || w === 924;
+    const three = w === 1116 || w === 924;
     t.check(`${w}px${fold ? "（畳んだ列）" : ""}：すべてのノートで開いたノートは${three ? "一覧の右" : "器いっぱい（一覧の上）"}・覆いなし`,
       !!n.pane && !n.cover && n.pane.r === w && n.pane.l === rail + (three ? 380 : 0), JSON.stringify(n));
   }

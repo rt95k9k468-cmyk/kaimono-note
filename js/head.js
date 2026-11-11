@@ -73,7 +73,13 @@
         </div>
       </header>
     `));
-    root.append(node(html`<div class="head-cal"></div>`));
+    /* 暦は紙色の盆（.head-tray）の上。盆はいつも居て（ノートは盆だけ）、暦の置き場（.head-cal）と、その下の
+       取っ手（.cal-grip）を載せる。取っ手は 暦なし／週／月 を行き来する口——紙は引かない（docs/redesign.md 5節）。 */
+    root.append(node(html`<div class="head-tray"><div class="head-cal"></div><button type="button"
+      class="cal-grip js-cal-grip" aria-label="暦をひらく・たたむ"><i></i></button></div>`));
+    els.tray = root.querySelector(".head-tray");
+    els.grip = root.querySelector(".cal-grip");
+    wireGrip();
     els.topbar = root.querySelector(".topbar");
     els.dayRow = root.querySelector(".topbar-dayrow");
     els.dayTitle = root.querySelector(".js-day-title");
@@ -138,13 +144,13 @@
     pre = null;
     fromH = null;
     if (!root || id === "settings" || !TABS.includes(id) || id === owner) return;
-    pre = { id, marks: snapMarks(), h: els.cal.firstChild ? els.cal.offsetHeight : null, tall: root.classList.contains("has-tall-cal") };
+    pre = { id, marks: snapMarks(), h: els.cal.firstChild ? els.tray.offsetHeight : null };
   }
 
   function enter(id) {
     const early = pre && pre.id === id ? pre : null;
     pre = null;
-    fromH = early && early.h != null ? { h: early.h, tall: early.tall } : null;
+    fromH = early && early.h != null ? { h: early.h } : null;
     if (!root) return;
     if (id === "settings") return;            // 持ち主はそのまま（上を参照）
     if (!TABS.includes(id)) {
@@ -190,18 +196,7 @@
     else if (calMove === "out") calMove = null;
     if (cal.parentNode === els.cal && els.cal.childNodes.length === 1) return;
     els.cal.replaceChildren(cal);
-    syncTall();
     if (s) crossMarks(s, cal);
-  }
-
-  /** 背の高い月の暦（やることの月の面・`.cal.is-tall`）が帯に居るかを、帯の印（`has-tall-cal`）で言う。CSS の
-      `.head:has(.cal.is-tall)` をやめた——帯の中で何かが出入りするたびに帯ごと見直しが掛かり、席を移る一拍が
-      重くなっていた（2026年10月24日。下の `is-cal-moving`、app.js の `data-screen` も同じ）。 */
-  function syncTall() {
-    if (!root || !els.cal) return;
-    const tall = !!els.cal.querySelector(":scope > .cal.is-tall");
-    if (!tall && els.cal.classList.contains("is-cal-resize")) return;   // 縮み終えてから（resizeCal）
-    root.classList.toggle("has-tall-cal", tall);
   }
 
   /** 帯の暦が月で出ているかを帯の印（`is-month`）で言う。横の電話は月を右に立て、紙を題の下へ（base.css の
@@ -239,6 +234,10 @@
     queueMicrotask(() => { if (calMove) moveCal(false); });
   }
 
+  /** 盆だけの背（暦も取っ手も無いとき。CSS の min-height）。一度だけ読む。 */
+  let lap = 0;
+  const lapH = () => lap || (lap = parseFloat(getComputedStyle(els.tray).minHeight) || 26);
+
   /** show() の終わりに呼ばれます（app.js）。`slide` は、横に流れる移り方か。 */
   function moveCal(slide) {
     const m = calMove;
@@ -247,13 +246,20 @@
     fromH = null;
     if (!root) return;
     if (!m) { if (from && slide && !KN.motion.still()) resizeCal(from); return; }
-    const h = slide && !KN.motion.still() ? els.cal.offsetHeight : 0;
-    if (!h) { if (m === "out") { els.cal.replaceChildren(); syncTall(); } return; }
+    /* 動く丈は、盆の背から盆だけの背を引いたぶん（暦が出ていくと取っ手も消え、盆は min-height に戻る）。 */
+    const h = slide && !KN.motion.still() ? els.tray.offsetHeight - lapH() : 0;
+    if (!(h > 0)) { if (m === "out") els.cal.replaceChildren(); return; }
+    els.cal.classList.add(m === "out" ? "is-cal-out" : "is-cal-in");
+    slidePanes(m === "out" ? h : -h, els.cal);
+  }
+
+  /** 下の画面（#panes）を d だけずれた所から今の所へ滑らせる（d > 0＝下から上がる、d < 0＝上から下りる）。
+      並びはもう行き着く先。動かすのは見かけ（translate）だけ。 */
+  function slidePanes(d, also) {
     const p = panes();
-    [els.cal, p].forEach((e) => {
-      e.style.setProperty("--cal-move", `${h}px`);
-      e.classList.add(m === "out" ? "is-cal-out" : "is-cal-in");
-    });
+    [also, p].forEach((e) => { if (e) e.style.setProperty("--cal-move", `${Math.abs(d)}px`); });
+    p.classList.remove("is-cal-out", "is-cal-in");
+    p.classList.add(d > 0 ? "is-cal-out" : "is-cal-in");
     root.classList.add("is-cal-moving");
     clearTimeout(moveT);
     moveT = setTimeout(endMove, KN.motion.ms("--m-nav") + 40);
@@ -263,38 +269,20 @@
 
      帯は全タブで一つなので、ふだん暦の背はどの席でも同じです。違うのは、やることの月の面（背の高い月）と、
      月を出しているときの段の数（5行と6行）。差し替えた一拍で背が変わると、下の画面が丈ぶん跳ねていました
-     （月の面から買うものへ移ると 413px。2026年10月25日、利用者「パッと」）。横の流れと同じ一拍（`--m-nav`・
-     `--ease-out`）で、暦の置き場の背を前の丈から新しい丈へ滑らせます。中身は差し替えたまま（印は crossMarks）。
-     **毎フレーム並べ直します**（下の画面の丈が変わるので、見かけだけでは足りない）——掴み手で引くときと同じ量。
-     背の高い月から縮むあいだは写真の敷き方（`has-tall-cal`）を残し、縮み終えてから戻します（先に戻すと、
-     縮むあいだ写真の下が足りない）。 */
-  let resizeT = 0;
-
+     （月の面から買うものへ移ると 413px。2026年10月25日、利用者「パッと」）。**盆は先に行き着く背を取り**、
+     下の画面だけを前の所から滑らせます（横の流れと同じ一拍・`translate` だけ。前は置き場の height を
+     毎フレーム並べ直していた——docs/redesign.md 7節の 1）。暦の中身は差し替えたまま（印は crossMarks）。 */
   function resizeCal(from) {
-    const h1 = els.cal.offsetHeight;
-    if (!els.cal.firstChild || !(Math.abs(h1 - from.h) > 1)) return;
-    endResize();
-    els.cal.style.height = `${from.h}px`;
-    els.cal.classList.add("is-cal-resize");
-    if (from.tall && h1 < from.h) root.classList.add("has-tall-cal");
-    void els.cal.offsetHeight;
-    els.cal.style.height = `${h1}px`;
-    resizeT = setTimeout(endResize, KN.motion.ms("--m-nav") + 40);
-  }
-
-  function endResize() {
-    clearTimeout(resizeT);
-    if (!els.cal || !els.cal.classList.contains("is-cal-resize")) return;
-    els.cal.classList.remove("is-cal-resize");
-    els.cal.style.height = "";
-    syncTall();
+    const d = els.tray.offsetHeight - from.h;
+    if (!els.cal.firstChild || !(Math.abs(d) > 1)) return;
+    slidePanes(-d);
   }
 
   /** 動かし終えた（または途中で次の移りが来た）。出ていった暦はここで外します。 */
   function endMove() {
     clearTimeout(moveT);
     const p = panes();
-    if (els.cal.classList.contains("is-cal-out")) { els.cal.replaceChildren(); syncTall(); }
+    if (els.cal.classList.contains("is-cal-out")) els.cal.replaceChildren();
     [els.cal, p].forEach((e) => {
       if (!e) return;
       e.classList.remove("is-cal-out", "is-cal-in");
@@ -617,21 +605,44 @@
     return sCal;
   }
 
-  /**
-   * 買うものの紙の掴み手を引くと、暦が開く（2026年9月28日から。ほかのタブと
-   * 同じ js/cal-peek.js の三段——下へ引けば週→月、週から上へ押せば暦なし）。
-   * 前はこの掴み手が価格へのものでしたが、価格へは帯の「shopping」を押して
-   * 行くようになりました（app.js）。**紙が価格へ下がって留まっているあいだは
-   * 引きません**——そのときの掴み手は、買うものへ戻る道（wireFaceGrip）なので。
-   */
+  /* ---------------- 取っ手（暦の下）：暦なし／週／月 ----------------
+
+     取っ手は帯に一つ。引く・押すの中身は席ごと（どの暦か・いま見ている日・段をどこへ書くか）なので、
+     席が `peek(id, o)` で自分の答えを置いておき、持ち主のぶんを取り次ぎます（o は cal-peek.js の wire と同じ）。
+     指の重さ・速く払えば短くても行く・途中で掴めるは cal-peek のまま。押すと一段（暦なし→週→月→週）。 */
+  const peeks = {};
+  const peekOf = () => peeks[owner === "prices" ? "list" : owner] || null;
+  const ask = (k, d) => (...a) => { const o = peekOf(); return o && o[k] ? o[k](...a) : d; };
+  const gripOpts = {
+    get sheet() { return els.grip; },
+    get root() { const o = peekOf(); return o ? o.root : null; },
+    cal: ask("cal", null), isOpen: ask("isOpen", false), isShown: ask("isShown", false),
+    enabled: () => { const o = peekOf(); return !!o && (!o.enabled || !!o.enabled()); },
+    busy: ask("busy", false), here: ask("here", ""), tagOffWeek: ask("tagOffWeek"), commit: ask("commit"), tall: ask("tall", false),
+    tap: () => {
+      const o = peekOf();
+      if (!o || (o.enabled && !o.enabled())) return;
+      KN.motion.fire("select");
+      const to = { shown: true, open: o.isShown() && !o.isOpen() };
+      KN.calPeek.glide(gripOpts, () => o.commit(to));
+    },
+  };
+  function wireGrip() {
+    KN.calPeek.wire(gripOpts);
+    /* キーボードの Enter・Space（指とマウスは cal-peek が離したところで tap を呼ぶ）。 */
+    els.grip.addEventListener("click", (e) => { if (e.detail === 0) gripOpts.tap(); });
+  }
+  /** 席が、取っ手への答えを置く（組み直すたびに呼んでよい）。 */
+  function peek(id, o) { peeks[id] = o; }
+
+  /** 買うもの・価格の答え（暦はここが持つので）。 */
   function shopPeek(o) {
-    KN.calPeek.wire({
-      sheet: o.sheet,
+    peek("list", {
       root: o.root,
       cal: () => sCal,
       isOpen: calOpen,
       isShown: calShown,
-      enabled: () => o.enabled() && owner === "list" && !KN.app.faceAt("list"),
+      enabled: () => o.enabled(),
       busy: () => KN.calSwipe.isActive(),
       here: sCur,
       tagOffWeek,
@@ -736,5 +747,5 @@
     els.name.append(t);
   }
 
-  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, syncTall, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek };
+  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek, peek };
 })();

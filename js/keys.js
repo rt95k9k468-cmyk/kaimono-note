@@ -79,7 +79,7 @@
     if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
     /* ⌘K・Ctrl+K：さがす（Notion・Slack と同じ）。打っている欄の中でも効く——書いている途中から探しに行く道。 */
     if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K")) {
-      if (!covered() && press(document.querySelector("#head .js-search-btn"))) e.preventDefault();
+      if (!covered() && (press(document.querySelector("#head .js-search-btn")) || press(document.querySelector("#tabbar .rail-find")))) e.preventDefault();
       return;
     }
     /* ⌘\・Ctrl+\：左の列を畳む・ひらく（Notion・VS Code と同じ。JIS の ¥ キーも）。広い幅だけ。 */
@@ -146,7 +146,7 @@
     } else if (k === "t") {
       done = press(document.querySelector("#head .js-go-today"));
     } else if (k === "/") {
-      done = press(document.querySelector("#head .js-search-btn"));
+      done = (press(document.querySelector("#head .js-search-btn")) || press(document.querySelector("#tabbar .rail-find")));
     } else if (k === "n") {
       done = press(document.querySelector("#dock .add-fab"));
     } else if (k === ",") {

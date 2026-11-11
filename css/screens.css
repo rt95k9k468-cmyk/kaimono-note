@@ -68,6 +68,7 @@
 /* 丸ボタン（56px）の中身。入れものが大きさを決めるので、二段階の外です。
    縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
 .add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; position: relative; z-index: 1; }  /* 入れもの：丸ボタン */
+@media (min-width: 840px) { .add-fab { width: 60px; height: 60px; } }   /* 広い幅の＋は一回り大きく（docs/redesign.md 5節） */
 /* 押すと、**縮まずに膨らんで明るくなります**。動画（Structured）の実測が
    これでした——押した瞬間に丸が一回り大きくなり、色が一段明るいほうへ振れる。
    縮む動きは「引っ込む」ことなので、これから何かが出てくるボタンの合図と
@@ -266,36 +267,12 @@
    Today is a filled disc in 今日's own red, so the mark here and the shelf
    below say the same colour. */
 
-/* 月は、下までスクロールしても消えません。棚は月をほどいて縦に並べたもの
-   なので、いま何月のあたりにいるのかを見失うと、棚の名前だけが残ります。
-   上のバーの下にぴったり貼りつけたいので、バーの厚みはJSが実測して
-   --topbar-h で渡してきます（ノッチの深さで変わるため）。 */
+/* 暦は帯の盆（base.css の .head-tray）の上に居る——送る器の外なので、貼りつける仕掛けも、自分の地も要らない
+   （docs/redesign.md 5節）。重なりの順だけ持つ（席を移るとき、出ていく暦が下の画面より前に居るように）。 */
 .cal {
-  position: sticky;
-  top: var(--topbar-h, 0px);
+  position: relative;
   z-index: var(--z-stick);
-  padding: var(--sp-3) var(--sp-2) var(--sp-2);   /* 横は少し広げた（2026年10月20日、利用者）：七日の幅を稼ぐ */
-  /* 上のバーと同じ理由で、透かしません（base.css の .topbar）。下を白い
-     紙が流れるので、透かすと日付や曜日の裏に行の字が重なります。 */
-  background: var(--c-bg);
-  border-bottom: 1px solid transparent;
-  transition: border-color var(--dur) var(--ease);
 }
-
-/* 貼りついたら、境目の線だけを出します。
-   **高さは変えません。** 以前は一段縮めてリストに高さを返していましたが、
-   指を動かしている最中に足場の背が変わると、読んでいる行がずれます。
-   稼げる数十ピクセルより、動かないことのほうが要ります。
-   （線は最初から transparent で引いてあるので、色が付いても高さは動きません。） */
-.cal.is-stuck { border-bottom-color: var(--c-border); }
-
-/* health（ダイエット）も、月ぜんぶを含めて貼りつけます。前は「五、六行が
-   居座ると体重もグラフも押し下げる」という理由で月だけ流していましたが、
-   やること・daily は月表示でも暦が上に固定されたまま中身だけが流れる
-   のに対し、ここだけ暦もろとも画面全体が下がっていく——同じ暦なのに
-   画面によって挙動が違って見えるほうを、押し下げより避けます。
-   （床の`--cal-h`は screen-diet.js の fitCalH が、月・週どちらの高さも
-   測って渡します。） */
 
 /* 画面の題としての日付（上のバー）。参考にした画面と同じ組みです：
    年だけ差し色で、月日が黒。右に「›」——押すと暦が月ぜんぶに開きます。
@@ -306,58 +283,50 @@
    帯の余りを押すのはこの組のほう——札が出たり消えたりするたびに、押す
    相手が入れ替わらないように。 */
 .topbar-dayrow {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
   align-items: center;
+  column-gap: 2px;
   min-width: 0;
   margin-right: auto;
+}
+/* 「年・節気」の小さな一行（日付の上）。 */
+.head-eye {
+  grid-column: 1 / -1;
+  font-size: calc(12px * var(--fs-k));
+  font-weight: var(--fw-bold);
+  letter-spacing: .1em;
+  line-height: 1.4;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .topbar-day {
   display: flex;
   align-items: center;
-  gap: var(--sp-1);
   min-width: 0;
   background: none;
   border: none;
   padding: 0;
   text-align: left;
+  color: inherit;
 }
+/* 日付は明朝 27px（640px から 32・840px から 34。base.css の幅ごと）。狭い端末では右の丸とぶつかるので幅に合わせて
+   縮める。**どの日を見ていても大きさは同じ**（今日へ戻る矢の有無で字を変えない）。 */
 .topbar-day .topbar-title {
   display: flex;
   align-items: baseline;
   min-width: 0;
-  /* 実測は 428pt の画面で 26px 相当。狭い端末では右の二つとぶつかるので、
-     幅に合わせて縮めます。
-
-     **どの日を見ていても、大きさは同じ**です。Today の札があった時期は、
-     札が出ている日だけ字を一段落としていて、今日とそれ以外で大きさが
-     違って見えました——見ている日によって大きさが変わるほうがおかしいので、
-     札ごと外し、字はいつもこの一つの clamp だけにしています。
-
-     曜日（「（火）」＝ 3文字ぶん）が加わったぶん、係数はそのままでは
-     320px 級で19px・375px級で1px、文字が欠けます（実測）。係数を
-     6.4vw/26px → 5.4vw/23px に下げて収めています。 */
-  font-size: calc(clamp(16px, 5.4vw, 23px) * var(--fs-k));
-  font-weight: var(--fw-bold);
-  letter-spacing: -.02em;
+  font: var(--fw-bold) calc(clamp(21px, 6.9vw, 27px) * var(--fs-k)) / 1.25 var(--font-display);
+  letter-spacing: .02em;
   white-space: nowrap;
-  line-height: 1.25;
 }
-
-/* 色を当てる相手は二つです。**年はいつも差し色**（いま何年のどこを見て
-   いるか、の頭）。**日にちの数は、当日のときだけ差し色**——参考にした
-   画面が暦の帯で今日の数だけ色を変えているのと同じで、「開いているのが
-   今日かどうか」を、字の色そのものが言います。残り（年◯月・日（火））は
-   黒のまま。 */
-.day-y { color: var(--c-primary); }
-.day-pre, .day-post { color: var(--c-text); }
-/* 日にちの数は、字の幅をそろえます——「18」→「19」で後ろの「日(金)」が
-   数px跳ねないように。色は、今日へ着いたときに一拍かけて差し色へ。 */
-.day-d {
-  color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-  transition: color var(--m-state) var(--ease);
-}
-.day-d.is-today { color: var(--c-primary); }
+/* 日にちの数は、字の幅をそろえます——「18」→「19」で後ろの「日」が数px跳ねないように。 */
+.day-d { font-variant-numeric: tabular-nums; }
+.day-w { margin-left: var(--sp-2); font: var(--fw-bold) calc(15px * var(--fs-k)) var(--font); letter-spacing: .04em; }
+@media (min-width: 640px) { .topbar-day .topbar-title, .head-name { font-size: calc(32px * var(--fs-k)); } }
+@media (min-width: 840px) { .topbar-day .topbar-title, .head-name { font-size: calc(34px * var(--fs-k)); } }
 
 /* ---- 題の字が入れ替わる（util.js の rollText） ----
 
@@ -426,7 +395,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--c-primary);
+  color: inherit;
 }
 .topbar-today svg { width: 17px; height: 17px; }  /* 入れもの：26の丸 */
 /* 未来の日からは左向き（時間を遡る）、過去の日からは右向き（時間を進める）。
@@ -584,11 +553,12 @@
   text-align: center;
   font-size: calc(11px * var(--fs-k));
   font-weight: var(--fw-regular);
+  line-height: 16px;
   color: var(--c-text-3);
-  padding-bottom: 3px;
+  padding-bottom: 1px;
 }
-.cal-wd.is-sun { color: color-mix(in srgb, var(--c-sun) 70%, var(--c-text-3)); }
-.cal-wd.is-sat { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 70%, var(--c-text-3)); }
+.cal-wd.is-sun { color: var(--c-sun); }
+.cal-wd.is-sat { color: var(--c-ai); }
 
 .cal-day {
   position: relative;
@@ -598,8 +568,8 @@
   justify-content: flex-start;
   /* 数字の丸と、下の段のあいだ。輪は内側に描くので 1px で足りる（2026年10月25日、名前を二段にするため詰めた。
      前は 4px）。 */
-  gap: 1px;
-  padding: 2px 0 3px;
+  gap: 2px;
+  padding: 2px 0 4px;
   background: none;
   border: 0;
   border-radius: var(--r-md);
@@ -611,30 +581,26 @@
 .cal-n {
   display: grid;
   place-items: center;
-  /* 27px・17px から縮めた（2026年10月25日、利用者「予定を二つ書けるように」。浮いた背で名前の二段目を）。 */
-  width: 23px; height: 23px;
+  /* 数字は太く大きく（17px。docs/redesign.md 5節）、丸は 30px。週と月で同じ大きさ——段を引くあいだに升の背が変わらない。 */
+  width: 30px; height: 30px;
   border-radius: var(--r-full);
-  font-size: calc(15px * var(--fs-k));
-  font-weight: var(--fw-regular);
+  font-family: var(--font-num);
+  font-size: calc(17px * var(--fs-k));
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--c-text-2);
+  color: var(--c-text);
 }
 /* 祝日（is-hol。js/holiday.js）は日曜と同じ色。土曜の祝日には is-sat を付けない（cal-grid.js）。 */
 .cal-day.is-sun .cal-n,
-.cal-day.is-hol .cal-n { color: color-mix(in srgb, var(--c-sun) 62%, var(--c-text-2)); }
-.cal-day.is-sat .cal-n { color: color-mix(in srgb, var(--cal-blue, var(--c-ai)) 62%, var(--c-text-2)); }
+.cal-day.is-hol .cal-n { color: var(--c-sun); }
+.cal-day.is-sat .cal-n { color: var(--c-ai); }
 
-/* Today, circled. Filled rather than outlined: an outline is one more ring
-   among 30 numbers, and the one thing this calendar has to answer without
-   being read is 「今日はどこ」. */
-/* 今日は基調色の太字。**塗りつぶすのは、いま見ている日でもあるときだけ**
-   （`.is-here` も付いているとき、下の規則）——他の日を選んでいても今日の
-   丸だけ常に目立っていると、いまどこを見ているかと紛れます。他の日を
-   見ているときは、字の色と太さだけで「今日はここ」と言えば足ります。 */
+/* 今日は朱の丸（塗り）に白い字。「今日はどこ」は読まずに分かること。いま見ている日（今日でない日）は輪（下の .cal-ring）。 */
 .cal-day.is-today .cal-n {
-  color: var(--c-primary);
-  font-weight: var(--fw-bold);
+  background: var(--c-primary);
+  color: var(--c-text-on);
+  box-shadow: 0 4px 10px -4px var(--c-primary);
 }
 /* その日はじめて開いたときだけ、今日の丸が一度脈打つ（U16。打つかは head.js の BEAT_KEY）。 */
 .head.is-m-arrive.is-day-first .cal-day.is-today .cal-n { animation: poke-beat var(--m-poke) var(--ease); }
@@ -658,7 +624,7 @@
      残っていたので、輪が数字の丸より小さく、字に食い込んで見えました。
      位置合わせ（moveRing）は .cal-n の左上を基準にしているので、同じ
      大きさにしておけば揺れずに重なります。 */
-  width: 23px; height: 23px;
+  width: 30px; height: 30px;
   border-radius: var(--r-full);
   box-shadow: inset 0 0 0 2px var(--c-primary);
   pointer-events: none;
@@ -669,14 +635,8 @@
 /* 置き直した直後（月をめくった、画面を組み直した）は滑らせません。
    前にいた場所と関係のないところから飛んでくるので。 */
 .cal-ring.is-jump { transition: opacity var(--m-state) var(--ease); }
-.cal-day.is-here .cal-n { color: var(--c-primary); }
-/* 今日を見ているときだけ、赤い丸で塗ります（輪だけでは今日の位置が
-   埋もれるので）。字は塗りの上で読める色に戻します——#fff を直に
-   書いていたので、暗い面では白い塗りに白い字になっていました。 */
-.cal-day.is-here.is-today .cal-n { background: var(--c-primary); color: var(--c-bg); }
-/* 今日を見ているときも、輪は同じ緑です。白い輪にしていましたが、
-   同じ「いま見ている」印が、日によって色を変える理由はありません。
-   赤い丸の上に緑の輪が重なって、両方が読めます。 */
+/* 今日を見ているあいだ、輪は朱の丸の外に一回り（丸と同じ色の輪は重ねても見えないので）。 */
+.cal-day.is-here:not(.is-today) .cal-n { color: var(--c-primary-ink); }
 
 /* Days that have something on them, in that day's own shelf colour — so the
    red-to-blue run below is visible up here as well. Up to three: past that it
@@ -691,8 +651,8 @@
 .cal-dots {
   display: flex;
   width: 100%;
-  /* 名前二段ぶん（13px×2＋間 1px）。全タブで同じ背にする——タブを移るたびに暦が伸び縮みしないように。 */
-  height: 27px;
+  /* 名前二段ぶん（15px×2＋間 2px）。全タブで同じ背にする——タブを移るたびに暦が伸び縮みしないように。 */
+  height: 32px;
   align-items: center;
   justify-content: center;
   /* マスからはみ出させません。三つ重ねて 15+2×10 = 35px、7分の1のマス
@@ -4768,15 +4728,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    ないからです。 */
 .tl-sheet {
   position: relative;
-  /* 純白ではなく 253。ふちの純白の一本（掴み手の inset）が見えるための
-     一段です——両方が純白だと、線は引いてあっても見えません。 */
+  /* 紙は地と同じ一色で、盆（帯の .head-tray）からそのまま続く（角も掴み手も持たない。docs/redesign.md 5節）。 */
   background: var(--c-sheet);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  /* 紙のふちの純白の一本は、紙そのものの上の縁に引きます（border は送る中身より外なので、
-     中身に隠れず、送っても跳ね返っても動かない）。前は掴み手の inset で引いていて、勢いよく
-     上端に着いたとき（iPhone の跳ね返りは中身だけを下げる）ふちだけが下りてきた（2026年10月7日、実機）。
-     丸角にもそのまま沿います。 */
-  border-top: 1px solid var(--c-sheet-edge);
   /* 画面の残りぶんの高さ。中身が少ない日でも、紙は下まで届きます
      ——途中で切れると、その下の地が「まだ何かある」に見えます。
      暦の高さは日によって変わる（週／月）ので、そのぶんは引きません
@@ -4785,76 +4738,22 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   /* 紙のふちは、地との差だけで見せます。影を足すと、この一枚が「浮いて
      いる」ように見えて、下までひと続きに流れる感じが切れます。 */
 }
-/* 掴み手。見えている棒は5pxですが、掴めるところはもっと広く取ります
-   ——ここは「紙をつまむ」ための場所で、5pxの棒は指では狙えません。
-   **暦の段（暦なし／週／月）を替えられるのはここだけ**なので、狙いやすさ
-   がそのまま使いやすさになります。上下12pxずつ、29pxぶんが掴み手です。 */
-.tl-grip {
-  display: block;
-  padding: 12px 0 12px;
-  /* **スクロールしても居なくなりません。** 掴み手は「この紙はつまめる」と
-     言っている札で、下へ送ったとたんに消えると、戻すには一度上まで
-     スクロールし直すことになります。紙の地を持たせて、中身はその下を
-     流れます（角の丸みも紙と同じ——止まったときに紙の頭に見えるように）。 */
-  position: sticky;
-  /* 上のバー（.topbar）と暦（.cal）は、どちらも sticky で上に居ます。
-     そのぶん下げないと、掴み手はその裏へ潜って消えます（実際そうなって
-     いて、暦を出しているあいだだけ掴み手が居なくなっていました）。
-     厚みはどちらも JS が実測して渡します——バーはノッチの深さで、暦は
-     週／月／暦なしで変わるので、CSSに数字を焼き込めません。 */
-  top: calc(var(--topbar-h, 0px) + var(--cal-h, 0px));
-  z-index: 5;
-  /* 掴み手の地は、紙の地と**同じ**でなければなりません（貼りついたまま
-     行がその下を通るので、少しでも違うと帯に見えます）。 */
-  background: var(--c-sheet);
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  /* 紙のふちの一本は、ここではなく紙（.tl-sheet の border-top）が持ちます——掴み手は
-     中身と一緒に跳ね返るので。 */
-  /* 地を上へ 3px 延ばす。iPhone では貼りついた掴み手と紙のふちのあいだに 1px の隙間ができ、下を流れる字や
-     背骨がのぞいていた（2026年10月28日、利用者の写真。紙の border-top のぶんだけ下げて貼るらしい）。 */
-  box-shadow: 0 -3px 0 var(--c-sheet);
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-user-select: none;
-  user-select: none;
-}
-/* 引いているあいだ、字は選ばせません。選ばれたままだと、次にその上から
-   引いたときブラウザが「選んだ字を運ぶ」ほうの手つきを始めて、こちらの
-   指を取り上げてしまいます。 */
+/* 暦を引いているあいだ、字を選ばせない。 */
 .is-cal-peek .tl-sheet,
 .is-cal-peek .cal,
 .head .cal.is-peek {
   -webkit-user-select: none;
   user-select: none;
 }
-/* 買うもの／価格の掴み手は**押しても効きます**（app.js の wireFaceGrip が
-   role="button" を付けます）。指で引けない人にも道が要るので。押せると
-   分かるように、狙いが当たったときの輪だけ出します。 */
-.tl-grip[role="button"] { cursor: pointer; }
-.tl-grip[role="button"]:focus-visible {
-  outline: 2px solid var(--c-primary);
-  outline-offset: -4px;
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-}
-.tl-grip > i {
-  display: block;
-  width: 36px; height: 5px;
-  margin: 0 auto;
-  border-radius: var(--r-full);
-  background: var(--c-border-2);
-  opacity: .8;
-}
-
 /* ---- 今日｜週（docs/todo-items.md「仕事の予定とやること」の段3） ----
    色は種類で分ける（予定・時間を取ったやること・締切。2026年10月19日、利用者）。仕事の色は「仕事だけ」の札だけ。
    暦は上の帯の一つだけで、紙には七日の行（升目は描かない）。 */
 /* 暦は上の帯（#head）に居るので、帯と期限の縁のためにそこにも置く。 */
 #screen-todo, #head, .fill { --kind-event: var(--c-ai); --kind-task: var(--c-take); --kind-due: var(--c-yamabuki-fill); }
 .wk-faces { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-1) var(--sp-4); }
-/* 今日｜週｜月 と 仕事だけ は、下へ送っても常に見える（2026年10月20日、利用者）。**掴み手の下に**貼りつく（掴み手の背 29px
-   から 1px 重ねる）。前は top:0 で掴み手に重なり、送ると掴み手が消えていた。地は紙と同じ一色——透かしてぼかすと、
-   下を流れる字や丸がにじんで帯だけ色が違って見えた（2026年10月28日、利用者）。下のきわは掴み手と同じく溶かす。 */
-.wk-faces { position: sticky; top: 28px; z-index: var(--z-stick); background: var(--c-sheet); }
+/* 今日｜週｜月 と 仕事だけ（買うものは リスト｜価格）は、下へ送っても常に見える（2026年10月20日、利用者）。紙の頭に貼りつく。
+   地は紙と同じ一色（透かしてぼかすと、下を流れる字がにじむ）。下のきわは溶かす。 */
+.wk-faces { position: sticky; top: 0; z-index: var(--z-stick); background: var(--c-sheet); }
 /* 溶かしの高さ。今日の済ませたものの一覧（.tl-done）の下の余白も同じ値——帯の裏へ送ったとき、溶かしが余白にかかる。 */
 #screen-todo { --faces-edge: var(--sp-4); }
 .wk-faces::after {
@@ -4998,22 +4897,23 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    二つまで（2026年10月25日、利用者「予定を二つ書けるように」。中央に積むと一つの名前の折り返しに見える）。
    左に寄せ、はみ出しは端を薄く消す（「…」は一字ぶん惜しく、切るだけだと字が欠ける）。 */
 .cal-day { min-width: 0; }   /* 名前の長さで列（1fr）が広がらないように */
-.cal-dots:has(> .cal-name) { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 1px; padding: 0 2px; }
+.cal-dots:has(> .cal-name) { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; padding: 0 2px; }
+/* 名前は種類の色の札（予定＝藍・やること＝若竹・締切＝山吹・過ぎた＝灰）。薄い塗りに同じ色の濃い字（docs/redesign.md 5節）。 */
 .cal-name {
-  display: block; flex: none; min-width: 0; max-width: 100%; padding: 0 1px 0 3px; text-align: left; border-radius: 3px;
-  font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 13px; color: var(--c-text);
-  background: color-mix(in srgb, var(--cat) 22%, var(--c-bg)); box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cat) 75%, var(--c-bg));
+  display: block; flex: none; min-width: 0; max-width: 100%; padding: 0 1px 0 4px; text-align: left; border-radius: 4px;
+  font-style: normal; font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); line-height: 15px;
+  color: color-mix(in srgb, var(--cat) 78%, var(--c-text)); background: color-mix(in srgb, var(--cat) 15%, var(--c-bg));
 }
 .cal-name ~ .cal-name ~ .cal-name, .cal-name.is-over { display: none; }
-.cal-name b { display: block; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: var(--fw-regular);
+.cal-name b { display: block; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: inherit;
   mask-image: linear-gradient(to right, #000 calc(100% - 5px), transparent); }
-.cal-name.is-past { color: var(--c-text-2); background: color-mix(in srgb, var(--c-text-3) 14%, var(--c-bg)); box-shadow: inset 2px 0 0 var(--c-border); }
+.cal-name.is-past { color: var(--c-text-3); background: var(--c-surface-2); }
 /* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。字は「…」で切らない（一字ぶん惜しい）。 */
 .cal.is-tall .cal-grid { grid-auto-rows: var(--cal-row); }
 /* 収まるあいだマスの背も滑らせる。JS が書くのは段ごとの背（grid-template-rows。grid-auto-rows は補間されない）。 */
 .cal.is-tall.is-settling .cal-grid { transition: grid-template-rows var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 .cal.is-tall .cal-dots { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; height: auto; flex: 1; min-height: 0; padding: 0 2px; }
-.cal.is-tall .cal-name { padding-right: 2px; line-height: 15px; }
+.cal.is-tall .cal-name { padding-right: 2px; }
 .cal.is-tall .cal-name ~ .cal-name { display: block; }
 .cal.is-tall .cal-name b { mask-image: none; }
 .cal.is-tall .cal-name.is-over { display: none; }
@@ -5024,7 +4924,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 日と日のあいだの、薄い薄い罫線（右と下。右端の列は右を引かない）。 */
 .cal-day { box-shadow: inset 0 -1px 0 var(--cal-line), inset -1px 0 0 var(--cal-line); border-radius: 0; }
 .cal-day[data-wd="6"] { box-shadow: inset 0 -1px 0 var(--cal-line); }
-.cal-grid, .cal-wk-page { --cal-line: color-mix(in srgb, var(--c-border) 45%, transparent); }
+.cal-grid, .cal-wk-page { --cal-line: var(--c-border); }
 .wk-rep { display: grid; flex: none; color: var(--c-text-3); }
 .wk-rep svg { width: var(--ico-sm); height: var(--ico-sm); }
 /* 過ぎた日は予定だけ薄く（やることは過ぎない）。 */
@@ -5037,32 +4937,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: color-mix(in srgb, var(--cat) var(--cat-fill), var(--c-sheet));
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cat) var(--cat-line), var(--c-sheet));
 }
-/* 送ると、紙の頭がやわらかく（docs/motion.md の「反応を足す」）。下へ送ると、行は掴み手の
-   下へ**溶けて**入る——掴み手の下のきわで、ぷつりと切れない（iOS 26 の送りの端と同じ）。
-   いちばん上に居るあいだは何も出さない（最初の行を薄めない）。濃さは送った量で決まり、
-   時計を持たない（`scroll()`）。読めない端末では出さない。
-   地が紙と同じ色の紙だけ（面を持たない health の紙と、季節の地を透かす daily には置かない）。 */
-.tl-grip::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; top: 100%;
-  height: var(--sp-4);
-  background: linear-gradient(var(--c-sheet), transparent);
-  pointer-events: none;
-  opacity: 0;
-}
-@supports (animation-timeline: scroll()) {
-  .tl-sheet:not(.is-bare) > .tl-grip::after {
-    animation: edge-in linear both;
-    animation-timeline: scroll(nearest block);
-    animation-range: 0 var(--sp-6);
-  }
-}
-/* `fade-in` を使わないのは、あれが着く先を地の値に任せる（from だけ）から。送るほど中身の無い紙では
-   scroll() が働かず、動きが外れて地の値が出る——地を 1 にすると、縁が最初の行に掛かったまま残る
-   （実測）。だから地は 0 のまま、着く先をここで言う。 */
 @keyframes edge-in { to { opacity: 1; } }
-#screen-archive[data-season] .tl-sheet.is-daily > .tl-grip::after { display: none; }
 
 /* 日を入れ替えたときの、ひと動き。払った向きから入ってきます——どちらへ
    進んだかが、動きだけで分かるように。位置は動かさず、少しの横ずれと
@@ -5463,12 +5338,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     var(--c-sheet);
 }
 /* 「あの日」の日だけ写真を帯いっぱいへ広げる段は外した（2026年10月10日・利用者「勝手に拡大される」。札は Daily Log の下へ移った）。 */
-/* 掴み手と Daily Log・月のまとめ・積み上げの段は紙と同じ地を持つ。季節の色の上では地を透かす（同じ色なので、
+/* Daily Log・月のまとめ・積み上げの段は紙と同じ地を持つ。季節の色の上では地を透かす（同じ色なので、
    色が無いときと見た目は同じ）。まとめは上に置かれる前提で、白く抜けないこと。 */
-#screen-archive[data-season] .tl-sheet.is-daily > .tl-grip,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-log,
 #screen-archive[data-season] .tl-sheet.is-daily .card.arc-counts { background: transparent; }
-#screen-archive[data-season] .tl-sheet.is-daily > .tl-grip { box-shadow: none; }
 /* まとめの札も写真を透かす（2026年10月10日・利用者「まとめも透過させて」）。 */
 #screen-archive[data-season] .tl-sheet.is-daily .arc-counts-item { background: color-mix(in srgb, var(--c-surface-2) 55%, transparent); }
 /* ノートの地にも同じ層（daily は写真、ノートは広重。2026年10月7日、利用者が見比べて選んだ・docs/season-art.md）。
@@ -5506,9 +5379,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  /* 丸角の内側で中身を切ります。これが「内容が角丸の下を通る」を止める
-     ところ——切らないと、角の隙間を行が通ります。 */
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
   -webkit-overflow-scrolling: touch;
   /* 縦の送りはブラウザに、横はこちらに（紙を払って日を送る・行を払う）。
      紙ぜんぶが払いの受け口になったので（day-swipe.js の `surface`）、
@@ -5518,22 +5388,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   touch-action: pan-y pinch-zoom;
   /* 下の帯のぶんは、紙の中の余白が持ちます（器が変わったので、画面の
      padding では中身の下に空きができません）。 */
-  padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + var(--sp-8) + var(--sp-6));
+  padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
 }
-/* 中で送るようになったので、掴み手が避ける相手はもういません（上のバーも
-   暦も紙の外）。紙の上端に貼りつけば、それが外枠の頭です。 */
-#screen-todo .tl-grip,
-#screen-archive .tl-grip,
-#screen-list .tl-grip,
-#screen-diet .tl-grip { top: 0; }
-
-/* 留まっている紙は、**中身をそのまま持っています**（頭で切りません）。
-
-   一度 `max-height` で頭だけに切りました——すりガラスの帯を通して買うものの
-   行が透けるのが気になったからです。**やめました**：あれは紙が下へ滑って
-   いっただけで、下に隠れているのは本当にその紙の続きです。切ると、頭は
-   「紙の頭」ではなく、そこに貼られた棒になります。 */
-
 /* 価格の一覧が乗るところ。**紙ではありません。**
 
    ここには `#screen-prices .tl-sheet` が居て、買うものとまったく同じ
@@ -5555,7 +5411,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    中身の長さまで伸びるので、余白は必ず中身のあとに付いてきます。
    中身が短い日は、これまでどおり `flex: 1` が下まで伸ばします
    （`min-height` の既定は「伸びない」を言わないので）。 */
-.prices-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + 56px + var(--sp-6)); }
+.prices-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
 
 /* ---------------- ノート（daily の紙の裏。docs/notes.md） ----------------
 
@@ -5564,7 +5420,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    答える）。下まで伸ばすのは `flex` だけで、`min-height: 0` は持たせません
    （価格の地と同じ理由——末尾の余白が中身の後ろに付いてくるように）。 */
 #screen-notes > .stack { flex: 1; min-height: 0; }
-.notes-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + var(--fab-room) + 56px + var(--sp-6)); }
+.notes-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
 /* 右へ払って一つ上の面へ（screen-notes.js）。縦はブラウザに、横はこちらに——無いと iPhone は横に動いた指を
    送りとして取り（pointercancel）、引いた面が途中で戻されていた。 */
 #screen-notes { touch-action: pan-y; }
@@ -6428,7 +6284,6 @@ button.note-when:active { opacity: var(--press-fade); }
    `#screen-diet .tl-sheet` が持つので（この紙が器になったので）、ここで
    打ち消しません。 */
 .tl-sheet.is-bare { background: none; }
-.tl-sheet.is-bare > .tl-grip { padding: 6px 0 7px; }
 
 /* 探した結果の数。上のバーに出していましたが、そこは日付の題の場所に
    なりました。 */
@@ -6451,13 +6306,10 @@ button.note-when:active { opacity: var(--press-fade); }
   gap: var(--sp-8);
   padding-bottom: var(--sp-6);
 }
-/* 掴み手のすぐ下に「あの日」や Daily Log の枠線が来ると、掴み手が線に
-   刺さって見えます。ひと呼吸ぶん空けます。 */
-.tl-sheet.is-daily > .tl-grip { margin-bottom: calc(var(--sp-4) * -1 + 2px); }
 /* 2.0（V21、V5 の画像で選んだ形）：紙の下の端は帯の下に 16px 残るので、
    下の角も丸くして、途中で切れた紙ではなく一枚として終わらせます。
    角は `#screen-archive .tl-sheet`（送る器にした段）も持つので、ID を付けて勝たせます。 */
-#screen-archive .tl-sheet.is-daily { border-radius: var(--r-xl); }
+#screen-archive .tl-sheet.is-daily { border-radius: 0 0 var(--r-xl) var(--r-xl); }   /* 頭は盆から続く（角を持たない） */
 /* 2.0（V21）：日記の抜き出しは五行。三行だと頭の決まった行で埋まり、地の文まで届かない。
    切った行は両端揃えにしない——iPhone では最後の行が引き伸ばされ、「…」が字に重なった
    （V26、利用者 10月5日）。全文のときは両端揃えのまま。 */
@@ -7901,7 +7753,7 @@ button.note-when:active { opacity: var(--press-fade); }
    - 読む幅（`--desk-read`）：一覧と記録は真ん中の一列に。日本語は一行40字まで（WCAG 1.4.8）。
      紙（`.tl-sheet`）と日の一枚（`.day-slide`、払う器の 100%）は幅いっぱいのまま、**内側の余白で**寄せる
      （padding の % は器の幅）。一枚の幅を変えると、隣の日へ払う道のりが狂う。
-   - 中身の幅 792px から（@container seat）：やることの今日は道と時間割を左右に、からだはカードを段組みに。
+   - 中身の幅 768px から（@container seat）：やることの今日は道と時間割を左右に、からだはカードを段組みに。
    - 1200px から：やることの週を左右に。
    ========================================================= */
 /* 640px から（iPad の縦・並べた窓）：読む幅は 680px。地と帯は窓いっぱい（base.css）。840px からは 760px。 */
@@ -7922,10 +7774,17 @@ button.note-when:active { opacity: var(--press-fade); }
 @media (min-width: 640px) and (max-width: 839.98px) {
   #screen-diet .diet-day.card { padding-inline: max(0px, calc((100% - var(--desk-read)) / 2)); }
 }
+/* 640px から、暦の札は全文に近く（12px・三段。docs/redesign.md 5節）。 */
+@media (min-width: 640px) {
+  .cal-name { font-size: calc(12px * var(--fs-k)); line-height: 20px; padding: 0 3px 0 7px; border-radius: 6px; }
+  .cal:not(.is-tall) .cal-dots { height: 64px; padding: 0 var(--sp-1); }
+  .cal:not(.is-tall) .cal-name ~ .cal-name ~ .cal-name { display: block; }
+  .cal:not(.is-tall) .cal-name ~ .cal-name ~ .cal-name ~ .cal-name { display: none; }
+}
 @media (min-width: 840px) {
   :root { --desk-read: 760px; --desk-wide: 1180px; }
   /* 帯の暦の用事の札は 11px（W5。電話の 10px は七つ並べるマスの幅から。マスの背 27px＝行 13px×2 は変えない）。 */
-  .cal-name { font-size: calc(11px * var(--fs-k)); }
+
   /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
      まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。横にした電話も（式は
      screen-settings.js の DUO と同じ）。 */
@@ -7946,13 +7805,6 @@ button.note-when:active { opacity: var(--press-fade); }
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
   #screen-diet .tl-sheet.is-bare { background: var(--c-sheet); }
   #screen-diet .diet-day.card { border-bottom: none; }
-  /* 紙の掴み手の棒は指で引く道具（暦の段・買うもの⇄価格）。広い幅では指したときだけ見せる——題を押せば暦は開き、
-     席の二度押しで価格へ行ける。掴み手そのもの（引ける・押せる場所と背）は変えない。 */
-  @media (hover: hover) {
-    .tl-grip { cursor: grab; }
-    .tl-grip > i { opacity: 0; transition: opacity var(--m-state) var(--ease); }
-    .tl-grip:hover > i, .tl-grip:focus-visible > i { opacity: .8; }
-  }
   /* daily の季節の写真（docs/daily.md の「季節の絵」）：電話では幅いっぱいの一枚が紙の頭の帯（窓の三割ほど）に収まるが、
      広い幅で同じ「幅いっぱい」にすると写真の背が窓を越え、紙ぜんぶが写真になる。広い幅では帯の背（--season-h）を決め、
      写真は帯を覆う大きさで真ん中を見せる（Notion の表紙の形）。幕の層は電話と同じ（帯の半ばまで同じ濃さ、帯の下の端で閉じる）。 */
@@ -8006,12 +7858,12 @@ button.note-when:active { opacity: var(--press-fade); }
    （docs/desk.md）。器は 840px からだけ——電話には container を付けない。左の列を畳めば広くなったぶん並ぶ。 */
 @media (min-width: 840px) {
   #screen-todo, #screen-diet { container: seat / inline-size; }
-  @container seat (min-width: 792px) {
+  @container seat (min-width: 768px) {
     #screen-todo[data-face="today"] .day-slide { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
     #screen-todo[data-face="today"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
     /* 道（左）と時間割（右）。道を出さない設定なら左の段は 0。道は 400px（電話の 393 より細いと札が切れる）〜580px
        （中身 1044px＝窓 1276px から。道の絵ごと一回り大きく、時の数字が 11px に届く＝W5）、
-       時間割に 440px を残す（列の幅は器と --desk-wide の小さいほう）。並べる境目 792px は窓 1024px の中身＝道 400＋間 24＋時間割 368。 */
+       時間割に 440px を残す（列の幅は器と --desk-wide の小さいほう）。並べる境目 768px は窓 1024px の中身（左の列 256px）＝道 400＋間 24＋時間割 344。 */
     #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-6); align-items: start; }
     #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(400px, min(100cqi, var(--desk-wide)) - var(--sp-6) - 440px, 580px); }
     #screen-todo .todo-day.is-tl > .day-road .road-map { max-width: none; }
@@ -8020,7 +7872,7 @@ button.note-when:active { opacity: var(--press-fade); }
     .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
     .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   }
-  @container seat (min-width: 1204px) { .diet-day.card { columns: 3; } }
+  @container seat (min-width: 1180px) { .diet-day.card { columns: 3; } }
 }
 @media (min-width: 1200px) {
   :root { --side-w: 380px; }
@@ -8033,7 +7885,7 @@ button.note-when:active { opacity: var(--press-fade); }
 /* ノートの右の段（P3b。docs/desk.md）：ノートの席で開いたノートは紙でなく右の段に据える。段の場所は何も開いていなくても
    取っておく（開いても並びが動かない）。段の上端は上の帯の下。決めるのは窓でなく中身の幅——紙と席の器そのものは器の中に
    居ないので @container でなく、screen-notes.js の seatMarks が器を測って付ける印で：notes-dock（中身 600px〜＝desk なら
-   いつも）・notes-three（中身 860px〜＝窓 1092px・畳めば 924px）。真ん中の一覧（--list-w 380px）を本文の段と並べるのは
+   いつも）・notes-three（中身 860px〜＝窓 1116px・畳めば 924px）。真ん中の一覧（--list-w 380px）を本文の段と並べるのは
    three のときだけ、それより狭いと段は器いっぱい（一覧の上に据わる。木は左の列のまま押せる）。 */
 @media (min-width: 840px) {
   :root.notes-dock { --list-w: 0px; --pane-x: calc(var(--rail-w) + var(--list-w)); }
@@ -8075,7 +7927,8 @@ button.note-when:active { opacity: var(--press-fade); }
   /* ＋は段の左：一覧の右下、一覧を並べないときは木の右下（木＝--z-bar より前へ）。畳んだ列が細いときは窓の右下のまま
      （段に隠れる——開いたノートを閉じれば出る）。 */
   :root.notes-dock[data-screen="notes"]:is(.notes-three, :not(.rail-fold)).has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
-  :root.notes-dock[data-screen="notes"]:not(.rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 1); }
+  /* 木の右下：settings の行と畳む口の上に立つ。 */
+  :root.notes-dock[data-screen="notes"]:not(.rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 2); bottom: calc(var(--side-pad) + var(--side-row) + var(--sp-3)); }
 }
 /* ノートのホームを二段に（screen-notes.js の homeBody。広い幅で列を畳んだとき・横にした電話）：左に入口・★・最近直した、右に木。 */
 @media (min-width: 840px) {
@@ -8138,14 +7991,14 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   .sheet.is-note.is-wide { width: calc(100% - var(--safe-l) - var(--safe-r) - var(--note-gap) * 2); }
   :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide), :root.notes-dock .sheet.is-note.is-docked:not(.is-wide) { right: var(--safe-r); }
   /* 月の暦は窓に収める（六週で 426px あり、最後の週が窓の外だった）：マスの名前は一段。背の高い月（fitTall）は窓が低くて付かない。 */
-  .cal:not(.is-tall) .cal-dots { height: 13px; }
+  .topbar-day .topbar-title, .head-name { font-size: calc(21px * var(--fs-k)); }
+  .cal:not(.is-tall) .cal-dots { height: 15px; padding: 0 2px; }
+  .cal:not(.is-tall) .cal-name { font-size: calc(10px * var(--fs-k)); line-height: 15px; padding: 0 1px 0 4px; border-radius: 4px; }
   .cal:not(.is-tall) .cal-name ~ .cal-name { display: none; }
-  /* 暦は題の右（base.css の同じ名前の節）。上の詰めは帯の 4px に任せる。 */
-  .head-cal .cal { padding-top: 0; }
   /* daily：写真の帯（desk は 260px から）を窓の半分弱に、三枚は絵を字の左へ（一枚の背 64px の絵＋字 → 48px の一行）。 */
   #screen-archive[data-season] .tl-sheet.is-daily { --season-h: 44vh; }
-  /* からだ：カードを二段に（desk は中身 792px から。横の窓の中身は 670〜770px）。 */
-  /* やることの今日：道（左）と時間割（右）。desk の P3a（中身 792px から）より細い道——札は少し詰まる。
+  /* からだ：カードを二段に（desk は中身 768px から。横の窓の中身は 670〜770px）。 */
+  /* やることの今日：道（左）と時間割（右）。desk の P3a（中身 768px から）より細い道——札は少し詰まる。
      段組みはどれも、月を右に立てて紙が細いあいだ（.head.is-month。base.css）は電話と同じ一列。 */
   .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--sp-4); align-items: start; }
   .head:not(.is-month) ~ .panes #screen-todo .todo-day.is-tl > .day-road { grid-column: 1; width: clamp(340px, 100cqi - 310px, 400px); }

@@ -2828,7 +2828,7 @@
        検索しているあいだは出しません——絞った結果は「一日」ではないので、
        一日ぶんの紙に乗せると嘘になります。 */
     const sheet = query ? els.body : node(html`
-      <div class="tl-sheet"><span class="tl-grip" aria-hidden="true"><i></i></span></div>
+      <div class="tl-sheet"></div>
     `);
     if (sheet !== els.body) els.body.append(sheet);
 
@@ -2893,8 +2893,7 @@
          替えられるのが掴み手だけになったいま、紙の本体は「引いて更新」の
          ものなので、そのまま譲ります（ダイエットで引いて更新が効かなく
          なっていたのは、これでした）。 */
-      const grip = sheet.querySelector(".tl-grip");
-      if (grip) grip.setAttribute("data-pull-own", "cal");
+
       /* 次の組み直しで使い回せるように、いまの姿を控えます。 */
       sheetNode = sheet;
       sheetSig = sheetDigest(shownDay());
@@ -4252,7 +4251,6 @@
     sec.querySelectorAll(".cal-rest").forEach((e) => e.remove());
     sec.querySelectorAll(".cal-name.is-over").forEach((e) => e.classList.remove("is-over"));
     sec.classList.remove("is-tall");
-    if (KN.head.syncTall) KN.head.syncTall();
     const cells = grid ? grid.querySelectorAll(":scope > .cal-day") : [];
     if (!monthFace() || !calOpen() || !calShown() || cells.length < 8) return;
     const cell = cells[0];
@@ -4264,7 +4262,6 @@
     sec.style.setProperty("--cal-row", row + "px");
     sec.dataset.rowLo = lo;
     sec.classList.add("is-tall");
-    if (KN.head.syncTall) KN.head.syncTall();
     // 輪は px で置いてあるので、マスの背が変わったら置き直す。
     const here = grid.querySelector(":scope > .cal-day.is-here");
     if (here && grid.querySelector(".cal-ring.is-on")) moveRing(grid, here, true);
@@ -4990,7 +4987,6 @@
       viewport: sheet,
       surface: sheet,
       track: shelves,
-      ignore: ".tl-grip",
       day: titleDay,
       step: (d, dir) => shiftDay(d, dir),
       commit: (key) => {
@@ -5009,9 +5005,8 @@
      ——二枚書き写すと、片方だけを直した日に二つの暦が違う動きをします）。
      ここが答えるのは「この画面では何が『いま見ている日』か」「いつ引いて
      よいか」だけです。 */
-  function wireCalPull(el) {
-    KN.calPeek.wire({
-      sheet: el,
+  function wireCalPull() {
+    KN.head.peek("todo", {
       root,
       cal: () => els.cal,
       isOpen: calOpen,
@@ -5026,6 +5021,7 @@
       here: () => hereDay || todayKey(),
       tagOffWeek,
       commit: calCommit,
+      tall: () => peekOpts.tall(),
     });
   }
 

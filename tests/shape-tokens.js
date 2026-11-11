@@ -33,8 +33,8 @@ t.check("体重の期間は `.seg`（丸札に戻さない）",
   /class="seg diet-range js-range"/.test(diet) && !/chipRow\([^)]*js-range/.test(diet));
 
 const hero = has(".sheet-hero");
-t.check("紙の頭は淡い地（--cat-fill）に墨の字",
-  hero.some((r) => /background:[^;]*--cat-fill/.test(r.body) && colorOf(r.body) === "var(--c-text)")
+t.check("紙の頭は種類の色を 13% 敷いた淡い地に墨の字（docs/redesign.md 5節）",
+  hero.some((r) => /background:[^;]*var\(--cat[^;]*13%[^;]*var\(--c-sheet\)/.test(r.body) && colorOf(r.body) === "var(--c-text)")
     && !hero.some((r) => /#000/.test(r.body)), hero.map((r) => r.body.trim()).join(" | "));
 const white = rules.filter((r) => /\.(sheet-hero|hero-cap|hero-title|hero-facts|hero-fact)\b/.test(r.sel)
   && !/hero-node|todo-dot/.test(r.sel) && /(?:^|[;\s])color:\s*#fff\b/.test(r.body));

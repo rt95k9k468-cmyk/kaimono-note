@@ -270,7 +270,7 @@
     /* 床（`--cal-h`）を読むのは掴み手ひとつだけなので、引いているあいだは
        そこへ直に書きます（`paint` の節）。掴み手は組み直しのたびに別の
        要素になるので、掴んだこの時点で見つけておくこと。 */
-    m.grip = o.sheet ? o.sheet.querySelector(".tl-grip") : null;
+    m.grip = null;   // 取っ手は帯の盆に居て貼りつかない（前は紙の頭に貼りつく掴み手の床 --cal-h を毎フレーム書いた）
     paint(o, m, p === undefined ? at(o) : p, k);
     /* 測るあいだに伸びたぶんを、ブラウザが追いかけていたら戻します。 */
     if (sc0) { void o.root.offsetHeight; sc0.scrollTop = scroll0; }
@@ -458,7 +458,7 @@
          ときだけ」がありました。掴み手はどこまで送っても上に居る（sticky）
          ので、そこを掴んだのに何も起きないのは筋が通りません。 */
       if (o.enabled && !o.enabled()) return;
-      byGrip = !!(e.target.closest && e.target.closest(".tl-grip"));
+      byGrip = !!(e.target.closest && e.target.closest(".cal-grip"));
       /* **切り替えるのは掴み手からだけ。** 紙のどこを持っても下へ引けば
          暦が出る、という作りにしていたことがありましたが、使いづらい
          ——読んでいて下を見ようとするたびに暦が伸びてきます。掴み手は
@@ -525,7 +525,8 @@
       const was = on, mm = m, pp = p, from = p0, a = lo, b = hi;
       const v = vy, sp = span, dy = e.clientY - y0;
       drop();
-      if (!was) return;
+      /* 動かさずに離したら、押した（一段。head.js の tap）。 */
+      if (!was) { if (o.tap && e.type === "pointerup" && Math.hypot(e.clientX - x0, dy) < SLOP) o.tap(); return; }
       /* 出てきた側から DONE ぶん離れていたら、行った先へ。**または、
          そこまで来ていなくても、速く払っていたら**——距離だけで決めると、
          ぱっと弾いた指が戻されます（紙の節で一度直したのと同じ話）。 */

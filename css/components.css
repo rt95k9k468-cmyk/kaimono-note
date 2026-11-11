@@ -777,31 +777,26 @@ button, [role="tab"] {
 .sheet.is-from-origin {
   transition:
     transform var(--m-sheet-close) var(--ease-in),
-    opacity calc(var(--m-sheet-close) / 2) var(--ease-in) calc(var(--m-sheet-close) / 2),
-    border-radius var(--m-sheet-close) var(--ease-in);
+    opacity calc(var(--m-sheet-close) / 2) var(--ease-in) calc(var(--m-sheet-close) / 2);
 }
 .sheet.is-from-origin.is-open {
   transition:
     transform var(--m-sheet-grow) var(--push-e),
-    opacity var(--m-state) var(--ease),
-    border-radius var(--m-sheet-grow) var(--push-e);
+    opacity var(--m-state) var(--ease);
 }
 .sheet.is-from-origin:not(.is-open) {
   transform: translate(-50%, 0) translate(var(--sx, 0px), var(--sy, 0px)) scale(.3);
   opacity: 0;
-  border-radius: 34px;
 }
 /* ＋へ帰るときは、＋の大きさまで縮み、薄れるのは最後の3分の1だけ（V26、利用者
    「＋への戻り方が甘く、一瞬で閉じる」10月5日）。 */
 .sheet.is-from-origin.is-homing {
   transition:
     transform var(--m-sheet-home) var(--push-e),
-    opacity calc(var(--m-sheet-home) / 3) var(--ease-in) calc(var(--m-sheet-home) * 2 / 3),
-    border-radius var(--m-sheet-home) var(--push-e);
+    opacity calc(var(--m-sheet-home) / 3) var(--ease-in) calc(var(--m-sheet-home) * 2 / 3);
 }
 .sheet.is-from-origin.is-homing:not(.is-open) {
   transform: translate(-50%, 0) translate(var(--sx, 0px), var(--sy, 0px)) scale(.14);
-  border-radius: var(--r-full);
 }
 
 /* ＋から開いた紙は、四隅の丸いカード（U17・2026年10月7日、利用者が見比べで A「中身ぶんの高さ」）。
@@ -857,11 +852,11 @@ button, [role="tab"] {
   .sheet {
     bottom: auto;
     top: 50%;
-    transform: translate(-50%, -46%) scale(.97);
+    transform: translate(-50%, -46%) scale(.96);
     opacity: 0;
     border-radius: var(--r-xl);
     max-height: min(86dvh, 760px, var(--vvh, 100dvh));
-    width: min(100% - 32px, 520px);
+    width: min(100% - 32px, 560px);
     /* 広い画面では真ん中の一枚になりますが、開く／閉じるの分け方は同じです。 */
     transition: transform var(--m-sheet-close) var(--ease-in), opacity var(--m-state) var(--ease);
   }
@@ -937,25 +932,24 @@ button, [role="tab"] {
   align-items: center;
   gap: var(--sp-4);
   padding: var(--sp-6) var(--sp-5) var(--sp-5) var(--sp-4);
-  background: color-mix(in srgb, var(--cat, var(--c-primary-fill)) var(--cat-fill), var(--c-surface));
+  /* 種類の色を 13% 敷いた頭（docs/redesign.md 5節）。 */
+  background: color-mix(in srgb, var(--cat, var(--c-primary)) 13%, var(--c-sheet));
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   color: var(--c-text);
   flex: none;
 }
-/* 粒。**縦にのびた丸薬**です（参考画面と同じ形）。時間割の丸は円ですが、
-   ここは一枚の絵として大きく見せる場所なので、縦長のほうが絵が伸び伸び
-   入ります。白い細い輪で、地の面から一段持ち上げます。 */
+/* 絵の台は 60px の角丸（種類の色の塗りに白い絵）。行の絵の続き。 */
 .hero-mark { position: relative; flex: none; }
 .hero-node {
   display: grid; place-items: center;
-  width: 62px; height: 84px;
-  border-radius: 31px;
-  background: var(--cat, var(--c-primary-fill));
-  color: var(--c-text-on);                     /* 粒の中の絵は白のまま（地の字は墨） */
-  box-shadow: 0 0 0 2.5px color-mix(in srgb, #fff 82%, transparent);
+  width: 60px; height: 60px;
+  border-radius: var(--r-lg);
+  background: var(--cat, var(--c-primary));
+  color: var(--c-text-on);
+  box-shadow: 0 8px 16px -8px var(--cat, var(--c-primary));
 }
 .hero-node .todo-mark,
-.hero-node .todo-mark svg { width: 38px; height: 38px; }  /* 入れもの：紙の頭の丸 */
+.hero-node .todo-mark svg { width: 30px; height: 30px; }  /* 入れもの：紙の頭の丸 */
 /* 行の丸薬から頭の丸薬へ伸びていく影武者（ui.js の morphPill）。箱の
    位置・大きさ・丸み・輪は、JS が測った数で動かします。 */
 .sheet-morph {
@@ -978,8 +972,9 @@ button.hero-node:active { scale: var(--press-dot); }
   display: block;
   margin-bottom: 2px;
   font-size: var(--fs-sm);
-  /* --c-text-2 だと暗い面の地（--cat-fill 32%）で 3.5:1。墨を少しだけ引く。 */
-  color: color-mix(in srgb, var(--c-text) 85%, transparent);
+  font-weight: var(--fw-bold);
+  /* 「いつ」は種類の色（薄い頭の上で読めるよう墨を少し混ぜる）。 */
+  color: color-mix(in srgb, var(--cat, var(--c-primary)) 72%, var(--c-text));
   font-variant-numeric: tabular-nums;
 }
 /* 打っている字から日付や時刻が読めているあいだの**予告**。
@@ -1002,11 +997,11 @@ button.hero-node:active { scale: var(--press-dot); }
   padding: 2px 0 5px;
   background: none;
   border: 0;
-  border-bottom: 1.5px solid color-mix(in srgb, var(--c-text) 22%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--c-text) 14%, transparent);
   border-radius: 0;
   color: var(--c-text);
   font-family: var(--font-display);
-  font-size: calc(20px * var(--fs-k));
+  font-size: calc(23px * var(--fs-k));
   font-weight: var(--fw-bold);
   line-height: 1.35;
   letter-spacing: -.01em;
@@ -1080,7 +1075,9 @@ button.hero-node:active { scale: var(--press-dot); }
 .sheet-detail { display: flex; flex-direction: column; gap: var(--sp-4); }
 .d-card {
   background: var(--c-surface);
+  border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 .d-row {
@@ -1089,7 +1086,7 @@ button.hero-node:active { scale: var(--press-dot); }
   gap: var(--sp-3);
   width: 100%;
   min-height: var(--row-h);
-  padding: var(--sp-3) var(--sp-4) var(--sp-3) 14px;
+  padding: 6px var(--sp-4) 6px 14px;
   text-align: left;
   transition: background var(--m-press) var(--ease);
 }
@@ -1103,6 +1100,7 @@ button.hero-node:active { scale: var(--press-dot); }
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
 }
+.d-segs .seg-btn { padding-inline: 2px; white-space: nowrap; }
 .d-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
 .d-row:disabled { opacity: var(--press-off); }
 .d-ico {

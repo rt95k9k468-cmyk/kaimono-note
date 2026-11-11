@@ -452,11 +452,15 @@
     const d = dayDate(key);
     if (!d) return null;
     const today = todayKey();
+    /* 題は「年・節気」の小さな一行と、月日・曜日（docs/redesign.md 5節）。節気は season.js が後から読まれるので、塗るときに訊く。 */
+    const sk = KN.season && KN.season.of(key);
     return {
       y: String(d.getFullYear()),
-      pre: `年${d.getMonth() + 1}月`,
+      k: sk ? ` ・ ${sk.sekki}` : "",
+      pre: `${d.getMonth() + 1}月`,
       d: String(d.getDate()),
-      post: `日(${WEEKDAYS[d.getDay()]})`,
+      post: "日",
+      w: `${WEEKDAYS[d.getDay()]}曜日`,
       isToday: key === today,
       /* 「今日へ戻る」の矢がどちらを向くか。未来の日から戻るのは時間を
          遡る＝左、過去の日から戻るのは時間を進める＝右。 */
@@ -467,7 +471,7 @@
   /** 読み上げ用の一本の字。上の四つを、そのままつないだもの。 */
   function dayTitleText(key) {
     const p = dayTitleParts(key);
-    return p ? p.y + p.pre + p.d + p.post : "";
+    return p ? `${p.y}年${p.pre}${p.d}日(${p.w[0]})` : "";
   }
 
   /** 上の帯に置く、日付の題と、その右の「今日へ戻る」。三画面で同じ形です。
@@ -494,9 +498,10 @@
   function dayTitleBar() {
     return html`
       <div class="topbar-dayrow">
+        <span class="head-eye" aria-hidden="true"><span class="day-y"></span><span class="day-k"></span></span>
         <button type="button" class="topbar-day js-day-title">
-          <span class="topbar-title"><span class="day-y"></span><span class="day-pre"></span><span
-                class="day-d"></span><span class="day-post"></span></span>
+          <span class="topbar-title"><span class="day-pre"></span><span
+                class="day-d"></span><span class="day-post"></span><small class="day-w"></small></span>
         </button>
         <button type="button" class="topbar-today js-go-today">${icon("back")}</button>
       </div>
@@ -563,6 +568,9 @@
     rollText(dEl, p.d, roll, dir, 2);
     dEl.classList.toggle("is-today", p.isToday);
     rollText(q(".day-post"), p.post, roll, dir, 3);
+    rollText(q(".day-w"), p.w, roll, dir, 4);
+    const kEl = q(".day-k");
+    if (kEl && kEl.textContent !== p.k) kEl.textContent = p.k;
     const btn = q(".js-day-title");
     if (btn) btn.setAttribute("aria-label", dayTitleText(key) + (action ? `。${action}` : ""));
     /* 今日を見ているあいだは隠します。押せる日だけ、向きも決まります

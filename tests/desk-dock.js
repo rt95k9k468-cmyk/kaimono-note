@@ -50,7 +50,7 @@ const { open, checker } = require("./lib");
   await page.waitForSelector(".sheet.is-note.is-open.is-docked");
   await page.waitForTimeout(500);
   const b = await page.evaluate(() => { const r = document.querySelector(".sheet.is-note").getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), w: Math.round(r.width) }; });
-  t.check("一覧から開いた段は一覧の右から", Math.abs(b.l - (232 + 380)) <= 1, JSON.stringify(b));
+  t.check("一覧から開いた段は一覧の右から", Math.abs(b.l - (256 + 380)) <= 1, JSON.stringify(b));
   const r2 = await closing(() => page.keyboard.press("3"));
   t.check("席を移る：閉じる紙は段の形のまま（真ん中の紙の姿にならない）", inPlace(r2.f, b) && r2.left === 0,
     JSON.stringify({ b, f: r2.f.filter((x, i, s) => i === 0 || JSON.stringify(x) !== JSON.stringify(s[i - 1])).slice(0, 6), left: r2.left }));

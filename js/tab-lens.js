@@ -36,9 +36,9 @@
 
   /* 丸薬の丈。参考画面の実測は 53px／カプセル 70px ＝ 0.757 なので、
      この帯の丈（`--tab-cap` 64px）に写して 48px。 */
-  const REST_H = 48;
+  const REST_H = 52;
   /* 席の幅から左右に逃がすぶん。 */
-  const INSET_X = 3;
+  const INSET_X = 5;
 
   let bar = null;
   let lens = null;

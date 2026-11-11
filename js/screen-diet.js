@@ -468,14 +468,12 @@
        出すのは掴み手だけ。**下へ引けば暦が月ぜんぶまで開き**、掴み手から
        上へ押せば週へ戻ります。 */
     const sheet = node(html`
-      <div class="tl-sheet is-bare"><span class="tl-grip" aria-hidden="true"><i></i></span></div>
+      <div class="tl-sheet is-bare"></div>
     `);
     els.body.append(sheet);
     wireCalPull(sheet);
     /* **印は掴み手だけ。** 紙ぜんぶに付けていたので、この画面では
        「引いて更新」がまるごと効かなくなっていました。 */
-    const grip = sheet.querySelector(".tl-grip");
-    if (grip) grip.setAttribute("data-pull-own", "cal");
 
     sheet.append(node(html`
       <div class="diet">
@@ -628,9 +626,8 @@
 
      やること・daily と同じ仕掛けです（js/cal-peek.js）。ここが答えるのは
      「この画面では何が『いま見ている日』か」「いつ引いてよいか」だけ。 */
-  function wireCalPull(el) {
-    KN.calPeek.wire({
-      sheet: el,
+  function wireCalPull() {
+    KN.head.peek("diet", {
       root,
       cal: () => els.cal,
       isOpen: calOpen,

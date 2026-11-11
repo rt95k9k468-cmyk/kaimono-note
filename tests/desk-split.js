@@ -1,6 +1,6 @@
 /* 境目を引いて幅を変える（docs/desk.md の「境目を引く」・design-review 10節の P5。js/desk-split.js）：
    - 左の列の右の線を引けば列の幅が変わり、中身はその右から。この端末だけ（localStorage `kn-split`、記録に入れない）・読み直しても残る
-   - 二度押しで 232px へ。←→ で 16px・Home／End で端・Enter で元へ（日は送らない）
+   - 二度押しで 256px へ。←→ で 16px・Home／End で端・Enter で元へ（日は送らない）
    - 窓が狭まれば中身に 600px を残す（窓 900px で 300px まで）・畳んだ列には口が無い
    - ノートの一覧（三列）の右の線も同じ。本文の段に 480px を残す
    - 指の端末（iPad の横）・電話には口が無く、残した幅も効かない
@@ -39,13 +39,13 @@ async function drag(page, sel, dx) {
     });
     await page.waitForTimeout(500);
     let v = await look(page);
-    t.check("口が線の上にある・引いていなければ 232px・何も残さない", v.split && v.rail === 232 && v.scr === 232 && v.now === "232" && v.saved === null, JSON.stringify(v));
+    t.check("口が線の上にある・引いていなければ 256px・何も残さない", v.split && v.rail === 256 && v.scr === 256 && v.now === "256" && v.saved === null, JSON.stringify(v));
     const before = await page.evaluate(() => JSON.stringify(KN.store.get().settings));
 
     await drag(page, ".split-rail", 68);
     v = await look(page);
-    t.check("引くと列が広がり、中身はその右から・この端末に残す", v.rail === 300 && v.scr === 300 && v.now === "300"
-      && JSON.parse(v.saved || "{}").rail === 300, JSON.stringify(v));
+    t.check("引くと列が広がり、中身はその右から・この端末に残す", v.rail === 324 && v.scr === 324 && v.now === "324"
+      && JSON.parse(v.saved || "{}").rail === 324, JSON.stringify(v));
     const after = await page.evaluate(() => JSON.stringify(KN.store.get().settings));
     t.check("記録（設定）には入れない", before === after, `${before} → ${after}`);
 
@@ -53,14 +53,14 @@ async function drag(page, sel, dx) {
     await page.waitForFunction(() => window.KN && KN.app);
     await page.waitForTimeout(600);
     v = await look(page);
-    t.check("読み直しても同じ幅", v.rail === 300 && v.scr === 300, JSON.stringify(v));
+    t.check("読み直しても同じ幅", v.rail === 324 && v.scr === 324, JSON.stringify(v));
 
     await drag(page, ".split-rail", 400);
     t.check("広げすぎても 360px まで", (await look(page)).rail === 360);
     await page.dblclick(".split-rail");
     await page.waitForTimeout(150);
     v = await look(page);
-    t.check("二度押しで 232px へ・残したものも消える", v.rail === 232 && v.saved === null, JSON.stringify(v));
+    t.check("二度押しで 256px へ・残したものも消える", v.rail === 256 && v.saved === null, JSON.stringify(v));
 
     /* キー：←→ は日を送らない。 */
     const day0 = await page.evaluate(() => document.querySelector(".screen.is-active").innerText.slice(0, 80));
@@ -69,7 +69,7 @@ async function drag(page, sel, dx) {
     await page.keyboard.press("ArrowRight");
     v = await look(page);
     const day1 = await page.evaluate(() => document.querySelector(".screen.is-active").innerText.slice(0, 80));
-    t.check("→ で 16px ずつ・日は送らない・カーソルは口のまま", v.rail === 264 && day0 === day1
+    t.check("→ で 16px ずつ・日は送らない・カーソルは口のまま", v.rail === 288 && day0 === day1
       && await page.evaluate(() => document.activeElement.matches(".split-rail")), JSON.stringify(v));
     await page.keyboard.press("Home");
     t.check("Home で 184px", (await look(page)).rail === 184);
@@ -77,7 +77,7 @@ async function drag(page, sel, dx) {
     t.check("End で 360px", (await look(page)).rail === 360);
     await page.keyboard.press("Enter");
     v = await look(page);
-    t.check("Enter で元へ", v.rail === 232 && v.saved === null, JSON.stringify(v));
+    t.check("Enter で元へ", v.rail === 256 && v.saved === null, JSON.stringify(v));
 
     /* 窓が狭まれば中身に 600px を残す。 */
     await page.keyboard.press("End");
@@ -133,7 +133,7 @@ async function drag(page, sel, dx) {
       before: (ctx) => ctx.addInitScript(() => localStorage.setItem("kn-split", JSON.stringify({ rail: 320, list: 500 }))) });
     await page.waitForTimeout(500);
     const v = await look(page);
-    t.check("指の 1180px：口は無く 232px のまま", !v.split && v.rail === 232, JSON.stringify(v));
+    t.check("指の 1180px：口は無く 256px のまま", !v.split && v.rail === 256, JSON.stringify(v));
     t.check("指：エラーなし", !errors.length, errors.join(" | "));
     await browser.close();
   }

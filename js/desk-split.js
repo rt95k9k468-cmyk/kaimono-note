@@ -17,7 +17,7 @@
   const DESK = window.matchMedia("(min-width: 840px) and (pointer: fine)");
   const STEP = 16;
   const SIDES = {
-    rail: { name: "--rail-pick", def: 232, min: 184, label: "左の列の幅",
+    rail: { name: "--rail-pick", def: 256, min: 184, label: "左の列の幅",
       max: () => Math.min(360, window.innerWidth - 600) },
     list: { name: "--list-pick", def: 380, min: 280, label: "一覧の幅",
       max: () => Math.min(560, window.innerWidth - railNow() - 480) },

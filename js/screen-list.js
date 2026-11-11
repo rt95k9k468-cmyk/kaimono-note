@@ -52,7 +52,6 @@
               紙の後ろにいて、そこへは帯の「shopping」を押して行きます
               （紙が下がる。app.js の faceTo）。 */""}
         <div class="tl-sheet js-sheet">
-          <span class="tl-grip js-grip" aria-hidden="true"><i></i></span>
           <div class="js-body"></div>
         </div>
       </div>
@@ -70,13 +69,10 @@
       body:       chrome.querySelector(".js-body"),
     };
 
-    /* 掴み手は二役です。紙が上に居るあいだは暦を開くもの（ほかのタブと
-       同じ cal-peek。head.js が暦を持っているので、結ぶのもあちら）、
-       紙が価格へ下がって留まっているあいだは買うものへ戻る道（app.js）。 */
-    const grip = chrome.querySelector(".js-grip");
-    KN.app.wireFaceGrip(grip);
+    /* 紙の頭に リスト｜価格 の札（app.js の faceSeg。前は紙を下げて価格へ行った）。暦の段は帯の取っ手で
+       （head.js が暦を持っているので、答えを置くのもあちら）。 */
+    chrome.querySelector(".js-sheet").prepend(KN.app.faceSeg("list"));
     KN.head.shopPeek({
-      sheet: chrome.querySelector(".js-sheet"),
       root,
       // 探している最中だけ引きません（ほかのタブと同じ）。
       enabled: () => !query.trim(),
@@ -94,7 +90,7 @@
       viewport: sheet,
       surface: sheet,
       track: els.body,
-      ignore: ".tl-grip",
+      ignore: ".face-seg",
       day: () => KN.head.shopDay(),
       step: (d, dir) => KN.util.shiftDay(d, dir),
       commit: (key) => KN.head.shopGo(key),

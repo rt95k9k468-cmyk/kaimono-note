@@ -597,9 +597,8 @@
 
      この画面は一日ずつではなく**月ぶん**を出しているので、窓に来る週は
      「選んでいる日」か、選んでいなければ今日の週です。 */
-  function wireCalPull(el) {
-    KN.calPeek.wire({
-      sheet: el,
+  function wireCalPull() {
+    KN.head.peek("archive", {
       root,
       cal: () => els.cal,
       isOpen: calOpen,
@@ -2053,7 +2052,7 @@
 
        紙は掴めます——下へ引くと暦が月ぜんぶまで開きます（cal-peek.js）。 */
     const sheet = node(html`
-      <div class="tl-sheet is-daily"><span class="tl-grip" aria-hidden="true"><i></i></span></div>
+      <div class="tl-sheet is-daily"></div>
     `);
     els.body.append(sheet);
     wireCalPull(sheet);
@@ -2061,8 +2060,6 @@
        どこを持っても下へ引けば暦が出た時期の名残です。段を替えられるのが
        掴み手だけになったいま、紙の本体は「引いて更新」のものなので、
        そのまま譲ります。 */
-    const grip = sheet.querySelector(".tl-grip");
-    if (grip) grip.setAttribute("data-pull-own", "cal");
 
     /* 中身は、横に払える一枚（.day-slide）にまとめて入れます。払っている
        あいだ、隣の日の紙が指のぶんだけ入ってきます。 */
