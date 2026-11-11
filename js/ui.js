@@ -128,7 +128,6 @@
     /* 引っ込んだ＋は透けたまま上の端だけ画面に残るので、箱では見分けられない
        （真ん中は画面の下の外＝キーボードの裏へ縮んでいた）。 */
     if (document.documentElement.classList.contains("kb-open")) return null;
-    if (document.querySelector("#dock.is-away")) return null;
     const fab = document.querySelector("#dock .add-fab");
     const f = fab && fab.getBoundingClientRect();
     const y = f && f.top + f.height / 2;
@@ -275,9 +274,12 @@
     if (!a.width || !a.height) return null;
     let b;
     if (el.classList.contains("is-open")) {
-      /* 行から広がる紙（growCard）はもう開いた場所にいて、ずれているのは寄せたぶん（translate）だけ。 */
-      const r = el.getBoundingClientRect(), s = restBox(el), t = to.getBoundingClientRect();
-      b = { left: t.left + s.left - r.left, top: t.top + s.top - r.top, width: t.width, height: t.height };
+      /* 行から広がる紙（growCard）は、カードの箱へ重ねた transform のまっ最中。頭の丸薬の行き先は、開いた場所の紙の箱
+         （growCard が控えた `_rest`）と、紙の中での置き場（組み上がりの箱。transform を見ない）から出す。 */
+      const s = el._rest || restBox(el);
+      let x = 0, y = 0, n = to;
+      while (n && n !== el) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      b = n === el ? { left: s.left + x, top: s.top + y, width: to.offsetWidth, height: to.offsetHeight } : to.getBoundingClientRect();
     } else {
       el.style.transition = "none";
       el.classList.add("is-open");
@@ -455,7 +457,16 @@
     el.classList.add("is-open");
     const s = restBox(el);
     const timing = { duration: KN.motion.ms("--m-sheet-grow"), easing: KN.motion.ease("--push-e") };
-    const run = el.animate([{ transform: cardShift(s, a), opacity: 0 }, { opacity: 1, offset: .3 }, { transform: REST, opacity: 1 }], timing);
+    const frames = (box) => [{ transform: cardShift(box, a), opacity: 0 }, { opacity: 1, offset: .3 }, { transform: REST, opacity: 1 }];
+    const run = el.animate(frames(s), timing);
+    /* 呼んだ側は、開いた直後に中身を足す（紙の背が変わる）。次の一拍に、組み上がりの箱（transform を見ない）から出どころを
+       置き直す。頭の丸薬の行き先（morphPill）も、この箱から出す。 */
+    el._rest = s;
+    el._refit = () => {
+      const l = el.offsetLeft - el.offsetWidth / 2, t = el.offsetTop;
+      el._rest = { left: l, top: t, right: l + el.offsetWidth, bottom: t + el.offsetHeight };
+      if (run.playState === "running") run.effect.setKeyframes(frames(el._rest));
+    };
     kids(el).forEach((k) => k.animate([{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], timing));
     /* 育つ途中で指が触れたら、開ききった姿にして指に渡す（下へ払えば、その場所から帰る）。 */
     el.addEventListener("pointerdown", () => { if (run.playState === "running") run.finish(); }, { once: true });
@@ -905,9 +916,10 @@
 
     // Next frame so the transition runs.
     let unmorph = null;
-    /* カードから膨らむときは、紙はもう開いた場所にいます（窓だけが広がる）。 */
+    /* カードから膨らむときは、紙はカードの箱へ重ねたところから開いた場所へ広がります（growCard）。 */
     const grown = grow ? growCard(grow, el, floor + 1 + depth * 2) : false;
     requestAnimationFrame(() => {
+      if (grown && !closed && el._refit) el._refit();
       /* 行の丸薬から伸びるのは、押した点から育つときと、行から広がるとき（やること）。 */
       if ((seed || grown) && opts && opts.morph && !closed) unmorph = morphPill(opts.morph, el, floor + 1 + depth * 2);
       backdrop.classList.add("is-open");
@@ -2737,10 +2749,14 @@
        残したまま——見に行くのはこれからなので）。 */
     els.search.addEventListener("keydown", (e) => {
       if (KN.util.isEnter(e)) { e.preventDefault(); els.search.blur(); }
-      /* Esc で閉じたら虫めがねへ（マウスの端末。キーボードで巡る人の居場所。P4）。 */
+      /* Esc で閉じたら虫めがねへ（マウスの端末。キーボードで巡る人の居場所。P4）。広い幅では帯の虫めがねは隠れて
+         左の列の「さがす」が同じ口（docs/redesign.md 5節）なので、見えているほうへ。 */
       if (e.key === "Escape") {
         close();
-        if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches && els.searchBtn) els.searchBtn.focus({ preventScroll: true });
+        if (window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          const back = [els.searchBtn, document.querySelector("#tabbar .rail-find")].find((b) => b && b.offsetWidth);
+          if (back) back.focus({ preventScroll: true });
+        }
       }
     });
 

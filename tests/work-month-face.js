@@ -69,7 +69,8 @@ const { open, checker } = require("./lib");
   const sumFirst = await page.evaluate(() => { const s = document.querySelector("#screen-todo .mo .wk-sum"); return !!s && s.previousElementSibling.matches(".wk-h") && s.nextElementSibling.matches(".mo-list"); });
   c.check("今月のまとめ（予定の数・作業時間・締切）は見出しのすぐ下の一行", sumFirst && /予定 4件/.test(a.sum) && /作業時間 1時間30分/.test(a.sum) && /締切 1件/.test(a.sum), a.sum);
   c.check("暦の月の段に名前（代表は予定）", a.n22 === "定例" && a.n23 === "経費の精算" && a.n27 === "出張" && a.n24 === "", JSON.stringify([a.n22, a.n23, a.n27, a.n24]));
-  c.check("月の面は暦が画面の65%まで背高", a.tall && a.h > h0 + 20 && Math.abs(a.bottom - a.vh * 0.65) < 8, JSON.stringify([h0, a.h, a.bottom, a.vh]));
+  /* 週の升は数字 30px＋札二段で 70px（R2）。背の高い月の升は、65% に六週を収めるので約 87px。 */
+  c.check("月の面は暦が画面の65%まで背高", a.tall && a.h > h0 + 10 && Math.abs(a.bottom - a.vh * 0.65) < 8, JSON.stringify([h0, a.h, a.bottom, a.vh]));
   c.check("入りきらない名前は最後の段を「+n」に", a.d30 >= 1 && a.more30 === `+${40 - a.d30}`, JSON.stringify([a.d30, a.more30]));
 
   // 月の面のまま買うものへ移っても、そちらの暦は週のまま。戻れば月の面（背の高い月）

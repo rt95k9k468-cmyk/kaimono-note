@@ -275,8 +275,8 @@ const DAY = "2026-09-30";
   await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 0; });
   await wait(200);
   const body = await page.evaluate(() => {
-    const g = document.querySelector("#screen-todo .tl-grip").getBoundingClientRect();
-    return { x: g.left + g.width / 2, y: g.bottom + 90 };
+    const g = document.querySelector("#screen-todo .tl-sheet").getBoundingClientRect();
+    return { x: g.left + g.width / 2, y: g.top + 110 };
   });
   await touch("touchStart", body.x, body.y);
   let gave = false;

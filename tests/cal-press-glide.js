@@ -38,7 +38,8 @@ const { open, checker } = require("./lib");
       const hc = document.querySelector("#head .head-cal");
       const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
       window.__w.push({ ms: performance.now(), h: Math.round(hc.getBoundingClientRect().height), t: (document.querySelector("#head .js-day-title") || {}).textContent || "",
-        peek: !!document.querySelector("#head .cal.is-peek"), top: Math.round(sc.scrollTop) });
+        peek: !!document.querySelector("#head .cal.is-peek"), top: Math.round(sc.scrollTop),
+        p: Math.round(document.getElementById("panes").getBoundingClientRect().top) });
       if (performance.now() - t0 < 600) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -95,12 +96,14 @@ const { open, checker } = require("./lib");
   c.check("月の面は今日の行が帯のすぐ下・輪は今日", Math.abs(mo.gap) <= 2 && mo.here === "2026-10-21", JSON.stringify(mo));
   c.check("月の面は背の高い月・全タブの札は書かない", mo.tall && !mo.open, JSON.stringify(mo));
 
-  // 月の面から買うものへ：暦の置き場の背が滑り、買うものの暦は週
+  // 月の面から買うものへ：買うものの暦は週。盆は先に行き着く背を取り、下の画面が見かけ（translate）で滑る（docs/redesign.md 7節の 1）
   await watch();
   await page.click("#tabbar .tab-list");
   w = await seen();
   const shop = await page.evaluate(() => document.querySelector("#head .cal").classList.contains("is-week"));
-  c.check("買うものへ移ると暦は週・置き場の背が滑る", shop && between(w) >= 3 && leap(w) < 250, JSON.stringify([shop, w.map((f) => f.h)]));
+  const pw = w.map((f) => ({ ms: f.ms, h: f.p }));
+  c.check("買うものへ移ると暦は週・下の画面は滑って上がる（一コマで跳ばない）", shop && between(pw) >= 3 && leap(pw) < 250, JSON.stringify([shop, pw.map((f) => f.h)]));
+  c.check("盆は先に行き着く背を取る（置き場の背を毎コマ並べ直さない）", new Set(w.slice(1).map((f) => f.h)).size <= 2, JSON.stringify(w.map((f) => f.h)));
   await page.click("#tabbar .tab-todo");
   await page.waitForTimeout(700);
 

@@ -64,7 +64,8 @@ async function roundTrip(page, sel, same) {
     const inSearch = await page.evaluate(() => document.activeElement.matches(".js-search"));
     await page.keyboard.press("Escape");
     await page.waitForTimeout(300);
-    t.check("探す窓の Esc は虫めがねへ", inSearch && await page.evaluate(() => document.activeElement.matches("#head .js-search-btn")));
+    /* 広い幅では帯の虫めがねは隠れ、左の列の「さがす」が同じ口（docs/redesign.md 5節）。 */
+    t.check("探す窓の Esc は虫めがね（広い幅は左の列のさがす）へ", inSearch && await page.evaluate(() => document.activeElement.matches("#head .js-search-btn, #tabbar .rail-find")));
 
     /* 設定：Esc で一枚ずつ戻り、出たら歯車へ。 */
     await page.keyboard.press(",");

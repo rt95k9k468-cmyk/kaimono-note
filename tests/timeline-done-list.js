@@ -76,7 +76,7 @@ const DAY = "2026-10-28";
   c.check("みな済ませたら、物差しは一枚の札と「いま」だけ（一覧は四件）",
     r.done.length === 4 && !r.ruler.length && r.rest === 1 && !r.folds && r.now, JSON.stringify(r));
 
-  /* 送っても掴み手は消えず、帯は掴み手の下。 */
+  /* 送っても 今日｜週｜月 の帯は紙の頭に貼りつく（紙の掴み手は無くなった。docs/redesign.md 5節）。 */
   await page.evaluate(() => {
     KN.store.update((st) => st.todos.forEach((x) => { if (x.due === "2026-10-28") { x.done = false; x.doneAt = null; } }));
     for (let i = 0; i < 6; i++) KN.store.addTodo({ title: `用事${i}`, due: "2026-10-28", time: `${17 + (i % 6)}:30`, minutes: 20 });
@@ -86,13 +86,13 @@ const DAY = "2026-10-28";
     const scr = document.querySelector("#screen-todo");
     const sc = KN.app.scrollerOf(scr);
     sc.scrollTop = 300;
-    const g = scr.querySelector(".tl-grip").getBoundingClientRect(), f = scr.querySelector(".wk-faces").getBoundingClientRect();
+    const f = scr.querySelector(".wk-faces").getBoundingClientRect();
     const s = sc.getBoundingClientRect();
-    const hit = document.elementFromPoint(s.left + s.width / 2, g.top + g.height / 2);
-    return { scrolled: sc.scrollTop, gripTop: g.top - s.top, gap: f.top - g.bottom, grip: !!(hit && hit.closest(".tl-grip")) };
+    const hit = document.elementFromPoint(f.left + 40, f.top + f.height / 2);
+    return { scrolled: sc.scrollTop, top: f.top - s.top, seen: !!(hit && hit.closest(".wk-faces")), grip: !!scr.querySelector(".tl-grip") };
   });
-  c.check("送っても掴み手は紙の頭に見え、帯は掴み手の下",
-    stick.scrolled > 100 && stick.gripTop <= 2 && stick.grip && Math.abs(stick.gap + 1) <= 1, JSON.stringify(stick));
+  c.check("送っても 今日｜週｜月 の帯は紙の頭に貼りついて見える（紙に掴み手は無い）",
+    stick.scrolled > 100 && Math.abs(stick.top) <= 1 && stick.seen && !stick.grip, JSON.stringify(stick));
 
   /* ほかの日（昨日）の済ませたものは、物差しの上。 */
   await page.evaluate(() => { KN.app.scrollerOf(document.querySelector("#screen-todo")).scrollTop = 0; });

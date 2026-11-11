@@ -244,7 +244,14 @@
         b.textContent = String(d.getDate());
         b.className = (d.getMonth() !== m - 1 ? "is-out " : "") + (key === today ? "is-today " : "") + (key === here ? "is-here" : "");
         if (key === here) b.setAttribute("aria-current", "date");
+        /* Tab で巡るのは見ている日の一つだけ（四十二の升を一つずつ止まらせない）。日を移すのは ←→（keys.js）。 */
+        else b.tabIndex = -1;
         out.push(b);
+      }
+      /* めくった先に見ている日が無ければ、その月の一日を Tab の止まり先に。 */
+      if (!out.some((b) => b.tabIndex === 0 && b.dataset && b.dataset.day)) {
+        const first = out.find((b) => b.dataset && b.dataset.day && !b.classList.contains("is-out"));
+        if (first) first.tabIndex = 0;
       }
       grid.replaceChildren(...out);
     }
@@ -414,48 +421,6 @@
      後ろの明るさも鏡面の光も見張らない（2026年11月10日、docs/redesign.md 2節。前は送るたびに帯の裏を読んでいた）。 */
   function watchGlass() {
     window.addEventListener("resize", () => { if (KN.tabLens) KN.tabLens.sync(); });
-  }
-
-  /* 下へ送るあいだ＋は引っ込み、上へ戻す・止まる・上か下の端に着くと出ます
-     （base.css の `.dock.is-away`、docs/tabbar.md の「送るあいだ＋は引っ込む」）。
-     - 見るのは出ている画面の送る器だけ（紙の中・小窓の送りでは動かない）。
-     - 指・ホイール・キーで送ったときだけ。開いたときの送り位置の戻しや
-       上へ戻す滑りのような**仕掛けの送り**で引っ込むと、何もしていないのに＋が瞬く。
-       慣性の送りは指を離したあとも続くので、送りが途切れずに来ているあいだは指の続きとみなす。
-     - 向きは**溜めた量**で決める。行の上で指が数 px 揺れるたびに出入りしないように。
-     - 端の跳ね返り（iOS）で scrollTop が範囲の外へ出て戻るのを「上へ」と読まないよう、範囲に収めてから比べる。 */
-  function watchFabAway() {
-    const dock = document.getElementById("dock");
-    if (!dock) return;
-    const GO = 24, BACK = 12, LINK = 300, REST = 700;
-    let sc0 = null, last = 0, run = 0, userAt = -Infinity, restT = 0;
-    const away = (on) => {
-      if (dock.classList.contains("is-away") !== on) dock.classList.toggle("is-away", on);
-      clearTimeout(restT);
-      if (on) restT = setTimeout(() => away(false), REST);
-    };
-    const touched = () => { userAt = performance.now(); };
-    ["touchstart", "touchmove", "wheel", "keydown", "pointerdown"].forEach((t) =>
-      document.addEventListener(t, touched, { capture: true, passive: true }));
-    document.addEventListener("scroll", (e) => {
-      if (dock.hidden) return;
-      const sc = scrollerOf(activeScreen());
-      if (!sc || e.target !== sc) return;
-      const max = sc.scrollHeight - sc.clientHeight;
-      const y = Math.min(Math.max(sc.scrollTop, 0), max);
-      const now = performance.now();
-      const mine = now - userAt < LINK;
-      if (sc !== sc0 || !mine) { sc0 = sc; last = y; run = 0; return; }
-      userAt = now;
-      const d = y - last;
-      last = y;
-      if (!d) return;
-      run = (run > 0) === (d > 0) ? run + d : d;
-      /* 札が開いている（＋の上に候補が立っている）・＋に焦点があるあいだは引っ込めない。 */
-      const busy = dock.querySelector(".fab-menu") || dock.contains(document.activeElement);
-      if (y <= 0 || y >= max - 1 || run <= -BACK || busy) away(false);
-      else if (run >= GO || dock.classList.contains("is-away")) away(true);
-    }, { capture: true, passive: true });
   }
 
   function paintTabs() {
@@ -965,8 +930,7 @@
       const fab2 = mk ? mk() : null;
       if (fab2) { fab2.classList.add("is-duo-r"); dock.append(fab2); }
       dock.hidden = !dock.childElementCount;
-      dock.classList.remove("is-away");
-      /* ＋ は帯の**右端の上**に立ちます（base.css の「＋ は帯の右端の上に」）。
+      /* ＋ は帯と同じ段の右に立ちます（base.css の「＋ は帯と同じ段の右に」）。
          一覧の底とトーストがそのぶん上がるので、あるかないかを根に
          書いておいて、CSS がそこから余白を決めます。 */
       document.documentElement.classList.toggle("has-fab", !dock.hidden);
@@ -1050,7 +1014,6 @@
     applyRail();
     if (SIDEWAYS && SIDEWAYS.addEventListener) SIDEWAYS.addEventListener("change", applyRail);
     watchGlass();
-    watchFabAway();
     watchWriting();
     /* 1280px をまたいだら、組の二枚を並べ直す・重ね直す。 */
     /* 並べるのをやめたら、後ろだった一枚も組み直す（並べたときだけの棚のカードを外す）。 */

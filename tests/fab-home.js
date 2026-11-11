@@ -5,8 +5,8 @@
    - V26：帰りは --m-sheet-close より長く（一瞬で閉じない）、＋の大きさ近くまで縮む
    - U17：＋の紙は四隅の丸いカード（is-fab-card）
    - U17：打っているあいだ（＋が下へ引っ込んでいる）に閉じても、開いたときの＋へ縮んで帰る
-   - ＋は帯の右端の上（カプセル上端から 8px 上・右端そろえ）、帯は画面いっぱい。一覧の底とトーストは＋より上
-   - Y4：下へ送るあいだ＋は引っ込む。上へ戻す・止まる・席を移ると出る。仕掛けの送りでは動かない
+   - ＋は帯と同じ段の右（docs/redesign.md 5節。帯は＋のぶん右を空け、背の真ん中がそろう）。一覧の底とトーストは帯と＋より上
+   - 下へ送っても＋は引っ込まない（行の右端にかぶらないので。前の Y4 を外した）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/fab-home.js */
 const { open, checker } = require("./lib");
 
@@ -65,7 +65,7 @@ const { open, checker } = require("./lib");
       && parseFloat(cs.borderBottomLeftRadius) > 10;
   });
 
-  /* ---- 置き場：＋は帯の右端の上。帯は縮まない（docs/tabbar.md） ---- */
+  /* ---- 置き場：＋は帯と同じ段の右。帯は＋のぶん右を空ける（docs/tabbar.md の頭・docs/redesign.md 5節） ---- */
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(700);
   const geo = await page.evaluate(() => {
@@ -81,12 +81,12 @@ const { open, checker } = require("./lib");
     return { capR, capTop, padR: getComputedStyle(bar).paddingRight, f: { top: f.top, bottom: f.bottom, right: f.right },
       floor: innerHeight - parseFloat(getComputedStyle(sc).paddingBottom), toastBottom: toast.bottom, w: innerWidth };
   });
-  t.check("置き場：帯は画面いっぱい（＋のぶん縮めない）", geo.padR === "12px" && Math.abs(geo.capR - (geo.w - 12)) < 1, JSON.stringify(geo));
-  t.check("置き場：＋の右端はカプセルの右端", Math.abs(geo.f.right - geo.capR) < 1, JSON.stringify(geo));
-  t.check("置き場：＋はカプセル上端から 8px 上", Math.abs(geo.capTop - geo.f.bottom - 8) < 1, JSON.stringify(geo));
-  t.check("置き場：一覧の底は＋より上", geo.floor < geo.f.top, JSON.stringify(geo));
-  t.check("置き場：トーストは低く（＋に重なってよい・帯にはかからない）",
-    geo.toastBottom > geo.f.top && geo.toastBottom <= geo.capTop + 1, JSON.stringify(geo));
+  t.check("置き場：帯は＋のぶん右を空ける（56px＋間 12px）", geo.padR === "80px" && Math.abs(geo.capR - (geo.w - 80)) < 1, JSON.stringify(geo));
+  t.check("置き場：＋は帯の右どなり（右端は窓から 12px）", Math.abs(geo.f.right - (geo.w - 12)) < 1 && geo.f.right - 56 >= geo.capR, JSON.stringify(geo));
+  t.check("置き場：＋は帯と同じ段（背の真ん中がそろう）", Math.abs((geo.f.top + geo.f.bottom) / 2 - (geo.capTop + 31)) < 1.5, JSON.stringify(geo));
+  t.check("置き場：一覧の底は帯と＋より上", geo.floor < Math.min(geo.f.top, geo.capTop), JSON.stringify(geo));
+  t.check("置き場：トーストは帯と＋のすぐ上（かからない）",
+    geo.toastBottom <= Math.min(geo.f.top, geo.capTop) + 1 && geo.toastBottom > geo.capTop - 40, JSON.stringify(geo));
   await page.evaluate(() => document.querySelectorAll("#toast-root .toast").forEach((e) => e.remove()));
 
   /* ---- やること：＋から ---- */
@@ -176,41 +176,33 @@ const { open, checker } = require("./lib");
 
   t.check("エラーなし（打っているあいだ）", errors.length === 0, errors.join("\n"));
 
-  /* ---- 下へ送るあいだ＋は引っ込む（design-review の Y4。base.css の .dock.is-away） ---- */
+  /* ---- 下へ送っても＋は引っ込まない（帯と同じ段なので行にかぶらない。前は送るあいだ引っ込めた＝Y4） ---- */
   await page.evaluate(() => {
     for (let i = 0; i < 30; i++) { const p = KN.store.addProduct({ name: `品${i}` }); if (p) KN.store.addItem(p.id); }
     KN.app.showScreen("list");
   });
   await page.waitForTimeout(700);
-  const away = () => page.evaluate(() => document.querySelector("#dock").classList.contains("is-away"));
+  const fabLook = () => page.evaluate(() => {
+    const d = document.querySelector("#dock"), s = getComputedStyle(d), f = d.querySelector(".add-fab").getBoundingClientRect();
+    const hit = document.elementFromPoint(f.left + f.width / 2, f.top + f.height / 2);
+    return { o: s.opacity, away: d.classList.contains("is-away"), hit: !!hit && !!hit.closest("#dock"), top: Math.round(f.top) };
+  });
   const sc = () => page.evaluate(() => KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop);
+  const f0 = await fabLook();
   await page.mouse.move(195, 420);
-  await page.mouse.wheel(0, 10);
-  await page.waitForTimeout(80);
-  t.check("送る：少し下へでは引っ込まない", !(await away()));
-  for (let i = 0; i < 4; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
-  t.check("送る：下へ送ると引っ込む", await away(), String(await sc()));
-  await page.waitForTimeout(400);
-  t.check("送る：引っ込んだ＋は薄れて押せない", await page.evaluate(() => {
-    const s = getComputedStyle(document.querySelector("#dock"));
-    return s.opacity === "0" && s.pointerEvents === "none";
-  }));
-  await page.waitForTimeout(500);
-  t.check("送る：止まると出る", !(await away()));
-  for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
-  t.check("送る：もう一度下へで引っ込む", await away());
-  await page.mouse.wheel(0, -20);
-  await page.waitForTimeout(80);
-  t.check("送る：上へ戻すとすぐ出る", !(await away()));
-  /* 仕掛けの送り（開いたときの位置の戻し・上へ戻す滑り）では動かない。 */
-  await page.waitForTimeout(800);
-  await page.evaluate(() => { KN.app.scrollerOf(document.querySelector(".screen.is-active")).scrollTop += 300; });
-  await page.waitForTimeout(80);
-  t.check("送る：仕掛けの送りでは引っ込まない", !(await away()));
-  for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
+  for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, 60); await page.waitForTimeout(40); }
+  await page.waitForTimeout(300);
+  const f1 = await fabLook();
+  t.check("送る：下へ送っても＋は同じ所に居て押せる", (await sc()) > 100 && f1.o === "1" && !f1.away && f1.hit && f1.top === f0.top, JSON.stringify({ f0, f1 }));
+  /* ＋が隠すものが無い：行の右端の丸は、帯の上では＋に重ならない（＋は帯の段より上へ出ない）。 */
+  const clear = await page.evaluate(() => {
+    const f = document.querySelector("#dock .add-fab").getBoundingClientRect();
+    const cap = document.getElementById("tabbar").getBoundingClientRect().top + parseFloat(getComputedStyle(document.getElementById("tabbar"), "::before").top);
+    return { fabTop: Math.round(f.top), capTop: Math.round(cap) };
+  });
+  t.check("送る：＋は帯の段より上へ出ない（行の右端にかぶらない）", clear.fabTop >= clear.capTop, JSON.stringify(clear));
   await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(400);
-  t.check("送る：席を移ると出ている", !(await away()));
 
   t.check("エラーなし（送る）", errors.length === 0, errors.join("\n"));
   await browser.close();

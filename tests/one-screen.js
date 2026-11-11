@@ -37,7 +37,7 @@ const { open, checker } = require("./lib");
     const head = document.querySelector(".head").getBoundingClientRect();
     const bar = document.getElementById("tabbar").getBoundingClientRect();
     /* 掴み手の下の、最初の中身 */
-    const first = [...sc.children].find((e) => !e.matches(".tl-grip, i") && e.getBoundingClientRect().height);
+    const first = [...sc.children].find((e) => !e.matches("i") && e.getBoundingClientRect().height);
     const out = { id, active: scr.id, headBottom: head.bottom, barTop: bar.top, first: box(first),
       scTop: sc.getBoundingClientRect().top };
     if (id === "archive") {

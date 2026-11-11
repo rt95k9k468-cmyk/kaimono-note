@@ -50,8 +50,8 @@ const touch = async (cdp, type, x, y) => cdp.send("Input.dispatchTouchEvent",
     });
     t.check("離して戻れば、--sky-pull も is-sky-pull も外れる", after.v === "" && !after.on, JSON.stringify(after));
 
-    /* ---- 送ると、紙の頭がやわらかく ---- */
-    const edge = () => page.$eval(sc, (el) => getComputedStyle(el.querySelector(":scope > .tl-grip"), "::after").opacity);
+    /* ---- 送ると、紙の頭に貼りついた札の帯（リスト｜価格）の下のきわがやわらかく（掴み手は無くなった。docs/redesign.md 5節） ---- */
+    const edge = () => page.$eval(sc, (el) => getComputedStyle(el.querySelector(":scope > .wk-faces"), "::after").opacity);
     t.check("いちばん上では縁が出ない", parseFloat(await edge()) === 0, await edge());
     await page.$eval(sc, (el) => { el.scrollTop = 60; });
     await page.waitForTimeout(120);
@@ -75,7 +75,7 @@ const touch = async (cdp, type, x, y) => cdp.send("Input.dispatchTouchEvent",
     await page.click('.tab[data-tab="diet"]');
     await page.waitForFunction(() => !document.querySelector(".is-m-arrive"), null, { timeout: 5000 });
     const bare = await page.evaluate(() => {
-      const g = document.querySelector("#screen-diet .tl-sheet.is-bare > .tl-grip");
+      const g = document.querySelector("#screen-diet .tl-sheet.is-bare > .wk-faces");
       return g ? getComputedStyle(g, "::after").animationName : "none";
     });
     t.check("health の紙（is-bare）には縁を付けない", bare === "none", bare);
@@ -125,7 +125,7 @@ const touch = async (cdp, type, x, y) => cdp.send("Input.dispatchTouchEvent",
     await page.click('.tab[data-tab="list"]');
     await page.waitForTimeout(400);
     const short = await page.$eval("#screen-list .tl-sheet", (el) => ({ fits: el.scrollHeight <= el.clientHeight,
-      op: getComputedStyle(el.querySelector(":scope > .tl-grip"), "::after").opacity }));
+      op: getComputedStyle(el.querySelector(":scope > .wk-faces"), "::after").opacity }));
     t.check("送れない紙では縁が出ない", short.fits && parseFloat(short.op) === 0, JSON.stringify(short));
     const n = await page.evaluate(() => {
       const p = document.createElement("p");

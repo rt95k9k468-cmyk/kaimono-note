@@ -91,7 +91,7 @@ const { open, checker } = require("./lib");
     const x = r.left + r.width / 2;
     for (let y = floor; y > r.top + 40; y -= 6) {
       const el = document.elementFromPoint(x, y);
-      if (el && sh.contains(el) && !el.closest(".day-car, .tl-grip")) return { x, y };
+      if (el && sh.contains(el) && !el.closest(".day-car")) return { x, y };
     }
     return null;
   }, id);
@@ -182,15 +182,15 @@ const { open, checker } = require("./lib");
       const r = d.querySelector(".roll");
       if (r || performance.now() - t0 > 900) {
         ok({ roll: !!r, old: r && r.dataset.old, txt: d.textContent,
-          post: document.querySelector("#head .day-post").textContent,
-          postRoll: !!document.querySelector("#head .day-post .roll") });
+          post: document.querySelector("#head .day-w").textContent,
+          postRoll: !!document.querySelector("#head .day-w .roll") });
       } else requestAnimationFrame(look);
     };
     look();
   }));
   c.check("題：変わった字だけが転がる（15→14 は「5」→「4」）",
     mid.roll && mid.old === "5" && mid.txt === "14", JSON.stringify(mid));
-  c.check("題：曜日の字も転がり、textContent は新しい日のまま", mid.postRoll && mid.post === "日(月)",
+  c.check("題：曜日の字も転がり、textContent は新しい日のまま", mid.postRoll && mid.post === "月曜日",
     JSON.stringify(mid));
   await page.waitForFunction(() => !document.querySelector("#head .topbar-title .roll"), null, { timeout: 3000 }).catch(() => {});
   c.check("題：転がり終わると素の字に戻る", await page.evaluate(() =>

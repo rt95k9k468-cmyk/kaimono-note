@@ -98,6 +98,7 @@ const { open, checker } = require("./lib");
     const cal = document.querySelector("#head .head-cal");
     return {
       gap: document.getElementById("panes").getBoundingClientRect().top - top,
+      grip: vis(document.querySelector("#head .cal-grip")),
       cal: vis(cal) && cal.getBoundingClientRect().height > 0,
       name: vis(document.querySelector(".head-name")),
       date: vis(document.querySelector(".topbar-day")),
@@ -109,7 +110,8 @@ const { open, checker } = require("./lib");
   const calGone = () => page.waitForFunction(() => !document.querySelector(".is-cal-out, .is-cal-in"), null, { timeout: 3000 });
   await calGone();
   const inNotes = await headLook();
-  t.check("ノートに暦は無く、中身が帯のすぐ下から", !inNotes.cal && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
+  /* ノートの帯は盆だけ（写真へかぶさる 26px。暦も取っ手も載せない。docs/redesign.md 5節）。 */
+  t.check("ノートに暦は無く、盆だけ（26px）のすぐ下から中身", !inNotes.cal && !inNotes.grip && Math.abs(inNotes.gap - 26) <= 2, JSON.stringify(inNotes));
   t.check("ノートの帯は題 Notes・さがす・設定だけ",
     inNotes.name && !inNotes.date && !inNotes.upcoming && inNotes.search && inNotes.gear, JSON.stringify(inNotes));
   await page.click("#head .js-settings");
@@ -126,7 +128,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(700);
   const fromSet = await headLook();
   t.check("設定から戻っても、暦は無く題は Notes", (await active()) === "notes" && !fromSet.cal && fromSet.name && !fromSet.date
-    && Math.abs(fromSet.gap) <= 2, JSON.stringify(fromSet));
+    && Math.abs(fromSet.gap - 26) <= 2, JSON.stringify(fromSet));
 
   /* 暦の出入りは横の流れと同じ一拍で（毎フレーム並べ直さない。js/head.js の moveCal） */
   await tab("todo");
@@ -164,9 +166,9 @@ const { open, checker } = require("./lib");
   await settled("todo");
   await calGone();
   const again = await headLook();
-  t.check("行き来の途中で押し直しても、暦は一枚で帯のすぐ下", again.cal && await page.evaluate(() =>
+  t.check("行き来の途中で押し直しても、暦は一枚で、紙は帯（盆と取っ手）のすぐ下", again.cal && again.grip && await page.evaluate(() =>
     document.querySelectorAll("#head .head-cal > .cal").length === 1
-    && Math.abs(document.getElementById("panes").getBoundingClientRect().top - document.querySelector("#head .head-cal").getBoundingClientRect().bottom) <= 1),
+    && Math.abs(document.getElementById("panes").getBoundingClientRect().top - document.getElementById("head").getBoundingClientRect().bottom) <= 1),
     JSON.stringify(again));
 
   /* ---- ほかのタブへ移って戻る・買うもの⇄価格の裏はそのまま ---- */
@@ -181,12 +183,14 @@ const { open, checker } = require("./lib");
   await settled("list");
   await tab("list");
   await settled("prices");
-  t.check("買うもの⇄価格の裏はそのまま（帯で価格へ）", (await active()) === "prices"
-    && await page.$eval("#screen-list", (e) => e.classList.contains("is-face-parked")));
+  await page.waitForTimeout(500);   // 出ていく面が片づくまで
+  t.check("買うもの⇄価格はそのまま（席の二度押しで価格へ。買うものは隠れる）", (await active()) === "prices"
+    && await page.$eval("#screen-list", (e) => e.hidden));
   await tab("notes");
   await settled("notes");
-  t.check("価格からノートへ移ると、買うものの紙も片づく",
-    !(await page.$eval("#screen-list", (e) => e.classList.contains("is-face-parked"))));
+  await page.waitForTimeout(500);
+  t.check("価格からノートへ移ると、買うもの・価格は片づく",
+    await page.evaluate(() => document.getElementById("screen-list").hidden && document.getElementById("screen-prices").hidden));
   await page.evaluate(() => { KN.app.showScreen("todo"); history.replaceState(null, "", "#notes"); });
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.app && document.querySelector(".screen.is-active"));

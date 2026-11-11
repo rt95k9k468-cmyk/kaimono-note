@@ -10,8 +10,8 @@
    - 帯の「今日へ戻る」ボタンでも消える（前は日だけ戻って紙が前日のまま）。
    - 行の上を本物のタッチで横に払うと日が動く。★もアーカイブも起きない
      （行ごとの払いは外した。行に払いの裏地も無い）。
-   - 価格から戻る：戻りきる直前（p≈0）には紙の影も価格の札の帯も薄れきっている
-     （前は影 .14 と札の帯が居残って「一瞬暗くなる」）。滑りは --m-swipe より長い。 */
+   - 価格から戻る：買うもの ⇄ 価格は横に入れ替わる（紙を下げない。docs/redesign.md 5節）。戻りきったら
+     紙に影も transform も残らず、頭の「その日に買ったもの」は残る。 */
 const { open, checker } = require("./lib.js");
 const touch = (cdp) => async (x, y, dx) => {
   const pts = (px) => [{ x: px, y, radiusX: 12, radiusY: 12, force: 1 }];
@@ -164,14 +164,17 @@ const touch = (cdp) => async (x, y, dx) => {
   const row = await page.evaluate(() => {
     const w = [...document.querySelectorAll("#screen-list .js-body .item-wrap")]
       .find((e) => !e.querySelector(".is-checked"));
+    /* 暦が月に開いていると紙の見える所は低い（帯が盆のぶん高い。R2）。前の手順で送られていても、行を見える所へ。 */
+    w.scrollIntoView({ block: "center" });
     const r = w.querySelector(".item-body").getBoundingClientRect();
     const it = KN.store.get().items.find((i) => i.id === w.dataset.itemId);
-    return { id: w.dataset.itemId, x: r.left + r.width / 2, y: r.top + r.height / 2, fav: !!it.fav };
+    const at = document.elementFromPoint(r.left + r.width / 2 - 60, r.top + r.height / 2);
+    return { id: w.dataset.itemId, x: r.left + r.width / 2, y: r.top + r.height / 2, fav: !!it.fav, hit: at ? String(at.className || at.tagName) : "" };
   });
   const flick = touch(await ctx.newCDPSession(page));
   await flick(row.x - 60, row.y, 160);
   await page.waitForTimeout(800);
-  c.check("行の上を右へ払うと、日が一日戻る", await page.evaluate((k) => KN.head.shopDay() === k, yk));
+  c.check("行の上を右へ払うと、日が一日戻る", await page.evaluate((k) => KN.head.shopDay() === k, yk), JSON.stringify(row));
   c.check("日が動いた紙は、ずれた層のまま残らない（transform も will-change も無い）", await page.evaluate(() => {
     const b = document.querySelector("#screen-list .js-body");
     return !b.style.transform && !b.style.willChange && getComputedStyle(b).transform === "none";
@@ -223,24 +226,18 @@ const touch = (cdp) => async (x, y, dx) => {
   await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
   await page.waitForTimeout(300);
 
-  // 価格から戻る：戻りきる直前の姿
+  // 価格へ行って戻る：横に入れ替わる（紙を下げて後ろの地を出す仕掛けはやめた）
   await page.click('.tab[data-tab="list"]');
   await page.waitForTimeout(1200);
   c.check("帯の shopping で価格へ", await page.evaluate(() => KN.app.faceAt() === 1));
-  /* 毎コマ**頁の中で**控える（rAF）。前は一コマごとに頁へ往復して控えていたので、並べて混んだ CI では
-     往復が遅れて最後の 12px のコマを一つも拾えず落ちた（2026年11月8日、全部を6本ずつ並べた回）。 */
+  /* 毎コマ**頁の中で**控える（rAF。頁へ往復して控えると、混んだ CI でコマを拾い損ねる）。 */
   await page.evaluate(() => {
     const out = window.__frames = [];
     const t0 = performance.now();
     const tick = () => {
-      const s = document.querySelector("#screen-list .tl-sheet");
-      const f = document.querySelector("#screen-prices .js-filter");
-      const sh = getComputedStyle(s).boxShadow;
-      const a = sh === "none" ? 0 : parseFloat((sh.match(/rgba\([^)]*,\s*([\d.]+)\)/) || [0, 1])[1]);
-      const back = document.getElementById("screen-prices");
-      out.push({ t: performance.now(), top: s.getBoundingClientRect().top, a,
-        op: f && back.classList.contains("is-face-back") && !back.hidden ? parseFloat(getComputedStyle(f).opacity) : 0,
-        settling: s.closest(".screen").classList.contains("is-face-settle") });
+      const scr = document.getElementById("screen-list"), s = scr.querySelector(".tl-sheet");
+      out.push({ t: performance.now(), x: scr.hidden ? null : Math.round(scr.getBoundingClientRect().left),
+        y: Math.round(new DOMMatrix(getComputedStyle(s).transform).m42), sh: getComputedStyle(s).boxShadow });
       if (performance.now() - t0 < 1200) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -248,16 +245,11 @@ const touch = (cdp) => async (x, y, dx) => {
   await page.click('.tab[data-tab="list"]');
   await page.waitForTimeout(1300);
   const frames = await page.evaluate(() => window.__frames);
-  const moving = frames.filter((f) => f.settling);
-  const rest = frames[frames.length - 1].top;
-  const near = moving.filter((f) => f.top - rest < 12);
-  c.check("戻りきる直前（頭が家から 12px 以内）では影が薄れている",
-    near.length > 0 && near.every((f) => f.a < 0.04), JSON.stringify(near.map((f) => [Math.round(f.top - rest), f.a])));
-  c.check("戻りきる直前では価格の札の帯も薄れている",
-    near.every((f) => f.op < 0.15), JSON.stringify(near.map((f) => f.op)));
-  const ms = moving.length ? moving[moving.length - 1].t - moving[0].t : 0;
-  const swipe = await page.evaluate(() => KN.motion.ms("--m-swipe"));
-  c.check("帯で戻る滑りは --m-swipe より長い", ms > swipe, `${Math.round(ms)}ms（--m-swipe ${swipe}ms）`);
+  const xs = frames.filter((f) => f.x != null).map((f) => f.x);
+  c.check("価格から戻るとき、買うものは横から入る（紙は下がらない・影を持たない）",
+    Math.min(...xs) < -50 && frames.every((f) => f.y === 0 && f.sh === "none"), JSON.stringify([Math.min(...xs), frames.filter((f) => f.y || f.sh !== "none").length]));
+  const lastF = frames[frames.length - 1];
+  c.check("戻りきったら紙は元の所（ずれも影も残らない）", lastF.x === 0 && lastF.y === 0 && lastF.sh === "none", JSON.stringify(lastF));
   c.check("戻ると買うもの・頭の「その日に買ったもの」は残る",
     await page.evaluate(() => KN.app.faceAt() === 0) && (await dayRows()).length === 2);
 
