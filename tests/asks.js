@@ -119,7 +119,11 @@ const { open, checker, ASKS } = require("./lib");
     const q = await page.evaluate(() => KN.store.get().asks[0].q);
     const sec = await page.evaluate(() => [...document.querySelectorAll("#screen-notes .notes-sec")].map((x) => x.textContent.trim()));
     t.check("問いの面に「まだの問い」と「ノートに残した問い」", sec.includes("ノートに残した問い") && sec.includes("まだの問い") && (await yetText()).includes(q), JSON.stringify(sec));
-    const answerOpen = () => page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 });
+    /* 紙は押したカードから膨らむ（transform。R2）。膨らむ途中は紙そのものが小さいので、膨らみ終えてから押す
+       （前は clip-path の窓だけが広がり、紙は最初から開いた場所に居た）。 */
+    const grown = () => page.waitForFunction(() => { const e = document.querySelector(".sheet.is-open");
+      return !!e && !e.getAnimations().some((a) => a.playState === "running"); }, null, { timeout: 4000 });
+    const answerOpen = async () => { await page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 }); await grown(); };
     const ok = async () => {
       await page.click(".sheet.is-open .js-ok");
       await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 4000 }).catch(() => {});
@@ -203,11 +207,15 @@ const { open, checker, ASKS } = require("./lib");
     const mk = async (text) => {
       await page.click("#screen-notes .js-ask-new");
       await page.waitForSelector(".sheet.is-open .js-q", { timeout: 4000 });
+      await grown();
       await page.keyboard.insertText(text);
       await ok();
     };
     const n1 = await page.evaluate(() => KN.notes.list().length);
     await mk("試験でつくった問い");
+    /* ノートは書き込みを待って増える（IndexedDB）。並べて回すと読むのが先になる（2026年11月11日、6本ずつの回）。 */
+    await page.waitForFunction(() => KN.notes.list().some((n) => n.body === "？試験でつくった問い"), null, { timeout: 4000 }).catch(() => {});
+    await page.waitForSelector("#screen-notes .notes-asks.is-made .note-t", { timeout: 4000 }).catch(() => {});
     const madeNb = await page.evaluate(() => KN.notes.list().filter((n) => n.body === "？試験でつくった問い").map((n) => n.notebook));
     t.check("つくった問いのノートも thinking へ", madeNb.join() === "thinking", JSON.stringify(madeNb));
     const made = madeNb.length;
@@ -227,6 +235,8 @@ const { open, checker, ASKS } = require("./lib");
     await answerOpen();
     await page.keyboard.insertText("つくった問いの答え");
     await ok();
+    await page.waitForFunction(() => KN.notes.list().some((n) => n.body.endsWith("つくった問いの答え")), null, { timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(300);
     const mb = await page.evaluate(() => KN.notes.list().filter((n) => n.body.startsWith("？試験でつくった問い")).map((n) => n.body));
     t.check("つくった問いに答えると同じノートの終わりへ・続きの一番上", mb.length === 1 && mb[0] === "？試験でつくった問い\n\n10月6日(火) 12:36\nつくった問いの答え"
       && (await goText())[0] === "試験でつくった問い" && !(await madeText()).length, JSON.stringify([mb, await goText(), await madeText()]));

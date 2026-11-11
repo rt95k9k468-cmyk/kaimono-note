@@ -7942,8 +7942,11 @@ button.note-when:active { opacity: var(--press-fade); }
   .panes > .screen.is-duo-r { left: 50%; display: flex; box-shadow: inset 1px 0 0 var(--c-border); }
   .screen.is-duo-r.is-in-r { animation: desk-in-dn var(--m-nav) var(--ease-out); }
   .screen.is-duo-r.is-in-l { animation: desk-in-up var(--m-nav) var(--ease-out); }
-  :root[data-duo].has-fab .dock { right: calc((100vw - var(--rail-w)) / 2 + var(--sp-5)); }
-  .dock > .quick-add.is-duo-r { position: fixed; right: var(--sp-5); bottom: var(--sp-5); }
+  :root[data-duo].has-fab .dock { right: calc((100vw - var(--rail-w)) / 2 + var(--sp-8)); }
+  /* 右の一枚の＋も、左と同じ高さ・同じ空き（base.css の広い幅の＋）。 */
+  .dock > .quick-add.is-duo-r { position: fixed; right: var(--sp-8); bottom: 28px; }
+  /* 並べているあいだ、リスト｜価格 の札は要らない（二枚とも見えている）。 */
+  :root[data-duo] .face-seg { display: none; }
 }
 
 /* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
