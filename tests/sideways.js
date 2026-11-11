@@ -87,7 +87,12 @@ function under(safe) {
     t.check(`${at}：題の右に週の暦（帯は一段）`, row.side && row.head <= 90, JSON.stringify(row));
     await page.click(".tab-diet");
     await wait(600);
-    t.check(`${at}：からだのカードは二段`, await page.evaluate(() => getComputedStyle(document.querySelector(".diet-day")).columnCount === "2"));
+    /* R4：二段＝推移のカードが体重の横（体重と食事はいつも横に二つ）。 */
+    t.check(`${at}：からだのカードは二段`, await page.evaluate(() => {
+      const d = document.querySelector("#screen-diet .js-day-card"), kg = d.querySelector(".hl-hero.is-kg").getBoundingClientRect();
+      const ch = d.querySelector(".hl-chart").getBoundingClientRect();
+      return ch.left > kg.right && Math.abs(ch.top - kg.top) < 2;
+    }));
     await page.click(".tab-list");
     await wait(600);
     /* R5：左にリスト、右に選んだ品の値段とそろそろ（前は棚のカードを二段に流した）。 */

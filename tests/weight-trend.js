@@ -26,12 +26,11 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     if (goal) S.setGoal(goal);
   }, { rows, goal });
   const range = (days, n) => Array.from({ length: days }, (_, i) => [days - i + (n || 0), 70]);
+  /* 体重のカードのひと言「7日平均 69.8・…」（R4。数は体重の目盛りと同じ小数一桁）。 */
   const hero = () => page.evaluate(() => {
-    const el = document.querySelector("#screen-diet .js-avg");
-    return el ? {
-      label: el.querySelector(".diet-stat-label").textContent,
-      value: el.querySelector(".diet-stat-value").textContent,
-    } : null;
+    const el = document.querySelector("#screen-diet .js-day-card .hl-hero.is-kg .hl-hero-s > span");
+    const m = el && /(\d+日平均)\s*(\S+)/.exec(el.textContent);
+    return m ? { label: m[1], value: m[2] } : null;
   });
   const show = async () => {
     await page.evaluate(() => KN.app.showScreen("diet"));
@@ -44,7 +43,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("今日の値は 1/4 効く（69.75。N日平均なら 69.86）", step === 69.75, step);
   await show();
   const h1 = await hero();
-  t.check("画面の「7日平均」も 69.75", h1 && h1.value === "69.75" && /7日平均/.test(h1.label), JSON.stringify(h1));
+  t.check("画面の「7日平均」も 69.75（一桁で 69.8）", h1 && h1.value === "69.8" && /7日平均/.test(h1.label), JSON.stringify(h1));
 
   /* ---- 空いた日：日数で軽くなる（埋めない） ---- */
   await seed([...range(26, 4), [0, 69]]);
@@ -93,7 +92,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   const want14 = await page.evaluate(() => {
     const D = KN.diet, U = KN.util;
     const line = D.trendLine(D.weightPoints(null, U.todayKey()), 14).filter((m) => m.value != null);
-    return line[line.length - 1].value.toFixed(2);
+    return line[line.length - 1].value.toFixed(1);
   });
   t.check("14日にすれば「14日平均」とその数", h3 && /14日平均/.test(h3.label) && h3.value === want14,
     `${JSON.stringify(h3)} ${want14}`);
@@ -121,8 +120,9 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   /* ---- 凡例：線が無ければ出さない・印が無ければ「飲んだ日」も出さない ---- */
   const legend = () => page.evaluate(() => {
     const sc = document.querySelector("#screen-diet .js-day-card") || document.querySelector("#screen-diet");
-    const leg = sc.querySelector(".diet-legend");
-    return leg ? leg.textContent.replace(/\s+/g, "") : null;
+    /* 目標の札（.hl-goal）は凡例の外。名前の並びだけを見る。 */
+    const items = [...sc.querySelectorAll(".diet-legend .diet-legend-item")];
+    return items.length ? items.map((e) => e.textContent).join("").replace(/\s+/g, "") : null;
   });
   await seed([]);
   await show();

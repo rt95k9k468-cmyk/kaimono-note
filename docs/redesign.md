@@ -159,7 +159,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R1 | **済み（11月10日）**。土台：色・字・形・面の札と共通の部品（カード・ボタン・札・選ぶ帯・行・丸・欄・一言）。ガラスを外す・**装いを二つに（手帳・モダン）**・明暗 | base.css `:root`・components.css・attire.css（外す）・`applyAttire`・settings-look.js・store.js（`headFont`）・theme-color | look-tokens・shape-tokens・legibility・attire・typeface・sky・text-size・css-unused | 大 |
 | R2 | **済み（11月11日）**。骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
 | R3 | **済み（11月11日）**。tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
-| R4 | health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
+| R4 | **済み（11月11日）**。health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
 | R5 | **済み（11月11日）**。shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
 | R6 | daily・書く紙 | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
 | R7 | notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
@@ -200,6 +200,12 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   （選んだ品＝最後に押した行の品）。**1280px〜の買うもの｜価格の左右並び（desk 段6）は外した**（リスト｜価格 はどの幅もめくる）。
   **先の段へ送ったもの**：右の段が品を替えるときは棒が伸び直すだけ（つながる動き → RM）・価格の広い幅は読む幅の一列のまま
   （見本に絵が無い）・長押しの☆は見えない身ぶり（行の小窓 X3 で見える形に → FX）。
+- R4 で決めたこと（細目は health の「R4 の形」）：日の一枚は一つの格子（電話は一列・中身 768px から二段・1180px から三段）。
+  段をまたぐカードの余りは最後の `1fr` の行だけが受けるので、体重の下が隣の推移の背で空かない。輪はやめ、札は値と7日の棒
+  （目標は棒の背の点線・狭い札は歩数と総消費の単位を畳む）。体重のカードの右の三つはやめ、平均・傾きの日数は「目標」の紙の畳み、
+  目標は推移の下の藍の札。食事のカードの帯は前の積み上げの帯を一本に（総消費に対する割合）。空の枠に「まだ」は書かない（見本と違う。＋が言う）。
+  線は紙色の幕が退いて描かれる（`.hl-wipe`）。**先の段へ送ったもの**：「食事を書く」・体重の紙の中身（→ RS）・
+  四つの札の棒を左から順に（stagger）・日を払ったとき棒と線が描き直されない（→ RM）・「飲みたくなった」の書いた一件の行の形（→ RS）。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。

@@ -2,7 +2,7 @@
    - 電話（393）：今の値をそのまま見張る（一画素も変えない）。カードは窓の端から 16px（買うものの棚は 12px、設定は 20px）。
    - 段を並べる席（840px〜：からだの段組み・ノートの札・設定の二段）：中身は --desk-wide 1180px まで。
      窓の端からカードまで＝ max(16, (席の幅 − 1180) / 2 + 16)、段の間 16px、札の行の間 16px。
-   - カードの中は電話と同じ（からだ・ノートの札 16px）。角は札の5段のまま（ここでは見ない。look-tokens・shape-tokens）。
+   - カードの中は電話と同じ（ノートの札 16px。からだのカードは R4 で 14px＝見本の #health）。角は札の5段のまま（ここでは見ない。look-tokens・shape-tokens）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/gutters.js */
 const { open, checker } = require("./lib");
 
@@ -46,8 +46,10 @@ const near = (a, b) => Math.abs(a - b) <= 1;
 
   /* 1. 電話：今の値のまま。 */
   await seat("diet");
-  const pd = await M("#screen-diet .diet-card.diet-block");
-  t.check("393 からだ：カードは窓の端から 16px・中も 16px", pd.length > 0 && pd.every((c) => c.l === 16 && c.r === 16 && c.pad === 16), JSON.stringify(pd.slice(0, 3)));
+  /* からだ（R4）：体重・食事・推移のカード。体重と食事は横に二つなので、左右の端はそれぞれ一つが 16px。 */
+  const pd = await M("#screen-diet .js-day-card > .card");
+  t.check("393 からだ：カードは窓の端から 16px・中は 14px", pd.length >= 2 && Math.min(...pd.map((c) => c.l)) === 16
+    && Math.min(...pd.map((c) => c.r)) === 16 && pd.every((c) => c.pad === 14), JSON.stringify(pd.slice(0, 3)));
   await seat("list");
   const pl = await M("#screen-list .cat-group");
   t.check("393 買うもの：棚は窓の端から 12px", pl.length > 0 && pl.every((c) => c.l === 12 && c.r === 12), JSON.stringify(pl.slice(0, 2)));
@@ -60,11 +62,11 @@ const near = (a, b) => Math.abs(a - b) <= 1;
     await page.setViewportSize({ width: w, height: 900 });
     await page.waitForTimeout(500);
     await seat("diet");
-    const d = await M("#screen-diet .diet-card");
+    const d = await M("#screen-diet .js-day-card > .card, #screen-diet .js-day-card > .hl-meals");
     const de = d.length ? edgeOf(d[0].seat) : 0, dl = Math.min(...d.map((c) => c.l)), dr = Math.min(...d.map((c) => c.r));
-    const dg = gaps(d), db = await M("#screen-diet .diet-card.diet-block");
-    t.check(`${w} からだ：窓の端からカードまで ${de}px（中身 1180px まで）・段の間 16px・中 16px`,
-      d.length > 1 && near(dl, de) && near(dr, de) && dg.h.length > 0 && dg.h.every((g) => near(g, 16)) && db.length > 0 && db.every((c) => c.pad === 16),
+    const dg = gaps(d), db = await M("#screen-diet .js-day-card > .card");
+    t.check(`${w} からだ：窓の端からカードまで ${de}px（中身 1180px まで）・段の間 16px・中 14px`,
+      d.length > 1 && near(dl, de) && near(dr, de) && dg.h.length > 0 && dg.h.every((g) => near(g, 16)) && db.length > 0 && db.every((c) => c.pad === 14),
       JSON.stringify({ dl, dr, de, h: dg.h }));
     t.check(`${w} からだ：カードの行の間 16px`, dg.v.every((g) => near(g, 16)), JSON.stringify(dg.v));
 

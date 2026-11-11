@@ -49,11 +49,13 @@ const { open, checker } = require("./lib");
     const road = await box("#screen-todo .tk-day > .todo-day"), tl = await box("#screen-todo .tk-day > .tk-side");
     return { on: !!(road && tl && road.r <= tl.l && Math.abs(road.t - tl.t) < 40), road, tl };
   };
-  /** からだのカードが同じ高さに二枚以上（段組み）。 */
+  /** からだが段組み（R4：体重と食事はいつも横に二つなので、推移のカードが体重の横に並ぶかで見る）。 */
   const dietCols = () => page.evaluate(() => {
-    const tops = [...document.querySelectorAll("#screen-diet .diet-day.is-here > .diet-card, #screen-diet .day-slide > .diet-card")]
-      .filter((c) => c.getClientRects().length).map((c) => Math.round(c.getBoundingClientRect().top));
-    return { on: tops.length >= 2 && new Set(tops).size < tops.length, tops };
+    const d = document.querySelector("#screen-diet .js-day-card");
+    const kg = d && d.querySelector(".hl-hero.is-kg"), ch = d && d.querySelector(".hl-chart");
+    if (!kg || !ch || !kg.getClientRects().length) return { on: false, tops: [] };
+    const a = kg.getBoundingClientRect(), c = ch.getBoundingClientRect();
+    return { on: c.left > a.right && Math.abs(c.top - a.top) < 2, tops: [Math.round(a.top), Math.round(c.top)] };
   });
   /** ノートの席で「すべてのノート」から一つめを開き、開いた紙の箱と覆いを見て閉じる。 */
   const notePane = async () => {

@@ -19,7 +19,8 @@ const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1]
 const has = (sel) => rules.filter((r) => r.sel.split(",").some((s) => s.trim() === sel));
 const colorOf = (body) => ((/(?:^|[;\s])color:\s*([^;]+)/.exec(body) || [])[1] || "").trim();
 
-const HEADS = [".section-title.is-block-head", ".diet-hero-label", ".arc-log-head h2",
+/* からだの小見出し（今日の食事・体重の推移）は R4 から .tk-h。体重・食事のカードの名前は薄墨の札（見出しではない）。 */
+const HEADS = [".section-title.is-block-head", ".tk-h", ".arc-log-head h2",
   ".arc-counts-head", ".notes-tree .nt-row.is-head"];
 const bad = HEADS.filter((h) => !has(h).length || has(h).some((r) => colorOf(r.body) && !/^var\(--c-text\)/.test(colorOf(r.body))));
 t.check("見出しの字は墨（--c-text）", !bad.length, bad.join(" "));

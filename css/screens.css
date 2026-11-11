@@ -2465,97 +2465,6 @@
   gap: var(--sp-8);
 }
 
-/* からだ・食事の帯が同じ色（`--c-sheet`）になったので、色だけでは境目が
-   言えません。ここに小さな gap を足して、地（`--c-bg`）を細く覗かせます
-   ——線は引かず、余白のほうに言わせる、という daily と同じ手です。 */
-.diet-day { padding: 0; overflow: hidden; touch-action: pan-y; display: flex; flex-direction: column; gap: var(--sp-2); }
-.diet-block { padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); }
-/* ダイエットの紙は `.tl-sheet.is-bare`（面を持たない）なので、この三つの
-   帯が実質の「紙」です。混ぜる相手は `--c-surface`（純白）ではなく
-   `--c-sheet`——紙の地の色が変わるたびに、ここもついてくるように。
-
-   **からだ（is-body）の赤みは落としました。** 他のタブの帯（daily・
-   やること・買うもの）はどれも色付けの無い `--c-sheet` そのものなので、
-   ここだけ色が付いていると青／赤の帯がこの画面固有のものに見えます。
-   境目は色ではなく、段のあいだの余白（`.diet-day` の `gap`）が持ちます。
-
-   **体重（is-weight）の青みも、やめました。** 他と同じ `--c-sheet` に
-   揃えます——ここだけ色が付いていると、他に無いこの帯固有のものに見えて、
-   むしろ画面の中で浮きます。 */
-.diet-block.is-body   { background: var(--c-sheet); }
-.diet-block.is-meal   { background: var(--c-sheet); }
-.diet-block.is-weight { background: var(--c-sheet); }
-/* 中身の .stack も、同じ間隔で積みます（.stack そのものは間隔を
-   持たないので、ここで与えます）。 */
-.diet-block > .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
-/* 今日（からだ）・記録（食事）・推移（体重の数＋グラフ）は、ノートの一覧と同じ白い丸角の
-   カードに（10月5日。三つの区画に分けるのをやめ、一枚に戻して境目をカードで言う）。
-   中の帯は地を持たない（カードの白のまま）。 */
-.diet-day > .diet-card {
-  margin: 0 var(--sp-4);
-  background: var(--c-surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
-}
-.diet-card .diet-block { background: none; }
-.diet-card.is-trend > .diet-block + .diet-block { padding-top: 0; }
-
-/* ---- 今日 ---- */
-
-.diet-hero { display: flex; flex-direction: column; gap: var(--sp-3); }
-
-/* 体重は左、増減は右。縦に積むと、この枠だけで画面の三分の一を使って
-   しまい、グラフを見るのにいちいちスクロールすることになります。 */
-.diet-hero-top { display: flex; align-items: flex-start; gap: var(--sp-3); }
-
-.diet-hero-main {
-  display: flex; flex-direction: column; gap: 2px;
-  text-align: left; flex: 1 1 auto; min-width: 0;
-  padding: 0; background: none; border: 0;
-}
-.diet-hero-main:active { opacity: var(--press-fade); }
-.diet-hero-label { font-size: var(--fs-xl); color: var(--c-text); font-weight: var(--fw-bold); letter-spacing: -.01em; }
-.diet-hero-value { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
-.diet-hero-value b {
-  font-size: calc(40px * var(--fs-k)); line-height: 1.05; font-weight: var(--fw-bold); color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-  position: relative;
-}
-/* 開いたとき、前の記録から数えて変わる（U16・screen-diet.js の countWeight）。輪の数と同じ手。 */
-.diet-hero-value b[data-show] { -webkit-text-fill-color: transparent; }
-.diet-hero-value b[data-show]::after {
-  content: attr(data-show);
-  position: absolute; left: 0; top: 0;
-  -webkit-text-fill-color: currentColor;
-}
-.diet-hero-value small { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text-2); }
-/* 体脂肪は体重の下。同じ「いまの体」の話なので、横に離さず縦に続けます。 */
-.diet-hero-sub {
-  display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
-  min-height: 1px;
-}
-.diet-hero-fat { font-size: var(--fs-sm); color: var(--c-text-2); }
-.diet-hero-cond { font-size: var(--fs-xs); color: var(--c-text-3); }
-
-/* 右の三つ。一つ一段で、名前・数・単位を一行に並べます
-   （縦三段×三列にすると、それだけで体重の高さを超えます）。 */
-/* 幅は中身に合わせて 41〜60%。決め打ちの 168px では、特大で単位（「kg/週」）が
-   潰れて消えた（roadmap-seamless の N15）。左の体重は大きな字一つなので、譲れる。 */
-.diet-hero-side {
-  display: flex; flex-direction: column; gap: 3px;
-  flex: none; min-width: 41%; max-width: 60%;
-  border-left: 1px solid var(--c-border); padding-left: var(--sp-3);
-}
-.diet-stat {
-  display: flex; align-items: baseline; gap: var(--sp-1); min-width: 0;
-  width: 100%; padding: 0; background: none; border: 0; font: inherit;
-  color: inherit; text-align: left; cursor: pointer;
-}
-.diet-stat:active { opacity: var(--press-fade); }
-.diet-stat-label { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
-.diet-stat-value { font-size: var(--fs-md); font-weight: var(--fw-bold); margin-left: auto; }
-.diet-stat-value.is-warn { color: var(--c-accent); }
-.diet-stat-unit { flex: none; font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap; }
 
 .diet-note {
   font-size: var(--fs-md); color: var(--c-text-2); line-height: var(--lh-ui); margin: 0;
@@ -2577,10 +2486,8 @@
 .diet-gridline.is-base { stroke: var(--c-border-2); opacity: .9; }
 .diet-axis { fill: var(--c-text-3); font-size: 11.5px; font-family: var(--font); }
 
-/* 目標。破線を端から端まで引くと「越えてはいけない線」に見えます——
-   細い実線にして、右の端に数を添えるだけにしました。数がそこにあれば、
-   凡例で「これは目標です」と言い直す必要もありません。 */
-.diet-goal-line { stroke: var(--c-accent); stroke-width: 1; opacity: .55; }
+/* 目標は藍の細い点線（R4。docs/redesign.md 6節）。数は下の札（.hl-goal、同じ藍）が言う。 */
+.diet-goal-line { stroke: var(--c-ai); stroke-width: 1.2; stroke-dasharray: 4 4; opacity: .8; }
 .diet-goal-tag { fill: var(--c-accent); font-size: 11.5px; font-family: var(--font); opacity: .9; }
 /* 目標が枠の外にあるとき。線は引けないので、数と向きだけを端に置きます。 */
 .diet-goal-tag.is-off { opacity: .7; }
@@ -2613,22 +2520,11 @@
   stroke: var(--c-surface); stroke-width: 1.6;
 }
 
-/* 並べて見るものの棒。**主役は体重の線**なので、棒は背後に薄く敷きます
-   （濃くすると、線より先に目に入って主客が入れ替わります）。 */
-
 /* 飲んだ日の印。濃さは純アルコール量で変えます（SVG側で opacity を付ける）。 */
 .diet-beer-mug { fill: none; stroke: var(--c-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .diet-beer-hit { fill: transparent; }
 .diet-beer { cursor: pointer; }
 
-/* 「並べて見る」の札の列。六つあるので、電話の幅には収まりません。
-
-   横に並べて置こうとして、カードごとはみ出させました。flex の子は
-   min-width:auto で中身ぶんまで突っ張るので、min-width:0 を足しても
-   親の親まで同じことが起き、結局どこかで突っ張ります。
-   **札を下の段に置けば、その綱引きは起きません** ——上の期間の列と
-   同じ形になって、読み方もそろいます。 */
-/* グラフは「推移」のカード。 */
 .diet-graph { display: flex; flex-direction: column; gap: var(--sp-2); }
 .diet-plot-chart { min-width: 0; }
 /* 期間は `.seg`（総点検 Y2。前は丸札）。五つ並ぶので字の左右は詰める。 */
@@ -2661,171 +2557,6 @@
 
 .diet-empty { padding: var(--sp-4) var(--sp-2); }
 .diet-empty .empty-text { font-size: var(--fs-md); line-height: var(--lh-ui); }
-
-/* ---- からだ ---- */
-
-/* 見出しに添える小さい絵。文字の高さに揃えて、行の背は変えません。 */
-.diet-hero-ico, .diet-stat-ico {
-  display: inline-block; vertical-align: -2px; line-height: 0;
-  color: var(--c-primary); opacity: .8; margin-right: var(--sp-1);
-}
-.diet-hero-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
-.diet-stat-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
-
-/* 四つを横一列に。折り返させません——歩数・総消費・睡眠・飲酒は
-   「その日どうだったか」のひと組で、二段に割れると一組に見えなくなります。
-   そのぶん中身は詰めました（睡眠は 6h40m、飲酒は目安に対する％）。 */
-.diet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-1); }
-.diet-cell {
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
-  padding: var(--sp-2) 2px; background: var(--cell, var(--c-surface-2));
-  border-radius: var(--r-md); min-width: 0;
-}
-/* 地は灰ではなく、その指標の色をごく薄く（10月5日、灰が暗いと言われた）。輪のくり抜きも同じ `--cell`。 */
-.diet-cell[data-type="steps"]  { --cell: color-mix(in srgb, var(--c-m-steps) 9%, var(--c-surface)); }
-.diet-cell[data-type="burned"] { --cell: color-mix(in srgb, var(--c-m-burn) 9%, var(--c-surface)); }
-.diet-cell[data-type="sleep"]  { --cell: color-mix(in srgb, var(--c-m-sleep) 9%, var(--c-surface)); }
-/* 飲酒の枠は「飲みたくなった」と同じ淡いクリーム（10月6日。お酒の話を同じ色で）。 */
-.diet-day { --c-urge-bg: color-mix(in srgb, #f3dc9c 18%, var(--c-surface)); }
-.diet-cell[data-type="drink"]  { --cell: var(--c-urge-bg); }
-/* 絵は控えめに。数字より目立つと、読む順が逆になります。 */
-.diet-cell-ico { display: block; color: var(--c-primary); opacity: .82; line-height: 0; }
-.diet-cell-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
-/* まだ数の無い枠は、絵まで薄くします（無いことが、ひと目で分かるように）。 */
-.diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); opacity: .45; }
-.diet-cell-label { font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); white-space: nowrap; }
-.diet-cell-value { font-size: var(--fs-md); font-weight: var(--fw-bold); white-space: nowrap; }
-/* 目安を超えた日は赤で。色だけに頼らないよう、下に実際のgも出します。 */
-.diet-cell-value.is-over { color: var(--c-danger); }
-/* 目標の一行。10px では小さすぎて読めなかったので、字の段のいちばん小さい
-   ところ（--fs-xs）へ。この画面は `.diet` が段を一つ上げているので 12.5px
-   （実測）。四つ並べても「目標 5h00m」が枠に収まります（はみ出し 0）。 */
-.diet-cell-unit { font-size: var(--fs-xs); color: var(--c-text-3); white-space: nowrap; }
-/* 飲酒の枠は地が黄みで明るいので、暗い面の灰（#92929a）では 3.39:1。一段明るく（5.0:1。N15）。 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #b4b4ba; }
-}
-:root[data-theme="dark"] .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #b4b4ba; }
-/* 「コントラストを上げる」では、もう一段（base.css の末尾）。 */
-@media (prefers-contrast: more) {
-  :root[data-theme="dark"] .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #c6c6ca; }
-}
-@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .diet-cell[data-type="drink"] :is(.diet-cell-label, .diet-cell-unit) { color: #c6c6ca; }
-}
-
-/* ---- からだの輪 ----
-
-   目標に対してどこまで来たかを、数字ではなく形で出します。
-   どこまで満ちたか（--ring-p、**周**で 0〜2）だけを JS が渡し、色はここが
-   決めます——そうしないと明るい／暗いの切り替えで色が固定されてしまうので。
-
-   ふつうの三つ：--fill が目標までのぶん（一周目）、超えたら --lit が二周目として
-   頭から上に重なります。飲酒だけは向きが逆で、残っているぶんが色です。
-
-   **一周目と二周目を一本の数で持つ**（2026年9月29日）。前は角度（--deg）と、
-   超えた日だけ別の式にしていて、開いたときの満ち方を「一周ぶん」と「超えたぶん」の
-   二段に分けるしかなく、100% で一度止まった。いまは 1.35 周なら、0 から 1.35 まで
-   一本の道——一周目は min(p, 1)、二周目は max(p − 1, 0)。超えていない輪は二周目の
-   幅が 0 なので、同じ式のまま前と同じ絵になる。 */
-.diet-ring {
-  order: -1;                       /* 字の並びは変えずに、輪だけ上へ */
-  position: relative;
-  width: 54px; height: 54px; border-radius: 50%;
-  display: grid; place-items: center;
-  margin-bottom: 1px;
-  --fill: var(--c-primary);
-  --lit:  var(--c-primary-2);
-  --rest: color-mix(in srgb, var(--c-text-3) 22%, transparent);
-  background: conic-gradient(
-    var(--lit)  0 calc(max(var(--ring-p, 0) - 1, 0) * 360deg),
-    var(--fill) 0 calc(min(var(--ring-p, 0), 1) * 360deg),
-    var(--rest) 0);
-}
-/* 記録が無い日は、輪だけ薄く置きます（数字は「—」）。 */
-.diet-ring.is-none { background: conic-gradient(var(--rest) 0 360deg); }
-
-.diet-ring.is-steps  { --fill: var(--c-m-steps); --lit: var(--c-m-steps-lit); }
-.diet-ring.is-burned { --fill: var(--c-m-burn);  --lit: var(--c-m-burn-lit); }
-.diet-ring.is-sleep  { --fill: var(--c-m-sleep); --lit: var(--c-m-sleep-lit); }
-.diet-ring.is-drink  { --fill: var(--c-m-drink); --lit: var(--c-m-drink-lit); }
-/* 飲みすぎた日だけ、輪ぜんぶが灰色になり、超えたぶんが赤で乗ります。 */
-.diet-ring.is-drink.is-over { --fill: var(--rest); --lit: var(--c-danger); }
-
-/* 輪の内側をくり抜きます。地は、輪が乗っている枠と同じ色。 */
-.diet-ring::after {
-  content: ""; position: absolute; inset: 6px; border-radius: 50%;
-  background: var(--cell, var(--c-surface-2));
-}
-.diet-ring-mid {
-  position: relative; z-index: 1;
-  font-size: calc(12.5px * var(--fs-k)); font-weight: var(--fw-bold); font-style: normal;
-  color: var(--fill); white-space: nowrap;
-}
-.diet-ring.is-none .diet-ring-mid { color: var(--c-text-3); }
-/* 飲みすぎた日の真ん中は赤（輪の色が灰色になっているので、そちらから取らない）。 */
-.diet-ring.is-drink.is-over .diet-ring-mid { color: var(--c-danger); }
-
-/* ---- 開いたとき、満ちる（screen-diet.js の fillRings、docs/motion.md）----
-
-   タブを開いた一拍（とアプリへ戻ってきたとき）、輪が 0 から「グン」と満ち、
-   真ん中の数も**輪の位置どおりに**数え上がる。動かすのは JS の一つの時計で、
-   ここが持つのは「数えているあいだの見せ方」だけ。
-
-   - **数は字を書き換えずに見せる。** 数えているあいだ、JS が `data-show` に
-     いまの数を書く。本当の字は透明にして、その上に `attr(data-show)` を重ねる
-     だけ。textContent はいつも本当の数（screen-diet.js の countUp）。
-     `mono-num`（数字の幅が揃う）なので、数えているあいだ字の幅が揺れない。
-   - **counter() では数えない。** 一度そうして、iPhone の Safari が途中を描き直さず
-     最後に「パン」と出た。属性が変われば描き直すのは、どのブラウザも同じ。 */
-.diet-ring-mid[data-show] { -webkit-text-fill-color: transparent; }
-.diet-ring-mid[data-show]::after {
-  content: attr(data-show);
-  position: absolute; inset: 0;
-  display: grid; place-items: center;
-  -webkit-text-fill-color: currentColor;
-}
-
-/* 体重の線は左から引かれ、量った点は線がそこへ来たころに出ます。点の遅れは
-   左からの位置（`--f`、screen-diet.js）の 0.4 倍——線は `--ease-out` で
-   引かれるので、時間の 4 割ほどで道のりの 9 割まで来ています。今日の点だけは
-   最後に弾んで出る（線の先がどこかは、いちばん知りたいことなので）。
-   棒は下から伸び、面は線を追って浮かびます。 */
-.is-m-arrive .diet-ma7,
-.is-m-arrive .diet-goal-glow {
-  stroke-dasharray: 1 1;
-  animation: line-draw var(--m-draw) var(--ease-out) both;
-}
-.is-m-arrive .diet-dot {
-  animation: fade-in calc(var(--m-draw) * .3) var(--ease-out) both;
-  animation-delay: calc(var(--m-draw) * .4 * var(--f, 0));
-}
-.is-m-arrive .diet-dot.is-now {
-  transform-box: fill-box; transform-origin: 50% 50%;
-  animation: arrive-pop var(--m-poke) var(--spring) both;
-  animation-delay: calc(var(--m-draw) * .45);
-}
-.is-m-arrive .diet-area,
-.is-m-arrive .diet-ma14 { animation: fade-in var(--m-draw) var(--ease) both; }
-@keyframes line-draw   { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes arrive-pop  { from { opacity: 0; scale: 0; } }
-@keyframes bar-grow    { from { scale: 1 0; } }
-
-/* 輪が入ったぶん、枠の中は縦に伸びます。絵は文字の隣へ。
-   絵の色は、その指標の色にそろえます——全部が主色の緑のままだと、
-   輪の色と食い違って、どの絵がどの輪の話か読めなくなります。 */
-.diet-cell { padding: var(--sp-3) 2px var(--sp-2); gap: 0; }
-.diet-cell .diet-cell-label { display: inline-flex; align-items: center; gap: 3px; }
-/* 枠のなかでも「添え」のまま。ここだけ 12px に落としていたのをやめました。 */
-.diet-cell[data-type="steps"]  .diet-cell-ico { color: var(--c-m-steps); }
-.diet-cell[data-type="burned"] .diet-cell-ico { color: var(--c-m-burn); }
-.diet-cell[data-type="sleep"]  .diet-cell-ico { color: var(--c-m-sleep); }
-.diet-cell[data-type="drink"]  .diet-cell-ico { color: var(--c-m-drink); }
-.diet-cell.is-blank .diet-cell-ico { color: var(--c-text-3); }
-/* 記録の無い枠は輪が無い低い札。隣に輪があって背が伸びても、字は真ん中に。
-   「—」は墨を細字で（薄墨は暗い面のお酒の地 --c-urge-bg の上で 3.4:1、--c-text-2 でも 4.3:1。legibility.js）。 */
-.diet-cell.is-blank { justify-content: center; }
-.diet-cell.is-blank .diet-cell-value { color: var(--c-text); font-weight: var(--fw-regular); }
 
 /* 見出しの右に添える一言（この数字は何時時点か、など）。 */
 .section-note { margin-left: auto; font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-3); letter-spacing: 0; }
@@ -3001,14 +2732,10 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-more-c svg { width: var(--ico-sm); height: var(--ico-sm); }
 .urge-more.is-open .urge-more-c { transform: rotate(90deg); }
 
-/* ---- 日の紙に並ぶ行 ----
-
-   ここは帯の地の上なので、面を持たせません——白い札を敷くと、からだの段の
-   中にもう一枚の紙が現れます（価格の行と同じ考え）。分かれ目は細い線だけ。 */
+/* 飲みたくなった（R4）：山吹の淡い塗りのボタン、書いた一件は下の行のカード（線で区切る）。 */
 .urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
-/* 「飲みたくなった」は灰ではなく、ごく淡いクリーム（10月5日。6日にもう一段淡く、飲酒の枠も同じ色）。 */
-.urge-bar .js-urge { background: var(--c-urge-bg, color-mix(in srgb, #f3dc9c 18%, var(--c-surface))); }
-.urge-rows { display: flex; flex-direction: column; }
+.hl-urge-btn { background: var(--c-yamabuki-soft); color: var(--c-yamabuki); }
+.urge-rows { display: flex; flex-direction: column; padding: 0 14px; }
 .urge-row {
   display: flex; align-items: center; gap: var(--sp-2);
   width: 100%; min-height: var(--row-h-compact); padding: 9px 2px;
@@ -3036,120 +2763,29 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
 .urge-row-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 
-.diet-workouts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
-/* ---- 食事 ---- */
-
-.diet-kcal { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
-.diet-kcal-main { display: flex; align-items: baseline; gap: 6px; }
-.diet-kcal-main b { font-size: calc(30px * var(--fs-k)); font-weight: var(--fw-bold); line-height: 1; }
-.diet-kcal-main small { font-size: var(--fs-md); color: var(--c-text-2); font-weight: var(--fw-bold); }
-.diet-kcal-rem { font-size: var(--fs-sm); color: var(--c-text-2); text-align: right; }
-.diet-kcal-rem b { font-size: var(--fs-lg); color: var(--c-primary); }
-.diet-kcal-rem.is-over b { color: var(--c-danger); }
-.diet-kcal-target { display: block; font-size: var(--fs-xs); color: var(--c-text-3); }
-
-/* ---- カロリーの出どころ（積み上げの帯） ----
-
-   全体が総消費で、左から 朝・昼・夜・間食・区分なし・飲酒、余りが「残り」。
-   色は区分ごとに変えますが、彩度は抑えます——ここは信号ではなく内わけで、
-   「夜が多い」ことに赤信号の意味を持たせるのはこちらの仕事ではありません。 */
-.diet-stack-wrap { display: flex; flex-direction: column; gap: var(--sp-2); }
-/* ここはこの画面でいちばん見るところなので、大きく取ります。
-   細い帯だと、5%と12%の差が指の幅より小さくなって読めません。 */
-.diet-stack {
-  /* 角はほとんど落としません。丸みを付けると、両端の区分だけが細く
-     見えて、長さの比べ合いが狂います。 */
-  display: flex; height: 26px; border-radius: 2px;
-  overflow: hidden; background: var(--c-surface-3);
-}
-.diet-stack i { display: block; height: 100%; min-width: 2px; }
-.diet-stack i.is-breakfast { background: var(--c-slot-b); }
-.diet-stack i.is-lunch     { background: var(--c-slot-l); }
-.diet-stack i.is-dinner    { background: var(--c-slot-d); }
-.diet-stack i.is-snack     { background: var(--c-slot-s); }
-.diet-stack i.is-other     { background: var(--c-text-3); }
-.diet-stack i.is-drink     { background: var(--c-accent); }
-/* 総消費を超えた日。帯は摂取いっぱいまで使います。**縁は付けない**（2026年9月29日、
-   利用者が選んだ）。赤い縁（inset の影）を置いていたが、区分の下に描かれるので止まった
-   帯では区分に隠れて一度も見えておらず、伸びる途中だけ空の帯を囲んでいた。超えたことは
-   下の一文の赤字（「◯kcal 超えています」）が言う。`is-over` の class は残す。 */
-/* 区分の入れもの。幅は摂取の割合（総消費を超えた日は 100%）、中の区分は入れものに
-   対する割合。残り（前は透明の `is-rest`）は、入れものの外に見えている帯の地。 */
-.diet-stack-fill { display: flex; height: 100%; flex: none; }
-
-/* ---- 帯は左から伸びる（2026年9月29日・利用者の声）----
-
-   開いたとき（`is-m-arrive` のあいだ）、**入れものごと**左から伸びる（`scale: 0 1` → 1）。
-   朝・昼・夜は入れものの中の割合なので、いつも最後の比率のまま一緒に伸びる。輪と同じ
-   `--m-fill` / `--ease-out`（「グン」）。
-
-   - 一度は区分ごとに順に伸ばし、区切りで一瞬ゆるむ曲線（`--ease-relay`）を付けた。
-     **遅く見え**、利用者の声で「比率に合わせて全体が伸びる」へ替えた。
-   - 組み直しでは動かない（is-m-arrive のあいだだけ）。 */
-.is-m-arrive .diet-stack-fill {
-  transform-origin: 0 50%;
-  animation: stack-grow var(--m-fill) var(--ease-out) both;
-}
-@keyframes stack-grow { from { scale: 0 1; } }
-
-.diet-stack-legend {
-  display: flex; flex-wrap: wrap; gap: 4px var(--sp-3);
-  font-size: var(--fs-sm); color: var(--c-text-2);
-}
-.diet-stack-key { display: inline-flex; align-items: center; gap: 5px; }
-.diet-stack-key i { width: 10px; height: 10px; border-radius: var(--r-full); display: inline-block; }
-.diet-stack-key i.is-breakfast { background: var(--c-slot-b); }
-.diet-stack-key i.is-lunch     { background: var(--c-slot-l); }
-.diet-stack-key i.is-dinner    { background: var(--c-slot-d); }
-.diet-stack-key i.is-snack     { background: var(--c-slot-s); }
-.diet-stack-key i.is-other     { background: var(--c-text-3); }
-.diet-stack-key i.is-drink     { background: var(--c-accent); }
-.diet-stack-key i.is-rest      { background: var(--c-surface-3); box-shadow: inset 0 0 0 1px var(--c-border); }
-.diet-note .is-warn { color: var(--c-danger); }
-
-/* 朝・昼・夜・間食の四枠。四つとも最初から開いていて、そこに直接
-   書きます。横に四列だと一行が3文字ぶんしか入らないので、縦に四つ。 */
-.diet-slots { display: flex; flex-direction: column; gap: var(--sp-2); }
-.diet-slot {
-  display: flex; flex-direction: column; gap: 3px;
-  padding: var(--sp-2); background: var(--c-surface-2); border-radius: var(--r-md);
-}
-/* 地の色は、帯のその区分と同じ色の薄いほう。どの枠がどの帯になるかを、
-   読まずに分かるように。 */
-.diet-slot[data-slot="breakfast"] { background: var(--c-slot-b-soft); }
-.diet-slot[data-slot="lunch"]     { background: var(--c-slot-l-soft); }
-.diet-slot[data-slot="dinner"]    { background: var(--c-slot-d-soft); }
-.diet-slot[data-slot="snack"]     { background: var(--c-slot-s-soft); }
-.diet-slot-head { display: flex; align-items: center; gap: 5px; }
-.diet-slot-ico { color: var(--c-text-2); opacity: .9; line-height: 0; }
-.diet-slot[data-slot="breakfast"] .diet-slot-ico { color: var(--c-slot-b); }
-.diet-slot[data-slot="lunch"] .diet-slot-ico     { color: var(--c-slot-l); }
-.diet-slot[data-slot="dinner"] .diet-slot-ico    { color: var(--c-slot-d); }
-.diet-slot[data-slot="snack"] .diet-slot-ico     { color: var(--c-slot-s); }
-.diet-slot-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
-.diet-slot-name { font-size: var(--fs-xs); color: var(--c-text-2); white-space: nowrap; }
-
-.diet-slot-kcal { margin-left: auto; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text); }
-
-/* 見るだけの一行（buildSlotBoxes の非シート側）。Daily Log と同じ
-   「紙に書いてある」見た目にするため、見出しと書き込む枠の二段組みを
-   やめ、絵を左に置いた一本の行にします。絵は行の高さの中央、その右へ
-   書いた文が続きます。 */
-.diet-slot-view { position: relative; flex-direction: row; align-items: center; gap: var(--sp-2); cursor: pointer; }
-/* 指の的は、枠と枠のあいだの空きの半分ずつまで（B2）。一枠は35pxで、
-   あいだの8pxはどちらを押しても何も起きない隙間でした。半分ずつなら
-   四枠が隙間なくつながり、隣の枠の的には一画素もかかりません。 */
-.diet-slot-view::after {
-  content: "";
-  position: absolute;
-  inset: calc(var(--sp-2) / -2) 0;
-}
-/* 押したら薄まる。紙に書いた字の行なので、沈む行と同じく一拍おいてから（送り始めの指で瞬かない）。 */
-.diet-slot-view { transition: opacity var(--m-state) var(--ease); }
+/* 朝・昼・夜・間食の四枠（R4）：線で区切った行。左に枠の色を 16% 敷いた 46px の台と絵（見本の .meal .tile）。
+   画面ではカードの中の 60px の行（押すとその場で書く欄）、「食事を書く」の紙では頭の下に書く欄。 */
+.diet-slots { display: flex; flex-direction: column; }
+.diet-slot { --sc: var(--c-slot-b); display: flex; flex-direction: column; gap: var(--sp-2); padding: 7px 14px; }
+.diet-slot + .diet-slot { border-top: 1px solid var(--c-border); }
+.diet-slot[data-slot="lunch"]  { --sc: var(--c-slot-l); }
+.diet-slot[data-slot="dinner"] { --sc: var(--c-slot-d); }
+.diet-slot[data-slot="snack"]  { --sc: var(--c-slot-s); }
+.diet-slot-head { display: flex; align-items: center; gap: var(--sp-3); }
+.diet-slot-ico { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--r-md); background: color-mix(in srgb, var(--sc) 16%, var(--c-surface)); color: var(--sc); }
+.diet-slot-ico svg { width: 24px; height: 24px; }  /* 入れもの：46の台 */
+.diet-slot-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); white-space: nowrap; }
+.diet-slot-kcal { margin-left: auto; font: var(--fw-bold) calc(17px * var(--fs-k)) / 1.2 var(--font-num); color: var(--c-text); }
+.diet-slot-view { position: relative; flex-direction: row; align-items: center; gap: var(--sp-3); min-height: var(--row-h-card); cursor: pointer; transition: opacity var(--m-state) var(--ease); }
 .diet-slot-view[role="button"]:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.diet-slot-text { flex: 1; min-width: 0; font-size: var(--fs-lg); line-height: var(--lh-body); }
-.diet-slot-text.is-blank { color: var(--c-text-3); }
+.hl-slot-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.diet-slot-text { font-size: calc(13px * var(--fs-k)); line-height: 1.45; color: var(--c-text-2); overflow-wrap: anywhere; }
+.hl-slot-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
+.hl-slot-end small { font-size: var(--fs-sm); color: var(--c-text-3); }
+.hl-slot-add { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--c-surface-2); color: var(--c-text-2); }
+.hl-slot-add svg { width: 18px; height: 18px; }  /* 入れもの：34の丸 */
+
 /* 書き込む枠。字は16px——これより小さいと、iOSは押した拍子に画面を
    拡大します（拡大したままでは、次の枠が見えません）。 */
 .diet-slot-memo {
@@ -3169,39 +2805,6 @@ button.section-note:active { opacity: var(--press-fade); }
 /* キーボードで押し上げたぶんの余白（kbRoom）。しまっても紙が下がらない。 */
 .diet-kb-room { flex: none; pointer-events: none; }
 
-/* 一日ぶんの食事メモ。枠は一つだけ——四つに割ると、書くたびに
-   「これはどれか」を決めることになります。 */
-/* 地は暗くしない（10月5日、灰の `--c-surface-2` が暗いと言われた）。白いカードの上で、
-   主色をごく薄く混ぜた明るい面にする。 */
-.diet-memo {
-  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1);
-  width: 100%; text-align: left;
-  padding: var(--sp-3);
-  background: color-mix(in srgb, var(--c-primary-fill) 6%, var(--c-surface));
-  border: 0; border-radius: var(--r-md);
-}
-/* 詳しい紙を開く帯。押せる範囲だけボタンに戻し、見た目は前の
-   .diet-memo とまったく同じにします（ボタンの既定を消すだけ）。 */
-.diet-memo-open {
-  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1);
-  width: 100%; text-align: left; padding: 0; margin: 0;
-  background: none; border: 0; font: inherit; color: inherit;
-}
-.diet-memo-open:active { opacity: var(--press-fade); }
-.diet-memo-head { display: flex; align-items: center; gap: 6px; }
-.diet-memo-head b { font-size: var(--fs-sm); }
-.diet-memo-ico { display: block; color: var(--c-primary); opacity: .85; line-height: 0; flex: none; }
-.diet-memo-ico svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); }
-.diet-memo.is-blank .diet-memo-ico { color: var(--c-text-3); opacity: .5; }
-.diet-memo-hint { font-size: var(--fs-sm); color: var(--c-text-2); margin-left: auto; }
-.diet-memo-body {
-  font-size: var(--fs-sm); color: var(--c-text); line-height: var(--lh-body);
-  white-space: pre-wrap; word-break: break-word;
-}
-.diet-memo.is-blank .diet-memo-body { color: var(--c-text-3); }
-/* 押すだけで完結する二つのボタン。①コピー ②貼り付け、同じ重さで並べます。 */
-.diet-ai-btns { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
-.diet-ai-btns .btn { flex: 1; background: var(--c-surface); }
 
 .diet-total {
   display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap;
@@ -3329,10 +2932,6 @@ a.btn { text-decoration: none; }
 
 /* ---- からだの記録を直す ---- */
 
-/* 数の枠は押せます。押せることが見た目でも分かるように、行と同じ
-   「押したら沈む」を持たせます。 */
-.diet-cell { border: 0; text-align: center; transition: background var(--m-state) var(--ease); }
-.diet-cell:active { transition-delay: var(--m-press); background: color-mix(in srgb, var(--c-text) 6%, var(--cell, var(--c-surface-2))); }
 /* 手で書いた数に付く印。✎（U+270E）を置いていましたが、字の形は端末の
    持っている書体次第で、BIZ UDPゴシックには入っていません——出るのは
    代わりの書体の字で、端末ごとに別の絵になります。描いた鉛筆にしました。
@@ -5024,54 +4623,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .product-wrap:not(.is-tile-wrap) { border-radius: 0; }
 
 
-/* ---- ダイエット：その日の紙を、枠から出す ----
-
-   一日ぶんの記録（からだ・食事・体重）は、画面の余白の内側にカードが
-   あり、そのカードの中にまた枠が並ぶ、という三重でした。中身がいちばん
-   奥に沈みます。紙そのものを画面いっぱいに広げて、外枠を無くします。
-
-   区切りは、色だけには任せません。**からだ・食事は同じ地の色**なので
-   （からだの赤みは落としました）、そこは小さな gap（`.diet-day`）が
-   地を覗かせて言います。体重だけは青みが残っているので、色でも分かります。
-
-   **`.card` の既定は純白（`--c-surface`）です。** gap はこの紙自身の
-   地を覗かせるので、上書きしないと帯（245）の隙間に純白が挟まって
-   そこだけ浮いて見えます——帯と同じ `--c-sheet` にします。 */
-.diet { padding: 0 0 var(--sp-6); gap: 0; }
-/* 紙は地だけ（中の三枚のカードが面を持つ）。下の余白はカードの影のぶん。 */
-.diet-day.card {
-  background: var(--c-sheet);
-  padding: var(--sp-1) 0 var(--sp-1);
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  box-shadow: none;
-}
-/* 中の三つの面は、左右の余白だけ自分で持ちます。 */
-.diet-block { padding-left: var(--sp-4); padding-right: var(--sp-4); }
-
-/* 目標や「気づいたこと」の紙も、同じ幅に。 */
-.diet .diet-look.card {
-  margin: var(--sp-2) var(--sp-4) 0;
-  border: 0;
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
-}
-
-/* 食事の四枠。色のついた板の中に、白い入力欄が入っていました——箱の中の箱
-   です。板をやめて、区分の色は**見出しの絵と、左の細い線**だけが持ちます。
-   どの枠がどの帯になるかは、それで十分に読めます。 */
-.diet-slot {
-  padding: 2px 0 2px var(--sp-3);
-  background: none;
-  border-radius: 0;
-  border-left: 2.5px solid var(--c-border-2);
-}
-.diet-slot[data-slot="breakfast"] { background: none; border-left-color: var(--c-slot-b); }
-.diet-slot[data-slot="lunch"]     { background: none; border-left-color: var(--c-slot-l); }
-.diet-slot[data-slot="dinner"]    { background: none; border-left-color: var(--c-slot-d); }
-.diet-slot[data-slot="snack"]     { background: none; border-left-color: var(--c-slot-s); }
 
 /* ---- daily：紙の上の一段に ----
 
@@ -7585,10 +7136,6 @@ button.note-when:active { opacity: var(--press-fade); }
   /* 設定の帯（‹・題）も読む列にそろえる（‹ が窓の左端に離れていた）。 */
   .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); }
 }
-/* からだの紙も読む幅に（地は紙の色のまま）。840px からの形は P3（docs/log/design-review.md 10節）で。 */
-@media (min-width: 640px) and (max-width: 839.98px) {
-  #screen-diet .diet-day.card { padding-inline: max(0px, calc((100% - var(--desk-read)) / 2)); }
-}
 /* 640px から、暦の札は全文に近く（12px・三段。docs/redesign.md 5節）。 */
 @media (min-width: 640px) {
   .cal-name { font-size: calc(12px * var(--fs-k)); line-height: 20px; padding: 0 3px 0 7px; border-radius: 6px; }
@@ -7619,7 +7166,6 @@ button.note-when:active { opacity: var(--press-fade); }
   /* からだの紙は地を持たない（`.is-bare`。中のカードの束が地）。広い幅ではカードが段に並んで束が短くなり、束の下で
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
   #screen-diet .tl-sheet.is-bare { background: var(--c-sheet); }
-  #screen-diet .diet-day.card { border-bottom: none; }
   /* daily の季節の写真（docs/daily.md の「季節の絵」）：電話では幅いっぱいの一枚が紙の頭の帯（窓の三割ほど）に収まるが、
      広い幅で同じ「幅いっぱい」にすると写真の背が窓を越え、紙ぜんぶが写真になる。広い幅では帯の背（--season-h）を決め、
      写真は帯を覆う大きさで真ん中を見せる（Notion の表紙の形）。幕の層は電話と同じ（帯の半ばまで同じ濃さ、帯の下の端で閉じる）。 */
@@ -7685,11 +7231,7 @@ button.note-when:active { opacity: var(--press-fade); }
     #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
     #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
     #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
-    /* からだ：カードを段組みに（上から下へ流れ、段の高さをそろえる）。三段は 380px ずつ入る幅から。 */
-    .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
-    .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   }
-  @container seat (min-width: 1180px) { .diet-day.card { columns: 3; } }
 }
 @media (min-width: 1200px) {
   :root { --side-w: 380px; }
@@ -7755,7 +7297,7 @@ button.note-when:active { opacity: var(--press-fade); }
 /* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
    重ねられるよう、塗りは background-image の一枚で（色の地はそのまま）。透けるカードは下の色で。 */
 @media (hover: hover) and (pointer: fine) {
-  :is(.item-wrap:not(.is-tile-wrap) .item, .tl-item, .arc-log-row, .topbar-day, .cal-day, .diet-stat,
+  :is(.item-wrap:not(.is-tile-wrap) .item, .tl-item, .arc-log-row, .topbar-day, .cal-day,
       .seg-btn:not([aria-pressed="true"]), .tl-open, .tl-someday-add):hover {
     --tint: color-mix(in srgb, var(--c-text) 6%, transparent);
     background-image: linear-gradient(var(--tint), var(--tint));
@@ -7812,8 +7354,6 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
   .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
   .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
-  .head:not(.is-month) ~ .panes .diet-day.card { display: block; columns: 2; column-gap: var(--sp-4); padding: var(--sp-1) var(--sp-4); }
-  .head:not(.is-month) ~ .panes .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   .think-card { flex-direction: row; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
   .think-card-art { flex: none; width: 56px; height: 48px; }
   /* 価格：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。
@@ -8098,3 +7638,119 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 }
 #screen-prices .product.is-listed .product-emoji { box-shadow: inset 0 0 0 1.5px var(--cat, var(--c-primary)); }
 .item-where { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* =========================================================
+   R4 health の形（docs/redesign.md 6節・2026年11月11日。見本 tools/redesign-proto.html の #health）
+
+   四つの札（値 20px 太＋7日の小さな棒）→ 体重と食事を横に二つ → 今日の食事 → 飲みたくなった → 体重の推移 → 気づいたこと。
+   日の一枚（.diet-day）を一つの格子にし、幅ごとに置き場だけを替える：電話は一列、中身 768px から二段（1.25 : 1。左に体重・
+   食事と今日の食事、右に推移と飲みたくなった）、1180px から札の下に三段。段をまたぐカードの余りは最後の 1fr の行だけが受ける
+   （伸びる行をまたぐ物の余りは伸びる行へ＝CSS Grid の決め）ので、隣の段の背に引っぱられて体重の下が空かない。
+   ========================================================= */
+.diet { padding: 0 0 var(--sp-6); }
+.diet > .diet-look { margin: var(--sp-2) var(--sp-4) 0; }
+.diet-day {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; align-items: start;
+  grid-template-areas: "body body" "kg kcal" "meals meals" "urge urge" "chart chart";
+  padding: var(--sp-1) var(--sp-4) var(--sp-2); touch-action: pan-y;
+}
+.hl-body { grid-area: body; } .hl-hero.is-kg { grid-area: kg; } .hl-hero.is-kcal { grid-area: kcal; }
+.hl-meals { grid-area: meals; } .hl-urge { grid-area: urge; } .hl-chart { grid-area: chart; min-width: 0; padding: 14px 14px 10px; }
+.hl-urge:empty { display: none; }
+/* 四つの札：名前は指標の色（若竹・柿・藤・山吹）、棒は scale で（目標の高さに細い点線）。 */
+.hl-mets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hl-met { container-type: inline-size; display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 10px 9px 9px; text-align: left; color: var(--c-text); transition: scale var(--m-press) var(--ease); }
+.hl-met:active, .hl-hero:active { scale: var(--press-wide); }
+.hl-met-h { display: flex; align-items: center; gap: 4px; font-size: calc(11.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--mc); white-space: nowrap; }
+.hl-met-h > svg { flex: none; width: 15px; height: 15px; }  /* 入れもの：札の名前 */
+/* 数は札の幅に収める：電話の四つ並びは中身 64px で「1,940kcal」が入らない。狭い札では歩数・総消費の単位を畳み（名前が言う）、
+   数は器の幅（cqi）で 20px から縮む（五桁の歩数）。 */
+.hl-met-v { font: var(--fw-bold) min(calc(20px * var(--fs-k)), 30cqi) / 1.25 var(--font-num); letter-spacing: -.01em; white-space: nowrap; }
+@container (max-width: 96px) { .hl-met:not(.js-drink) .hl-met-v small { display: none; } }
+.hl-met-v small { margin-left: 2px; font: var(--fw-regular) calc(11px * var(--fs-k)) var(--font); letter-spacing: 0; color: var(--c-text-3); }
+.hl-met-v.is-over { color: var(--c-danger); }
+.hl-met.is-blank .hl-met-v { font-weight: var(--fw-regular); color: var(--c-text-2); }
+.hl-bars { position: relative; display: flex; align-items: flex-end; gap: 3px; height: 18px; margin-top: 4px; }
+.hl-bars i { flex: 1; height: 100%; border-radius: 2px; background: var(--mc); opacity: .28; transform-origin: 50% 100%; scale: 1 var(--h, 0); }
+.hl-bars i.is-now { opacity: 1; }
+.hl-bars i.is-none { visibility: hidden; }
+.hl-bars b { position: absolute; inset: auto 0 calc(var(--g, 0) * 100% - 1px); border-top: 1px dotted var(--mc); opacity: .6; }
+.hl-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); padding: 0 var(--sp-1); }
+/* 体重と食事：名前・36px の数・ひと言、下の端に細い線（体重）と入れた枠の色の帯（食事）。 */
+.hl-hero { display: flex; min-width: 0; height: 100%; padding: 14px 14px 12px; text-align: left; color: var(--c-text); transition: scale var(--m-press) var(--ease); }
+.hl-hero-in { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.hl-hero-h { display: flex; align-items: center; gap: 6px; font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.hl-hero-h > svg { flex: none; width: 17px; height: 17px; color: var(--c-primary); }  /* 入れもの：カードの名前 */
+.hl-hero-v { margin-top: 4px; font: var(--fw-bold) calc(36px * var(--fs-k)) / 1.15 var(--font-num); letter-spacing: -.02em; white-space: nowrap; }
+.hl-hero-v b { position: relative; font-weight: inherit; }
+.hl-hero-v small { margin-left: 3px; font: var(--fw-bold) calc(14px * var(--fs-k)) var(--font); letter-spacing: 0; color: var(--c-text-2); }
+.hl-hero-v small.is-about { margin: 0 2px 0 0; }
+.hl-hero-s { font-size: calc(12.5px * var(--fs-k)); line-height: 1.5; color: var(--c-text-2); }
+.hl-hero-s b { font-family: var(--font-num); color: var(--c-text); }
+.hl-hero-s > span { white-space: nowrap; }
+.hl-hero-s b.is-toward { color: var(--c-take); }
+.hl-hero-s.is-sub { color: var(--c-text-3); }
+.hl-hero-s.is-over { color: var(--c-danger); }
+/* 開いたとき、前の記録から数えて変わる（U16・countWeight）：本当の字は透かし、途中の数を重ねる。 */
+.diet-hero-value b[data-show] { -webkit-text-fill-color: transparent; }
+.diet-hero-value b[data-show]::after { content: attr(data-show); position: absolute; left: 0; top: 0; -webkit-text-fill-color: currentColor; }
+.hl-spark, .hl-foot { position: relative; display: block; margin-top: auto; padding-top: 10px; }
+.hl-spark svg { display: block; width: 100%; height: 40px; overflow: visible; }
+.hl-spark-a { fill: var(--c-primary-soft); }
+.hl-spark-l { fill: none; stroke: var(--c-primary); stroke-width: 2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.hl-stack { display: flex; height: 8px; border-radius: 4px; background: var(--c-surface-2); overflow: hidden; }
+.hl-stack-fill { display: flex; gap: 3px; height: 100%; transform-origin: 0 50%; }
+.hl-stack-fill i { flex: 1 1 0; min-width: 4px; border-radius: 4px; background: var(--c-slot-b); }
+.hl-stack i.is-lunch { background: var(--c-slot-l); } .hl-stack i.is-dinner { background: var(--c-slot-d); }
+.hl-stack i.is-snack { background: var(--c-slot-s); } .hl-stack i.is-other { background: var(--c-text-3); } .hl-stack i.is-drink { background: var(--c-yamabuki-fill); }
+/* 今日の食事：明朝の小見出しと「AI推計」、四つの枠のカード、底に AI のひと言と二つのボタン。 */
+.hl-meals-in { display: flex; flex-direction: column; gap: var(--sp-2); }
+.hl-sec { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-1); }
+.hl-sec-a { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; min-height: 44px; font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-primary); }
+.hl-sec-a > svg { width: 16px; height: 16px; }  /* 入れもの：小見出しの右 */
+.hl-sec-a:active, .hl-goal:active { opacity: var(--press-fade); }
+.hl-list { overflow: clip; }
+.diet-memo { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) 14px var(--sp-3); border-top: 1px solid var(--c-border); }
+.diet-memo-body { font-size: var(--fs-sm); color: var(--c-text-2); line-height: var(--lh-body); }
+.diet-ai-btns { display: flex; gap: var(--sp-2); }
+.diet-ai-btns .btn { flex: 1; background: var(--c-surface-2); }
+/* 体重の推移：小見出しと期間、図、凡例と目標の札（藍）。線は紙色の幕が右へ退いて描かれる（scale）。 */
+.hl-chart-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.hl-chart-h .tk-h { flex: 1 0 auto; font-size: calc(17px * var(--fs-k)); }
+.hl-chart-h .diet-range { flex: 1 1 250px; }
+.diet-plot-chart { position: relative; }
+.hl-wipe { position: absolute; top: 0; background: var(--c-surface); transform-origin: 100% 50%; scale: 0 1; pointer-events: none; }
+.hl-spark .hl-wipe { inset: 10px 0 0; }
+.hl-goal { margin-left: auto; display: inline-flex; align-items: center; min-height: 44px; font-weight: var(--fw-bold); color: var(--c-ai); }
+.diet-legend { align-items: center; }
+.is-m-arrive :is(.diet-plot-chart, .hl-spark) .hl-wipe { animation: wipe-off var(--m-draw) var(--ease-out) both; }
+.is-m-arrive .hl-bars i { animation: bar-grow var(--m-fill) var(--ease-out) both; }
+.is-m-arrive .hl-stack-fill { animation: stack-grow var(--m-fill) var(--ease-out) both; }
+.is-m-arrive .diet-dot.is-now { transform-box: fill-box; transform-origin: 50% 50%; animation: arrive-pop var(--m-poke) var(--spring) both; animation-delay: calc(var(--m-draw) * .8); }
+@keyframes wipe-off { from { scale: 1 1; } }
+@keyframes bar-grow { from { scale: 1 0; } }
+@keyframes stack-grow { from { scale: 0 1; } }
+@keyframes arrive-pop { from { opacity: 0; scale: 0; } }
+/* 幅（中身 768px＝窓 768〜839px と、840px からの席の器）：二段。1180px から三段。 */
+@media (min-width: 640px) and (max-width: 767.98px) { .diet-day { padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); } }
+@media (min-width: 768px) and (max-width: 839.98px) {
+  .diet-day { grid-template-columns: minmax(0, .625fr) minmax(0, .625fr) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; gap: 16px;
+    grid-template-areas: "body body body" "kg kcal chart" "meals meals chart" "meals meals urge"; }
+}
+@media (min-width: 840px) {
+  @container seat (min-width: 768px) {
+    .diet-day { grid-template-columns: minmax(0, .625fr) minmax(0, .625fr) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; gap: 16px;
+      grid-template-areas: "body body body" "kg kcal chart" "meals meals chart" "meals meals urge";
+      padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+    .diet > .diet-look { margin-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+  }
+  @container seat (min-width: 1180px) {
+    .diet-day { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.15fr);
+      grid-template-areas: "body body body" "kg meals chart" "kcal meals chart" "urge meals chart"; }
+  }
+}
+/* 横にした電話（窓 840px〜・背 520px まで）：二段（買うものの R5 と同じ条件）。 */
+@media (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .head:not(.is-month) ~ .panes .diet-day { grid-template-columns: minmax(0, .625fr) minmax(0, .625fr) minmax(0, 1fr); grid-template-rows: auto auto auto 1fr; gap: 16px;
+    grid-template-areas: "body body body" "kg kcal chart" "meals meals chart" "meals meals urge"; }
+}

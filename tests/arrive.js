@@ -1,14 +1,11 @@
 /* 開いたとき満ちる・押した席の絵が応える（2026年9月29日、docs/motion.md の
-   「開いたとき、満ちる」、docs/tabbar.md の「押した席の絵が応える」）。
+   「開いたとき、満ちる」、docs/tabbar.md の「押した席の絵が応える」。R4・11月11日に輪を7日の棒へ）。
    時計を 21:00 に止め、今日のからだと体重を入れて：
    - health の席を押すと、画面に is-m-arrive が付き、席の絵（heart）が二拍打つ
-   - 輪は 0 から満ちていく（毎フレーム記録して、減らない）→ 終われば本当の値
-   - **超えた日の輪は 100% で止まらない**（1 をまたぐ前後のフレームで速さが落ちない）
-   - **真ん中の数は輪の位置どおり**（どのフレームでも round(数 × 進み具合)）で、
-     途中の数がいくつも出る（最後に「パン」と出ない）。字（textContent）はずっと本当の数
-   - 四つは左から順に始まる（--m-stagger ずつの遅れ）
-   - 体重の線は左から引かれ（stroke-dashoffset 1 → 0）、今日の点は弾んで出る
-   - 終われば is-m-arrive は外れ、そのあと組み直しても輪は動かない
+   - 四つの札のその日の棒は下から伸びる（scale。0 から、縮まず、終われば本当の背）
+   - 体重の線は、被せた紙色の幕が右へ退いて描かれる（scale 1 → 0）。今日の点は弾んで出る
+   - 終われば is-m-arrive は外れ、そのあと組み直しても棒も幕も動かない
+   - 食事の帯は入れものごと左から伸び、区分はいつも最後の比率のまま
    - 買うもの（cart。価格を出す一押しでも）・歯車にも、それぞれの応え
    - 動きを減らす設定では、どちらも付けない */
 const { open, checker } = require("./lib");
@@ -17,15 +14,6 @@ const DAY = "2026-09-29";
 const AT = new Date(2026, 8, 29, 21, 0);
 const t = checker("arrive");
 
-/* 毎フレーム記録するあいだは、ページの時計を止めて runFor で進める（rAF は 16ms ごとに必ず一コマ）。
-   本物の時間で待つと、混んだ機械ではコマの間が揃わず、1 をまたぐ前後の速さが半分に見えて落ちた
-   （2026年10月24日、全部回しの3本並べ）。 */
-const stepped = async (page, act, ms) => {
-  await page.clock.pauseAt(AT);
-  await act();
-  await page.clock.runFor(ms);
-  await page.clock.resume();
-};
 
 const seed = async (page) => {
   await page.evaluate((day) => {
@@ -54,15 +42,16 @@ const enterWith = async (page, rec) => {
   await page.click('.tab[data-tab="diet"]');
 };
 
-/* 輪のいま（周）と、本当の値（周）。 */
-const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-ring")].map((r) => {
-  const mid = r.querySelector(".diet-ring-mid");
+/* 四つの札のその日の棒（いまの背・本当の背）と、推移の幕（残っている幅の割合）。 */
+const readBars = (page) => page.evaluate(() => {
+  const d = document.querySelector("#screen-diet .js-day-card");
+  const wipe = d && d.querySelector(".diet-plot-chart .hl-wipe");
   return {
-    cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
-    target: parseFloat(r.dataset.p || r.style.getPropertyValue("--ring-p")) || 0,
-    text: mid ? mid.textContent : "", show: mid ? mid.dataset.show : undefined,
+    bars: d ? [...d.querySelectorAll(".hl-met .hl-bars i.is-now")].map((b) => ({ h: b.getBoundingClientRect().height,
+      full: b.offsetHeight * parseFloat(getComputedStyle(b).getPropertyValue("--h")), anim: b.getAnimations().length })) : [],
+    wipe: wipe ? wipe.getBoundingClientRect().width / wipe.offsetWidth : null,
   };
-}));
+});
 
 (async () => {
   {
@@ -91,14 +80,12 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       }).observe(scr, { attributes: true, attributeFilter: ["class"] });
       const t0 = performance.now();
       const tick = () => {
-        const rows = [...document.querySelectorAll("#screen-diet .diet-ring")].map((r) => {
-          const mid = r.querySelector(".diet-ring-mid");
-          return { cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
-                   target: parseFloat(r.dataset.p || "NaN"),
-                   n: mid && mid.dataset.n != null ? Number(mid.dataset.n) : null,
-                   show: mid ? mid.dataset.show : undefined, text: mid ? mid.textContent : "" };
-        });
-        window.__rec.push({ at: performance.now() - t0, rows });
+        const d = document.querySelector("#screen-diet .js-day-card");
+        const wipe = d && d.querySelector(".diet-plot-chart .hl-wipe");
+        window.__rec.push({ at: performance.now() - t0,
+          bars: d ? [...d.querySelectorAll(".hl-met .hl-bars i.is-now")].map((b) => ({ h: b.getBoundingClientRect().height,
+            full: b.offsetHeight * parseFloat(getComputedStyle(b).getPropertyValue("--h")) })) : [],
+          wipe: wipe ? wipe.getBoundingClientRect().width / wipe.offsetWidth : null });
         if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
       };
       tick();
@@ -126,69 +113,29 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     const rec = await page.evaluate(() => window.__rec);
     const [fill, draw, stag] = await page.evaluate(() => ["--m-fill", "--m-draw", "--m-stagger"].map((k) => KN.motion.ms(k)));
 
-    /* 輪ごとの道のり。 */
-    const kinds = ["steps", "burned", "sleep", "drink"];
-    const series = kinds.map((k) => rec.map((f) => f.rows.find((r) => r.cls.includes(`is-${k}`))).filter(Boolean));
-    const live = series.filter((s) => s.length && !/is-none/.test(s[0].cls) && s[s.length - 1].target > 0.05);
-    t.check("数の出る輪が三つ以上・十分なフレーム", live.length >= 3 && rec.length > 30,
-      `${live.length}本・${rec.length}フレーム`);
-    t.check("はじめは 0 のあたり（満ちた輪が先に見えない）",
-      live.every((s) => s[0].p <= s[s.length - 1].target * 0.05), JSON.stringify(live.map((s) => [s[0].p, s[s.length - 1].target])));
-    t.check("輪は減らない（満ちていくだけ）",
-      live.every((s) => s.every((f, i) => !i || f.p >= s[i - 1].p - 1e-4)));
-    const last = live.map((s) => s[s.length - 1]);
-    t.check("終われば本当の値・数の重ねは消える",
-      last.every((f) => Math.abs(f.p - f.target) < 1e-3 && f.show == null), JSON.stringify(last));
-
-    /* 超えた日：1 をまたぐ前後で速さが落ちない。 */
-    const steps = series[0];
-    t.check("歩数は超えた日（is-over、1 周より先まで）", steps.length && /is-over/.test(steps[0].cls)
-      && steps[steps.length - 1].target > 1.1, JSON.stringify(steps[steps.length - 1]));
-    const k = steps.findIndex((f) => f.p >= 1);
-    const vBefore = k > 1 ? (steps[k - 1].p - steps[k - 2].p) : 0;
-    const vAfter = k > 0 && k + 1 < steps.length ? (steps[k + 1].p - steps[k].p) : 0;
-    t.check("超えた日の輪は 100% で止まらない（またぐ前後で速さが続く）",
-      k > 1 && vBefore > 0 && vAfter > vBefore * 0.6,
-      `k=${k} 前 ${vBefore.toFixed(4)} 後 ${vAfter.toFixed(4)}`);
-    const stall = steps.some((f, i) => i > 0 && f.p < f.target - 1e-3 && f.p > 0.9 && f.p < 1.1
-      && Math.abs(f.p - steps[i - 1].p) < 1e-5);
-    t.check("100% のあたりで同じ値に留まるフレームが無い", !stall);
-
-    /* 数は輪の位置どおり・途中の数がいくつも出る・字は本当の数のまま。 */
-    let off = 0, worst = "";
-    live.forEach((s) => s.forEach((f) => {
-      if (f.show == null || f.n == null) return;
-      const want = Math.round(f.n * (f.p / f.target));
-      if (Math.abs(parseInt(f.show, 10) - want) > 1) { off++; worst = `${f.cls}: ${f.show} / ${want}`; }
-    }));
-    t.check("真ん中の数は、どのフレームでも輪の位置どおり", off === 0, `${off}フレーム ${worst}`);
-    /* 数が 20 以上の輪で見る（飲酒 0g の輪は、数えるものが無い）。 */
-    const distinct = live.filter((s) => (s[s.length - 1].n || 0) >= 20)
-      .map((s) => new Set(s.map((f) => f.show).filter((v) => v != null)).size);
-    t.check("途中の数がいくつも出る（最後にパンと出ない）", distinct.length >= 2 && distinct.every((n) => n >= 8),
-      JSON.stringify(distinct));
-    const textOk = live.every((s) => s.every((f) => f.text === s[s.length - 1].text));
-    t.check("数えているあいだも textContent は本当の数", textOk);
-
-    /* 左から順に：半分まで来たのが、左の輪ほど早い。 */
-    const halfAt = live.map((s) => {
-      const i = s.findIndex((x) => x.p >= x.target * 0.5);
-      return i < 0 ? Infinity : rec[i].at;
-    });
-    t.check("左から順に始まる（二つめ・三つめは一つめより遅れて半分に着く）",
-      halfAt[1] >= halfAt[0] && halfAt[2] >= halfAt[1] - 20, JSON.stringify(halfAt.map(Math.round)));
+    /* 棒ごとの道のり（歩数・総消費・睡眠。飲酒は夕方の記録が無ければ「—」で棒が無い）。 */
+    const n = Math.min(...rec.filter((f) => f.bars.length).map((f) => f.bars.length));
+    const series = Array.from({ length: n }, (_, i) => rec.filter((f) => f.bars[i]).map((f) => f.bars[i]));
+    t.check("伸びる棒が三本以上・十分なフレーム", n >= 3 && rec.length > 30, `${n}本・${rec.length}フレーム`);
+    t.check("はじめは 0 のあたり（伸びきった棒が先に見えない）",
+      series.every((s) => s[0].h <= s[s.length - 1].full * 0.05 + 0.5), JSON.stringify(series.map((s) => [s[0].h, s[s.length - 1].full])));
+    t.check("棒は縮まない（伸びていくだけ）", series.every((s) => s.every((f, i) => !i || f.h >= s[i - 1].h - 0.01)));
+    t.check("終われば本当の背", series.every((s) => Math.abs(s[s.length - 1].h - s[s.length - 1].full) < 0.5),
+      JSON.stringify(series.map((s) => s[s.length - 1])));
+    const wipes = rec.map((f) => f.wipe).filter((x) => x != null);
+    t.check("推移の幕は被ったところから右へ退き、終われば消える（scale 1 → 0）",
+      wipes.length > 10 && wipes[0] > 0.9 && wipes.every((x, i) => !i || x <= wipes[i - 1] + 1e-3) && wipes[wipes.length - 1] < 0.01,
+      JSON.stringify([wipes[0], wipes[wipes.length - 1]]));
 
     t.check("is-m-arrive は満ち終わると外れる（長さは --m-* から）",
       took >= Math.max(fill * 1.4, draw) && took < Math.max(fill * 1.4, draw) + stag * 4 + 1500, `${Math.round(took)}ms`);
-    const offLine = await page.evaluate(() => getComputedStyle(document.querySelector("#screen-diet .diet-ma7")).strokeDasharray);
-    t.check("終われば線はふつうの実線（破線の指定なし）", offLine === "none", offLine);
 
     /* そのあと組み直しても動かない。 */
     await page.evaluate(() => KN.screens.diet.render());
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    const again = await readRings(page);
-    t.check("開いたあとの組み直しでは輪は動かない（すぐ本当の値・数の重ね無し）",
-      again.every((r) => Math.abs(r.p - r.target) < 1e-3 && r.show == null), JSON.stringify(again));
+    const again = await readBars(page);
+    t.check("開いたあとの組み直しでは棒も幕も動かない（すぐ本当の背・幕は無い）",
+      again.bars.length >= 3 && again.bars.every((b) => !b.anim && Math.abs(b.h - b.full) < 0.5) && again.wipe < 0.01, JSON.stringify(again));
 
     /* 買うもの → cart、もう一度で価格 → tag。 */
     await page.click('.tab[data-tab="list"]');
@@ -241,18 +188,15 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
 
     t.check("エラーなし", errors.length === 0, errors.join("\n"));
     await enterWith(page);
-    /* 体重の線（途中）。 */
+    /* 体重の線（途中）：幕が退いている途中・今日の点は弾んで出る。 */
     await page.waitForTimeout(150);
     const line = await page.evaluate(() => {
-      const p = document.querySelector("#screen-diet .diet-ma7");
+      const w = document.querySelector("#screen-diet .js-day-card .diet-plot-chart .hl-wipe");
       const now = document.querySelector("#screen-diet .diet-dot.is-now");
-      if (!p) return null;
-      const cs = getComputedStyle(p);
-      return { len: p.getAttribute("pathLength"), off: parseFloat(cs.strokeDashoffset),
-               nowAnim: now ? getComputedStyle(now).animationName : "" };
+      if (!w) return null;
+      return { left: w.getBoundingClientRect().width / w.offsetWidth, nowAnim: now ? getComputedStyle(now).animationName : "" };
     });
-    t.check("体重の線は引かれている途中（dashoffset が 0 と 1 のあいだ）",
-      line && line.len === "1" && line.off > 0 && line.off < 1, JSON.stringify(line));
+    t.check("体重の線は描かれている途中（幕が 0 と 1 のあいだ）", line && line.left > 0 && line.left < 1, JSON.stringify(line));
     t.check("今日の点は弾んで出る（arrive-pop）", line && line.nowAnim === "arrive-pop", JSON.stringify(line));
 
     await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
@@ -261,8 +205,7 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     await browser.close();
   }
 
-  /* 飲みすぎた日：一周目は灰（下地と同じ色）なので、灰の輪から始まり、赤の超えたぶんと
-     数が一緒に動く（数だけ先に動いて赤が最後、にならない）。 */
+  /* 飲みすぎた日と、総消費を超えた日の食事の帯。 */
   {
     const { browser, page, errors } = await open({
       before: async (cx, p) => { await p.clock.setFixedTime(new Date(2026, 8, 29, 21, 0)); },
@@ -276,49 +219,17 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       KN.store.addMeal({ day, time: "12:30", slot: "lunch", items: [{ name: "定食", kcal: 600 }] });
       KN.store.addMeal({ day, time: "19:30", slot: "dinner", items: [{ name: "煮物", kcal: 1200 }] });   // 総消費 1,900 を超える
     }, DAY);
-    await page.click('.tab[data-tab="todo"]');
-    await page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
-    await stepped(page, () => page.evaluate(() => {
-      window.__rec = [];
-      const t0 = performance.now();
-      const tick = () => {
-        const r = document.querySelector("#screen-diet .diet-ring.is-drink");
-        const mid = r && r.querySelector(".diet-ring-mid");
-        if (r) window.__rec.push({ cls: r.className, p: parseFloat(r.style.getPropertyValue("--ring-p")) || 0,
-          target: parseFloat(r.dataset.p || "NaN"), n: mid ? Number(mid.dataset.n) : null, show: mid ? mid.dataset.show : undefined });
-        const segs = [...document.querySelectorAll("#screen-diet .diet-stack-fill > i")];
-        const stack = document.querySelector("#screen-diet .diet-stack");
-        if (segs.length) (window.__bar = window.__bar || []).push({ at: performance.now() - t0,
-          w: segs.map((e) => e.getBoundingClientRect().width), full: segs.map((e) => e.offsetWidth),
-          ids: segs.map((e) => e.className), over: stack.classList.contains("is-over"),
-          rim: getComputedStyle(stack).boxShadow });
-        if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
-      };
-      tick();
-    }).then(() => page.click('.tab[data-tab="diet"]')), 3300);
-    await page.waitForFunction(() => !document.getElementById("screen-diet").classList.contains("is-m-arrive"),
-      null, { timeout: 6000 });
-    const rec = (await page.evaluate(() => window.__rec)).filter((f) => /is-drink/.test(f.cls));
-    const moving = rec.filter((f) => f.show != null);
-    const end = rec[rec.length - 1] || {};
-    t.check("飲みすぎた日の輪（is-drink is-over、1 周より先）", /is-over/.test(end.cls || "") && end.target > 1 && end.n > 0,
-      JSON.stringify(end));
-    t.check("灰の一周目は満ちた姿から始まる（1 より下へ行かない）", moving.length > 5 && moving.every((f) => f.p >= 1 - 1e-4),
-      JSON.stringify(moving.slice(0, 3)));
-    let off = 0, worst = "";
-    moving.forEach((f) => {
-      const want = Math.round(f.n * (f.p - 1) / (f.target - 1));
-      if (Math.abs(parseInt(f.show, 10) - want) > 1) { off++; worst = `${f.show} / ${want}`; }
-    });
-    t.check("赤の超えたぶんと数は一緒に動く（どのフレームでも揃う）", off === 0, `${off}フレーム ${worst}`);
-    t.check("終われば本当の値", Math.abs(end.p - end.target) < 1e-3 && end.show == null, JSON.stringify(end));
+    const over = await page.evaluate(() => { KN.app.showScreen("diet");
+      const v = document.querySelector("#screen-diet .js-day-card .hl-met.js-drink .hl-met-v");
+      return v ? { text: v.textContent, over: v.classList.contains("is-over") } : null; });
+    t.check("目安を超えた日の飲酒は赤い字（g も出す）", over && over.over && /40g/.test(over.text), JSON.stringify(over));
 
     await enterWith(page, () => {
       window.__bar = [];
       const t0 = performance.now();
       const tick = () => {
-        const segs = [...document.querySelectorAll("#screen-diet .diet-stack-fill > i")];
-        const stack = document.querySelector("#screen-diet .diet-stack");
+        const segs = [...document.querySelectorAll("#screen-diet .js-day-card .hl-stack-fill > i")];
+        const stack = document.querySelector("#screen-diet .js-day-card .hl-stack");
         if (segs.length) window.__bar.push({ at: performance.now() - t0,
           w: segs.map((e) => e.getBoundingClientRect().width), full: segs.map((e) => e.offsetWidth),
           ids: segs.map((e) => e.className), over: stack.classList.contains("is-over"),
@@ -355,11 +266,11 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
     t.check("帯は減らない（伸びていくだけ）", front.every((x, i) => !i || x >= front[i - 1] - 0.01));
     const endAt = bar.find((f) => f.w.reduce((a, b) => a + b, 0) >= fullSum - 0.5);
     const fillMs = await page.evaluate(() => KN.motion.ms("--m-fill"));
-    t.check("長さは輪と同じ --m-fill（それより長く伸び続けない）",
+    t.check("長さは棒と同じ --m-fill（それより長く伸び続けない）",
       endAt && endAt.at <= fillMs + 400, `${endAt && Math.round(endAt.at)}ms / ${fillMs}ms`);
     t.check("伸び終われば本当の幅", lastBar.w.every((w, i) => Math.abs(w - lastBar.full[i]) < 0.5),
       JSON.stringify([lastBar.w, lastBar.full]));
-    /* 超えた日も、帯に縁は付けない（利用者が選んだ。超えたことは下の一文の赤字が言う）。 */
+    /* 超えた日も、帯に縁は付けない（利用者が選んだ。超えたことは食事のカードの赤い「超過」が言う）。 */
     t.check("超えた日の帯（is-over）", lastBar.over, JSON.stringify(lastBar));
     t.check("超えた日も帯に縁は無い（伸びているあいだも、止まってからも）",
       bar.every((f) => !f.rim || f.rim === "none"), JSON.stringify(bar.map((f) => f.rim).filter((r) => r !== "none").slice(0, 2)));
@@ -459,9 +370,9 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       poke: document.querySelector('.tab[data-tab="diet"] .tab-ico-face').classList.contains("is-poke"),
     }));
     t.check("動きを減らす設定では満ちない・応えない", !r.arrive && !r.poke, JSON.stringify(r));
-    const rings = await readRings(page);
-    t.check("動きを減らす設定でも輪は本当の値（数の重ね無し）", rings.every((x) => (Math.abs(x.p - x.target) < 1e-3 && x.show == null) || /is-none/.test(x.cls)),
-      JSON.stringify(rings));
+    const still = await readBars(page);
+    t.check("動きを減らす設定でも棒は本当の背・幕は無い", still.bars.length >= 3 && still.bars.every((x) => Math.abs(x.h - x.full) < 0.5) && !(still.wipe > 0.01),
+      JSON.stringify(still));
     t.check("エラーなし（動きを減らす）", errors.length === 0, errors.join("\n"));
     await browser.close();
   }

@@ -75,7 +75,7 @@ let browser;
   let got = await leaks();
   t.check("prices：罠の字が要素にならない", !got.length, [...new Set(got)].join(" / "));
   /* 紙も一枚ずつ（品物の紙・からだの一日の紙）。 */
-  for (const [name, tab, sel] of [["品物の紙", "list", ".item .item-name:visible"], ["からだの紙", "diet", ".diet-cell.js-cell:visible"]]) {
+  for (const [name, tab, sel] of [["品物の紙", "list", ".item .item-name:visible"], ["からだの紙", "diet", ".hl-met.js-cell:visible"]]) {
     await page.click(`.tab[data-tab="${tab}"]`);
     await page.waitForTimeout(500);
     await page.click(sel, { timeout: 5000 });

@@ -170,12 +170,15 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.getElementById("screen-todo").dataset.face === "today", null, { timeout: 3000 }).catch(() => {});
   await wait(600);
 
-  /* からだ：カードは段組み（同じ高さに二枚以上）。 */
+  /* からだ：段組み（R4：推移のカードが体重の横に）。 */
   await page.click(".tab-diet");
   await wait(700);
-  const tops = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .diet-day.is-here > .diet-card, #screen-diet .day-slide > .diet-card")]
-    .map((c) => Math.round(c.getBoundingClientRect().top)));
-  t.check("からだ：カードは横にも並ぶ", tops.length >= 2 && new Set(tops).size < tops.length, JSON.stringify(tops));
+  const tops = await page.evaluate(() => {
+    const d = document.querySelector("#screen-diet .js-day-card"), kg = d.querySelector(".hl-hero.is-kg").getBoundingClientRect();
+    const ch = d.querySelector(".hl-chart").getBoundingClientRect();
+    return [Math.round(kg.top), Math.round(ch.top), ch.left > kg.right];
+  });
+  t.check("からだ：カードは横にも並ぶ（推移が体重の横）", tops[2] && Math.abs(tops[0] - tops[1]) < 2, JSON.stringify(tops));
   const dietPaper = await page.evaluate(() => { const s = document.querySelector("#screen-diet .tl-sheet"), r = s.getBoundingClientRect();
     return { bg: getComputedStyle(s).backgroundColor, b: Math.round(r.bottom) }; });
   t.check("からだ：紙は窓の底まで地を持つ（段に並んだカードの束の下で切れない）", dietPaper.bg !== "rgba(0, 0, 0, 0)" && dietPaper.b === 900,

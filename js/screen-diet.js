@@ -344,22 +344,24 @@
     // （chart() 側の daysBetween と同じ上限=4000日）。
     const win = range === 0 ? 4000 : Math.max(range, 30);
     const sum = (opts && opts.sum) || D.weightSummary(win, day);
-    /* 一枚に、今日（からだ）・記録（食事）・推移（体重の数とグラフ）を、ノートと同じ
-       丸角のカードで並べます（10月5日、三つの区画に分けるのをやめた）。 */
+    /* R4（docs/redesign.md 6節）：四つの札 → 体重と食事 → 今日の食事 → 飲みたくなった → 体重の推移。
+       一つの格子に平らに並べ、幅ごとに置き場だけを替える（電話は一列・中身 768px から二段・1180px から三段。screens.css の R4）。 */
     const slide = node(html`
-      <section class="card day-slide diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
-        <div class="diet-card diet-block is-body js-body-stats"></div>
-        <div class="diet-card diet-block is-meal js-meals"></div>
-        <div class="diet-card is-trend">
-          <div class="diet-block is-weight js-today"></div>
-          <div class="diet-block js-trend-card"></div>
-        </div>
+      <section class="day-slide diet-day ${peek ? "is-peek" : "js-day-card"}" data-day="${day}">
+        <div class="hl-body js-body-stats"></div>
+        <button type="button" class="card hl-hero is-kg js-weight"></button>
+        <button type="button" class="card hl-hero is-kcal js-kcal"></button>
+        <div class="hl-meals js-meals"></div>
+        <div class="hl-urge js-urges"></div>
+        <div class="card hl-chart js-trend-card"></div>
       </section>
     `);
     renderBodyStats(slide.querySelector(".js-body-stats"), card);
-    renderToday(slide.querySelector(".js-today"), card, sum);
+    renderToday(slide.querySelector(".js-weight"), card, sum);
+    renderKcal(slide.querySelector(".js-kcal"), card);
     renderMeals(slide.querySelector(".js-meals"), card, { peek });
-    renderGraph(slide.querySelector(".js-trend-card"), opts && opts.chartEl);
+    renderUrges(slide.querySelector(".js-urges"), card);
+    renderGraph(slide.querySelector(".js-trend-card"), opts && opts.chartEl, sum);
     if (peek) slide.inert = true;
     return slide;
   }
@@ -838,73 +840,69 @@
     const from = w && last && last.day === card.day && pts.length > 1
       && Math.abs(pts[pts.length - 2].kg - w.kg) >= 0.05 ? pts[pts.length - 2].kg : null;
 
+    /* R4：カードごと押すと体重の紙（見本の #health）。平均・傾きの日数は「目標」の紙の畳み、目標は推移のカードの下の札から。
+       傾きの色は目標へ向かっているときだけ若竹（推移の線の光と同じ決め）。 */
+    const tw = sum.trendPerWeek, goal = sum.goal.targetKg, now = sum.ma7Now;
+    const toward = goal != null && tw != null && now != null && Math.abs(now - goal) >= 0.1
+      && (now > goal ? tw < -0.03 : tw > 0.03);
+    const extra = [w && w.source === "health" ? "ヘルスケア" : "", w && w.fat != null ? `体脂肪 ${w.fat.toFixed(1)}%` : "", condText(w)].filter(Boolean).join("・");
     const sec = node(html`
-      <div class="diet-hero">
-        <div class="diet-hero-top">
-          <button class="diet-hero-main js-weight">
-            <span class="diet-hero-label">
-              <i class="diet-hero-ico">${icon("scale")}</i>${w && w.source === "health"
-                ? `${when}の体重（ヘルスケア）` : `${when}の体重`}</span>
-            <span class="diet-hero-value">
-              <b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small>
-            </span>
-            <span class="diet-hero-sub">
-              ${w && w.fat != null ? html`<span class="diet-hero-fat mono-num">体脂肪 ${w.fat.toFixed(1)}%</span>` : ""}
-              ${w && condText(w) ? html`<span class="diet-hero-cond">${condText(w)}</span>` : ""}
-            </span>
-          </button>
-          <div class="diet-hero-side">
-            <button type="button" class="diet-stat js-trend">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("trend")}</i>傾き</span>
-              <b class="diet-stat-value mono-num">${sum.trendPerWeek == null ? "—" : signed(sum.trendPerWeek, 2)}</b>
-              <span class="diet-stat-unit">kg/週</span>
-            </button>
-            <button type="button" class="diet-stat js-avg">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("chart")}</i>${sum.avgWindowDays}日平均</span>
-              <b class="diet-stat-value mono-num">${sum.ma7Now == null ? "—" : sum.ma7Now.toFixed(2)}</b>
-              <span class="diet-stat-unit">kg</span>
-            </button>
-            <button type="button" class="diet-stat js-goal-stat">
-              <span class="diet-stat-label"><i class="diet-stat-ico">${icon("target")}</i>${sum.goal.targetKg == null ? "目標" : "目標まで"}</span>
-              <b class="diet-stat-value mono-num">${sum.goal.targetKg == null ? "—" : (sum.toGoal == null ? "—" : Math.abs(sum.toGoal).toFixed(1))}</b>
-              <span class="diet-stat-unit">${sum.goal.targetKg == null ? "未設定" : (sum.toGoal != null && sum.toGoal <= 0 ? "kg 超過達成" : "kg")}</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <span class="hl-hero-in">
+        <span class="hl-hero-h diet-hero-label">${icon("scale")}${when === "今日" ? "" : when + "の"}体重</span>
+        <span class="hl-hero-v diet-hero-value"><b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small></span>
+        <span class="hl-hero-s"><span>${sum.avgWindowDays}日平均 <b>${now == null ? "—" : now.toFixed(1)}</b></span>・<span><b class="${toward ? "is-toward" : ""}">${tw == null ? "—" : signed(tw, 1)}</b> /週</span></span>
+        ${extra ? html`<span class="hl-hero-s is-sub">${extra}</span>` : ""}
+        ${KN.util.raw(spark(card.day, sum.avgWindowDays))}
+      </span>
     `);
     if (from != null) sec.querySelector(".diet-hero-value b").dataset.from = from;
-    sec.querySelector(".js-weight").addEventListener("click", () => openWeightSheet(card.weight, card.day));
-    sec.querySelector(".js-trend").addEventListener("click", () => openWindowSheet("trend"));
-    sec.querySelector(".js-avg").addEventListener("click", () => openWindowSheet("avg"));
-    sec.querySelector(".js-goal-stat").addEventListener("click", openGoalSheet);
+    host.addEventListener("click", () => openWeightSheet(card.weight, card.day));
     host.append(sec);
   }
 
-  /** 「平均」「傾き」を、何日ぶんで均すか。既定はどちらも7日——増やすほど
-      揺れは減り、短くするほど直近の変化に敏感になります。 */
-  function openWindowSheet(kind) {
-    const isAvg = kind === "avg";
-    const g = store.get().diet.goal;
-    const cur = (isAvg ? g.avgWindowDays : g.trendWindowDays) || 7;
-    const body = node(html`
-      <div class="stack">
-        <label class="field">
-          <span class="field-label">${isAvg ? "平均" : "傾き"}を出す日数</span>
-          <input class="input js-days" inputmode="numeric" placeholder="7" value="${cur}">
-        </label>
-        <p class="diet-note">空なら7日。</p>
-      </div>
+  /* 体重のカードの細い線：その日までの14日の N日平均（推移と同じ trendLine。記録の頭から均す）。面は薄い朱、
+     描かれるときは上に被せた紙色の幕が右へ退く（線は scale で。docs/redesign.md 7節）。2日ぶん無ければ引かない。 */
+  function spark(day, n) {
+    const from = U.shiftDay(day, -13);
+    const m = D.trendLine(D.weightPoints(null, day), n || 7).filter((x) => x.day >= from && x.value != null);
+    if (m.length < 2) return "";
+    const vs = m.map((x) => x.value);
+    let lo = Math.min(...vs), hi = Math.max(...vs);
+    if (hi - lo < 0.6) { const c = (hi + lo) / 2; lo = c - 0.3; hi = c + 0.3; }
+    const t0 = U.dayDate(from).getTime();
+    const ps = m.map((x) => ({ x: (U.dayDate(x.day).getTime() - t0) / 86400000 / 13 * 150, y: 4 + (1 - (x.value - lo) / (hi - lo)) * 32 }));
+    const d = curve(ps);
+    return `<span class="hl-spark" aria-hidden="true"><svg viewBox="0 0 150 40" preserveAspectRatio="none">`
+      + `<path class="hl-spark-a" d="${d} L${ps[ps.length - 1].x.toFixed(1)} 40 L${ps[0].x.toFixed(1)} 40 Z"/>`
+      + `<path class="hl-spark-l" d="${d}"/></svg><i class="hl-wipe"></i></span>`;
+  }
+
+  /* ---------------- 食事のカード（R4） ----------------
+
+     合計と、入れた枠の色の帯。帯は総消費に対する割合（分からない日・超えた日は摂取が全体）——前の積み上げの帯
+     （energySplit）を一本に。区分の色は下の「今日の食事」の台と同じなので、凡例は置かない。目安があれば残り／超過。
+     押すと「食事を書く」の紙。 */
+  function renderKcal(host, card) {
+    const t = card.totals, rem = card.remaining, sp = D.energySplit(card.day);
+    const st = D.slotTotals(card.day);
+    const names = SLOTS.filter((sl) => store.slotMemo(card.day, sl.id) || (st && st[sl.id])).map((sl) => sl.short)
+      .concat(card.drinkTotals && card.drinkTotals.kcal > 0 ? ["お酒"] : []);
+    const fill = sp ? Math.min(100, sp.parts.reduce((a, x) => a + x.pct, 0)) : 0;
+    const sec = node(html`
+      <span class="hl-hero-in">
+        <span class="hl-hero-h">${icon("meal")}${dayName(card.day) === "今日" ? "" : dayName(card.day) + "の"}食事</span>
+        <span class="hl-hero-v">${t && (t.estimated || t.low != null) ? html`<small class="is-about">約</small>` : ""}<b class="mono-num">${t ? t.kcal.toLocaleString() : "—"}</b><small>kcal</small></span>
+        <span class="hl-hero-s">${names.join("・")}</span>
+        ${rem ? html`<span class="hl-hero-s is-rem ${rem.kcal < 0 ? "is-over" : ""}">${rem.kcal >= 0
+          ? `残り ${rem.kcal.toLocaleString()}` : `${Math.abs(rem.kcal).toLocaleString()} 超過`}</span>` : ""}
+        <span class="hl-foot"><span class="hl-stack ${sp && sp.over ? "is-over" : ""}" role="img" aria-label="${sp
+          ? (sp.known ? `総消費${Math.round(sp.burned).toLocaleString()}kcalのうち、摂取${sp.intake.toLocaleString()}kcal` : `摂取${sp.intake.toLocaleString()}kcalの内わけ`)
+          : "まだ"}"><span class="hl-stack-fill" style="width:${fill.toFixed(1)}%">${KN.util.raw(sp ? sp.parts.map((x) =>
+            `<i class="is-${x.id}" style="flex-grow:${x.kcal}"></i>`).join("") : "")}</span></span></span>
+      </span>
     `);
-    const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
-    const h = KN.ui.sheet({ title: isAvg ? "平均の日数" : "傾きの日数", content: body, footer: foot, guard: true });
-    foot.addEventListener("click", () => {
-      const v = parseInt(body.querySelector(".js-days").value, 10);
-      const n = Number.isFinite(v) && v > 0 ? Math.min(90, v) : null;
-      store.setGoal(isAvg ? { avgWindowDays: n } : { trendWindowDays: n });
-      h.close();
-      render();
-    });
+    host.addEventListener("click", () => openMealMemoSheet(card.day));
+    host.append(sec);
   }
 
   /* ---------------- グラフ ---------------- */
@@ -921,26 +919,27 @@
      カルーセルはどれも同じグラフ（選んだ日には依存しません）なので、
      render() 側で一度だけ作って、他の二枚には複製を渡します——履歴が
      長くなるほど chart() 自体が重くなるので、同じものを3回作らないため。 */
-  function renderGraph(host, chartEl) {
+  function renderGraph(host, chartEl, sum) {
+    /* 下の札は目標（藍。線と同じ色）——押すと「目標」の紙。決めていなければ「目標」とだけ。 */
+    const goal = sum && sum.goal.targetKg;
     const sec = node(html`
       <div class="diet-graph">
-        <div class="section-title">${icon("chart")}体重の推移</div>
-        ${/* 期間は見方の切り替えなので `.seg`（丸札は絞る・選んで入れるもの。2026年10月21日、総点検 Y2）。 */""}
-        <div class="seg diet-range js-range" role="group" aria-label="期間">
-          ${KN.util.raw(RANGES.map((r) => `<button type="button" class="seg-btn" data-id="${r.id}"
-            aria-pressed="${String(r.id === range)}">${r.label}</button>`).join(""))}
+        <div class="hl-chart-h">
+          <h2 class="tk-h">体重の推移</h2>
+          ${/* 期間は見方の切り替えなので `.seg`（丸札は絞る・選んで入れるもの。2026年10月21日、総点検 Y2）。 */""}
+          <div class="seg diet-range js-range" role="group" aria-label="期間">
+            ${KN.util.raw(RANGES.map((r) => `<button type="button" class="seg-btn" data-id="${r.id}"
+              aria-pressed="${String(r.id === range)}">${r.label}</button>`).join(""))}
+          </div>
         </div>
         <div class="diet-plot-chart js-chart"></div>
         <div class="diet-legend">
           <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
           <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
           ${range === 0 || range >= 30 ? html`<span class="diet-legend-item"><i class="dot-ma14"></i>14日平均</span>` : ""}
-          ${/* 目標はここには書きません。線の右の端に「目標 68.0」と数ごと
-                置いてあるので（chart()）、凡例で名前だけ言い直すと、
-                読む人は二か所を見比べることになります。 */""}
-          ${/* 数はグラフの右の目盛りに出るので、ここでは名前だけ。
-                同じ数を二か所に書くと、どちらが本物か確かめる手間が増えます。 */""}
           <span class="diet-legend-item js-leg-beer"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
+          <button type="button" class="hl-goal js-goal-stat">${goal == null ? "目標" : `目標 ${goal.toFixed(1)}`}${
+            goal != null && sum.toGoal != null && sum.toGoal > 0 ? html`<span class="mono-num">・あと ${sum.toGoal.toFixed(1)}</span>` : ""}</button>
         </div>
       </div>
     `);
@@ -949,13 +948,57 @@
       /* 組み直すのは store を書いた拍の subscribe（app.js）。ここで render() を重ねると二度組む（docs/traps.md）。 */
       range = Number(b.dataset.id); store.setDietRange(range);
     }));
+    sec.querySelector(".js-goal-stat").addEventListener("click", openGoalSheet);
 
     const drawn = chartEl || chart();
-    sec.querySelector(".js-chart").append(drawn);
-    /* 線の無いグラフに凡例は要りません。印の無い期間に「飲んだ日」も。 */
-    if (drawn.classList.contains("diet-empty")) sec.querySelector(".diet-legend").remove();
+    const plot = sec.querySelector(".js-chart");
+    plot.append(drawn);
+    /* 線が描かれるのは、描く区画に被せた紙色の幕が右へ退くことで（scale。docs/redesign.md 7節）。 */
+    if (!drawn.classList.contains("diet-empty")) {
+      const C = CHART;
+      plot.append(node(html`<i class="hl-wipe" style="left:${(C.padL / C.W * 100).toFixed(2)}%;right:${(C.padR / C.W * 100).toFixed(2)}%;bottom:${(C.padB / C.H * 100).toFixed(2)}%"></i>`));
+    }
+    /* 線の無いグラフに凡例は要りません（目標の札は残す）。印の無い期間に「飲んだ日」も。 */
+    if (drawn.classList.contains("diet-empty")) sec.querySelectorAll(".diet-legend-item").forEach((e) => e.remove());
     else if (!drawn.dataset.marks) sec.querySelector(".js-leg-beer").remove();
     host.append(sec);
+  }
+
+  /* 推移の図の物差し（chart() と幕の置き場が分け合う）。 */
+  const CHART = { W: 320, H: 180, padL: 40, padR: 8, padB: 20 };
+
+  /* ---- 線のなめらかさ ----
+
+     折れ線でつないでいました。7日平均はもともと日々のぶれをならした数
+     なので、それを角のある折れ線で描くと、ならした意味が見た目に出ません。
+
+     曲げ方は単調保存（Fritsch–Carlson）を使います。ふつうの滑らかな
+     曲線は、点と点のあいだで**行き過ぎ**ます——70.2 と 70.1 のあいだで
+     69.9 まで垂れる曲線を引いてしまう、ということです。体重のグラフで
+     それは「その日そう量った」と読まれるので、使えません。この引き方は
+     与えた点より外に出ないことが保証されています。 */
+  function curve(ps) {
+    if (ps.length < 3) return ps.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+    const n = ps.length, dx = [], m = [], t = [];
+    for (let i = 0; i < n - 1; i++) {
+      dx[i] = ps[i + 1].x - ps[i].x;
+      m[i] = dx[i] ? (ps[i + 1].y - ps[i].y) / dx[i] : 0;
+    }
+    t[0] = m[0];
+    for (let i = 1; i < n - 1; i++) {
+      if (m[i - 1] * m[i] <= 0) { t[i] = 0; continue; }
+      const w1 = 2 * dx[i] + dx[i - 1], w2 = dx[i] + 2 * dx[i - 1];
+      t[i] = (w1 + w2) / (w1 / m[i - 1] + w2 / m[i]);
+    }
+    t[n - 1] = m[n - 2];
+    let d = `M${ps[0].x.toFixed(1)} ${ps[0].y.toFixed(1)}`;
+    for (let i = 0; i < n - 1; i++) {
+      const h = dx[i] / 3;
+      d += ` C${(ps[i].x + h).toFixed(1)} ${(ps[i].y + t[i] * h).toFixed(1)}`
+        + ` ${(ps[i + 1].x - h).toFixed(1)} ${(ps[i + 1].y - t[i + 1] * h).toFixed(1)}`
+        + ` ${ps[i + 1].x.toFixed(1)} ${ps[i + 1].y.toFixed(1)}`;
+    }
+    return d;
   }
 
   /**
@@ -985,7 +1028,7 @@
     /* AX は軸と目標の字の大きさ（css の .diet-axis・.diet-goal-tag と同じ）。図は 320 の幅で描いて縮むので、
        375 の幅で描かれて 11px を割らない大きさ（design-review の Y7）。左の余白と字の置き場はこれに合わせる。 */
     const AX = 11.5;
-    const W = 320, H = 180, padL = 40, padR = 8, padB = 20;
+    const { W, H, padL, padR, padB } = CHART;
     const axW = (s) => [...s].reduce((n, c) => n + (c.charCodeAt(0) > 255 ? 1 : 0.6), 0) * AX;
     const padT = hasMarks ? 22 : 10;
     // 線は記録の頭から均し、期間の中だけを描きます（weightSummary の「平均」と同じ数）。
@@ -1095,40 +1138,8 @@
     const x = (day) => padL + idx(day) * dayW;
     const y = (v) => gTop + (1 - (v - lo) / (hi - lo)) * (gBot - gTop);
 
-    /* ---- 線のなめらかさ ----
-
-       折れ線でつないでいました。7日平均はもともと日々のぶれをならした数
-       なので、それを角のある折れ線で描くと、ならした意味が見た目に出ません。
-
-       曲げ方は単調保存（Fritsch–Carlson）を使います。ふつうの滑らかな
-       曲線は、点と点のあいだで**行き過ぎ**ます——70.2 と 70.1 のあいだで
-       69.9 まで垂れる曲線を引いてしまう、ということです。体重のグラフで
-       それは「その日そう量った」と読まれるので、使えません。この引き方は
-       与えた点より外に出ないことが保証されています。 */
-    const curve = (ps) => {
-      if (ps.length < 3) return ps.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-      const n = ps.length, dx = [], m = [], t = [];
-      for (let i = 0; i < n - 1; i++) {
-        dx[i] = ps[i + 1].x - ps[i].x;
-        m[i] = dx[i] ? (ps[i + 1].y - ps[i].y) / dx[i] : 0;
-      }
-      t[0] = m[0];
-      for (let i = 1; i < n - 1; i++) {
-        if (m[i - 1] * m[i] <= 0) { t[i] = 0; continue; }
-        const w1 = 2 * dx[i] + dx[i - 1], w2 = dx[i] + 2 * dx[i - 1];
-        t[i] = (w1 + w2) / (w1 / m[i - 1] + w2 / m[i]);
-      }
-      t[n - 1] = m[n - 2];
-      let d = `M${ps[0].x.toFixed(1)} ${ps[0].y.toFixed(1)}`;
-      for (let i = 0; i < n - 1; i++) {
-        const h = dx[i] / 3;
-        d += ` C${(ps[i].x + h).toFixed(1)} ${(ps[i].y + t[i] * h).toFixed(1)}`
-          + ` ${(ps[i + 1].x - h).toFixed(1)} ${(ps[i + 1].y - t[i + 1] * h).toFixed(1)}`
-          + ` ${ps[i + 1].x.toFixed(1)} ${ps[i + 1].y.toFixed(1)}`;
-      }
-      return d;
-    };
-    const path = (rows, get) => curve(rows.map((r) => ({ x: x(r.day), y: y(get(r)) })));
+    /* 線の曲げ方は単調保存（上の curve）。 */
+    const path =(rows, get) => curve(rows.map((r) => ({ x: x(r.day), y: y(get(r)) })));
 
     /* 印も、左端から。右の端より先には置きません（枠の外に描くと切れた印が見えます）。 */
     const lastX = W - padR;
@@ -1182,9 +1193,9 @@
           return `<line class="diet-gridline ${i ? "" : "is-base"}" x1="${padL}" y1="${yy.toFixed(1)}" x2="${W - padR}" y2="${yy.toFixed(1)}"/>`
             + `<text class="diet-axis" x="${padL - 6}" y="${(yy + AX * 0.36).toFixed(1)}" text-anchor="end">${kgText(v)}</text>`;
         }).join(""))}
+        ${/* 目標は藍の点線（R4）。数は下の札が言う（同じ色）。枠の外なら、数と向きだけを端に。 */""}
         ${goal == null ? "" : goalIn
-          ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`
-            + `<text class="diet-goal-tag" x="${W - padR}" y="${(y(goal) - 4).toFixed(1)}" text-anchor="end">目標 ${goal.toFixed(1)}</text>`)
+          ? KN.util.raw(`<line class="diet-goal-line" x1="${padL}" y1="${y(goal).toFixed(1)}" x2="${W - padR}" y2="${y(goal).toFixed(1)}"/>`)
           : KN.util.raw(`<text class="diet-goal-tag is-off" x="${W - padR}" y="${
               (goal < lo ? gBot - 3 : gTop + 8).toFixed(1)}" text-anchor="end">目標 ${goal.toFixed(1)} ${
               goal < lo ? "▼" : "▲"}</text>`)}
@@ -1782,13 +1793,14 @@
     const done = rows.filter((u) => !isLater(u));
     if (!canAdd && !rows.length) return;
 
+    /* R4：山吹の淡い塗りのボタン（52px）。あとで記入・書いた一件は、その下に行のカード。 */
     const sec = node(html`
       <div class="urge-bar">
-        ${later.length ? html`<div class="urge-later"><div class="urge-later-t">あとで記入</div>
-          <div class="urge-rows js-later"></div></div>` : ""}
         ${canAdd ? html`
-          <button class="btn btn-soft btn-block js-urge">${icon("clock")}飲みたくなった</button>` : ""}
-        ${done.length ? html`<div class="urge-rows js-done"></div>` : ""}
+          <button class="btn btn-block hl-urge-btn js-urge">${icon("clock")}飲みたくなった</button>` : ""}
+        ${later.length ? html`<div class="urge-later"><div class="urge-later-t">あとで記入</div>
+          <div class="card urge-rows js-later"></div></div>` : ""}
+        ${done.length ? html`<div class="card urge-rows js-done"></div>` : ""}
       </div>
     `);
 
@@ -1859,122 +1871,11 @@
   const burnGoal  = () => store.get().diet.goal.burnTarget  || BURN_DEFAULT;
   const sleepGoal = () => store.get().diet.goal.sleepTarget || SLEEP_DEFAULT;
 
-  /**
-   * リングの描き方を決めます。角度だけを返し、色はCSS側の変数に任せます
-   * （そうしないと、明るい／暗いの切り替えで色が固定されてしまうので）。
-   *
-   * ふつうの三つ（歩数・総消費・睡眠）:
-   *   目標までは色が伸び、**超えたぶんは明るい色で二周目**として重なります。
-   *   超えたことが見えないと、超えた日と、ちょうど届いた日が同じ顔になります。
-   *
-   * 飲酒だけは向きが逆です:
-   *   飲まなかった日が **満ちた輪**。飲むほど減って灰色が増え、目安を
-   *   超えたら、超えたぶんが赤で出ます。「飲まなかった」は空白ではなく
-   *   その日の成果なので、いちばん見える形（満ちた輪）を当てています。
-   *
-   *   ただし **その日が終わっていれば** の話です。朝七時に満ちた青い輪を
-   *   出すと、四つのうちいちばん目立つものが「まだ飲んでいない」を讃えて
-   *   いることになります——お酒は夕方より前には飲まないのだから、昼までの
-   *   0g は成果ではなく、まだ何も起きていないだけ。ほかの三つと同じ
-   *   「—」にして、夕方（18時）から満ち始めます。
-   *
-   *   同じ間違いを、AIに渡す文章のほうでは先に直してあります
-   *   （dayBodyText の「この時点ではまだ記録なし（未確定）」）。絵のほうが
-   *   残っていました。
-   *
-   * @param {boolean} [pending] 飲酒のみ：今日で、まだ夕方前で、記録も無い
-   * @returns {{cls:string, deg:number, pct:number|null}}
-   */
-  function ringOf(kind, value, target, pending) {
-    if (kind === "drink") {
-      if (pending) return { cls: "is-drink is-none", deg: 0, pct: null };
-      const g = value || 0;                       // 飲んでいない日は 0g
-      const pct = target > 0 ? (g / target) * 100 : 0;
-      if (pct > 100) {
-        // 超過ぶんを赤で。二周を超えるほど飲んだ日は、輪一周で頭打ち。
-        const over = Math.min(100, pct - 100);
-        return { cls: "is-drink is-over", deg: over * 3.6, pct: Math.round(pct) };
-      }
-      // 残っているぶんを色で。0gなら満ちる。
-      return { cls: "is-drink", deg: (100 - pct) * 3.6, pct: Math.round(pct) };
-    }
-    if (value == null || !(target > 0)) return { cls: `is-${kind} is-none`, deg: 0, pct: null };
-    const pct = (value / target) * 100;
-    if (pct > 100) {
-      const over = Math.min(100, pct - 100);
-      return { cls: `is-${kind} is-over`, deg: over * 3.6, pct: Math.round(pct) };
-    }
-    return { cls: `is-${kind}`, deg: pct * 3.6, pct: Math.round(pct) };
-  }
-
-  /* 輪がどこまで満ちているかを「周」で（0〜2）。1 までが一周目（--fill）、1 を
-     超えたぶんが二周目（--lit）。超えた日も**一本の数**で持つので、開いたときの
-     満ち方が 100% で止まらない（fillRings）。 */
-  const ringTurns = (ring) => ((/is-over/.test(ring.cls) ? 1 : 0) + ring.deg / 360).toFixed(4);
-
-  /* ---- 開いたとき、輪と数を一つの時計で満たす（2026年9月29日） ----
-
-     輪（`--ring-p`）と真ん中の数（`data-show`）を、**同じ進み具合**で毎フレーム
-     書きます。輪は `--ease-out` で「グン」と満ち、数はいつも輪の位置どおり。
-
-     - はじめは輪を CSS のアニメーション、数を CSS の counter で動かしていた。
-       **超えた日は一周ぶんと超えたぶんを別の区切りにしていたので、曲線が
-       区切りごとに掛かり、100% で一度止まった。** 数は iPhone で途中を描かず、
-       最後に「パン」と出た（実機を見た利用者の声）。いまは超えた日も 0→1.35 周の
-       一本の道で、数はその道の上の位置から出す——ずれようがない。
-     - 超えた日は長く（`--m-fill` の 1.4 倍）。道が長いぶん、同じ速さに見えるように。
-     - 四つは左から `--m-stagger` ずつ遅れて始まる。
-     - 毎フレーム**画面の中から輪を引き直す**。途中で組み直されても、新しい輪が
-       いまの進み具合から続く（頭から満ち直さない）。
-     - 書く相手は輪そのもの（`:root` ではない。横断の罠）。終われば `--ring-p` を
-       輪の本当の値へ戻し、`data-show` を外す。 */
-  const ringRun = new WeakMap();
-  function fillRings(root) {
-    if (!root.querySelector(".diet-ring")) return;
-    const M = KN.motion, ease = M.curve("--ease-out");
-    const base = M.ms("--m-fill"), step = M.ms("--m-stagger");
-    const t0 = performance.now();
-    const token = {};
-    ringRun.set(root, token);
-    const frame = (now) => {
-      if (ringRun.get(root) !== token) return;           // 次の arrive が引き継いだ
-      let live = false;
-      root.querySelectorAll(".diet-ring:not(.is-none)").forEach((ring, i) => {
-        const cell = ring.closest(".diet-cell");
-        const idx = cell && cell.parentNode ? [...cell.parentNode.children].indexOf(cell) : i;
-        const over = ring.classList.contains("is-over");
-        /* 飲みすぎた日の一周目は灰（`--fill` が `--rest`＝下地と同じ色）。0 から
-           満たすと一周目のあいだ**見た目が何も変わらず**、数だけ先に動いて赤が
-           最後に出た（2026年9月29日・利用者の声）。だから一周目は満ちた姿（＝灰の
-           輪。下地と同じ絵なので跳ばない）から始め、動くのは赤の超えたぶんだけ。 */
-        const from = over && ring.classList.contains("is-drink") ? 1 : 0;
-        const dur = base * (over && !from ? 1.4 : 1);
-        const x = Math.max(0, Math.min(1, (now - t0 - step * idx) / dur));
-        const k = ease(x);
-        const target = ring.dataset.p || (ring.dataset.p = ring.style.getPropertyValue("--ring-p").trim());
-        const mid = ring.querySelector(".diet-ring-mid[data-n]");
-        if (x < 1) {
-          live = true;
-          U.setVar(ring, "--ring-p", (from + (parseFloat(target) - from) * k).toFixed(4));
-          if (mid) {
-            const show = Math.round(Number(mid.dataset.n) * k) + mid.dataset.u;
-            if (mid.dataset.show !== show) mid.dataset.show = show;
-          }
-        } else {
-          U.setVar(ring, "--ring-p", target);
-          if (mid && mid.dataset.show != null) delete mid.dataset.show;
-        }
-      });
-      if (live && root.isConnected) requestAnimationFrame(frame);
-    };
-    frame(t0);   // 描かれる前に 0 の姿へ（満ちた輪が一瞬見えないように）
-  }
-
   /* ---- 開いたとき、体重の大きな数が前の記録から数えて変わる（roadmap-unify の U16） ----
 
-     輪の数と同じ手：字は書き換えず、`data-show` に途中の数を書いて上に重ねる
-     （textContent はいつも本当の数）。輪とは別の一本の時計で、長さと曲線は輪と同じ
-     （`--m-fill`・`--ease-out`）。前の記録が無い・同じ数なら動かない（data-from が無い）。 */
+     字は書き換えず、`data-show` に途中の数を書いて上に重ねる（textContent はいつも本当の数）。
+     長さと曲線は `--m-fill`・`--ease-out`。前の記録が無い・同じ数なら動かない（data-from が無い）。
+     四つの札の7日の棒と体重の線は CSS が描く（screens.css の R4。輪と JS の時計は R4 で外した）。 */
   const weightRun = new WeakMap();
   function countWeight(root) {
     if (!root.querySelector(".diet-hero-value b[data-from]")) return;
@@ -1998,121 +1899,71 @@
   }
   KN.motion.onArrive((root) => {
     if (root.id !== "screen-diet") return;
-    fillRings(root);
     countWeight(root);
   });
 
+  /* ---------------- 四つの札（R4） ----------------
+
+     歩数・総消費・睡眠・飲酒。「今日どうだったか」に答える最小の組（総消費は安静時＋アクティブをこちらで足す。
+     歩行距離は記録に持ち続け、札には出さない）。値は 20px 太の丸い字に小さな単位、下に7日ぶんの小さな棒
+     （その日は満ちた色・前の六日は薄く。docs/redesign.md 6節）。色は 若竹・柿・藤・山吹。
+
+     - 棒の背は七日と目標の大きいほうに対する割合で、目標の高さに細い点線（輪をやめても「目標まで」は形で残す）。
+       飲酒は目安（決めていなければ厚労省の 20g）。棒は scale で描く（7節）。
+     - 数の無い日は棒を置かない。飲酒だけは記録の無い過ぎた日を 0g（飲まなかった日は空白ではない）。
+     - **今日の夕方（18時）より前と、明日から先の飲酒は「—」**：お酒は夕方より前には出てこないので、昼までの 0g は
+       成果ではなく、まだ何も起きていないだけ。夕方の境目はやることの 朝/午後/夜 と同じ。
+     - 目安を超えた日の飲酒は赤い字（色だけに頼らず g も出す）。手で書いた値は名前の横に小さな筆。 */
+  const METS = [
+    { type: "steps",  label: "歩数",   ico: "steps", unit: "歩",   mc: "--c-take" },
+    { type: "burned", label: "総消費", ico: "flame", unit: "kcal", mc: "--c-kaki" },
+    { type: "sleep",  label: "睡眠",   ico: "moon",  unit: "",     mc: "--c-fuji" },
+    { type: "drink",  label: "飲酒",   ico: "drink", unit: "g",    mc: "--c-yamabuki" },
+  ];
+  const hmm = (min) => `${Math.floor(min / 60)}:${String(Math.round(min % 60)).padStart(2, "0")}`;
+
   function renderBodyStats(host, card) {
-    const dt = card.drinkTotals;
-
-    /* カードに出す四つ。「今日どうだったか」に答える最小の組です。
-
-       総消費は、安静時とアクティブを **こちらで足して** 出します。二つに
-       分けて見せていましたが、「今日どれだけ使ったか」を知るのに人に足し算を
-       させるのは、こちらがやるべき仕事です。分けたぶんは、枠を押して開く
-       「からだの記録」にあります。
-
-       歩行距離はここから外しました。毎日ほとんど同じで、体重との関係も
-       歩数がすでに言っています（そして機械が二台あると二重に数える——
-       取り込みのほうで直しました）。記録としては持ち続けます。
-
-       四つを**横一列**に並べます。そのために書き方を詰めました——睡眠は
-       「6時間40分」ではなく「6h40m」、飲酒は中身の言葉ではなく
-       **一日の目安に対する％**。中身は押せば出てきます。 */
-    const guide = alcoholGuide();
-    const pct = dt ? Math.round((dt.alcoholG / guide) * 100) : 0;
-    /* まだ何も言えない日は、飲酒も数の無い枠にします（ringOf のコメント参照）。
-       言えないのは二つ——**明日から先**（まだ起きていない）と、**今日の
-       夕方前**（お酒はそれより前には出てこない）。夕方の境目は、やることの
-       朝/午後/夜と同じ 18時を引きます。ここで別の数を書くと、二つの「夜」が
-       少しずつずれていきます。
-
-       カレンダーの帯のほうは、未来の日をすでに出していません（render 内の
-       `key > today ? null : drinkBar(key)`）。輪だけが、横に払って出る
-       明日の紙で満ちていました。 */
     const today = U.todayKey();
-    const drinkPending = !dt && (card.day > today
-      || (card.day === today && U.partOfTime(U.nowTime()) !== "night"));
-    const sg = stepsGoal(), bg = burnGoal(), slg = sleepGoal();
-    /* 輪の真ん中に出す字。ふつうの三つは目標に対する％（超えたら100を
-       超えた数がそのまま出ます——超えたことが読めるように）。飲酒だけは
-       量そのもの（g）です。％は下の行が言うので、同じ数を二度書きません。
-
-       **まだ無いときは、輪の中は空けます。** 「—」は下の数の欄が言います。
-       輪の中にも書いていたので、空の日は一つの枠に「—」が二つずつ、
-       画面ぜんたいで十七個並んでいました（docs/improvements.md の B9）。
-       空の輪そのものが「まだ無い」を言っています。 */
-    const ringPct = (r) => (r.pct == null ? "" : r.pct + "%");
-    /* 開いたとき、真ん中の数も輪と一緒に 0 から数え上がります（fillRings）。
-       **字そのものは書き換えません**——数えているあいだは `data-show` の字が
-       上に重なって見えるだけで、textContent はいつも本当の数のまま（読み上げも、
-       字を読む試験も、途中の数を拾わない）。数え上げられるのは整数と単位一つの
-       形だけ（小数の g などは、そのまま出します）。 */
-    const countUp = (mid) => {
-      const m = /^(\d+)(%|g)$/.exec(mid);
-      return m ? ` data-n="${m[1]}" data-u="${m[2]}"` : "";
+    const dt = card.drinkTotals;
+    const pending = (d) => !store.drinkTotals(d) && (d > today || (d === today && U.partOfTime(U.nowTime()) !== "night"));
+    const days = Array.from({ length: 7 }, (_, i) => U.shiftDay(card.day, i - 6));
+    const of = {
+      steps: (d) => store.healthValue(d, "steps"),
+      burned: (d) => D.burnedOf(d),
+      sleep: (d) => store.healthValue(d, "sleep"),
+      drink: (d) => (pending(d) ? null : ((store.drinkTotals(d) || {}).alcoholG || 0)),
     };
-    const rSteps = ringOf("steps", card.steps, sg);
-    const rBurn  = ringOf("burned", card.burned, bg);
-    const rSleep = ringOf("sleep", card.sleep, slg);
-    const rDrink = ringOf("drink", dt ? dt.alcoholG : 0, guide, drinkPending);
-    const rows = [
-      { type: "steps", label: "歩数", unit: `目標 ${n0(sg)}`, ico: "steps",
-        value: showValue("steps", card.steps), manual: isManual(card.day, "steps"),
-        ring: rSteps, mid: ringPct(rSteps) },
-      { type: "burned", label: "総消費", unit: `目標 ${n0(bg)}`, ico: "flame",
-        value: card.burned == null ? "—" : n0(card.burned),
-        manual: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy"),
-        ring: rBurn, mid: ringPct(rBurn) },
-      { type: "sleep", label: "睡眠", unit: `目標 ${hm(slg)}`, ico: "moon",
-        value: card.sleep == null ? "—" : hm(card.sleep), manual: isManual(card.day, "sleep"),
-        ring: rSleep, mid: ringPct(rSleep) },
-      /* 飲酒だけは「無い」ときも薄くしません。飲まなかった日は空白では
-         なく **0%という記録**で、そこが薄いと「書き忘れ」に見えます。
-         輪は逆向き——飲まなかった日が満ちます（ringOf のコメント参照）。
-
-         例外は、今日のまだ夕方前だけ。そこは記録ではなく **まだ**なので、
-         ほかの三つと同じ薄い枠にします（keep を外す）。 */
-      { type: "drink", label: "飲酒", ico: "drink", keep: !drinkPending,
-        value: drinkPending ? "—" : pct + "%",
-        unit: dt ? `${dt.estimated ? "約" : ""}${dt.alcoholG}g` : `目安${guide}g`,
-        over: !drinkPending && pct > 100,
-        ring: rDrink, mid: drinkPending ? "" : `${dt ? dt.alcoholG : 0}g` },
-    ];
-
+    const goals = { steps: stepsGoal(), burned: burnGoal(), sleep: sleepGoal(), drink: alcoholGuide() };
+    const manual = {
+      steps: isManual(card.day, "steps"), sleep: isManual(card.day, "sleep"),
+      burned: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy"),
+    };
+    const html1 = METS.map((m) => {
+      const vals = days.map(of[m.type]);
+      const v = vals[6];
+      const top = Math.max(goals[m.type] || 0, ...vals.filter((x) => x != null)) || 1;
+      const shown = v == null ? "—"
+        : m.type === "sleep" ? hmm(v)
+        : m.type === "drink" ? `${dt && dt.estimated ? "約" : ""}${v}` : n0(v);
+      const over = m.type === "drink" && v != null && v > goals.drink;
+      const bars = vals.map((x, i) => (x == null ? "<i class=\"is-none\"></i>"
+        : `<i class="${i === 6 ? "is-now" : ""}" style="--h:${Math.max(0.06, x / top).toFixed(3)}"></i>`)).join("");
+      return `<button type="button" class="card hl-met js-cell${m.type === "drink" ? " js-drink" : ""}${v == null ? " is-blank" : ""}"`
+        + ` data-type="${m.type}" style="--mc:var(${m.mc})">`
+        + `<span class="hl-met-h">${icon(m.ico).value}${m.label}${manual[m.type] ? '<i class="diet-hand" title="手入力">' + icon("edit").value + "</i>" : ""}</span>`
+        + `<span class="hl-met-v mono-num${over ? " is-over" : ""}">${KN.util.escapeHtml(shown)}${v != null && m.unit ? `<small>${m.unit}</small>` : ""}</span>`
+        + `<span class="hl-bars" aria-hidden="true" style="--g:${Math.min(1, (goals[m.type] || 0) / top).toFixed(3)}">${bars}<b></b></span></button>`;
+    }).join("");
+    const fresh = freshNoteHtml(card.day);
     const sec = node(html`
-      <div class="stack">
-        <div class="section-title is-block-head">${icon("heart")}${dayName(card.day)}のからだ
-          ${KN.util.raw(freshNoteHtml(card.day))}
-        </div>
-        <div class="diet-grid">
-          ${KN.util.raw(rows.map((r) => `
-            ${/* 読み上げの順と、目で読む順は別です。字は「歩数 → 5,356 →
-                  目標」の順に並べておいて（読み上げも、textContent を見る
-                  ところも、この順で読みます）、輪だけを CSS で上へ回します。 */""}
-            ${/* 記録の無い枠は輪を描かず、名前と「—」の低い札（2026年10月21日。空の輪が四つ並ぶと
-                  上半分で「まだ」を四回言っていた）。記録が入れば輪になる。 */""}
-            <button class="diet-cell js-cell ${r.type === "drink" ? "js-drink" : ""} ${
-              r.value === "—" && !r.keep ? "is-blank" : ""}" data-type="${r.type}">
-              <span class="diet-cell-label"><span class="diet-cell-ico">${icon(r.ico)}</span>${
-                r.label}${r.manual ? '<i class="diet-hand" title="手入力">' + icon("edit").value + '</i>' : ""}</span>
-              ${r.value === "—" && !r.keep ? "" : `
-              <span class="diet-ring ${r.ring.cls}" style="--ring-p:${ringTurns(r.ring)}" aria-hidden="true">
-                <i class="diet-ring-mid mono-num"${countUp(r.mid)}>${r.mid}</i>
-              </span>`}
-              <b class="diet-cell-value mono-num ${r.over ? "is-over" : ""}">${r.value}</b>
-              ${r.unit && !(r.value === "—" && !r.keep) ? `<span class="diet-cell-unit">${r.unit}</span>` : ""}
-            </button>`).join(""))}
-        </div>
-        ${/* 「飲みたくなった」の入口は、輪のすぐ下に置きます。飲酒の輪と
-              同じ一日の、同じ面の話なので——別の段に離すと、二つの別々の
-              機能に見えます（renderUrges が中身を組みます）。 */""}
-        <div class="js-urges"></div>
-        ${card.workouts.length ? html`
-          <div class="diet-workouts">
+      <div class="hl-body-in">
+        <div class="hl-mets">${KN.util.raw(html1)}</div>
+        ${fresh || card.workouts.length ? html`
+          <div class="hl-sub">
             ${KN.util.raw(card.workouts.map((w) =>
               `<span class="badge">${KN.util.escapeHtml(w.label || "ワークアウト")} ${Math.round(w.value)}分`
               + `${w.kcal != null ? ` ・ ${Math.round(w.kcal)}kcal` : ""}</span>`).join(""))}
+            ${KN.util.raw(fresh)}
           </div>` : ""}
       </div>
     `);
@@ -2124,9 +1975,8 @@
         openBodySheet(card.day, t);
       });
     });
-    const fresh = sec.querySelector(".js-fresh");
-    if (fresh) fresh.addEventListener("click", askForFresh);
-    renderUrges(sec.querySelector(".js-urges"), card);
+    const f = sec.querySelector(".js-fresh");
+    if (f) f.addEventListener("click", askForFresh);
     host.append(sec);
   }
 
@@ -2593,126 +2443,42 @@
 
   /* ---------------- 食事 ---------------- */
 
-  /* ---------------- カロリーの出どころ、一本で ----------------
+  /* ---------------- 今日の食事（R4） ----------------
 
-     「1,800kcal」だけでは、次にどうするかが決まりません。多いのか少ない
-     のかは総消費しだいですし、多かったとして**どこから来たのか**が
-     分からなければ、動かす場所も決まらない。
-
-     だから一本の帯にします。全体（100%）がその日の総消費で、左から
-     朝・昼・夜・間食・（区分なし）・飲酒、余りが「残り」。一目で
-     「使ったぶんに対してどれだけ食べたか」と「その内わけ」が同時に読めます。 */
-  function energyBar(day) {
-    const sp = D.energySplit(day);
-    if (!sp) return null;
-    /* 区分は一つの入れもの（`.diet-stack-fill`、幅は摂取の割合）に入れて、中の幅は
-       入れものに対する割合で持つ。開いたとき、**入れものごと**左から伸びる
-       （screens.css の「帯は左から伸びる」）——朝・昼・夜は、いつも最後の比率の
-       まま一緒に伸びる。残りは帯の地（入れものの外）なので、描くものは無い。 */
-    const sum = sp.parts.reduce((a, x) => a + x.pct, 0) || 1;
-    const el = node(html`
-      <div class="diet-stack-wrap">
-        <div class="diet-stack ${sp.over ? "is-over" : ""}" role="img"
-             aria-label="${sp.known
-               ? `総消費${Math.round(sp.burned).toLocaleString()}kcalのうち、摂取${sp.intake.toLocaleString()}kcal`
-               : `摂取${sp.intake.toLocaleString()}kcalの内わけ`}">
-          <span class="diet-stack-fill" style="width:${Math.min(100, sum).toFixed(2)}%">
-            ${KN.util.raw(sp.parts.map((x) =>
-              `<i class="is-${x.id}" style="width:${(x.pct / sum * 100).toFixed(3)}%"`
-              + ` title="${x.label} ${x.kcal.toLocaleString()}kcal"></i>`).join(""))}
-          </span>
-        </div>
-        <div class="diet-stack-legend">
-          ${KN.util.raw(sp.parts.map((x) =>
-            `<span class="diet-stack-key"><i class="is-${x.id}"></i>${x.label}
-               <b class="mono-num">${x.kcal.toLocaleString()}</b></span>`).join(""))}
-          ${sp.known && !sp.over ? html`
-            <span class="diet-stack-key"><i class="is-rest"></i>残り
-              <b class="mono-num">${Math.round(sp.rest).toLocaleString()}</b></span>` : ""}
-        </div>
-        <p class="diet-note">
-          ${sp.known ? html`
-            総消費 <b class="mono-num">${Math.round(sp.burned).toLocaleString()}</b>kcal に対して、
-            摂取は <b class="mono-num">${sp.intake.toLocaleString()}</b>kcal
-            （<b>${sp.intakePct}%</b>）。${sp.over
-              ? html`<b class="is-warn">${sp.overKcal.toLocaleString()}kcal 超えています。</b>`
-              : ""}
-          ` : ""}
-        </p>
-      </div>
-    `);
-    return el;
-  }
-
+     小見出し（明朝）の右に「AI推計」（詳しい紙）。下に四つの枠のカード（行 60px：枠の色の台・名前・書いたもの・
+     kcal／＋）。押すとその場で書く欄になる（editSlotInline）。AI推計のひと言と、押すだけで済む
+     「プロンプトをコピー」「貼り付け」はカードの底に。総消費に対する割合は上の食事のカードの帯が持つ。 */
   function renderMeals(host, card, opts) {
     const peek = !!(opts && opts.peek);
-    const t = card.totals;
-    const rem = card.remaining;
     const ai = store.dayMemo(card.day);          // AIの推計を入れておく一件
     const st = D.slotTotals(card.day);
     const foods = store.mealsOfDay(card.day)
       .reduce((a, m) => a.concat(m.items.filter((i) => i.from === "ai")), []);
 
     const sec = node(html`
-      <div class="stack">
-        <div class="section-title is-block-head">${icon("meal")}${dayName(card.day)}の食事</div>
-
-        <div class="diet-kcal">
-          <div class="diet-kcal-main">
-            <b class="mono-num">${t ? t.kcal.toLocaleString() : "—"}</b><small>kcal</small>
-            ${/* 推定の幅。一つの数だけを出すと、推した値が測った値の顔をします。 */""}
-            ${t && t.low != null && t.high != null ? html`
-              <span class="badge badge-muted mono-num">${t.low.toLocaleString()}〜${t.high.toLocaleString()}</span>
-            ` : (t && t.estimated ? html`<span class="badge badge-muted">推定を含む</span>` : "")}
-          </div>
-          ${card.drinkTotals && card.drinkTotals.kcal > 0 ? html`
-            <span class="badge badge-muted">＋ お酒 ${card.drinkTotals.estimated ? "約" : ""}${card.drinkTotals.kcal.toLocaleString()}kcal</span>
-          ` : ""}
-          ${rem ? html`
-            <div class="diet-kcal-rem ${rem.kcal < 0 ? "is-over" : ""}">
-              ${rem.kcal >= 0 ? html`残り <b class="mono-num">${rem.kcal.toLocaleString()}</b> kcal`
-                              : html`<b class="mono-num">${Math.abs(rem.kcal).toLocaleString()}</b> kcal 超過`}
-              <span class="diet-kcal-target">/ 目標 ${rem.target.toLocaleString()}</span>
-            </div>` : ""}
+      <div class="hl-meals-in">
+        <div class="hl-sec">
+          <h2 class="tk-h">${dayName(card.day)}の食事</h2>
+          <button type="button" class="hl-sec-a js-ai-open">${icon("sparkles")}AI推計</button>
         </div>
-
-        <div class="js-stack"></div>
-
-        ${/* 朝・昼・夜・間食は、はじめから四つとも出しておきます。
-              「追加」を押してから区分を選ぶ作りだと、書くまでに二手
-              かかって、そのぶん書かれなくなります。ここは開いた場所に
-              そのまま書けます（打った先から保存します）。 */""}
-        <div class="diet-slots js-slots"></div>
-
-        ${/* AIの推計。押すだけで完結する二つのボタンにしました
-              ——①プロンプトを作ってコピー ②AIの返事を貼り付ける。
-              どちらも他のアプリへ行って戻ってくるだけで済みます。
-              中身を見返す・自分で直すときは、上の帯（結果の要約）を
-              押せば、これまでどおり詳しい紙が開きます。 */""}
-        <div class="diet-memo ${ai && ai.ai ? "" : "is-blank"}">
-          <button type="button" class="diet-memo-open js-ai-open">
-            <span class="diet-memo-head">
-              <span class="diet-memo-ico">${icon("sparkles")}</span>
-              <b>AI推計</b>
-              <span class="diet-memo-hint">${ai && ai.ai ? "詳しく見る" : ""}</span>
-            </span>
+        <div class="card hl-list">
+          <div class="diet-slots js-slots"></div>
+          <div class="diet-memo ${ai && ai.ai ? "" : "is-blank"}">
+            ${/* AIの評価の文も、この枠の中に（10月5日）。お酒を足した合計・PFC の数は出さない
+                  （細かい数と根拠はAIの返事の原文に残っている）。 */""}
             ${ai && ai.ai ? html`
               <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${costLabel(ai.ai.cost)}` : ""}</span>` : ""}
-          </button>
-          ${/* AIの評価の文も、この枠の中に（10月5日）。お酒を足した合計・PFC の数は出さない
-                （細かい数と根拠はAIの返事の原文に残っている）。 */""}
-          ${ai && ai.ai && ai.ai.analysis ? html`
-            <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
-          <div class="diet-ai-btns">
-            <button type="button" class="btn btn-soft btn-sm js-ai-prompt">${icon("chevron")}プロンプトをコピー</button>
-            <button type="button" class="btn btn-soft btn-sm js-ai-paste">${icon("download")}貼り付け</button>
+            ${ai && ai.ai && ai.ai.analysis ? html`
+              <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
+            <div class="diet-ai-btns">
+              <button type="button" class="btn btn-sm js-ai-prompt">${icon("copy")}プロンプトをコピー</button>
+              <button type="button" class="btn btn-sm js-ai-paste">${icon("download")}貼り付け</button>
+            </div>
           </div>
         </div>
       </div>
     `);
 
-    const bar = energyBar(card.day);
-    if (bar) sec.querySelector(".js-stack").append(bar);
     buildSlotBoxes(sec.querySelector(".js-slots"), card.day, st, { peek });
 
     sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
@@ -2766,16 +2532,16 @@
       置きます——タップすると、その枠がその場で書く欄になります
       （editSlotInline）。カルーセルの前日・翌日（peek）は押せません。 */
   function slotViewRow(day, sl, text, kcal, tappable) {
-    /* まだ書いていない枠は、**その枠の名前を薄い字で**出します（朝食・昼食…）。
-       「—」を四つ並べていましたが、絵だけでは何の枠か読めず、空の日の
-       「—」の列を長くしていただけでした（B9）。薄い字は `.is-blank` のまま。 */
+    /* R4 の行（60px）：枠の色を敷いた 46px の台に絵・名前（16px 太）・書いたもの・右に kcal。まだ書いていない枠は
+       名前だけで、右に＋の丸（「—」や「まだ」を並べない。B9）。書いたものは折り返して全部見せる（Daily Log と同じ）。 */
     const row = node(html`
       <div class="diet-slot diet-slot-view" data-slot="${sl.id}"
            ${tappable ? U.raw('role="button" tabindex="0"') : ""}
            aria-label="${sl.label}${text ? "に食べたもの" : "を書く"}">
         <span class="diet-slot-ico">${icon(sl.ico)}</span>
-        <span class="diet-slot-text ${text ? "" : "is-blank"}">${text || sl.label}</span>
-        <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
+        <span class="hl-slot-main"><b class="diet-slot-name">${sl.label}</b>${text ? html`<span class="diet-slot-text">${text}</span>` : ""}</span>
+        ${kcal ? html`<span class="hl-slot-end"><b class="diet-slot-kcal mono-num">${kcal.toLocaleString()}</b><small>kcal</small></span>`
+          : html`<span class="hl-slot-add" aria-hidden="true">${icon("plus")}</span>`}
       </div>
     `);
     if (tappable) {
@@ -2822,7 +2588,8 @@
     const saved = store.slotMemo(day, sl.id);
     const words = store.mealWords(sl.id);
     const fold = U.foldKana;
-    const kcalText = (row.querySelector(".diet-slot-kcal") || {}).textContent || "";
+    const kEl = row.querySelector(".diet-slot-kcal");
+    const kcalText = kEl ? `${kEl.textContent}kcal` : "";
     const box = node(html`
       <div class="diet-slot diet-slot-edit" data-slot="${sl.id}">
         <div class="diet-slot-head">
@@ -4325,7 +4092,7 @@
         <div class="js-suggest-box"></div>
 
         <div class="divider"></div>
-        <div class="section-title">からだの目標（今日のからだの輪）</div>
+        <div class="section-title">からだの目標</div>
         <div class="field-row">
           <label class="field grow">
             <span class="field-label">歩数</span>
@@ -4355,6 +4122,20 @@
         <p class="diet-note">
           空なら <b>${DR.GUIDE_G}g</b>（厚生労働省の「節度ある適度な飲酒」の目安）。
         </p>
+        ${/* 平均・傾きを何日ぶんで均すか（R4 で体重のカードの右の三つをやめ、まれな手順としてここへ畳んだ）。空なら7日。 */""}
+        <details class="diet-why">
+          <summary>平均と傾きの日数</summary>
+          <div class="field-row">
+            <label class="field grow">
+              <span class="field-label">平均（日）</span>
+              <input class="input js-avg-days" inputmode="numeric" placeholder="7" value="${g.avgWindowDays == null ? "" : String(g.avgWindowDays)}">
+            </label>
+            <label class="field grow">
+              <span class="field-label">傾き（日）</span>
+              <input class="input js-trend-days" inputmode="numeric" placeholder="7" value="${g.trendWindowDays == null ? "" : String(g.trendWindowDays)}">
+            </label>
+          </div>
+        </details>
       </div>
     `);
 
@@ -4399,6 +4180,8 @@
         burnTarget: num(".js-burn"),
         // 睡眠だけは「時間」で聞いて、分で持ちます（記録のほうが分なので）。
         sleepTarget: (() => { const hrs = num(".js-sleep"); return hrs == null ? null : Math.round(hrs * 60); })(),
+        avgWindowDays: (() => { const n = num(".js-avg-days"); return n == null ? null : Math.min(90, Math.round(n)); })(),
+        trendWindowDays: (() => { const n = num(".js-trend-days"); return n == null ? null : Math.min(90, Math.round(n)); })(),
       });
       h.close();
       render();

@@ -6,7 +6,7 @@
      --theme light,dark       明暗（既定 light）
      --size std,xl            字の大きさ（既定 std。xl＝特大）
      --clock 21:30            その時刻から時計を進めて開く（既定は今）
-     --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）
+     --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）・weight・meal（health）
      --scroll 400             送る器を下へ（px）
      --attire modern 装い（base.css の「モダン」）を列に足す。「今」はいつも撮る
      --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。「今」（差し替えなし）はいつも撮る
@@ -63,6 +63,17 @@ async function seed() {
     if (i % 3 === 0) S.addDrink({ day: day(i), time: "20:00", kind: "beer", ml: 350, abv: 5 });
   }
   S.setGoal({ targetKg: 62 });
+  /* からだの7日ぶん（歩数・消費・睡眠）と今日の食事（health の札・棒・食事のカード）。 */
+  for (let i = 6; i >= 0; i--) {
+    S.setHealth(day(i), "steps", 4800 + ((i * 1370) % 3100));
+    S.setHealth(day(i), "activeEnergy", 380 + ((i * 97) % 260));
+    S.setHealth(day(i), "restingEnergy", 1560);
+    S.setHealth(day(i), "sleep", 360 + ((i * 37) % 90));
+  }
+  [["breakfast", "トースト ヨーグルト", 420], ["lunch", "そば 小鉢", 610], ["snack", "みかん", 60]].forEach(([slot, memo, kcal]) => {
+    S.setSlotMemo(day(0), slot, memo);
+    S.addMeal({ day: day(0), time: "12:00", slot, items: [{ name: memo, kcal, slot }] });
+  });
   S.addTodo({ title: "病院の予約", due: day(0), time: "10:00", minutes: 30 });
   S.addTodo({ title: "資料をまとめる", due: day(0), time: "14:00", minutes: 60 });
   S.addTodo({ title: "買い物へ行く", due: day(0), time: "17:00", minutes: 30 });
@@ -90,6 +101,11 @@ async function openSheet(which) {
     KN.app.showScreen("archive");
     await wait(400);
     document.querySelector('.screen.is-active button[aria-label="書く"], button[aria-label="書く"]').click();
+  } else if (which === "weight" || which === "meal") {
+    KN.app.showScreen("diet");
+    await wait(400);
+    const D = KN.screens.diet, today = KN.util.todayKey();
+    if (which === "weight") D.openWeightSheet(KN.store.weightOfDay(today), today); else D.openMealMemoSheet(today);
   } else if (which === "cal") {
     const at = document.querySelector(".screen.is-active button") || document.body;
     KN.ui.popCalendar(at, { value: KN.util.todayKey(), onPick() {} });

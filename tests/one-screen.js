@@ -52,7 +52,8 @@ const { open, checker } = require("./lib");
         + [...document.querySelectorAll(".head *")].filter((e) => e.children.length === 0 && e.textContent.trim() === n).length);
     }
     if (id === "diet") {
-      out.body = exact("今日のからだ").map(box);
+      /* R4：四つの札と体重のカード、「今日の食事」の小見出し。 */
+      out.body = [...scr.querySelectorAll(".js-day-card .hl-met, .js-day-card .hl-hero.is-kg")].map(box);
       out.meal = exact("今日の食事").map(box);
     }
     return out;
@@ -76,8 +77,8 @@ const { open, checker } = require("./lib");
       t.check("① 買うもの：品は一画面に一度ずつ（帯は品を描かない）", r.names.every((n) => n === 1), r.names.join(","));
     }
     if (id === "diet") {
-      t.check("① からだ：「今日のからだ」「今日の食事」は一度ずつ", r.body.length === 1 && r.meal.length === 1, `${r.body.length} ${r.meal.length}`);
-      t.check("② からだ：「今日のからだ」と「今日の食事」が最初の一画面に",
+      t.check("① からだ：四つの札と体重は一度ずつ、「今日の食事」も一度", r.body.length === 5 && r.meal.length === 1, `${r.body.length} ${r.meal.length}`);
+      t.check("② からだ：四つの札・体重と「今日の食事」が最初の一画面に",
         [...r.body, ...r.meal].every((b) => b.top >= r.headBottom && b.bottom <= r.barTop), JSON.stringify([r.body, r.meal]));
     }
 
