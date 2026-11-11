@@ -1,6 +1,6 @@
 /* 行の背丈は三つの見張り（roadmap-unify の U12、docs/look.md の「行の背丈は三つ」）。
 
-   一、base.css の :root に --row-h-compact 44・--row-h 56・--row-h-two 64 がある。
+   一、base.css の :root に --row-h-compact 44・--row-h 56・--row-h-two 64・--row-h-card 60 がある。
    二、当て表の行は、どれも決めた段の札で min-height を持つ（数の直書きでなく）。
    三、名前が行（-row・.row・-item）の規則に、36〜72px の min-height の直書きが戻ってこない。
       時間割の棒（.tl-rail）は物差しの高さなので外す。
@@ -18,7 +18,7 @@ const read = (f) => strip(fs.readFileSync(path.join(ROOT, f), "utf8"));
 
 const base = read("css/base.css");
 const root = base.slice(base.indexOf(":root {"), base.indexOf("}", base.indexOf(":root {")));
-for (const [n, v] of [["--row-h-compact", 44], ["--row-h", 56], ["--row-h-two", 64]]) {
+for (const [n, v] of [["--row-h-compact", 44], ["--row-h", 56], ["--row-h-two", 64], ["--row-h-card", 60]]) {
   t.check(`:root に ${n}: ${v}px`, new RegExp(`${n}\\s*:\\s*${v}px`).test(root));
 }
 
@@ -29,7 +29,9 @@ const minh = (r) => (r.body.match(/(?:^|[;\s])min-height\s*:\s*([^;]+)/) || [])[
 
 /* 当て表（docs/look.md と同じ順）。選択子は、その行の背丈を決めている規則そのもの。 */
 const TABLE = [
-  ["二行", "--row-h-two", [".item-wrap:not(.is-tile-wrap) .item:not(.todo)", ".arc-row", ".arc-log-row", ".price-row"]],
+  ["二行", "--row-h-two", [".arc-row", ".arc-log-row", ".price-row"]],
+  /* カードの行（R5・2026年11月11日）：絵の台 46px の 買うもの・価格 の行。前は二行の段 64。 */
+  ["カード", "--row-h-card", ["#screen-list .item-wrap .item:not(.todo), #screen-prices .product-wrap .product"]],
   ["ふつう", "--row-h", [".row", ".set-row", "#screen-settings .row", "#screen-settings .manage-row", ".manage-row",
     ".d-row", ".act-row", ".tw-row", ".notes-trash-row", ".log-row"]],
   ["詰めた", "--row-h-compact", [".urge-row", ".note-pop-item", ".low-row", ".up-row", ".sa-row"]],

@@ -172,7 +172,7 @@
      一覧の行は三つのどれか（docs/look.md の「行の背丈は三つ」に当て表）。どれも
      min-height——字を大きくした行は、そのぶん伸びる。上下の余白は段に収まる量
      （二行の行は --sp-2。二行＋12×2 では 64 を越える）。tests/row-heights.js が見張る。 */
-  --row-h-compact: 44px; --row-h: 56px; --row-h-two: 64px;
+  --row-h-compact: 44px; --row-h: 56px; --row-h-two: 64px; --row-h-card: 60px;
 
   /* --- type ---
 

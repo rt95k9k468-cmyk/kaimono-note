@@ -68,7 +68,10 @@
       filter:  chrome.querySelector(".js-filter"),
       body:    chrome.querySelector(".js-body"),
     };
-    els.filter.before(KN.app.faceSeg("prices"));
+    /* 札の右に品数（アーカイブを除く。docs/redesign.md R5）。 */
+    const seg = KN.app.faceSeg("prices");
+    els.count = seg.appendChild(node(html`<span class="face-n"></span>`));
+    els.filter.before(seg);
 
     /* 掴み手は**結びません**（そもそも持っていません）。指で動くのは前に
        居る一枚だけで、こちらは動かない地です——動かないから後ろに見えます。
@@ -106,6 +109,8 @@
     KN.head.putCal("prices", KN.head.shopCal());
     renderFilter();
     renderBody();
+    const n = store.get().products.filter((p) => !p.archived).length;
+    els.count.textContent = n ? `${n} 品` : "";
   }
 
   function renderFilter() {
@@ -120,7 +125,7 @@
 
     const chips = [{ id: "", label: "すべて" }].concat(
       store.sortedCategories().filter((c) => counts.has(c.id)).map((c) => ({
-        id: c.id, label: c.name, color: c.color, count: counts.get(c.id),
+        id: c.id, label: c.name, color: store.catInk(c.color), count: counts.get(c.id),
       })));
 
     KN.ui.chipRow(els.filter, chips, {
@@ -198,14 +203,12 @@
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(p);
       });
-      /* 買うもの｜価格を左右に並べたとき（1280px〜、app.js の duo）は、左の買うものと同じ棚のカードと
-         棚の名前で組む（design-review 9節の W3。電話の DOM は今までどおり）。 */
-      const shelf = document.documentElement.hasAttribute("data-duo");
+      /* 買うものと同じ棚のカードと棚の名前・品数（docs/redesign.md R5。前は 1280px〜で並べたときだけ）。 */
       groups.forEach((rows, key) => {
         const cat = store.getCategory(key);
         const group = node(html`
-          <section class="cat-group ${shelf ? "is-run" : ""}" style="--cat:${(cat && cat.color) || ""}">
-            ${shelf && cat ? html`<h3 class="shelf-head"><span class="chip-dot"></span>${cat.name}</h3>` : ""}
+          <section class="cat-group is-run" style="--cat:${store.catInk(cat && cat.color)}">
+            ${cat ? html`<h3 class="shelf-head"><span class="chip-dot"></span>${cat.name}<span class="shelf-n">${rows.length}</span></h3>` : ""}
             <div class="product-list"></div>
           </section>
         `);
@@ -312,7 +315,7 @@
     const wrap = node(html`
       <article class="product-wrap ${listed ? "is-there" : ""}"
                data-product-id="${product.id}"
-               style="--cat:${store.productColor(product)}">
+               style="--cat:${store.productInk(product)}">
         <div class="swipe-yes">
           ${listed ? icon("minus") : icon("plus")}<span>${listed ? "リストから外す" : "リストへ"}</span>
         </div>
@@ -338,11 +341,13 @@
                 the shelf, and 「値段は未登録」 repeated the — already sitting in
                 the price column. What is left is the name, in the size of the
                 thing the row is for. */""}
-          ${size || up || (product.archived && product.archivedAt) ? html`
+          ${/* 買うものの行と同じ「店・いつ」（いちばん安い店の、その値段を見た日）に、内容量と単価。 */""}
+          ${best || size || up || (product.archived && product.archivedAt) ? html`
             <span class="product-meta">
               ${product.archived && product.archivedAt
                 ? html`<span class="item-when">${KN.util.formatStamp(product.archivedAt)}</span>` : ""}
-              ${size ? html`<span class="badge badge-cat">${size}</span>` : ""}
+              ${best && bestStore ? html`<span class="item-where">${bestStore.name}・${KN.util.relativeDate(best.date)}</span>` : ""}
+              ${size ? html`<span>${size}</span>` : ""}
               ${up ? html`<span>${up.text}</span>` : ""}
             </span>
           ` : ""}
@@ -351,12 +356,14 @@
           ${best && bestStore
             ? html`
                 <span class="item-price-amount">${yen(best.price)}</span>
-                <span class="item-price-store">${prices.length > 1 ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}${bestStore.name}</span>
+                ${prices.length > 1 ? html`<span class="item-price-store"><span class="crown">${icon("crown", "is-sub")}最安</span></span>` : ""}
               `
-            : html`<span class="item-price-none">—</span>`}
+            : ""}
         </span>
       </div>
     `);
+    /* 二つ以上の店に値段があれば、店ごとの値段を棒で比べる（最安は山吹。docs/redesign.md R5）。 */
+    if (prices.length > 1) card.append(KN.productSheet.bars(product));
     wrap.append(card);
 
     card.querySelector(".js-open").addEventListener("click", () => KN.productSheet.open(product.id, {

@@ -11,7 +11,7 @@
      P2：左の列に木があればホームは最近直したの札（題・頭・日付。1100px も）、列を畳むと木のホームへ
      すべてのノート・問い・さがすときだけ真ん中に一覧。さがしているあいだも左の列は残る
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
-   - 1280px〜：買うもの｜価格は左右に並ぶ（席の二度押しでめくらない・＋は一枚ずつ・#prices でも並び）。1280px より狭い desk はめくる
+   - 買うもの（R5・11月11日）：左にリスト、右に選んだ品の値段（押した行の品）。リスト｜価格 はどの幅もめくる（1280px〜の左右並びは外した）
    - 右クリック：買うもの・価格の行の払う操作を小窓で。⌘\\・Ctrl+\\ と列の下の口で左の列を畳む（段6）
    - 広い幅から電話の幅へ縮めると、帯と印は下へ戻る
    - 段3（js/keys.js）：1〜5 で席・→ で次の日・t で今日・Shift+→ で次の週・, で設定・/ と Ctrl+K（⌘K）でさがす欄（欄で打つ字は席を動かさない）。
@@ -181,32 +181,39 @@ const { open, checker } = require("./lib");
   t.check("からだ：紙は窓の底まで地を持つ（段に並んだカードの束の下で切れない）", dietPaper.bg !== "rgba(0, 0, 0, 0)" && dietPaper.b === 900,
     JSON.stringify(dietPaper));
 
-  /* 1280px〜 買うもの｜価格を左右に（段6）。席の二度押しでもめくらない。＋は一枚ずつ。 */
+  /* R5：左にリスト、右に選んだ品の値段（docs/redesign.md。前は 1280px〜で買うもの｜価格を左右に並べた）。 */
   await page.click(".tab-list");
   await wait(700);
-  const lst = await box("#screen-list"), prc = await box("#screen-prices");
-  t.check("買うもの｜価格：左右に並ぶ（列の右から真ん中・真ん中から窓の右端）", lst && prc && lst.l === 256 && Math.abs(lst.r - 848) <= 1
-    && Math.abs(prc.l - 848) <= 1 && prc.r === 1440 && prc.w > 0, JSON.stringify({ lst, prc }));
-  t.check("並べても席は買うもの、価格の行も出ている", await page.evaluate(() => document.documentElement.dataset.screen === "list"
-    && document.querySelectorAll("#screen-prices .product-wrap").length === 3));
-  const fabs = await page.evaluate(() => [...document.querySelectorAll("#dock .add-fab")].map((b) => Math.round(b.getBoundingClientRect().right)));
-  t.check("＋は一枚ずつ、その一枚の右下に", fabs.length === 2 && fabs[0] <= 848 && fabs[1] > 848, JSON.stringify(fabs));
-  await page.click(".tab-list");
-  await wait(700);
-  t.check("並べているあいだ、席の二度押しはめくらない", await page.evaluate(() => document.documentElement.dataset.screen === "list"
-    && !document.querySelector(".is-face-parked") && !document.getElementById("screen-prices").hidden));
-  await page.goto(page.url().replace(/#.*$/, "") + "#prices");
-  await page.waitForFunction(() => document.documentElement.dataset.screen, null, { timeout: 5000 });
-  await wait(700);
-  t.check("#prices で開いても二枚並び（席は買うもの）", await page.evaluate(() => document.documentElement.dataset.screen === "list"
-    && document.getElementById("screen-prices").classList.contains("is-duo-r")));
-  /* W3：並べた右の一枚（価格）も、左の買うものと同じ棚のカードと棚の名前。 */
-  const shelf = await page.evaluate(() => {
-    const L = document.querySelector("#screen-list .cat-group.is-run"), R = document.querySelector("#screen-prices .cat-group.is-run");
-    const look = (e) => { if (!e) return null; const c = getComputedStyle(e); return [c.backgroundColor, c.borderTopWidth, c.borderTopColor, c.borderTopLeftRadius].join(" "); };
-    return { l: look(L), r: look(R), head: !!(R && R.querySelector(".shelf-head .chip-dot")) };
+  const two = await page.evaluate(() => {
+    const m = document.querySelector("#screen-list .sh-main"), c = document.querySelector("#screen-list .sh-cmp");
+    const r = (e) => e && e.getBoundingClientRect();
+    return { m: m && Math.round(r(m).right), c: c && Math.round(r(c).left), shown: !!c && getComputedStyle(c).display !== "none",
+      prices: document.getElementById("screen-prices").hidden !== false, fabs: document.querySelectorAll("#dock .add-fab").length };
   });
-  t.check("並べた価格も棚のカードと棚の名前（W3）", !!shelf.r && shelf.r === shelf.l && shelf.head, JSON.stringify(shelf));
+  t.check("買うもの：左にリスト、右に選んだ品の値段（価格は隠れたまま・＋は一つ）", two.shown && two.c >= two.m && two.prices && two.fabs === 1,
+    JSON.stringify(two));
+  await page.click("#screen-list .item-wrap:nth-child(2) .item-name");
+  await wait(500);
+  await page.keyboard.press("Escape");
+  await wait(500);
+  t.check("行を押すと、右の段はその品（紙を閉じても）", await page.evaluate(() => {
+    const c = document.querySelector("#screen-list .sh-cmp"), w = document.querySelectorAll("#screen-list .item-wrap")[1];
+    return !!c && c.dataset.productId === KN.store.get().items.find((i) => i.id === w.dataset.itemId).productId;
+  }));
+  await page.click(".tab-list");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "prices", null, { timeout: 3000 }).catch(() => {});
+  t.check("広い幅でも席の二度押しで価格へめくる", await page.evaluate(() => document.documentElement.dataset.screen === "prices"));
+  /* W3：価格も買うものと同じ棚のカードと棚の名前（R5 からどの幅も）。 */
+  const shelf = await page.evaluate(() => {
+    const R = document.querySelector("#screen-prices .cat-group.is-run");
+    const c = R && getComputedStyle(R);
+    return { r: c && [c.backgroundColor, c.borderTopWidth, c.borderTopLeftRadius].join(" "), head: !!(R && R.querySelector(".shelf-head .chip-dot")) };
+  });
+  t.check("価格も棚のカードと棚の名前（W3）", !!shelf.r && shelf.head, JSON.stringify(shelf));
+  t.check("窓の題は prices", (await page.title()) === "prices — くらしノート", await page.title());
+  await page.click(".tab-list");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "list", null, { timeout: 3000 }).catch(() => {});
+  await wait(500);
   t.check("窓の題に席の名前（W4）", (await page.title()) === "shopping — くらしノート", await page.title());
   /* W4：マウスで指した行は薄く塗る（動きは足さない）。 */
   const tint = async () => page.evaluate(() => getComputedStyle(document.querySelector("#screen-list .item-wrap .item")).backgroundImage);
@@ -227,6 +234,9 @@ const { open, checker } = require("./lib");
   await page.click(".note-pop-item >> text=今回買う");
   await wait(300);
   t.check("右クリック：今回買う で★が付く", await page.evaluate(() => KN.store.get().items.filter((i) => i.fav).length === 1));
+  await page.click(".tab-list");
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "prices", null, { timeout: 3000 }).catch(() => {});
+  await wait(500);
   await page.click("#screen-prices .product-wrap .product-name", { button: "right" });
   await wait(300);
   const priceMenu = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.textContent.trim()));
@@ -234,21 +244,9 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("Escape");
   await wait(300);
 
-  /* 1280px より狭い desk は、これまでどおり紙をめくる。 */
-  await page.setViewportSize({ width: 1100, height: 900 });
-  await wait(500);
-  t.check("1100px：価格は隠れ、買うものは全幅", await page.evaluate(() => document.getElementById("screen-prices").hidden
-    && Math.round(document.getElementById("screen-list").getBoundingClientRect().right) === 1100));
   await page.click(".tab-list");
-  await page.waitForFunction(() => document.documentElement.dataset.screen === "prices", null, { timeout: 3000 }).catch(() => {});
-  t.check("1100px：買うもの → 価格（席の二度押し）", await page.evaluate(() => document.documentElement.dataset.screen === "prices"));
-  t.check("1100px：価格は棚のカードにしない（並べたときだけ）", await page.evaluate(() => !document.querySelector("#screen-prices .cat-group.is-run, #screen-prices .shelf-head")
-    && document.querySelectorAll("#screen-prices .product-wrap").length === 3));
-  t.check("1100px：窓の題は prices", (await page.title()) === "prices — くらしノート", await page.title());
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await wait(700);
-  t.check("価格を見たまま 1280px を越えたら、二枚並びへ", await page.evaluate(() => document.documentElement.dataset.screen === "list"
-    && !document.getElementById("screen-prices").hidden && !document.querySelector(".is-face-parked")));
+  await page.waitForFunction(() => document.documentElement.dataset.screen === "list", null, { timeout: 3000 }).catch(() => {});
+  await wait(500);
 
   /* 左の列を畳む（⌘\・Ctrl+\）。 */
   await page.keyboard.press("Control+Backslash");

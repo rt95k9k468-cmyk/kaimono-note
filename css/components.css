@@ -626,7 +626,6 @@ button, [role="tab"] {
   white-space: nowrap;
 }
 
-.badge-cat  { background: var(--c-surface-2);   color: var(--c-text-2); }
 .badge-muted{ background: var(--c-surface-2);   color: var(--c-text-3); }
 
 .dot {

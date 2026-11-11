@@ -2468,7 +2468,7 @@
            ここは書きっぱなしでした）。 */
         const chip = node(html`
           <button type="button" class="chip" aria-pressed="${String(c.id === current)}"
-                  ${c.color ? html`style="--cat:${c.color}"` : ""}>
+                  ${c.color ? html`style="--cat:${KN.store.catInk(c.color)}"` : ""}>
             ${c.color ? html`<span class="chip-dot" aria-hidden="true"></span>` : ""}${c.name}
           </button>
         `);

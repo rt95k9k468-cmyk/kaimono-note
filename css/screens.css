@@ -1266,7 +1266,7 @@
   font-weight: var(--fw-bold);
   color: var(--c-text);
 }
-.trip-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); fill: currentColor; color: var(--c-warn); flex: none; }
+.trip-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); fill: currentColor; color: var(--c-yamabuki-fill); flex: none; align-self: center; }
 .trip-head-rest { color: var(--c-text-3); font-weight: var(--fw-bold); }
 
 .item-body {
@@ -1312,12 +1312,7 @@
   min-height: 18px;
 }
 
-/* メモも買った時刻も無い行（R27、2026年9月29日）。上の min-height は、メモを
-   足しても行の高さが跳ねないための取り置き（行は U12 で 64px。下の .item-wrap の節）。
-   ただ空の段が品名の下に残ると、品名だけ約11px上に寄って、値段と丸（行の
-   真ん中）からずれていた。**取り置きの高さはそのまま**、段を消して同じ高さ
-   （18px＋上の gap 3px）を品名の上下に半分ずつ置く。 */
-.item:not(.todo):not(.is-tile) .item-body:not(:has(.item-meta > *)) { padding-block: 10.5px; }
+/* 品名だけの行（R27）は空の段を消し、品名が行の真ん中に。 */
 .item:not(.todo):not(.is-tile) .item-body:not(:has(.item-meta > *)) .item-meta { display: none; }
 
 /* Two lines rather than one clipped one. A memo on a shopping list is short
@@ -1333,9 +1328,7 @@
   overflow-wrap: anywhere;
 }
 
-/* The day a row went into an archive — the day it was bought on the list, the
-   day it was put away on the price screen. A fact, so it is quiet, and the
-   figures line up. */
+/* 買った・しまった日（事実なので静かに、数は揃える）。 */
 .item-when {
   flex: none;
   font-size: calc(11px * var(--fs-k));
@@ -1357,25 +1350,13 @@
   padding-left: var(--sp-1);
 }
 
+/* 値段は墨の 17px 太（丸い字）。下に「最安」の王冠を比べたときだけ（docs/redesign.md R5）。 */
 .item-price-amount {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  color: var(--c-accent);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -.01em;
+  font-family: var(--font-num); font-size: calc(17px * var(--fs-k)); font-weight: var(--fw-bold); line-height: var(--lh-tight);
+  color: var(--c-text); font-variant-numeric: tabular-nums;
 }
+.item-price-store { font-size: calc(12px * var(--fs-k)); }
 
-.item-price-store {
-  font-size: var(--fs-xs);
-  color: var(--c-text-2);
-  font-weight: var(--fw-bold);
-  max-width: 92px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.item-price-none { font-size: var(--fs-xs); color: var(--c-text-3); font-weight: var(--fw-bold); }
 
 /* checked section toggle */
 .done-head {
@@ -1425,26 +1406,14 @@
 }
 .day-bought-toggle svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: var(--ico-sm-w); transition: transform var(--m-state) var(--ease); }
 .day-bought-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
-.day-bought-toggle:active { opacity: var(--press-fade); }
+.day-bought-toggle:active { scale: var(--press-wide); }
 
 /* 今回買うもの. A panel the rows sit inside, rather than a heading above
    them: at three rows down a heading has scrolled away and the two halves of
    the list look alike again, whereas an edge is visible from anywhere in it.
    The wash is the one the old total card wore — same idea, same colour. */
-.trip {
-  margin: var(--sp-2) var(--sp-4) var(--sp-4);
-  /* Barely any gutter of its own: the rows inside are the point, and every
-     pixel spent framing them is a pixel off a product name. */
-  padding: var(--sp-2) var(--sp-1);
-  border-radius: var(--r-lg);
-  background: linear-gradient(135deg, var(--c-primary-soft), color-mix(in srgb, var(--c-accent-soft) 70%, transparent));
-  border: 1px solid var(--c-border);
-}
-/* The rows are already inside something padded; their own gutter would put
-   them in a column of their own, narrower than the panel for no reason. */
-.trip .item-list { padding: 0; }
-.trip .trip-head { padding: var(--sp-1) var(--sp-2) var(--sp-3); }
-.trip .cat-group:last-of-type { margin-bottom: var(--sp-1); }
+/* 今回買うもの（★を付けた品）。塗った板はやめ、小見出し（.tk-h・山吹の★）の下に棚のカード（docs/redesign.md R5）。 */
+.trip { margin: var(--sp-2) 0 var(--sp-4); }
 
 /* ================= PRICES SCREEN ================= */
 
@@ -1505,15 +1474,9 @@
 /* Already put away — said the same way the shopping list says 「買った」:
    the colour has done its job, so the card goes quiet and neutral and the name
    is ruled through. Two screens, one meaning, one look. */
-.archive .product {
-  opacity: .55;
-  background: var(--c-surface-2);
-  border-color: var(--c-border);
-  box-shadow: none;
-}
+.archive .product { opacity: .55; }
 .archive .product-name { text-decoration: line-through; color: var(--c-text-2); }
 .archive .product-emoji { filter: grayscale(1); }
-.archive .product::before { opacity: .4; }
 .archive .item-price-amount { color: var(--c-text-2); }
 .archive .product-list { padding: 0; }
 .product {
@@ -1523,13 +1486,7 @@
   gap: var(--sp-3);
   width: 100%;
   text-align: left;
-  background: color-mix(in srgb, var(--cat, transparent) var(--cat-fill), var(--c-surface));
-  border: 1px solid color-mix(in srgb, var(--cat, transparent) var(--cat-line), var(--c-border));
-  border-radius: var(--r-md);
-  /* Room down the left for the painted edge below. Kept on every card,
-     listed or not, so nothing shifts sideways when one is added. */
-  padding: var(--sp-3) var(--sp-3) var(--sp-3) 14px;
-  box-shadow: var(--shadow-1);
+  /* 地も枠も持たない一行（棚のカードの中。行の背と余白は末の R5 の節）。 */
   transition: background var(--m-state) var(--ease),
               transform var(--m-settle) var(--ease-settle), scale var(--m-press) var(--ease);
   /* Vertical stays with the screen so it can still scroll; horizontal comes
@@ -1545,32 +1502,6 @@
   .product:hover { background: var(--c-surface-2); }
 }
 
-/* On the shopping list: the left edge of the card is painted. Deliberately a
-   mark and not a control — a checkbox here read as the list screen's 「買った」
-   box, which is one tab away and means the opposite. A stripe cannot be
-   pressed, so it can only be telling you something. */
-.product.is-listed::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 6px;
-  /* The category's own colour, the same edge the list screen paints on every
-     row. There it says which aisle; here it says which aisle *and* that this
-     one is on the list, because only the listed cards get an edge at all. */
-  background: var(--cat, var(--c-primary));
-  /* Follows the card's own corners on the left, square against the content. */
-  border-radius: var(--r-md) 0 0 var(--r-md);
-}
-
-.product-emoji {
-  flex: none;
-  width: 42px; height: 42px;
-  border-radius: var(--r-md);
-  background: var(--c-surface-2);
-  display: grid;
-  place-items: center;
-  font-size: calc(21px * var(--fs-k));
-}
 
 /* Also a <button> — the part of the card that opens the product. */
 .product-main {
@@ -1588,24 +1519,16 @@
 .product-meta { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-sm); color: var(--c-text-2); }
 
 /* price rows inside sheet */
-.price-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.price-list { display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
 
 .price-row {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2);
   min-height: var(--row-h-two);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-md);
-  background: var(--c-surface-2);
-  border: 1.5px solid transparent;
-  transition: background var(--m-state) var(--ease);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
 }
-
-.price-row.is-best {
-  background: var(--c-accent-soft);
-  border-color: color-mix(in srgb, var(--c-accent) 35%, transparent);
-}
+.price-row + .price-row { border-top: 1px solid var(--c-border); }
 
 /* The row opens the record; the bin deletes it. Two jobs, two targets — the
    same split the shopping list uses between its body and its star. */
@@ -1622,23 +1545,20 @@
 .price-chevron { flex: none; color: var(--c-text-3); display: flex; }
 .price-chevron svg { width: var(--ico); height: var(--ico); stroke: currentColor; stroke-width: var(--ico-w); fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
-.price-store-wrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--sp-2); }
+.price-store-wrap { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--sp-2); }
+.price-store-wrap > .pbar-b { flex: 1 0 100%; }
 .price-store { font-weight: var(--fw-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .price-figures { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
 .price-amount { font-size: var(--fs-lg); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.is-best .price-amount { color: var(--c-accent-ink); }
 .price-unit { font-size: var(--fs-xs); color: var(--c-text-2); font-weight: var(--fw-bold); }
 .price-date { font-size: var(--fs-xs); color: var(--c-text-3); }
 
-/* いちばん安いお店の印。🏆 の絵文字でした（端末が描くもので、iOS と
-   Android で別の絵が出ます）。accent は「最安値」の色なので、その色の
-   まま王冠にします——同じ意味には同じ色。 */
+/* いちばん安いお店の印（線の絵。🏆 は端末ごとに絵が違った）。最安は山吹（docs/redesign.md 4節）——棒の最安と同じ色。 */
 .crown {
-  flex: none; line-height: 0;
-  display: inline-flex; align-items: center;
-  color: var(--c-accent);
-  margin-right: 3px;
+  flex: none; line-height: 1;
+  display: inline-flex; align-items: center; gap: 2px;
+  color: var(--c-yamabuki); font-weight: var(--fw-bold);
 }
 
 /* one store's price, in full */
@@ -5053,28 +4973,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .todo-group.is-tl .todo-head { padding-left: var(--sp-4); padding-right: var(--sp-4); }
 
 /* =========================================================
-   行を、カードから紙へ（買うもの・価格・やることの一覧）
-
-   これまでは一行ずつが**カード**でした。角が丸く、影があり、左右に余白を
-   持ち、地はカテゴリの色で塗られ、左端に色の帯まで立っていました。
-   七行あれば、七枚の色の板が縦に並びます。
-
-   困るのは二つ。
-
-   ひとつ、**色が何も言わなくなる**。色は「これは他と違う」と言うための
-   ものですが、全部の行が塗られていると、違いではなく賑やかさになります。
-
-   ふたつ、**入れ子に見える**。画面に余白があり、その内側にカードの余白が
-   あり、さらにその内側に行の中身がある。中身がいちばん奥に沈みます。
-
-   なので、行は紙の上の一行に戻します。地は塗らず、枠も影も持たず、
-   端から端まで使い、となりとは細い線で分かれる。**色は絵の丸の中にだけ**
-   置きます——ひと目で種類が分かる役目はそこで足りますし、そのぶん色が
-   ちゃんと効きます。時間割で先にこの形にして、読みやすさが変わったので、
-   ほかの一覧もここへ揃えます。
-
-   （タイル表示はこの限りではありません。あれは正方形が並ぶことに意味が
-   ある別の見せ方なので、そのまま残します。）
+   行を、カードから紙へ（買うもの・価格・やることの一覧）：行は塗らず枠も影も持たず、となりとは細い線で。
+   色は絵の台の中だけ（買うもの・価格の形は末の R5 の節）。
    ========================================================= */
 
 .item-list:not(.is-tiles),
@@ -5090,41 +4990,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   padding: 12px var(--sp-4);
   gap: var(--sp-3);
 }
-/* 買うものの行は二行の段（U12、--row-h-two）。品名＋取り置きの段（47）に上下 --sp-2 で 63、
-   min-height で 64——メモがあっても無くても同じ高さ。 */
-.item-wrap:not(.is-tile-wrap) .item:not(.todo) { min-height: var(--row-h-two); padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 /* 左端の色の帯。丸のほうが色を持つので、要りません。 */
 .item-wrap:not(.is-tile-wrap) .item::before { display: none; }
 
-/* 絵は、色のついた丸の中に。行のかわりにここが種類を言います。 */
-.item-wrap:not(.is-tile-wrap) .item-emoji {
-  display: grid;
-  place-items: center;
-  width: 40px; height: 40px;
-  border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
-  font-size: calc(20px * var(--fs-k));
-  transition: scale var(--m-press) var(--ease);
-}
+/* 絵の台を押すと縮む（形は末の R5 の節）。 */
+.item-wrap:not(.is-tile-wrap) .item-emoji { transition: scale var(--m-press) var(--ease); }
 .item-wrap:not(.is-tile-wrap) .item-emoji:active { scale: var(--press-dot); }
-.item-wrap:not(.is-tile-wrap) .item-emoji .p-icon { width: 24px; height: 24px; }  /* 入れもの：40の丸 */
-.item-wrap:not(.is-tile-wrap) .is-checked .item-emoji { filter: grayscale(1); opacity: .55; }
 
-/* ---- 品物の名前は、二行まで折り返す ----
-
-   決めごとは同じ（一行・はみ出したら…）でしたが、**行の広さが違う**ので、
-   同じ名前が買うもので「トイレットペー…」と切れ、価格では最後まで出る、
-   ということが起きていました——同じ品物の同じ名前なのに、画面によって
-   どこまで読めるかが変わる。
-
-   折り返すほうへ揃えます。やること（`.item.todo`）と、時間割の題と、
-   タイルは**もう二行まで折り返しています**——一行に縛っていたのは、
-   この二つの一覧だけでした。三行めは要りません（名前が三行要るなら、
-   それは名前ではなくメモです）。
-
-   `overflow-wrap: anywhere` を足すのは、区切りの無い長い一語
-   （「トイレットペーパー」）が一行めをはみ出して、二行めが空のまま
-   切れるのを防ぐためです。 */
+/* ---- 品物の名前は、二行まで折り返す（やること・時間割と同じ。区切りの無い長い一語も折る） ---- */
 .item-wrap:not(.is-tile-wrap) .item:not(.todo) .item-name,
 .product-wrap:not(.is-tile-wrap) .product-name {
   display: -webkit-box;
@@ -5135,22 +5008,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   overflow-wrap: anywhere;
 }
 
-/* ---- 単色シルエットは、カテゴリの色で塗ります ----
-
-   品物の絵は 2026年9月5日に単色シルエット（`is-todo`）へ切り替わりました。
-   `currentColor` で描いてあるので、放っておくと**行の字と同じ黒**になります。
-   ところが絵が入る丸は、すでにカテゴリの色（16%）で染まっている——**地と絵が
-   別々のことを言っている**状態でした。同じ色にして、丸と絵で一つのことを言います。
-
-   色は `--cat` そのままではなく、**字の色を15%だけ混ぜて**います。実測で、
-   `--cat` のままだと丸の地との明暗比が 2.15〜2.93（食品・飲みもの・掃除が
-   2.2前後）で、はさみや自転車のような**線でできた絵が薄れます**。15%混ぜると
-   2.5〜3.3 になり、色みは保ったまま 25px でも残ります。
-
-   `--cat` が無いところ（絵を選ぶ紙）は基調色に落ちます。
-   暦の日の丸だけは別（`.cal-mark .p-icon.is-todo` が白抜き）。 */
-.item-emoji .p-icon.is-todo,
-.product-emoji .p-icon.is-todo,
+/* ---- 単色シルエットは、カテゴリの色に字の色を 15% 混ぜて塗る（線の絵が台の上で薄れない）。--cat が無い所は基調色。
+   買うもの・価格の行は札の色そのまま（R5。札は字の濃さを持つ）。暦の日の丸は白抜き（.cal-mark）。 ---- */
 .icon-pick-mark .p-icon.is-todo,
 .low-mark .p-icon.is-todo,
 .icon-cell-mark .p-icon.is-todo {
@@ -5164,32 +5023,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
 .product-wrap:not(.is-tile-wrap) { border-radius: 0; }
 
-.product-wrap:not(.is-tile-wrap) .product {
-  background: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 12px var(--sp-4);
-}
-
-/* 絵は丸に。行の地ではなく、ここが種類の色を持ちます。 */
-.product-wrap:not(.is-tile-wrap) .product-emoji {
-  width: 40px; height: 40px;
-  border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--cat, var(--c-primary)) 16%, var(--c-bg));
-}
-.product-wrap:not(.is-tile-wrap) .product-emoji .p-icon { width: 24px; height: 24px; }  /* 入れもの：40の丸 */
-
-/* 「買うものリストに入っている」は、左の帯で言っていました。帯をやめたので、
-   丸に輪を掛けて言い直します。**これは色の飾りではなく情報**です——同じ
-   一覧の中で、いま買う予定のものだけが分かる必要があります。 */
-.product-wrap:not(.is-tile-wrap) .product.is-listed::before { display: none; }
-.product-wrap:not(.is-tile-wrap) .product.is-listed .product-emoji {
-  box-shadow: 0 0 0 2px var(--cat, var(--c-primary));
-}
-@media (hover: hover) {
-  .product-wrap:not(.is-tile-wrap) .product:hover { background: var(--c-surface-2); }
-}
 
 /* ---- ダイエット：その日の紙を、枠から出す ----
 
@@ -6410,23 +6243,7 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 .tl-row .check.is-trace svg { opacity: 1; }
 
-/* 買うものの行：絵の丸を、**名前の行に**合わせます。
-
-   行のまん中に置くと、メモや購入時刻が付いた行だけ絵が下がって見えます
-   （名前は上の一行、絵は二行ぶんの中心）。名前がその行の主題なので、
-   絵はそちらに揃えます。ずらす量は、名前の一行の高さと丸の差の半分。 */
-.item-wrap:not(.is-tile-wrap) .item-emoji {
-  align-self: flex-start;
-  margin-top: calc((var(--name-line, 26px) - 40px) / 2);
-}
 .item-wrap:not(.is-tile-wrap) .item-body { align-self: flex-start; }
-/* メモも時刻も無い行（R27）は、品名が上下に 10.5px ずつ取って行の真ん中に居る
-   ので、絵も真ん中へ。上の「名前の一行に合わせる」だけだと、品名だけ下がって
-   絵が約10px上に残った（2026年9月29日、iPhone で）。 */
-.item-wrap:not(.is-tile-wrap) .item:not(.todo):not(:has(.item-meta > *)) .item-emoji {
-  align-self: center;
-  margin-top: 0;
-}
 
 /* ---------------- つまんで、置きなおす ----------------
 
@@ -7935,20 +7752,6 @@ button.note-when:active { opacity: var(--press-fade); }
   .nt-home-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-4); align-items: start; }
   .nt-home-two > .notes-books[role="tree"] { margin-top: var(--sp-2); }
 }
-/* 1280px から、買うもの｜価格を左右に（app.js の duo）。 */
-@media (min-width: 1280px) {
-  /* めくらず二枚とも出す。＋は一枚ずつ、その一枚の右下に。 */
-  .panes > .screen.is-duo-l { right: 50%; }
-  .panes > .screen.is-duo-r { left: 50%; display: flex; box-shadow: inset 1px 0 0 var(--c-border); }
-  .screen.is-duo-r.is-in-r { animation: desk-in-dn var(--m-nav) var(--ease-out); }
-  .screen.is-duo-r.is-in-l { animation: desk-in-up var(--m-nav) var(--ease-out); }
-  :root[data-duo].has-fab .dock { right: calc((100vw - var(--rail-w)) / 2 + var(--sp-8)); }
-  /* 右の一枚の＋も、左と同じ高さ・同じ空き（base.css の広い幅の＋）。 */
-  .dock > .quick-add.is-duo-r { position: fixed; right: var(--sp-8); bottom: 28px; }
-  /* 並べているあいだ、リスト｜価格 の札は要らない（二枚とも見えている）。 */
-  :root[data-duo] .face-seg { display: none; }
-}
-
 /* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
    重ねられるよう、塗りは background-image の一枚で（色の地はそのまま）。透けるカードは下の色で。 */
 @media (hover: hover) and (pointer: fine) {
@@ -8013,13 +7816,13 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   .head:not(.is-month) ~ .panes .diet-day > .diet-card { margin: 0 0 var(--sp-4); break-inside: avoid; }
   .think-card { flex-direction: row; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
   .think-card-art { flex: none; width: 56px; height: 48px; }
-  /* 買うもの・価格：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。 */
-  .head:not(.is-month) ~ .panes :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) { columns: 2; column-gap: var(--sp-4); }
-  :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > * { break-inside: avoid; }
+  /* 価格：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。
+     買うものは左にリスト・右に選んだ品の値段（下の R5 の節）。 */
+  .head:not(.is-month) ~ .panes #screen-prices .prices-ground { columns: 2; column-gap: var(--sp-4); }
+  #screen-prices .prices-ground > * { break-inside: avoid; }
   /* まとまりは割れない箱に（Safari は avoid でも棚のカードの下の端だけを右の段へ送り、影が一筋見えていた）。 */
-  :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > .cat-group {
-    display: inline-block; vertical-align: top; width: calc(100% - var(--sp-3) * 2); }
-  :is(#screen-list .tl-sheet > .js-body, #screen-prices .prices-ground) > :not(.cat-group) { column-span: all; }
+  #screen-prices .prices-ground > .cat-group { display: inline-block; vertical-align: top; width: calc(100% - var(--sp-3) * 2); }
+  #screen-prices .prices-ground > :not(.cat-group) { column-span: all; }
   /* 頭のある紙（＋の紙・品・買うものを足す）：頭を左の段、中身を右の段に（上に積むと頭が窓の四割で、行が二つしか見えなかった）。
      背は中身ぶん、窓まで（段ごとに送る）。閉じる丸と ⋯ は頭の上。 */
   .sheet.has-hero {
@@ -8208,3 +8011,90 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 @media (min-width: 840px) {
   #screen-todo[data-face="month"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
 }
+
+/* =========================================================
+   R5 shopping の形（docs/redesign.md 6節・2026年11月11日。見本 tools/redesign-proto.html の #shopping）
+
+   リスト｜価格と品数 → カテゴリごとのカード（行 60px：絵の台 46px・品名 16px 太と「店・いつ」・値段 17px 太の墨・
+   比べたときだけ最安の王冠・丸 30px）→ 今日買ったもの（一枚の行）。価格も同じカードと行、二つ以上の店は棒で比べ最安を山吹に。
+   中身 768px からは左にリスト、右に選んだ品の値段と「そろそろ」（並べ替えは左の一列の中だけ）。
+   ========================================================= */
+.face-n { margin-left: auto; font-family: var(--font-num); font-size: var(--fs-sm); color: var(--c-text-3); }
+#screen-prices .face-seg { padding-bottom: var(--sp-3); }
+/* 棚のカード：頭は色の点・名前・品数。行の線は端から端まで（見本）。 */
+:is(#screen-list, #screen-prices) .cat-group.is-run { --shelf-inset: 0px; padding-bottom: 0; overflow: clip; }
+:is(#screen-list, #screen-prices) .shelf-head { padding: var(--sp-3) var(--sp-4) var(--sp-1); font: var(--fw-bold) calc(13px * var(--fs-k)) var(--font); color: var(--c-text-2); }
+.shelf-head .chip-dot { width: 9px; height: 9px; background: var(--cat); }
+.shelf-n { margin-left: auto; font-family: var(--font-num); font-weight: var(--fw-regular); color: var(--c-text-3); }
+/* 行（買うもの・価格）：60px、絵は種類の色を 13% 敷いた 46px の台に、絵は札の色そのまま。 */
+#screen-list .item-wrap .item:not(.todo), #screen-prices .product-wrap .product { min-height: var(--row-h-card); padding: var(--sp-2) 14px; gap: var(--sp-3); }
+#screen-list .item-wrap .item-emoji, #screen-prices .product-emoji, #screen-list .day-bought-toggle > .item-emoji {
+  display: grid; place-items: center; flex: none; align-self: center; width: 46px; height: 46px; margin: 0;
+  border-radius: var(--r-md); background: color-mix(in srgb, var(--cat, var(--c-text-3)) 13%, var(--c-surface)); color: var(--cat, var(--c-text-2));
+}
+#screen-list .item-wrap .item-emoji .p-icon, #screen-prices .product-emoji .p-icon { width: 26px; height: 26px; color: var(--cat); }  /* 入れもの：46の台 */
+#screen-list .item-wrap .item-body { align-self: center; gap: 1px; padding-block: 0; }
+#screen-list .item-wrap .item-name, #screen-prices .product-name { font-size: var(--fs-lg); line-height: 1.35; }
+.item-fav { flex: none; display: inline-flex; align-self: center; color: var(--c-yamabuki-fill); }
+.item-fav .ui-ico { width: 14px; height: 14px; }  /* 入れもの：名前の横の小さな印 */
+.item-fav .ico-line { display: none; }
+.item-fav .ico-solid { display: block; }
+#screen-list .item-meta, #screen-prices .product-meta { min-height: 0; font-size: calc(13px * var(--fs-k)); color: var(--c-text-2); }
+#screen-list .item-price, #screen-prices .item-price { min-width: 3.5em; padding-left: 0; }
+#screen-list .item-wrap .item.is-checked { opacity: .55; }
+/* 価格：二つ以上の店の棒は行の下に、品名の頭から（台 46＋空き 12）。 */
+#screen-prices .product { flex-wrap: wrap; row-gap: 6px; }
+#screen-prices .product > .pbars { flex: 1 0 100%; padding: 0 0 var(--sp-1) 58px; }
+/* 店ごとの値段の棒（productSheet.bars）。長さは scale（transform の原則）、描かれるときは左から伸びる。 */
+.pbars { display: flex; flex-direction: column; gap: var(--sp-2); }
+.pbar { display: grid; grid-template-columns: minmax(0, 7em) minmax(0, 1fr) 4.2em; gap: 10px; align-items: center; font-size: var(--fs-md); color: var(--c-text); }
+.pbar-s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.pbar-b { display: block; height: 10px; border-radius: 5px; background: var(--c-surface-2); overflow: hidden; }
+.pbar-b > i { display: block; height: 100%; border-radius: 5px; background: var(--c-border-2); transform-origin: left center; scale: var(--w, 1) 1; animation: stack-grow var(--m-fill) var(--ease-out) both; }
+:is(.pbar, .price-row).is-best .pbar-b > i { background: var(--c-yamabuki-fill); }
+.pbar-y { text-align: right; font-family: var(--font-num); font-weight: var(--fw-bold); }
+#screen-prices .pbar { font-size: calc(13px * var(--fs-k)); }
+#screen-prices .pbar-b { height: 6px; }
+/* 今日買ったもの：一枚の行（絵の台・題・品数・＞）。ひらくと下に買った行のカード。 */
+#screen-list .day-bought-head { padding: 0 var(--sp-3); }
+#screen-list .day-bought-head.tk-h { padding: var(--sp-2) calc(var(--sp-3) + var(--sp-1)) var(--sp-2); }
+#screen-list .day-bought-toggle {
+  width: 100%; min-height: var(--row-h-card); gap: var(--sp-3); padding: 7px var(--sp-4) 7px 7px; text-align: left;
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
+  transition: scale var(--m-press) var(--ease);
+}
+#screen-list .day-bought-toggle > .item-emoji svg { width: 22px; height: 22px; }  /* 入れもの：46の台 */
+#screen-list .day-bought-toggle > svg { margin-left: auto; color: var(--c-text-3); }
+.got-main { display: flex; flex-direction: column; min-width: 0; }
+.got-t { font-size: var(--fs-lg); color: var(--c-text); }
+.got-n { font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-regular); color: var(--c-text-2); }
+.got-n .cat-head-count { display: inline-block; color: inherit; font-weight: inherit; }
+#screen-list .day-bought.is-today > .item-list { margin-top: var(--sp-2); }
+/* 小見出し（今回買うもの・そのほか・ほかの日の買ったもの）は明朝 --fs-xl。 */
+#screen-list .trip-head.tk-h { padding: var(--sp-2) calc(var(--sp-3) + var(--sp-1)); }
+/* 右の段：選んだ品の値段（狭い幅は出さない）と、そろそろ。 */
+.sh-cmp { display: none; margin: 0 var(--sp-3) var(--sp-4); }
+.sh-cmp > .tk-h { padding: 0 var(--sp-1) var(--sp-2); }
+.sh-cmp-card { display: block; width: 100%; padding: 14px var(--sp-4); text-align: left; transition: scale var(--m-press) var(--ease); }
+.sh-cmp-card:active { scale: var(--press-wide); }
+/* 二列：窓 768〜839px（左の列なし）・中身 768px から（desk の器）・横にした電話。 */
+@media (min-width: 768px) and (max-width: 839.98px) {
+  #screen-list .tl-sheet > .js-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); align-items: start; padding-inline: var(--sp-2); }
+  #screen-list .js-body > :not(.sh-main, .sh-side) { grid-column: 1 / -1; }
+  #screen-list .sh-cmp { display: block; }
+}
+@media (min-width: 840px) {
+  #screen-list { container: seat / inline-size; }
+  @container seat (min-width: 768px) {
+    #screen-list .tl-sheet > .js-body { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); align-items: start; padding-inline: max(var(--sp-2), calc((100% - var(--desk-wide)) / 2)); }
+    #screen-list .js-body > :not(.sh-main, .sh-side) { grid-column: 1 / -1; }
+    #screen-list .sh-cmp { display: block; }
+    #screen-list .face-seg { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+  }
+}
+@media (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  .head:not(.is-month) ~ .panes #screen-list .tl-sheet > .js-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(240px, 1fr); align-items: start; }
+  .head:not(.is-month) ~ .panes #screen-list .sh-cmp { display: block; }
+}
+#screen-prices .product.is-listed .product-emoji { box-shadow: inset 0 0 0 1.5px var(--cat, var(--c-primary)); }
+.item-where { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

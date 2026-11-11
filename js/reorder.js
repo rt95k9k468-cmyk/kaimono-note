@@ -51,6 +51,8 @@
    *        while dragging; a truthy target means the row is over somewhere
    *        else and the drop belongs to that instead of to this list
    * @param {Function} [opts.onDropCross]  (target) — commit that move
+   * @param {Function} [opts.onStill]  (row) — lifted and let go where it was, without travelling.
+   *        買うものの☆の付け外し（docs/redesign.md R5「付け外しは品物の紙と長押し」）。一行の組も持ち上がる。
    */
   function attach(container, opts) {
     container.addEventListener("pointerdown", (e) => arm(e, container, opts));
@@ -106,7 +108,7 @@
     /* One row on its own has nowhere to go *within* its list — but if the
        screen accepts drops elsewhere (the todo groups are days), picking it up
        is exactly how it gets there, so a group of one still lifts. */
-    if (kids.length < 2 && !opts.onCross) return;
+    if (kids.length < 2 && !opts.onCross && !opts.onStill) return;
 
     // Measured once, before anything moves. Everything after this is arithmetic
     // on these numbers, so a row half way through its own transition cannot
@@ -141,7 +143,7 @@
       // whatever the rows around it happen to measure.
       step: rects[from].height + gap,
       scroller, startScroll: scroller ? scroller.scrollTop : 0,
-      startY, clientY: startY, pointerId, raf: 0,
+      startY, clientY: startY, far: 0, pointerId, raf: 0,
       ghost, contTop: contRect.top,
     };
 
@@ -165,6 +167,7 @@
   function onMove(e) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     drag.clientY = e.clientY;
+    drag.far = Math.max(drag.far, Math.abs(e.clientY - drag.startY));
   }
 
   /* Auto-scroll and painting share a frame loop rather than riding on pointer
@@ -278,6 +281,7 @@
       // already sitting where they belong, so nothing jumps at the swap.
       if (d.cross) d.opts.onDropCross(d.cross);
       else if (d.to !== d.from) d.opts.onDrop(d.from, d.to);
+      else if (d.opts.onStill && d.far <= CANCEL) d.opts.onStill(d.el);
     }, DROP);
   }
 

@@ -42,14 +42,16 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(500);
   const shelf = await page.$$eval("#screen-list .cat-group.is-run", (gs) => gs.map((g) => {
     const cs = getComputedStyle(g), h = g.querySelector(":scope > .shelf-head");
-    return { r: parseFloat(cs.borderTopLeftRadius), bg: cs.backgroundColor, head: h && h.textContent.trim(),
+    /* 頭は 名前・色の点・品数（R5。品数は .shelf-n）。 */
+    const n = h && h.querySelector(".shelf-n");
+    return { r: parseFloat(cs.borderTopLeftRadius), bg: cs.backgroundColor, head: h && h.textContent.replace(n ? n.textContent : "", "").trim(), n: n && n.textContent,
       dot: !!(h && h.querySelector(".chip-dot")), rows: g.querySelectorAll(".item-wrap").length };
   }));
   t.check("棚は二つ（野菜・冷蔵）、どちらも丸い角と面を持つ",
     shelf.length === 2 && shelf.every((g) => g.r > 0 && g.bg !== "rgba(0, 0, 0, 0)"), JSON.stringify(shelf));
-  t.check("棚の頭に名前と色の点", shelf.length === 2 && shelf[0].head === "野菜・くだもの" && shelf[1].head === "冷蔵・冷凍"
-    && shelf.every((g) => g.dot), JSON.stringify(shelf));
-  t.check("二つ目の行から細い線（品名の頭から）", await page.$eval("#screen-list .cat-group.is-run:nth-child(n) .item-wrap + .item-wrap",
+  t.check("棚の頭に名前と色の点と品数", shelf.length === 2 && shelf[0].head === "野菜・くだもの" && shelf[1].head === "冷蔵・冷凍"
+    && shelf.every((g) => g.dot && g.n === String(g.rows)), JSON.stringify(shelf));
+  t.check("二つ目の行から細い線（R5 から端から端まで）", await page.$eval("#screen-list .cat-group.is-run:nth-child(n) .item-wrap + .item-wrap",
     (w) => getComputedStyle(w).backgroundImage.includes("gradient")));
 
   // health：数字は丸い字。帯の日付は見出しの明朝（2026年11月10日、docs/redesign.md 4節。前は丸い字）

@@ -3,7 +3,7 @@
 
    - 足す紙も直す紙も、頭（絵・名前・名前の右に小さな★）＋カテゴリの札＋メモ
    - 足す紙：名前からカテゴリと絵を推す・★とメモを付けて足せる
-   - 直す紙：★は行の★・カテゴリは小窓で選ぶ（手で選んだ印が付く）・名前を直せる・
+   - 直す紙：★は行の★（R5 から名前の横の小さな印。行にボタンは無い）・カテゴリは小窓で選ぶ（手で選んだ印が付く）・名前を直せる・
      メモが残る・数量を出さない・⋯ の「リストから外す」（元に戻せる）・値段の欄は下に
    - 絵を押すと絵を選ぶ紙
 
@@ -98,10 +98,17 @@ const { open, checker } = require("./lib");
   t.check("頭は淡い地に濃い字", look.bg > 0.7 && look.fg < 0.3, JSON.stringify(look));
   t.check("値段を足す欄は枠の箱なし・お店の札は一列", !look.dashed && look.oneRow && look.n >= 2, JSON.stringify(look));
   const favOn = await page.evaluate(() => document.querySelector(".sheet.is-open .pd-fav").getAttribute("aria-pressed"));
-  t.check("★は行の★", favOn === "true");
+  const rowStar = (id) => page.evaluate((id) => {
+    const w = document.querySelector(`#screen-list .item-wrap[data-item-id="${id}"]`);
+    return { mark: !!(w && w.querySelector(".item-name-row > .item-fav")), button: !!(w && w.querySelector("button.fav")) };
+  }, id);
+  const on = await rowStar(added.id);
+  /* R5：行の左の★ボタンは無く、付いた品の名前の横に小さな★（付け外しは紙と長押し）。 */
+  t.check("★は行の★（名前の横の小さな印・行に★のボタンは無い）", favOn === "true" && on.mark && !on.button, JSON.stringify(on));
   await page.click(".sheet.is-open .pd-fav");
-  await page.waitForTimeout(200);
-  t.check("★を外すと行の★も外れる", await page.evaluate((id) => !KN.store.get().items.find((i) => i.id === id).fav, added.id));
+  await page.waitForTimeout(400);
+  t.check("★を外すと行の★も外れる", await page.evaluate((id) => !KN.store.get().items.find((i) => i.id === id).fav, added.id)
+    && !(await rowStar(added.id)).mark);
 
   await page.click(".sheet.is-open .js-row-cat");
   await page.waitForSelector(".note-pop.is-form .chip");

@@ -229,7 +229,7 @@
 | `desk-split.js` | 境目を引いて幅を変える（design-review 10節の P5、js/desk-split.js）：左の列・ノート… |
 | `replica-mark.js` | 写しの端末の印（P6c、js/replica.js の trouble）：ふだんは何も出さない・元が置かれて3日／届か… |
 | `sideways.js` | 電話を横にして使う（852×393・956×440 を指で、島を 59px に）：案内で隠さない・左の列は畳んだ形に据… |
-| `kept-as-is.js` | 訊いて「今のまま」と決めたもの（design-review 11節）：店の名前は 92px で一行・…で切れる・探す字… |
+| `kept-as-is.js` | 訊いて「今のまま」と決めたもの（design-review 11節）：店の名前は一行・…で切れる・探す字… |
 | `mouse-back.js` | マウスの「戻る」ボタン（js/keys.js）：Esc と同じ一歩——やることの紙を閉じる・設定は一枚もどり根で前の席… |
 | `sync-room.js` | 3台の同期 段1（docs/sync.md）：sync/room.test.mjs を門から回す——偽の部屋（node… |
 | `sync-device.js` | 3台の同期 段2・3（docs/sync.md・js/sync.js）：偽の部屋（本物の room.mjs を nod… |

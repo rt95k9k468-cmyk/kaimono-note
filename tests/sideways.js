@@ -90,11 +90,13 @@ function under(safe) {
     t.check(`${at}：からだのカードは二段`, await page.evaluate(() => getComputedStyle(document.querySelector(".diet-day")).columnCount === "2"));
     await page.click(".tab-list");
     await wait(600);
-    t.check(`${at}：買うもののまとまりは二段`, await page.evaluate(() =>
-      getComputedStyle(document.querySelector("#screen-list .tl-sheet > .js-body")).columnCount === "2"));
-    t.check(`${at}：棚のカードは段で割れない（右の段に影の切れ端を出さない）`, await page.evaluate(() =>
-      [...document.querySelectorAll("#screen-list .tl-sheet > .js-body > .cat-group")].every((e) => e.getClientRects().length === 1
-        && getComputedStyle(e).display === "inline-block")));
+    /* R5：左にリスト、右に選んだ品の値段とそろそろ（前は棚のカードを二段に流した）。 */
+    t.check(`${at}：買うものは左にリスト・右の段の二列`, await page.evaluate(() => {
+      const b = getComputedStyle(document.querySelector("#screen-list .tl-sheet > .js-body"));
+      return b.display === "grid" && b.gridTemplateColumns.trim().split(/\s+/).length === 2;
+    }));
+    t.check(`${at}：棚のカードは左の列の中で割れない`, await page.evaluate(() =>
+      [...document.querySelectorAll("#screen-list .cat-group")].every((e) => e.getClientRects().length === 1 && e.closest(".sh-main"))));
     /* 1c. ＋は列の底（行の右端の丸に重ならない）。やることの今日は道（左）と時間割（右）。 */
     const fab = await page.evaluate(() => {
       const f = document.querySelector("#dock .add-fab").getBoundingClientRect(), r = document.querySelector(".tabbar").getBoundingClientRect();

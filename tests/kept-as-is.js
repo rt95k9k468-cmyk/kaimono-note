@@ -1,5 +1,6 @@
 /* 訊いて「今のまま」と決めたもの（docs/log/design-review.md 11節。2026年11月1日、利用者）。
-   - 店の名前の幅：買うもの・価格の行で 92px・一行・…で切れる（王冠と並んでも行は伸びない）
+   - 店の名前：買うもの・価格の行で一行・…で切れる（行は伸びない）。R5（11月11日、docs/redesign.md）で店は値段の下から
+     品名の下の「店・いつ」へ移り、92px の枠は名前の段の幅に（王冠は値段の下に「最安」だけ）
    - 探した言葉：席を移っても、その席の窓に字が残る（戻れば虫めがねが光る。移った先の席には持ち込まない）
    - やることの紙の詳しい欄：畳まない。種類・日・時刻・くり返し・手順・メモが開いたときから見えている
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/kept-as-is.js */
@@ -10,7 +11,7 @@ const { open, checker } = require("./lib");
   const { browser, page, errors } = await open();
 
   /* ---- 店の名前の幅 ---- */
-  const LONG = "とてもながいなまえのおみせ";
+  const LONG = "とてもとてもながいなまえのおみせ";
   await page.evaluate((long) => {
     const S = KN.store;
     const [a, b] = [long, "近くの店"].map((n) => S.addStore(n));
@@ -24,16 +25,15 @@ const { open, checker } = require("./lib");
     await page.evaluate((id) => KN.app.showScreen(id), scr);
     await page.waitForTimeout(600);
     const m = await page.evaluate((long) => {
-      const el = [...document.querySelectorAll(".screen.is-active .item-price-store")].find((e) => e.textContent.includes(long));
+      const el = [...document.querySelectorAll(".screen.is-active .item-where")].find((e) => e.textContent.includes(long));
       if (!el) return null;
-      const cs = getComputedStyle(el);
-      return { max: cs.maxWidth, ws: cs.whiteSpace, to: cs.textOverflow, w: el.getBoundingClientRect().width,
-        cut: el.scrollWidth > el.clientWidth, h: el.getBoundingClientRect().height, lh: parseFloat(cs.lineHeight) || 0,
-        crown: !!el.querySelector(".crown") };
+      const cs = getComputedStyle(el), row = el.closest(".item, .product"), main = el.closest(".item-body, .product-main");
+      return { ws: cs.whiteSpace, to: cs.textOverflow, cut: el.scrollWidth > el.clientWidth,
+        h: el.getBoundingClientRect().height, lh: parseFloat(cs.lineHeight) || 0,
+        crown: !!row.querySelector(".item-price .crown"), mainH: Math.round(main.getBoundingClientRect().height) };
     }, LONG);
-    t.check(`${scr}：長い店の名前は 92px で一行・…で切れる`, !!m && m.max === "92px" && m.ws === "nowrap" && m.to === "ellipsis"
-      && m.w <= 92.5 && m.cut, JSON.stringify(m));
-    t.check(`${scr}：王冠と並んでも一行のまま`, !!m && m.crown && (!m.lh || m.h < m.lh * 1.6), JSON.stringify(m));
+    t.check(`${scr}：長い店の名前は「店・いつ」の一行で…で切れる`, !!m && m.ws === "nowrap" && m.to === "ellipsis" && m.cut, JSON.stringify(m));
+    t.check(`${scr}：王冠（値段の下）があっても一行・名前の段は二行のまま（60px の行に収まる）`, !!m && m.crown && (!m.lh || m.h < m.lh * 1.6) && m.mainH <= 48, JSON.stringify(m));
   }
 
   /* ---- 探した言葉は席を移っても残る ---- */

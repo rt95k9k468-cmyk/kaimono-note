@@ -395,13 +395,23 @@ const readRings = (page) => page.evaluate(() => [...document.querySelectorAll("#
       const p = KN.store.addProduct({ name: "牛乳" });
       KN.store.addItem(p.id || p);
     });
-    await page.waitForSelector("#screen-list .item .fav");
-    await page.click("#screen-list .item .fav");
+    /* ★の付け外しは長押し（持ち上げて、その場で離す。R5——行の左の★は外した）。 */
+    const holdStill = async () => {
+      const b = await page.locator("#screen-list .item .item-name").first().boundingBox();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(await page.evaluate(() => KN.gesture.HOLD) + 120);
+      await page.mouse.up();
+    };
+    await page.waitForSelector("#screen-list .item .item-name");
+    await holdStill();
+    await page.waitForFunction(() => document.querySelector('.tab[data-tab="list"] .tab-ico-face.is-poke'), null, { timeout: 1500 }).catch(() => {});
     const favPoke = await faceOf("list");
     t.check("★を付けると、帯のカートが応える", favPoke.on && favPoke.name === "poke-roll", JSON.stringify(favPoke));
     await settle();
-    await page.click("#screen-list .item .fav");
-    t.check("★を外したときは黙る", !(await faceOf("list")).on);
+    await holdStill();
+    await page.waitForFunction(() => !KN.store.get().items[0].fav, null, { timeout: 1500 }).catch(() => {});
+    t.check("★を外したときは黙る", !(await faceOf("list")).on && !(await page.evaluate(() => KN.store.get().items[0].fav)));
 
     await page.click('#screen-list .item .check[aria-checked="false"]');
     const tick = await page.evaluate(() => {

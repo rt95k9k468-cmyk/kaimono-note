@@ -1869,6 +1869,16 @@
     if (!product) return "";
     return getCategory(product.categoryId).color || "";
   }
+  /* カテゴリの色を描くときだけ手帳の札へ読み替える（docs/redesign.md R5。記録の色は変えない・知らない色はそのまま）。
+     札なので明暗とモダンにも従う。絵の塗り（SVG の fill）は var() を読めないので productColor のまま。 */
+  const CAT_INK = {
+    "#5ea55a": "var(--c-take)", "#d4695f": "var(--c-kaki)", "#d79a4a": "var(--c-yamabuki)", "#5b9bd5": "var(--c-ai)",
+    "#4fb3c4": "color-mix(in srgb, var(--c-ai) 55%, var(--c-take))", "#9b7ede": "var(--c-fuji)",
+    "#48b39a": "color-mix(in srgb, var(--c-take) 60%, var(--c-ai))", "#e07fa8": "color-mix(in srgb, var(--c-kaki) 45%, var(--c-fuji))",
+    "#8d968f": "var(--c-text-3)", "#c2853f": "color-mix(in srgb, var(--c-yamabuki) 55%, var(--c-kaki))",
+    "#7a8fd4": "color-mix(in srgb, var(--c-ai) 50%, var(--c-fuji))",
+  };
+  const catInk = (color) => CAT_INK[String(color || "").toLowerCase()] || color || "";
 
   /**
    * The picture beside a product — always a drawn one (see product-icons.js).
@@ -5287,7 +5297,7 @@
     sortedCategories, sortedStores,
     findProductByName, findStoreByName, guessCategory,
     learnCategory, forgetCategory, forgetAllCategories, learnedList,
-    productMark, autoMark, productColor,
+    productMark, autoMark, productColor, catInk, productInk: (p) => catInk(productColor(p)),
     currentPrices, bestPrice, priceAt,
     addStore, addProduct, addItem, addPrice, setArchived,
     reorderProducts, sortProductsInCategory,

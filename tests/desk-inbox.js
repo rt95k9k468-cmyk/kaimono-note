@@ -96,7 +96,8 @@ const { open, checker, URL } = require("./lib");
   const own0 = await A.evaluate(() => localStorage.getItem("kaimono-note-v2"));
 
   const viaFab = async (tab, text) => {
-    await A.click(`.tab-${tab}`);
+    /* 居る席は押さない（買うもので席をもう一度押すと価格へめくる。R5 で広い幅の左右並びを外した）。 */
+    if (await A.evaluate((id) => document.documentElement.dataset.screen !== id, tab)) await A.click(`.tab-${tab}`);
     await A.waitForTimeout(600);
     await A.click("#dock .add-fab");
     await A.waitForSelector(".js-input", { timeout: 4000 });

@@ -160,7 +160,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R2 | **済み（11月11日）**。骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
 | R3 | **済み（11月11日）**。tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
 | R4 | health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
-| R5 | shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
+| R5 | **済み（11月11日）**。shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
 | R6 | daily・書く紙 | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
 | R7 | notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
 | RS | **紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
@@ -193,6 +193,11 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   （窓 768〜839px も）。広い幅（840px〜）の月の面は暦を帯から紙の左のカードへ（`putCal(null)`・`deskMonth`）。紙の中身は R2 のまま（→ RS）。
   **先の段へ送ったもの**：広い幅で月の面へ出入りするとき暦は帯と紙のあいだを跳んで移る（glide を使わない → RM）・払うと右の一覧だけが
   動く（暦のカードは残る）・札の「くらし」は書かない（仕事だけ書く。見本は両方——利用者に訊く）・道がひらく動きは「移る」の一本（→ RM）。
+- R5 で決めたこと（細目は shopping の「R5 の形」）：行は 絵の台 46px・品名と「店・いつ」・値段（墨 17px）・丸。「値段はまだ」は書かない
+  （R27 のまま）。☆は付いた品の名前の横（`.item-fav`）、付け外しは品物の紙と長押し（持ち上げてその場で離す＝`reorder` の `onStill`）。
+  棚のカードの頭に品数、価格も同じカードと行（どの幅も）。棒は `productSheet.bars`（scale・最安は比べたときだけ山吹）。カテゴリの色は
+  `store.catInk`（描くときに札へ。記録と絵の塗りはそのまま）。中身 768px（窓 768〜839px・横の電話も）から `.sh-main`｜`.sh-side`
+  （選んだ品＝最後に押した行の品）。**1280px〜の買うもの｜価格の左右並び（desk 段6）は外した**（リスト｜価格 はどの幅もめくる）。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。

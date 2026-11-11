@@ -73,7 +73,8 @@ const touch = (cdp) => async (x, y, dx) => {
     b.firstElementChild && b.firstElementChild.classList.contains("day-bought")));
   const flips = await page.$$eval("#screen-list .js-body [data-flip]", (xs) => xs.map((x) => x.dataset.flip));
   c.check("data-flip が重ならない", new Set(flips).size === flips.length, flips.join(","));
-  c.check("過去の日の行に★も丸も見えない（押せない）", await unseen("#screen-list .day-bought .fav, #screen-list .day-bought .check"));
+  c.check("過去の日の行に★も丸も見えない（押せない）", await unseen("#screen-list .day-bought .check")
+    && !(await page.$("#screen-list .day-bought .item-fav")));
   const pastCols = await cols("#screen-list .day-bought .item");
   c.check("過去の日の行も、今日のリストの行と同じ列（両端へ寄せない）", sameCols(pastCols),
     JSON.stringify({ list: listCol, past: pastCols }));
@@ -112,8 +113,8 @@ const touch = (cdp) => async (x, y, dx) => {
     s.items[3].checked = true; s.items[3].checkedAt = new Date().toISOString();
   }));
   await page.waitForTimeout(400);
-  c.check("今日買ったものの行は★が見えず、丸だけ残る（押しまちがいを戻せる）",
-    await unseen("#screen-list .day-bought .fav") && await page.$$eval("#screen-list .day-bought .check",
+  c.check("今日買ったものの行は★を出さず、丸だけ残る（押しまちがいを戻せる）",
+    !(await page.$("#screen-list .day-bought .item-fav")) && await page.$$eval("#screen-list .day-bought .check",
       (xs) => xs.length === 1 && getComputedStyle(xs[0]).visibility === "visible"));
   const todayCols = await cols("#screen-list .day-bought .item");
   c.check("今日買ったものの行も、リストの行と同じ列", sameCols(todayCols),
@@ -125,10 +126,11 @@ const touch = (cdp) => async (x, y, dx) => {
     s.items[3].checked = true; s.items[3].checkedAt = new Date().toISOString();
   }));
   await page.waitForTimeout(400);
-  c.check("今日買ったものがリストの終わりに出る", await page.$eval("#screen-list .js-body", (b) => {
+  /* R5：今日買ったものは左の列（.sh-main）の終わりに、一枚の行（題・品数・＞）。 */
+  c.check("今日買ったものがリストの終わりに出る", await page.$eval("#screen-list .js-body > .sh-main", (b) => {
     const last = b.lastElementChild;
     return last.classList.contains("day-bought")
-      && last.querySelector(".day-bought-head").textContent.replace(/\s+/g, "") === "今日買ったもの1";
+      && last.querySelector(".day-bought-head").textContent.replace(/\s+/g, "") === "今日買ったもの1品";
   }));
   // 見出しの ＞ で閉じる・開く（2026年9月29日）。開け閉めは showChecked に残る
   c.check("今日の紙に「このリストを送る」が無い", !(await page.$("#screen-list .list-share, #screen-list .js-share")));

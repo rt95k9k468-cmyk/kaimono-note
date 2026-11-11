@@ -71,7 +71,10 @@
 
     /* 紙の頭に リスト｜価格 の札（app.js の faceSeg。前は紙を下げて価格へ行った）。暦の段は帯の取っ手で
        （head.js が暦を持っているので、答えを置くのもあちら）。 */
-    chrome.querySelector(".js-sheet").prepend(KN.app.faceSeg("list"));
+    /* 札の右に品数（まだ買っていないもの。docs/redesign.md R5）。 */
+    const seg = KN.app.faceSeg("list");
+    els.count = seg.appendChild(node(html`<span class="face-n"></span>`));
+    chrome.querySelector(".js-sheet").prepend(seg);
     KN.head.shopPeek({
       root,
       // 探している最中だけ引きません（ほかのタブと同じ）。
@@ -323,7 +326,7 @@
          行そのものが、どこに入ったかを言う）。行が見つからなければ、前のとおりトースト。 */
       const from = f.hero.getBoundingClientRect();
       const ghost = { mark: store.productMark(product), name: product.name,
-        cat: store.productColor(product), z: Number(handle.el.style.zIndex) + 1 };
+        cat: store.productInk(product), z: Number(handle.el.style.zIndex) + 1 };
       /* 紙そのものは、やめたときと同じく＋へ縮んで帰る（U17・利用者「保存したら下に閉じてしまう」）。
          行へ入るのは頭の絵と名前（landOnRow）。 */
       f.hero.style.visibility = "hidden";
@@ -479,7 +482,7 @@
     found.forEach((p) => {
       const chip = node(html`
         <button type="button" class="chip ac-chip ${onList.has(p.id) ? "is-listed" : ""}" role="option"
-                style="--cat:${store.productColor(p)}">
+                style="--cat:${store.productInk(p)}">
           <span class="ac-mark" aria-hidden="true">${store.productMark(p)}</span><span>${p.name}</span>
         </button>
       `);
@@ -511,6 +514,8 @@
        describe the whole trip, because a search is a way of looking at the
        list rather than a change to it. */
     renderBody(query ? items.filter(matchesQuery) : items);
+    const n = items.filter((i) => !i.checked).length;
+    els.count.textContent = n ? `${n} 品` : "";
     awake.recheck();
   }
 
@@ -570,6 +575,11 @@
     const active = items.filter((i) => !i.checked);
     const checked = items.filter((i) => i.checked);
     const trip = active.filter((i) => i.fav);
+    /* 左にリスト、右に選んだ品の値段と「そろそろ」（docs/redesign.md R5。二列は中身 768px から、狭い幅は右が下へ）。
+       並べ替えは左の一列の中だけ。 */
+    const main = node(html`<div class="sh-main"></div>`);
+    els.body.append(main);
+    const done = () => { main.after(sideCol(main)); settle(); };
 
     if (!trip.length) {
       /* Nothing starred: just the list. A total and a 「今回は◯◯だけで足ります」
@@ -577,10 +587,9 @@
          is a standing note of things to buy sometime, not a shopping trip, and
          adding up a year of sometime gives a number with no occasion. Both come
          back the moment something is starred, where they mean this trip. */
-      appendGroups(active);
-      els.body.append(lowSection());
-      if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
-      settle();
+      appendGroups(active, main);
+      if (!query) main.append(dayBought(checked, KN.util.todayKey()));
+      done();
       return;
     }
 
@@ -603,16 +612,54 @@
     appendGroups(trip, inner);
     box.append(inner);
     box.append(tripPlanRow());
-    els.body.append(box);
-    els.body.append(insightsCard(trip));
+    main.append(box);
+    main.append(insightsCard(trip));
 
     if (rest.length) {
-      els.body.append(sectionHead("そのほか", rest.length, "rest"));
-      appendGroups(rest);
+      main.append(sectionHead("そのほか", rest.length, "rest"));
+      appendGroups(rest, main);
     }
-    els.body.append(lowSection());
-    if (!query) els.body.append(dayBought(checked, KN.util.todayKey()));
-    settle();
+    if (!query) main.append(dayBought(checked, KN.util.todayKey()));
+    done();
+  }
+
+  /* ---------------- 右の段：選んだ品の値段（docs/redesign.md R5） ----------------
+     選んだ品＝最後に押した行の品。まだなら、画面の並びで比べられる（二つの店に値段がある）最初の品、無ければ値段のある最初の品。
+     店ごとの値段を棒で比べ、最安を山吹に（棒は productSheet.bars。価格・品物の紙と同じ一つ）。押せば品物の紙。
+     狭い幅（中身 768px まで）では値段のカードは出さず、そろそろ（設定で出したときだけ）がリストの下に。 */
+  let picked = null;
+  function pickedProduct(main) {
+    const p = picked && store.getProduct(picked);
+    if (p) return p;
+    const byId = new Map(store.get().items.map((i) => [i.id, i]));
+    const ps = [...main.querySelectorAll(".item-wrap[data-item-id]")].filter((w) => !w.closest(".day-bought"))
+      .map((w) => byId.get(w.dataset.itemId)).filter(Boolean).map((i) => store.getProduct(i.productId)).filter(Boolean);
+    return ps.find((x) => store.currentPrices(x).length > 1) || ps.find((x) => store.currentPrices(x).length) || null;
+  }
+  function sideCol(main) {
+    const side = node(html`<aside class="sh-side"></aside>`);
+    const p = query ? null : pickedProduct(main);
+    if (p && store.currentPrices(p).length) {
+      const sec = node(html`
+        <section class="sh-cmp" data-product-id="${p.id}">
+          <h2 class="tk-h">${p.name}<span class="tk-h-n">お店ごとの値段</span></h2>
+          <button type="button" class="card sh-cmp-card" aria-label="${p.name} を開く"></button>
+        </section>
+      `);
+      const card = sec.querySelector(".sh-cmp-card");
+      card.append(KN.productSheet.bars(p));
+      card.addEventListener("click", () => KN.productSheet.open(p.id));
+      side.append(sec);
+    }
+    side.append(lowSection());
+    return side;
+  }
+  /** 行を押した＝その品を選んだ。右の段だけ描き直す（組み直すと一覧の FLIP が走る）。 */
+  function pick(id) {
+    if (picked === id) return;
+    picked = id;
+    const old = els.body.querySelector(":scope > .sh-side"), main = els.body.querySelector(":scope > .sh-main");
+    if (old && main) old.replaceWith(sideCol(main));
   }
 
   /* 「このリストを送る」は、2026年9月29日に外しました（利用者：「リストを
@@ -644,7 +691,7 @@
     low.forEach(({ product, every, since }) => {
       const cat = store.getCategory(product.categoryId);
       const row = node(html`
-        <div class="low-row" style="--cat:${(cat && cat.color) || ""}">
+        <div class="low-row" style="--cat:${store.catInk(cat && cat.color)}">
           <span class="low-mark" aria-hidden="true">${store.productMark(product)}</span>
           <span class="low-main">
             <span class="low-name">${product.name}</span>
@@ -733,8 +780,8 @@
       /* 棚ごとに一枚のカード、頭に棚の名前（Apple リマインダーの組。2026年10月8日、利用者が
          見比べの画像で選んだ・docs/shopping.md）。組は色の続く塊であり、掴んで並べ替える範囲でもある。 */
       const group = node(html`
-        <section class="cat-group is-run" style="--cat:${cat.color || ""}">
-          <h3 class="shelf-head"><span class="chip-dot"></span>${cat.name}</h3>
+        <section class="cat-group is-run" style="--cat:${store.catInk(cat.color)}">
+          <h3 class="shelf-head"><span class="chip-dot"></span>${cat.name}<span class="shelf-n">${entries.length}</span></h3>
           <div class="item-list"></div>
         </section>
       `);
@@ -771,15 +818,17 @@
         });
         KN.motion.fire("save");
       },
+      /* 長押しで持ち上げて、その場で離すと☆の付け外し（行の左の☆は外した。docs/redesign.md R5）。 */
+      onStill: (row) => toggleFav(row.dataset.itemId, true),
     });
   }
 
   function sectionHead(label, count, kind) {
     return node(html`
-      <h2 class="trip-head trip-head-${kind}">
+      <h2 class="trip-head tk-h trip-head-${kind}">
         ${kind === "trip" ? icon("star") : ""}
         <span>${label}</span>
-        <span class="cat-head-count">${count}</span>
+        <span class="cat-head-count tk-h-n">${count}</span>
       </h2>
     `);
   }
@@ -801,23 +850,21 @@
             意味が変わらないように。 */""}
       <article class="item-wrap"
                data-item-id="${item.id}" data-flip="${item.id}"
-               style="--cat:${store.productColor(product)}">
+               style="--cat:${store.productInk(product)}">
       </article>
     `);
 
+    /* 行は 絵の台・品名と「店・いつ」・値段・丸 の四つ（docs/redesign.md R5）。☆は付いた品の名前の横に小さく、
+       付け外しは品物の紙と長押し（持ち上げて、その場で離す。wireReorder の onStill）。丸はやることと同じ右。 */
     const row = node(html`
-      ${/* 星が左、丸が右。**やることの並びに揃えます**——同じ「済ませる」
-            丸が、タブを移ると左右に飛ぶのは、指がいちばん覚えにくいところ
-            でした。星は「今回買う」の指定なので、名前の手前で構いません。 */""}
       <div class="item ${item.checked ? "is-checked" : ""}">
-        <button class="fav ${item.fav ? "is-on" : ""}" aria-pressed="${String(!!item.fav)}"
-                aria-label="${product.name} を今回買うものにする">${icon("star")}</button>
-        ${/* 丸そのものが押せます——丸が題の連れ（.item-body の外）に居るので、独立した的が作れます。 */""}
+        ${/* 絵の台そのものが押せます（絵を選ぶ紙へ）——題の連れ（.item-body）の外に居るので、独立した的が作れます。 */""}
         <button type="button" class="item-emoji js-emoji"
                 aria-label="${product.name} の絵を選ぶ">${store.productMark(product)}</button>
         <button class="item-body">
           <span class="item-name-row">
             <span class="item-name">${product.name}</span>
+            ${item.fav ? html`<span class="item-fav" role="img" aria-label="今回買う">${icon("star")}</span>` : ""}
             ${item.qty > 1 ? html`<span class="item-qty">×${item.qty}</span>` : ""}
           </span>
           <span class="item-meta">
@@ -827,6 +874,7 @@
                  time is what separates them. */""}
             ${item.checked && item.checkedAt
               ? html`<span class="item-when">${KN.util.formatStamp(item.checkedAt)}</span>` : ""}
+            ${best && bestStore ? html`<span class="item-where">${bestStore.name}・${KN.util.relativeDate(best.date)}</span>` : ""}
             ${item.memo ? html`<span class="item-memo">${item.memo}</span>` : ""}
           </span>
         </button>
@@ -841,10 +889,10 @@
     if (priceBox && best && bestStore) {
       priceBox.append(frag(html`
         <span class="item-price-amount">${yen(best.price * item.qty)}</span>
-        <span class="item-price-store">${vs ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}${bestStore.name}</span>
+        ${vs ? html`<span class="item-price-store"><span class="crown">${icon("crown", "is-sub")}最安</span></span>` : ""}
       `));
     }
-    /* 値段が無い行は、空のまま（「値段は未登録」は出さない——利用者が選んだ、
+    /* 値段が無い行は、空のまま（「値段は未登録」「値段はまだ」は出さない——利用者が選んだ、
        2026年9月29日・R27）。器は残るので、列は他の行と揃う。 */
 
     row.querySelector(".check").addEventListener("click", (e) => {
@@ -910,9 +958,8 @@
       }, draw);
     });
 
-    row.querySelector(".fav").addEventListener("click", () => toggleFav(item.id));
-
     row.querySelector(".item-body").addEventListener("click", () => {
+      pick(product.id);
       KN.productSheet.open(product.id, {
         itemId: item.id, from: row.querySelector(".item-emoji"),
         back: () => document.querySelector(
@@ -944,7 +991,7 @@
   /* ---------------- ★ ---------------- */
 
   /** ★ marks an item as part of the trip being shopped right now. */
-  function toggleFav(itemId) {
+  function toggleFav(itemId, say) {
     let on = false;
     store.update((s) => {
       const rec = s.items.find((i) => i.id === itemId);
@@ -954,6 +1001,8 @@
     /* ★を付けた＝今回のかごに入れた。下の帯のカートが応える（外したときは黙る
        ——取り消しに見せ場は作らない、済ませる丸と同じ約束）。 */
     if (on) KN.app.pokeTab("list");
+    /* 長押しは見えない身ぶりなので、一言と「元に戻す」で言う。 */
+    if (say) KN.ui.toast(on ? "今回買うものにしました" : "今回から外しました", { action: { label: "元に戻す", onClick: () => toggleFav(itemId) } });
   }
 
   /* ---------------- その日に買ったもの（2026年9月28日） ----------------
@@ -990,9 +1039,10 @@
     const open = !isToday || store.get().settings.showChecked !== false;
     const section = node(html`
       <section class="day-bought ${isToday ? "is-today" : ""}" aria-label="${label}">
+        ${/* 今日は一枚のカードの行（絵の台・題・品数・＞。docs/redesign.md R5）。ひらくと下に買った行のカード。 */""}
         ${isToday
-          ? html`<h2 class="day-bought-head"><button type="button" class="day-bought-toggle" aria-expanded="${String(open)}">${icon("chevron")}<span>${label}</span> <span class="cat-head-count">${bought.length}</span></button></h2>`
-          : html`<h2 class="day-bought-head">${label} <span class="cat-head-count">${bought.length}</span></h2>`}
+          ? html`<h2 class="day-bought-head"><button type="button" class="day-bought-toggle" aria-expanded="${String(open)}"><span class="item-emoji">${icon("check")}</span><span class="got-main"><span class="got-t">${label}</span><span class="got-n"><span class="cat-head-count">${bought.length}</span>品</span></span>${icon("chevron")}</button></h2>`
+          : html`<h2 class="day-bought-head tk-h">${label} <span class="cat-head-count tk-h-n">${bought.length}</span></h2>`}
         <div class="item-list" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
     `);
@@ -1014,7 +1064,7 @@
       const p = store.getProduct(item.productId);
       if (!p) return;
       const row = itemRow(item, p);
-      row.querySelectorAll(isToday ? ".fav" : ".fav, .check").forEach((b) => {
+      if (!isToday) row.querySelectorAll(".check").forEach((b) => {
         b.classList.add("is-void");
         b.tabIndex = -1;
       });

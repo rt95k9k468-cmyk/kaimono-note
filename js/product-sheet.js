@@ -212,18 +212,20 @@
       `));
     } else {
       const list = node(html`<div class="price-list"></div>`);
+      const max = prices[prices.length - 1].price || 1;
       prices.forEach((pr) => {
         const st = store.getStore(pr.storeId);
         const up = perItemPrice(pr.price, p.amount, p.unit);
         const isBest = best && pr.id === best.id && prices.length > 1;
 
+        /* 店の名前の下に値段の棒（docs/redesign.md R5。比べたときの最安は山吹）。 */
         const row = node(html`
           <div class="price-row ${isBest ? "is-best" : ""}">
             <button class="price-main js-open" aria-label="${st.name} の値段をくわしく見る">
-              <span class="dot" style="background:${st.color}"></span>
               <span class="price-store-wrap">
                 <span class="price-store">${st.name}</span>
                 ${isBest ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}
+                <span class="pbar-b"><i style="--w:${(pr.price / max).toFixed(3)}"></i></span>
               </span>
               <span class="price-figures">
                 <span class="price-amount">${yen(pr.price)}</span>
@@ -267,6 +269,19 @@
 
     section.append(addPriceForm(productId, () => renderPrices(container, productId)));
     container.append(section);
+  }
+
+  /** 店ごとの値段を棒で比べる（docs/redesign.md R5）。長さは一番高い値段に対して、最安は比べたときだけ山吹。
+      買うものの右の段・価格の行で同じ一つ（品物の紙は行の中に同じ棒）。押せる器の中に置けるよう span だけ。 */
+  function bars(product) {
+    const prices = store.currentPrices(product);
+    const max = prices.length ? prices[prices.length - 1].price || 1 : 1;
+    const box = node(html`<span class="pbars"></span>`);
+    prices.forEach((pr, i) => {
+      const st = store.getStore(pr.storeId);
+      box.append(node(html`<span class="pbar ${i === 0 && prices.length > 1 ? "is-best" : ""}"><span class="pbar-s">${st.name}</span><span class="pbar-b"><i style="--w:${(pr.price / max).toFixed(3)}"></i></span><span class="pbar-y">${yen(pr.price)}</span></span>`));
+    });
+    return box;
   }
 
   /* ---------------- one store's price, in full ---------------- */
@@ -784,8 +799,8 @@
     const paintCat = () => {
       const c = store.getCategory(current);
       body.querySelector(".js-cat-v").textContent = c ? c.name : "";
-      hero.style.setProperty("--cat", (c && c.color) || "var(--c-primary-fill)");
-      catRow.style.setProperty("--cat", (c && c.color) || "var(--c-primary-fill)");
+      hero.style.setProperty("--cat", (c && store.catInk(c.color)) || "var(--c-primary-fill)");
+      catRow.style.setProperty("--cat", (c && store.catInk(c.color)) || "var(--c-primary-fill)");
     };
     paintCat();
     /* カテゴリは押したそばの小窓で（やることの紙の日付・時刻と同じ）。選んだら一拍で閉じる。 */
@@ -940,5 +955,5 @@
     return handle;
   }
 
-  KN.productSheet = { open, openIconPicker, frame };
+  KN.productSheet = { open, openIconPicker, frame, bars };
 })();

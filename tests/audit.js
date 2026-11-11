@@ -71,25 +71,19 @@ const { open, checker } = require("./lib");
   t.check("描ける品物と混ざれば、描けるものだけ出る", !L2.empty && L2.rows === 1 && L2.text.includes("試験の牛乳"),
     JSON.stringify({ ...L2, text: undefined }));
 
-  /* 品名の位置（R27）：メモの無い行でも品名が行の真ん中・行の高さは取り置きのまま */
+  /* 品名の位置（R27）：メモの無い行でも品名が行の真ん中。R5（2026年11月11日）から絵の台と丸は行の真ん中・行は 60px */
   await page.evaluate(() => { const p = KN.store.addProduct({ name: "試験のたまご" }); KN.store.addItem(p.id, { memo: "10個入り" }); });
   await page.waitForTimeout(300);
   const M = await page.evaluate(() => [...document.querySelectorAll("#screen-list .item:not(.is-tile)")].map((it) => {
     const c = (el) => { const b = el.getBoundingClientRect(); return b.top + b.height / 2; };
-    const top = (el) => el.getBoundingClientRect().top;
     return { name: it.querySelector(".item-name").textContent, off: c(it.querySelector(".item-name")) - c(it),
       h: it.getBoundingClientRect().height,
-      emo: c(it.querySelector(".item-emoji")) - c(it.querySelector(".item-name")),
-      fav: c(it.querySelector(".fav")) - c(it.querySelector(".item-name")),
-      chk: c(it.querySelector(".check")) - c(it.querySelector(".item-name")),
-      emoTop: top(it.querySelector(".item-emoji")) - top(it.querySelector(".item-name")) };
+      emo: c(it.querySelector(".item-emoji")) - c(it), chk: c(it.querySelector(".check")) - c(it) };
   }));
   const plain = M.find((x) => x.name === "試験の牛乳"), memoed = M.find((x) => x.name === "試験のたまご");
   t.check("メモの無い行：品名が行の真ん中（±1px）", !!plain && Math.abs(plain.off) <= 1, JSON.stringify(M));
-  t.check("メモの無い行：星・絵・品名・丸が同じ高さ（±1px。絵だけ上に残らない、2026年9月29日 iPhone）",
-    !!plain && Math.abs(plain.emo) <= 1 && Math.abs(plain.fav) <= 1 && Math.abs(plain.chk) <= 1, JSON.stringify(plain));
-  t.check("メモのある行：絵は品名の一行目に揃ったまま（行の真ん中へ下がらない）",
-    !!memoed && Math.abs(memoed.emo) <= 1 && memoed.chk > 5, JSON.stringify(memoed));
+  t.check("絵の台と丸は、メモがあっても無くても行の真ん中（±1px）",
+    [plain, memoed].every((x) => !!x && Math.abs(x.emo) <= 1 && Math.abs(x.chk) <= 1), JSON.stringify(M));
   t.check("メモの無い行とある行で、行の高さがほぼ同じ（±3px。メモを足しても跳ねない）",
     !!plain && !!memoed && Math.abs(plain.h - memoed.h) <= 3, JSON.stringify(M));
 

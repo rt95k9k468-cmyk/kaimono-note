@@ -106,7 +106,6 @@
     if (!behindStale || typingInSheet()) return;
     behindStale = false;
     if (KN.screens[active]) KN.screens[active].render();
-    if (duo) KN.screens[duo.back].render();
   }
 
   /* ---------------- theme ---------------- */
@@ -669,12 +668,8 @@
     { front: "list", back: "prices" },
   ];
   const pairOf = (id) => PAIRS.find((x) => x.front === id || x.back === id) || null;
-  /* 1280px から、組の二枚を左右に並べる（docs/desk.md の段6）。席は前の一枚（active）、後ろの一枚は
-     右に出したまま（`.is-duo-r`）。価格を呼ばれても前の一枚へ。 */
-  const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px)") : null;
-  const duoOf = (id) => (DUO && DUO.matches && pairOf(id)) || null;
-  let duo = null;          // いま並べている組
-  const DUO_CLS = ["is-duo-l", "is-duo-r"];
+  /* 1280px から二枚を左右に並べていた（desk の段6）のは R5 で外した——広い幅の買うものは、左にリスト・右に選んだ品の
+     値段（docs/redesign.md R5）。 */
 
   /** いまどちらの面か（0＝買うもの、1＝価格）。 */
   function faceAt(id) {
@@ -685,7 +680,7 @@
   function faceTo(p, id) {
     const pr = pairOf(id || active);
     if (!pr) return;
-    const to = p > 0.5 && !duoOf(pr.front) ? pr.back : pr.front;
+    const to = p > 0.5 ? pr.back : pr.front;
     if (to === active) return;
     haptic();
     show(to);
@@ -750,8 +745,6 @@
 
   function show(id, face) {
     if (!KN.screens[id]) return;
-    const dp = duoOf(id);
-    if (dp) id = dp.front;
     /* 出ていく暦の印の写しは、何も書き換えないうちに（js/head.js の snapFor）。 */
     if (KN.head.snapFor) KN.head.snapFor(id);
     if (!goingBack) {
@@ -771,9 +764,6 @@
     const from = active;
     if (from !== id && KN.ui.closePops) KN.ui.closePops();
     active = id;
-    const wasDuo = duo;
-    duo = dp;
-    document.documentElement.toggleAttribute("data-duo", !!duo);
     /* いまの画面を根に（下の帯の幕・ノートの左の木。CSS の `:has(#screen-….is-active)` をやめた——画面の中で
        何かが出入りするたびに入れ物ごと見直しが掛かり、席を移る一拍が重くなっていた。2026年10月24日）。 */
     document.documentElement.dataset.screen = id;
@@ -827,8 +817,6 @@
       inEl.classList.remove(...ALL);
       inEl.classList.add("is-active");
     }
-    const mateEl = duo && document.getElementById("screen-" + duo.back);
-    if (mateEl) mateEl.hidden = false;
     /* 上の帯の持ち主を、組む**前**に入ってくるタブへ（js/head.js）。組む側は
        `render()` の中で自分の暦と題を帯に置きます。 */
     KN.head.enter(id);
@@ -849,23 +837,16 @@
     }
     behindStale = false;   // ここで組むので、預かっていた組み直しは要らない
     KN.screens[id].render();
-    if (duo) { ensureMounted(duo.back); KN.screens[duo.back].render(); }
 
     document.querySelectorAll(".screen").forEach((s) => {
       const sid = s.dataset.screen;
       const on = sid === id;
-      const mate = !!duo && sid === duo.back;
       /* 出ていく面は、流れ終わるまで残します。消してから動かしても、
-         動くものがありません。並べていた二枚は、二枚とも。 */
-      const out = dir !== 0 && !on && !mate && (sid === from || (!!wasDuo && sid === wasDuo.back));
+         動くものがありません。 */
+      const out = dir !== 0 && !on && sid === from;
       s.classList.remove(...ALL);
       s.classList.toggle("is-active", on);
-      /* 並べた側の印は、流れ終わるまで出ていく面にも残す（外すと全幅へ跳ぶ）。 */
-      if (!out) {
-        s.classList.toggle("is-duo-l", !!duo && sid === duo.front);
-        s.classList.toggle("is-duo-r", mate);
-      }
-      if (on || mate) {
+      if (on) {
         s.hidden = false;
         if (dir) s.classList.add(inCls);
       } else if (out) {
@@ -885,7 +866,7 @@
     if (dir) {
       slideT = setTimeout(() => {
         document.querySelectorAll(".screen.is-leaving").forEach((s) => {
-          s.classList.remove(...ALL, ...DUO_CLS);
+          s.classList.remove(...ALL);
           s.hidden = true;
           /* 開いたときの札も、隠れたここで外します（戻ってきた一拍に並べ直させない。motion.js の depart）。 */
           KN.motion.depart(s);
@@ -925,10 +906,6 @@
       const make = KN.screens[id] && KN.screens[id].dockButton;
       const fab = make ? make() : null;
       if (fab) dock.append(fab);
-      /* 並べた右の一枚の＋は、その一枚の右下に（base.css の「幅の広い画面」）。 */
-      const mk = duo && KN.screens[duo.back].dockButton;
-      const fab2 = mk ? mk() : null;
-      if (fab2) { fab2.classList.add("is-duo-r"); dock.append(fab2); }
       dock.hidden = !dock.childElementCount;
       /* ＋ は帯と同じ段の右に立ちます（base.css の「＋ は帯と同じ段の右に」）。
          一覧の底とトーストがそのぶん上がるので、あるかないかを根に
@@ -1015,14 +992,6 @@
     if (SIDEWAYS && SIDEWAYS.addEventListener) SIDEWAYS.addEventListener("change", applyRail);
     watchGlass();
     watchWriting();
-    /* 1280px をまたいだら、組の二枚を並べ直す・重ね直す。 */
-    /* 並べるのをやめたら、後ろだった一枚も組み直す（並べたときだけの棚のカードを外す）。 */
-    if (DUO && DUO.addEventListener) DUO.addEventListener("change", () => {
-      if (!pairOf(active)) return;
-      const was = duo;
-      show(active, "settled");
-      if (was && !duo && KN.screens[was.back]) KN.screens[was.back].render();
-    });
     /* アプリへ戻ってきたときも、開いたときと同じく満ちます（道の人が歩くのと
        同じ二つの入口。docs/todo-timeline.md の「歩く」）。bfcache から戻った
        ときは visibilitychange が来ないことがあるので、pageshow も聞きます。 */
@@ -1135,7 +1104,6 @@
         else {
           behindStale = false;
           KN.screens[active].render();
-          if (duo) KN.screens[duo.back].render();
         }
       }
       paintTabs();
