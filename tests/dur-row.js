@@ -62,7 +62,8 @@ const { open, checker } = require("./lib");
     const [h, m] = sh.querySelectorAll(".js-time-wheels .note-wheel");
     h.scrollTop = 9 * 40; m.scrollTop = 0;
   });
-  await page.waitForTimeout(500);
+  /* 決まるのは止まって 120ms 後。混んだ CI では間が延びるので、決まるまで待つ（上限 3 秒）。 */
+  await page.waitForFunction(() => document.querySelector(".note-pop.is-form .js-time-v").textContent.trim() !== "なし", null, { timeout: 3000 }).catch(() => {});
   sh = await sheet();
   c.check("車輪を回すと時刻が決まる（まん中が9時00分）", sh.time === "9:00" && !sh.off && sh.mid === "9時00分", JSON.stringify(sh));
   c.check("時刻だけ決めると札は「9:00 〜 10:00」", /^9:00 〜 10:00\s*1時間$/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
@@ -92,6 +93,14 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(600);
   const t2 = await rowText(".js-row-time");
   c.check("札は「9:00 〜 10:00　1時間」", /9:00 〜 10:00/.test(t2) && /1時間/.test(t2), t2);
+  /* 開いてすぐ（合わせが終わった次の拍）に回しても決まる（前は 300ms 黙っていて捨てた。毎日の全部で dur-row が落ちた元） */
+  await page.locator(".sheet.is-open .js-row-time").last().click();
+  await page.waitForTimeout(120);
+  await page.evaluate(() => { document.querySelector(".note-pop.is-form .js-time-wheels .note-wheel").scrollTop = 11 * 40; });
+  await page.waitForFunction(() => document.querySelector(".note-pop.is-form .js-time-v").textContent.trim() === "11:00", null, { timeout: 3000 }).catch(() => {});
+  c.check("開いてすぐ回しても時刻が決まる（11:00）", (await sheet()).time === "11:00", JSON.stringify(await sheet()));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
 
   await page.locator(".sheet.is-open .js-title").last().fill("時間の札の試し");
   await page.locator(".sheet.is-open .js-save").last().click();

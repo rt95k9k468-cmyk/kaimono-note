@@ -1366,7 +1366,7 @@
        回すか、行を押すと決まる。 */
     const { WHEEL_ROW } = KN.gesture;
     const wheelBox = body.pick(".js-time-wheels");
-    const wheels = { quiet: false };
+    const wheels = {};
     const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     function takeWheels() {
       const next = hhmm(wheels.h.value(), wheels.m.value());
@@ -1383,14 +1383,15 @@
         el, vals,
         index: () => Math.max(0, Math.min(vals.length - 1, Math.round(el.scrollTop / WHEEL_ROW))),
         value: () => vals[col.index()],
+        /* 合わせた位置（aim）に着いた scroll は自分のもの——決めない。前は 300ms の間を黙らせていて、
+           開いてすぐ回すと（混んだ CI でも）回した分まで捨てていた。 */
+        aim: null,
         go(v) {
           const i = Math.max(0, vals.indexOf(v));
           const to = i * WHEEL_ROW;
           if (Math.abs(el.scrollTop - to) > 1) {
-            wheels.quiet = true;
-            clearTimeout(wheels.qt);
-            wheels.qt = setTimeout(() => { wheels.quiet = false; }, 300);
             el.scrollTop = to;
+            col.aim = el.scrollTop;
           }
           col.mark(i);
         },
@@ -1401,7 +1402,10 @@
       vals.forEach((v) => el.append(node(html`<div class="note-wheel-row" role="option">${fmt(v)}</div>`)));
       el.addEventListener("scroll", () => {
         col.mark(col.index());
-        if (wheels.quiet) return;
+        if (col.aim != null) {
+          if (Math.abs(el.scrollTop - col.aim) <= 1) return;
+          col.aim = null;
+        }
         clearTimeout(t);
         t = setTimeout(takeWheels, 120);
       }, { passive: true });
