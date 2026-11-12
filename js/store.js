@@ -791,10 +791,10 @@
     out.settings.inboxPost = out.settings.inboxPost === true;
     out.settings.v2 = out.settings.v2 === true;
     out.settings.railFolded = out.settings.railFolded === true;   // 左の列を畳む（広い幅。docs/desk.md）
-    /* 品ごとに直した税の率（taxRate）。8 と 10 だけ持つ。taxRates は 11月12日の一版だけの名前（消さずに引き継ぐ）。 */
-    { const t = out.settings.taxPct || out.settings.taxRates, m = {};
-      if (t && typeof t === "object" && !Array.isArray(t)) Object.keys(t).forEach((k) => { if (t[k] === 8 || t[k] === 10) m[k] = t[k]; });
-      out.settings.taxPct = m; }
+    /* 品ごとに直した税の率（taxRate が 8 と 10 だけ読む）。知らない欄は落とさない（tests/unknown-keep.js）。
+       taxRates は 11月12日の一版だけの名前（消さずに引き継ぐ）。 */
+    { const t = out.settings.taxPct || out.settings.taxRates;
+      out.settings.taxPct = t && typeof t === "object" && !Array.isArray(t) ? t : {}; }
     /* 写しの端末の受け箱から取りこんだ依頼の id と時刻（js/desk-inbox.js。二度当てない）。持つ記録だけ。 */
     if (s.inboxSeen != null) {
       const seen = {};
