@@ -5,7 +5,9 @@
    - 丸ゴの無い端末はゴシックの顔（sans-serif 任せにしない）・游ゴシックは 400＝Medium／700＝Bold の面を束ねる
    - 右クリックは買うもの・やること・ノートの行で行の小窓／やることの紙と小窓（⋯）も閉じたら押したものへ／Tab は 帯→中身→＋→列
    - Windows（Win32）で近道の一覧は Ctrl／強制配色で形の無い押せるものが無い／時刻・値段・目方は等幅の数字
-   - 指の端末（電話）は今までどおり：閉じてもカーソルを置き直さない
+   - 指の端末（電話）：開いた紙そのものがカーソルを持つ（打つ欄へは入れない）・閉じても打つ欄へは置き直さない
+   - B3：丸を Space で済ませるとカーソルは同じ場所の次の行へ（マウスなら輪なし）・知らせは読み上げにだけ「済ませました」・
+     行から膨らむ紙にもカーソルが入り、Esc で行へ戻る
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-hand.js */
 const { open, checker } = require("./lib");
 
@@ -259,21 +261,81 @@ async function roundTrip(page, sel, same) {
     await browser.close();
   }
 
-  /* 指の端末（電話）は今までどおり：紙を閉じてもカーソルを置き直さない。 */
+  /* B3：押したものが組み直しで入れ替わっても、カーソルはその場に（ui.js の hold／rehold）。 */
+  {
+    const { browser, page, errors } = await open({ viewport: { width: 393, height: 852 } });
+    await page.evaluate(() => {
+      const S = KN.store, d = KN.util.todayKey();
+      ["あ", "い", "う", "え"].forEach((x, i) => S.addTodo({ title: `用事${x}`, due: d, time: `1${i}:00`, minutes: 30 }));
+      ["牛乳", "卵", "食パン"].forEach((name) => { const p = S.addProduct({ name }); S.addItem(p.id); });
+      KN.app.showScreen("todo");
+    });
+    await page.waitForTimeout(600);
+    const cur = () => page.evaluate(() => { const a = document.activeElement;
+      return { label: (a && a.getAttribute("aria-label")) || "", cls: a ? String(a.className).split(" ")[0] : "", ring: !!a && a.matches(":focus-visible") }; });
+    const landed = (sel) => page.waitForFunction((sel) => { const a = document.activeElement; return !!a && a.matches(sel); }, sel, { timeout: 3000 }).then(() => true, () => false);
+
+    await page.evaluate(() => document.querySelectorAll('#screen-todo .check[aria-checked="false"]')[1].focus());
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");   // 鍵盤で来た（輪が出る）
+    const before = await cur();
+    await page.keyboard.press("Space");
+    const moved = await landed('#screen-todo .check[aria-label^="用事う"]');
+    const c1 = await cur();
+    t.check("丸を Space で済ませると、カーソルは同じ場所へ来た次の行の丸に（輪つき）", before.label.startsWith("用事い") && moved && c1.ring, JSON.stringify({ before, c1 }));
+    const said = await page.evaluate(() => { const m = document.querySelector("#toast-root .toast-msg"); if (!m) return null;
+      const seen = m.querySelector('[aria-hidden="true"]'), say = m.querySelector(".sr-only");
+      return { seen: seen && seen.textContent.trim(), say: say && say.textContent.trim(), live: document.getElementById("toast-root").getAttribute("aria-live") }; });
+    t.check("済ませた知らせ：見える字は短いまま、読み上げには「済ませました」",
+      !!said && /^「用事い」/.test(said.seen || "") && !/済ませ/.test(said.seen) && /「用事い」を済ませました/.test(said.say || "") && said.live === "polite", JSON.stringify(said));
+
+    await page.click('#screen-todo .check[aria-checked="false"]');
+    await page.waitForFunction(() => document.querySelectorAll('#screen-todo .check[aria-checked="true"]').length === 2
+      && !!document.activeElement && document.activeElement.isConnected && document.activeElement !== document.body, null, { timeout: 3000 }).catch(() => {});
+    const c2 = await cur();
+    t.check("マウスで押した丸：カーソルは残るが輪は出ない", c2.cls === "check" && !c2.ring, JSON.stringify(c2));
+
+    await page.evaluate(() => document.querySelector("#screen-todo .tl-open").focus());
+    await page.keyboard.press("Enter");
+    const into = await page.waitForFunction(() => { const sh = document.querySelector(".sheet.is-open"); return !!sh && sh.contains(document.activeElement); }, null, { timeout: 3000 }).then(() => true, () => false);
+    await page.keyboard.press("Escape");
+    const home = await landed("#screen-todo .tl-open");
+    t.check("行から膨らむ紙：飛び終えてからカーソルが紙の中へ入り、Esc で行へ戻る", into && home, JSON.stringify({ into, home }));
+
+    await page.evaluate(() => KN.app.showScreen("list"));
+    await page.waitForTimeout(600);
+    const first = await page.evaluate(() => { const c = document.querySelector("#screen-list .check"); c.focus(); return c.getAttribute("aria-label"); });
+    await page.keyboard.press("Space");
+    const next = await page.waitForFunction((first) => { const a = document.activeElement;
+      return !!a && a.matches("#screen-list .check") && a.getAttribute("aria-label") !== first && a.getAttribute("aria-checked") !== "true"; }, first, { timeout: 4000 }).then(() => true, () => false);
+    t.check("買った行のあと、カーソルは隣の行の丸へ", next, JSON.stringify(await cur()));
+    t.check("B3 のカーソル：エラーなし", !errors.length, errors.join(" | "));
+    await browser.close();
+  }
+
+  /* 指の端末（電話）：開いた紙そのものがカーソルを持つ（読み上げの入口。打つ欄へは入れない＝キーボードを上げない）。
+     閉じても、打つ欄へは置き直さない（押したボタンへは戻す——読み上げ・つないだ鍵盤）。 */
   {
     const { browser, page, errors } = await open({ viewport: { width: 393, height: 852 }, touch: true });
     await seed(page);
+    const typing = () => page.evaluate(() => { const a = document.activeElement; return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); });
     await page.tap(".tab-list");
     await page.waitForTimeout(600);
+    await page.tap("#screen-list .item-wrap .item-body");
+    const onSheet = await page.waitForFunction(() => !!document.activeElement && document.activeElement.matches(".sheet.is-open"), null, { timeout: 3000 }).then(() => true, () => false);
+    t.check("電話：開いた紙そのものがカーソルを持つ（欄へは入れない）", onSheet && !(await typing()));
+    await page.tap(".sheet.is-open .js-close");
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(400);
     await page.tap("#dock .add-fab");
     await page.waitForSelector(".sheet.is-open", { timeout: 3000 }).catch(() => {});
     await page.waitForTimeout(500);
     const inSheet = await page.evaluate(() => !!document.activeElement.closest(".sheet"));
     await page.tap(".sheet.is-open .js-close");
     await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
-    await page.waitForTimeout(400);
-    const after = await page.evaluate(() => document.activeElement === document.body);
-    t.check("電話：閉じてもカーソルを＋へ置き直さない", inSheet && after, JSON.stringify({ inSheet, after }));
+    await page.waitForTimeout(700);
+    const after = !(await typing());
+    t.check("電話：閉じても打つ欄へは置き直さない", inSheet && after, JSON.stringify({ inSheet, after }));
     t.check("電話：エラーなし", !errors.length, errors.join(" | "));
     await browser.close();
   }

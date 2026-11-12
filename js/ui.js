@@ -814,35 +814,78 @@
   let pageHost = null;
 
   /* 閉じたら、開く前にカーソルが居たもの（押したもの）へ戻す（design-review 10節の P4。キーボードで巡る人が
-     頭からやり直さない）。マウスの端末だけ——電話は今までどおり。閉じて組み直すと押したものが入れ替わるので、
+     頭からやり直さない）。打つ欄へ戻すのはマウスの端末だけ（指の端末でキーボードを上げない）。閉じて組み直すと押したものが入れ替わるので、
      同じ印（data-…id）の入れ物の中で、同じ名前の口（無ければ同じ種類の口）を探し直す。 */
   function keepOpener() {
     const e = document.activeElement;
-    if (!e || e === document.body || !(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches)) return null;
+    if (!e || e === document.body || !(finePointer() || !typingField(e))) return null;
+    return snap(e);
+  }
+  const finePointer = () => !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  const typingField = (e) => !!e && (e.isContentEditable || /^(TEXTAREA|SELECT)$/.test(e.tagName)
+    || (e.tagName === "INPUT" && !/^(checkbox|radio|button|submit|reset|file|range|color)$/.test(e.type)));
+  function snap(e) {
     let key = null;
     for (let a = e; a && a !== document.body && !key; a = a.parentElement) {
       for (const at of a.attributes) if (/^data-[\w-]*id$/.test(at.name) && at.value) { key = { name: at.name, value: at.value, self: a === e }; break; }
     }
     return { el: e, key, tag: e.tagName, cls: e.classList[0] || "", label: e.getAttribute("aria-label") || "" };
   }
+  const shownEl = (x) => !!x && x.isConnected && x.getClientRects().length > 0 && !x.closest("[inert], [hidden]");
+  /** 覚えたもの（snap）を、組み直したあとの画面で探し直す。 */
+  function findAgain(o) {
+    if (shownEl(o.el)) return o.el;
+    if (!o.key || !window.CSS || !CSS.escape) return null;
+    const host = [...document.querySelectorAll(`[${o.key.name}="${CSS.escape(o.key.value)}"]`)].find(shownEl);
+    if (!host) return null;
+    if (o.key.self) return host;
+    const same = [...host.getElementsByTagName(o.tag)].filter((x) => shownEl(x) && (!o.cls || x.classList.contains(o.cls)));
+    return same.find((x) => (x.getAttribute("aria-label") || "") === o.label) || same[0] || null;
+  }
   function giveBack(o, from) {
     if (!o) return;
+    const free = () => { const now = document.activeElement; return !now || now === document.body || from.contains(now); };
     requestAnimationFrame(() => {
-      const now = document.activeElement;
-      if (now && now !== document.body && !from.contains(now)) return;   // ほかへ移った（次の紙・打つ欄）
-      const shown = (x) => !!x && x.isConnected && x.getClientRects().length > 0 && !x.closest("[inert], [hidden]");
-      let el = shown(o.el) ? o.el : null;
-      if (!el && o.key && window.CSS && CSS.escape) {
-        const host = [...document.querySelectorAll(`[${o.key.name}="${CSS.escape(o.key.value)}"]`)].find(shown);
-        if (host && o.key.self) el = host;
-        else if (host) {
-          const same = [...host.getElementsByTagName(o.tag)].filter((x) => shown(x) && (!o.cls || x.classList.contains(o.cls)));
-          el = same.find((x) => (x.getAttribute("aria-label") || "") === o.label) || same[0] || null;
-        }
-      }
-      if (el) el.focus({ preventScroll: true });
+      if (!free()) return;   // ほかへ移った（次の紙・打つ欄）
+      focusLanded(() => findAgain(o), free);
     });
   }
+  /* 飛んでいるあいだ（行きも帰りも、行と紙の頭は visibility: hidden）は、カーソルを受け取れない。着いてからもう一度。 */
+  function focusLanded(find, still) {
+    const go = () => { const el = find(); if (el) el.focus({ preventScroll: true }); return !el || document.activeElement === el; };
+    if (!go()) setTimeout(() => { if (still()) go(); }, KN.motion.ms("--m-settle") + 40);
+  }
+
+  /* 押したものが組み直しで入れ替わっても、カーソルはその場に（B3。Tab・↑↓・読み上げで巡る人が頭からやり直さない）。
+     押した拍にカーソルの居たもの（打つ欄は除く）と、同じ種類の口の中での順番を覚える。押した次のコマと、記録が
+     書かれた次のコマに、カーソルが宙に浮いていたら戻す。行が動いた・消えたら、その場所へ来た隣へ——済ませた用事は
+     いちばん下へ行くので、付いて行くと続きの行から離れる。紙ごと閉じたときは giveBack に任せる。 */
+  let held = null;
+  const HELD_IN = ".sheet, .note-pop, .set-layer, .screen, #head, #tabbar";
+  const peers = (h) => (h.scope && h.scope.isConnected ? [...h.scope.querySelectorAll(h.sel)].filter(shownEl) : []);
+  function hold(e) {
+    held = null;
+    if (!e || e === document.body || !e.closest || typingField(e) || !window.CSS || !CSS.escape) return;
+    const h = snap(e);
+    h.scope = e.closest(HELD_IN);
+    h.sel = e.tagName.toLowerCase() + (h.cls ? "." + CSS.escape(h.cls) : "");
+    h.at = peers(h).indexOf(e);
+    held = h;
+  }
+  function rehold() {
+    const h = held, now = document.activeElement;
+    if (!h || h.el.isConnected) return;                                // まだ居る
+    held = null;
+    if ((now && now !== document.body) || !h.scope || !h.scope.isConnected) return;   // ほかへ移った・紙ごと閉じた
+    const list = peers(h), same = findAgain(h);
+    const el = same && list.indexOf(same) === h.at ? same : (h.at >= 0 && list[Math.min(h.at, list.length - 1)]) || same;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    hold(el);
+  }
+  document.addEventListener("click", () => { hold(document.activeElement); if (held) requestAnimationFrame(rehold); }, true);
+  document.addEventListener("focusin", (e) => { if (held && e.target !== held.el) held = null; });
+  if (KN.store && KN.store.subscribe) KN.store.subscribe(() => { if (held) requestAnimationFrame(rehold); });
 
   /* 記録の紙の頭（recHero）は、押した所の絵から飛ぶ（RM）。絵が無い・＋からなら、その場で弾む（.is-pop）。 */
   function recMorph(hero) {
@@ -1247,7 +1290,9 @@
     setTimeout(() => {
       if (closed || el.contains(document.activeElement)) return;
       const target = el.querySelector("input, textarea, select, button:not(.js-close):not(.js-menu)");
-      if (target && !("ontouchstart" in window)) target.focus();
+      if (target && !("ontouchstart" in window)) focusLanded(() => target, () => !closed && !el.contains(document.activeElement));
+      /* 指の端末は欄へ入れない（キーボードを上げない）。紙そのものへ——読み上げが後ろの画面に残らない（B3）。 */
+      else if (!typingField(document.activeElement)) { el.tabIndex = -1; el.focus({ preventScroll: true }); }
     }, 320);
 
     return handle;
@@ -2092,7 +2137,7 @@
      （週に一度の控え。docs/storage.md）。 */
   const TOAST_LONG_MS = 8000, TOAST_UNTIL_MS = 60000;
 
-  function toast(message, { action, actions, long, until, stay } = {}) {
+  function toast(message, { action, actions, long, until, stay, say } = {}) {
     const root = toastRoot();
     /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
     const acts = actions || (action ? [action] : []);
@@ -2103,7 +2148,7 @@
 
     const el = node(html`
       <div class="toast">
-        <span class="toast-msg">${message}</span>
+        <span class="toast-msg">${say ? html`<span aria-hidden="true">${message}</span><span class="sr-only">${say}</span>` : message}</span>
         ${acts.map((a) => html`<button class="toast-action">${a.label}</button>`)}
       </div>
     `);

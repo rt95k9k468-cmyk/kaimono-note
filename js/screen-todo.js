@@ -2552,7 +2552,9 @@
     const acts = [];
     if (at) acts.push({ label: "時刻", onClick: (b) => editDoneAt(res.doneId, b) });
     acts.push({ label: "元に戻す", onClick: res.undo });
-    KN.ui.toast(msg, { actions: acts });
+    /* 見える字は短いまま、読み上げには何をしたかを言う（B3）。 */
+    const say = `「${t.title}」を済ませました${res.repeated ? `。次は ${formatDay(res.due)}` : at ? ` ${at}` : ""}`;
+    KN.ui.toast(msg, { actions: acts, say });
   }
 
   /** 済ませた時刻を、押したところに出る車輪で直す（`KN.ui.popTime`——止めると行へ寄り、下に OK）。
