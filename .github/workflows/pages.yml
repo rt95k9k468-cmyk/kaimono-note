@@ -82,7 +82,7 @@ jobs:
 
       # 見本（偽の記録の試作）は手元で開くだけ。サイトには載せない（docs/dev.md「配信の守り」）。
       - name: Leave the prototypes out of the site
-        run: rm -f tools/notes-proto*.html tools/todo-proto.html tools/redesign-proto.html
+        run: rm -f tools/notes-proto*.html tools/todo-proto.html
 
       # Since v4 dotfiles (.nojekyll, .claude/) stay out; an Actions deploy runs no Jekyll.
       - name: Upload artifact

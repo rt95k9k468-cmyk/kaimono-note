@@ -57,7 +57,7 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
 1枚25KBまで）にし、平均の色を出す。`photo` を付けると写真（`tools/season-photo-src/` → `img/season-photo/`）、`sky` で帯の空（`tools/sky-src/` → `img/sky/`）。
 写真と空の大きさ・上限は道具の頭の定数（2026年10月8日に画質を上げた）。Playwright の Chromium の canvas で処理する。手順と対応表は `docs/season-art.md`。
 
-見本（`notes-proto*.html`・`todo-proto.html`・`redesign-proto.html`）は**サイトに配らない**（2026年10月23日。`pages.yml` が消してから上げる）。
+見本（`notes-proto*.html`・`todo-proto.html`）は**サイトに配らない**（2026年10月23日。`pages.yml` が消してから上げる）。
 開くのは手元で：`python3 -m http.server` → `localhost:8000/tools/…`。下の `.../tools/…` はその道。
 
 ## notes-proto.html — ノートの見本（Notion・Evernote から移るかを決めるため）
@@ -88,19 +88,13 @@ Safari 本体にこのページを開かせます。開いたとたんに「カ�
   保存の道具は一つも呼ばない。偽の記録は開いた日から作り、閉じると消える。
 - 決まったら消す。
 
-## redesign-proto.html — 全面リデザインの見本（docs/redesign.md）
-
-五つの席・設定・やることの紙を、偽の記録で新しい形に組んだ一枚（電話・iPad 縦・広い幅）。色・字・形の札は、この頁の `:root` が正。
-`.../tools/redesign-proto.html#tasks`（`#daily`・`#notes`・`#shopping`・`#health`・`#settings`）、`?sheet=task`・`?theme=dark`・
-`?display=gothic`・`?accent=ai`。撮るのは `shots.js --page`。リデザインが済んだら消す。
-
 ## shots.js — 見比べの画像を撮る（docs/log/design-review.md の柱G）
 
 393×852・2倍で、試しの記録・明暗・時刻・特大・紙を開く・差し替えの style を組み合わせて撮り、差し替えを横に並べて
 番号を書いた `compare.png` を作る。使い方は頭のコメント（`--screens`・`--theme`・`--size`・`--clock`・`--sheet`・
 `--scroll`・`--attire`・`--css 'B=…'`）。試しの記録は無難な字だけ。
 差し替えなしの列は「今」（手帳）。装い「モダン」は `--attire modern` で列に足す。
-見本の頁をそのまま撮るのは `--page 'tools/redesign-proto.html#tasks,…'`（`--view`・`--dpr` は効く）。
+見本の頁をそのまま撮るのは `--page 'tools/notes-proto.html,…'`（`--view`・`--dpr` は効く）。
 **撮る前に**：この機械の日本語の字は IPA ゴシックだけで、明朝の見出しがゴシックに落ちる（apt には無い）。Noto を `~/.fonts` へ入れてから撮る——
 `curl -sSLo ~/.fonts/NotoSerifJP.ttf 'https://raw.githubusercontent.com/google/fonts/main/ofl/notoserifjp/NotoSerifJP%5Bwght%5D.ttf'`、
 ゴシックは `notosansjp/NotoSansJP%5Bwght%5D.ttf`、そのあと `fc-cache -f`（OFL。リポジトリには置かない）。

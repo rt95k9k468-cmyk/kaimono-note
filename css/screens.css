@@ -7182,7 +7182,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 }
 
 /* =========================================================
-   R3 tasks の形（docs/redesign.md 6節・2026年11月11日。見本 tools/redesign-proto.html の #tasks）
+   R3 tasks の形（docs/redesign.md 6節・2026年11月11日）
 
    今日：今日｜週｜月と仕事だけ → 一日の帯（畳んだ道・押すとひらく）→ 時間割（左に時刻、右に 60px のカード）→
    時刻なし（前の日から・今週・これからを一枚に）→ 済ませたもの。中身 768px からは左右二列（上の desk の器と下の窓の幅）。
@@ -7343,7 +7343,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 }
 
 /* =========================================================
-   R5 shopping の形（docs/redesign.md 6節・2026年11月11日。見本 tools/redesign-proto.html の #shopping）
+   R5 shopping の形（docs/redesign.md 6節・2026年11月11日）
 
    リスト｜価格と品数 → カテゴリごとのカード（行 60px：絵の台 46px・品名 16px 太と「店・いつ」・値段 17px 太の墨・
    比べたときだけ最安の王冠・丸 30px）→ 今日買ったもの（一枚の行）。価格も同じカードと行、二つ以上の店は棒で比べ最安を山吹に。
@@ -7436,7 +7436,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .item-where { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* =========================================================
-   R4 health の形（docs/redesign.md 6節・2026年11月11日。見本 tools/redesign-proto.html の #health）
+   R4 health の形（docs/redesign.md 6節・2026年11月11日）
 
    四つの札（値 20px 太＋7日の小さな棒）→ 体重と食事を横に二つ → 今日の食事 → 飲みたくなった → 体重の推移 → 気づいたこと。
    日の一枚（.diet-day）を一つの格子にし、幅ごとに置き場だけを替える：電話は一列、中身 768px から二段（1.25 : 1。左に体重・

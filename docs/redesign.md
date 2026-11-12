@@ -2,8 +2,8 @@
 
 利用者の依頼（11月10日）：デザイン・UI・UX・操作の気持ちよさ・描画のなめらかさを全面的に引き上げ、「毎日使いたくなる一冊」にする。
 **「形はそのまま」「装いだけ」「3月まで足さない／足すなら外す」は、この依頼が上書きする**（新しい機能は基本足さず、今ある働きの体験を上げる）。
-作る段のセッションは、まずここを読む。ここに置くのは決めごとと段だけ（経過は commit）。**働き（機能）を足す計画は `docs/redesign-features.md`**（通しの順はその 6節）。見本は `tools/redesign-proto.html`（配らない。撮り方は 9節）。
-ぜんぶ済んだら見本ごと消し、決めごとは look・motion・tabbar・shared-header・desk ほかへ移す。
+作る段のセッションは、まずここを読む。ここに置くのは決めごとと段だけ（経過は commit）。**働き（機能）を足す計画は `docs/redesign-features.md`**（通しの順はその 6節）。見本 `tools/redesign-proto.html` は R8 で消した（11月12日）。札の値は `css/base.css` の `:root` が正、席の形は 6節。
+決めごとは look・motion・tabbar・shared-header・desk ほかへ移した（細目はそれぞれの docs）。
 
 ## 1. 守るもの（上書きされない）
 
@@ -47,7 +47,7 @@
 
 ## 4. 方向「一冊の手帳」
 
-生成りの紙・墨の字・朱の一色。絵は額に入れて見せ、面は塗る（ぼかさない）。札の値は見本の `:root` が正。
+生成りの紙・墨の字・朱の一色。絵は額に入れて見せ、面は塗る（ぼかさない）。札の値は `css/base.css` の `:root` が正（見本から写した）。
 
 | 札 | 明るい面 | 暗い面（墨） | 地の上の比 |
 |---|---|---|---|
@@ -73,7 +73,7 @@
   gradient で。画像は足さない）＋題箋。画像のあるノートは一枚目が表紙。
 - **押すものと絵**：線の絵は今の一族（Phosphor）一つ・22px、いまの席だけ塗りの絵。ボタンは三つ（主＝朱の塗り 52px／副＝沈んだ面／字だけ）、
   丸いボタン 40px、札 36px と 30px、選ぶ帯 36px。
-- **装いは二つ**（11月10日、利用者「和風が好きなわけではない。現代的な洗練にも切り替えたい」）：**手帳**（上の表）と**モダン**（見本 `?look=modern`）。
+- **装いは二つ**（11月10日、利用者「和風が好きなわけではない。現代的な洗練にも切り替えたい」）：**手帳**（上の表）と**モダン**。
   形・働き・動きは同じで、替わるのは札の組だけ——色・見出しの書体・角・影・絵の出どころ・表紙。モダンは 地 `#f3f2ee`・札 `#ffffff`・墨 `#16171a`・
   主色は墨 `#1c1d21`（白字）・いまの線と日曜は赤 `#c93636`（`--c-now`・`--c-sun` を足す。手帳では朱）・予定は青 `#2b59d9`・やることは緑 `#17734c`、
   見出しはゴシック、候の絵は写真、ノートの表紙は色の面に白い題（和柄と題箋は出さない）。暗い面も一組ずつ。**規則は札を読むだけに書く**
@@ -155,7 +155,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 
 | 段 | 何 | 主に触る所 | 直す試験（主なもの） | 重さ |
 |---|---|---|---|---|
-| R0 | 計画と見本（11月10日 済み） | この文書・`tools/redesign-proto.html` | — | — |
+| R0 | 計画と見本（11月10日 済み。見本は R8 で消した） | この文書 | — | — |
 | R1 | **済み（11月10日）**。土台：色・字・形・面の札と共通の部品（カード・ボタン・札・選ぶ帯・行・丸・欄・一言）。ガラスを外す・**装いを二つに（手帳・モダン）**・明暗 | base.css `:root`・components.css・attire.css（外す）・`applyAttire`・settings-look.js・store.js（`headFont`）・theme-color | look-tokens・shape-tokens・legibility・attire・typeface・sky・text-size・css-unused | 大 |
 | R2 | **済み（11月11日）**。骨組み：頭（日付は写真・暦は紙）・下の帯と＋・左の列・紙と小窓の形と開閉 | base.css の head／tabbar／fab・head.js・tab-lens.js・ui.js・screens.css の desk | head-still・shared-day・sky・cal-*・day-swipe・one-screen・fab-home・pill-morph・task-card・desk*・widths・gutters・sideways・smooth | 大 |
 | R3 | **済み（11月11日）**。tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
@@ -166,7 +166,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | RS | **済み（11月12日）**：1回目 tasks・shopping、2回目 health・daily・notes の紙。**紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
 | RM | **済み（11月12日）**。**動きの総仕上げ**（7節の表で総ざらい。細目は motion の「動きの総仕上げ」。暦の背は 11節） | motion.js・ui.js・base.css の `--m-*`・各席 | motion-dict・keyframes-one・smooth・still-js・feel-* | 大 |
 | RI | **済み（11月12日）**。**絵・写真・挿絵の検討**（下） | season-art.js・sky.js・empty-art.js・絵の一族・表紙 | season-art・sky・attire | 中 |
-| R8 | 設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
+| R8 | **済み（11月12日）**。設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
 
 - R1 で決めたこと（細目は docs/look.md「装いは二つ・基調色は九つ」）：基調色は id のまま 朱・藍・松葉・江戸紫・山吹・浅葱・柿・臙脂＋季節。
   モダンは基調色と見出しの書体を出さない。theme-color は起動前の二本のまま。札 36／30px・行 56px・丸 30px。**R1 で外して先の段へ送ったもの**：
@@ -239,11 +239,16 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   （幕を字の後ろだけにすると昼の雪で日付が沈む・空寄りは無地に近い）④画像のあるノートは一枚目が表紙、冊の柄は名前から（選ばない）
   ⑤印は装いに（手帳＝生成りに基調色の日・モダン＝墨に白）。**絵と写真の幕の色は絵の一部**：空の幕・描いた空・候の一度きりの粒は
   明暗・装いで替えない直書きのまま（札に寄せない。R1・R2 から送られた分はこれで閉じる）。
+- **R8 で決めたこと**（11月12日、利用者が見比べで全部おすすめどおり）：設定の題は明朝・入口の絵は 40px の角丸の台・1280px から根っこも
+  二段（settings「R8」）。さがすの紙は場所ごとのカードに席の印（screens-nav）。空の画面の絵は札の色の額（look「空の画面」）。
+  的：品名のボタンは行の背いっぱい、36〜38px の押すものは「中心から 44px」の当たりへ（components.css の頭）。暗い面・特大・
+  コントラストを上げるは `legibility` が全画面と主な紙で緑。動きの測り直し（CPU 4倍・20ms 超）：紙を開く 3／53（前 18／40）・
+  帯を押す 4／57・暦を伸ばす 2／50（並べ直し 26 は 11節）。見本は消した。いま（`20f078b`）／あと は撮り直せる：
+  `git worktree add <dir> 20f078b` に今の `tools/shots.js` を写し、`tests/lib.js` の港を替えて同じ引数で撮る。
 
 ## 9. 撮り方・完了の条件
 
-- 見本：`node tools/shots.js --page 'tools/redesign-proto.html#tasks' --view 393x852 --out <dir>`（`#daily`・`#notes`・`#tasks`・`#shopping`・
-  `#health`・`#settings`。頁の名前の前に `?look=modern`・`?face=month`・`?peek=month`・`?sheet=task`・`?theme=dark`・`?display=gothic`・`?accent=ai`）。820x1180・1440x900 でも同じ頁。
+- 見本は R8 で消した（見たいときは `git show 770392d:tools/redesign-proto.html`）。
 - いま：`node tools/shots.js --screens archive,notes,todo,list,diet,settings --clock 10:30`。変更前の基準は main の `20f078b`（`git worktree add` して同じ台本で）。
 - 明朝を撮るには字が要る（tools/README「撮る前に」）。
 - **完了**：五つの席・設定・主な紙と小窓を 393×852・820×1180・1440×900・暗い面で いま／あと を並べて残す。全部の試験が緑。
@@ -271,3 +276,9 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   （`tests/frame-pace.js` の「暦を伸ばす」）。直し方の案：押した一段は指で引くのと分け、先に行き着く段を書いて盆の背を取り、`.cal-slide` を
   今週の段のずれ（`-week * rowH`）から 0 へ、下の画面を `slidePanes(-d)` で滑らせる（席を移るときの `resizeCal` と同じ形）。指で引く途中は
   height のまま。cal-* と head-still・shared-day・day-swipe が絡むので、RM の一区切りに収めず残した。
+- **R8 で残した的**（11月12日）：道の札（`.road-label`。30px・`overflow: hidden` で当たりを広げられない）と、欄の背 40px（日付・時刻の
+  `when-btn`・品物の名前）。道は畳んだのが既定。欄を 44px にすると紙の並びが全部ずれるので、紙の形と一緒に決める。
+- **R8 の測り直しで残ったコマ**：帯を押す（CPU 4倍で 20ms 超 4／57・95% 点 33ms）と紙を開く（3／53）。目標は 0。どの手つきの
+  どの拍かは `tests/frame-pace.js` を `--trace on` で一手ずつ見る要がある（R8 では数だけ測った）。
+- **B3 読み上げの総ざらい**（redesign-features.md。R8 と一緒の予定だった）：VoiceOver の名札・順・知らせは実機でしか聞けない。
+  ブラウザで見られる名札（aria-label の抜け）は門の試験が見ているが、読み上げの順と「済ませた」の知らせは iPhone で。

@@ -32,7 +32,7 @@
 :root {
   color-scheme: light;
 
-  /* --- 札は「一冊の手帳」（docs/redesign.md 4節。見本 tools/redesign-proto.html の :root が正）---
+  /* --- 札は「一冊の手帳」（docs/redesign.md 4節。ここが正）---
      生成りの紙・墨の字・朱の一色。面は塗る（ぼかさない）。装い「モダン」は下で同じ名前を差し替えるだけ。 */
   --c-bg:          #f4efe5;   /* 地：生成り */
   --c-rail:        #eee7d9;   /* 左の列（広い画面） */
