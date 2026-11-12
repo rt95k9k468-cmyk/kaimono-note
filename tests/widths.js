@@ -91,14 +91,15 @@ const frameFn = () => {
     return { l, r: rr, t: Math.round(r.top + n(cs.top)), b: Math.round(r.bottom - n(cs.bottom)), w: rr - l };
   })();
   const fab = R(document.querySelector(".has-fab .dock .quick-add > button, .has-fab .dock button"));
-  /* 読む幅：daily の日の一枚の中身の幅（padding を除いた箱）。 */
+  /* 読む幅：daily の日の一枚の中身の幅（padding を除いた箱）。一枚が 768px からは二段（R6）で、幅は 1180px まで・端から 16px。 */
   const slide = document.querySelector("#screen-archive .day-slide");
-  let read = null;
+  let read = null, slideW = null;
   if (slide && slide.getClientRects().length) {
     const cs = getComputedStyle(slide);
-    read = Math.round(slide.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+    slideW = Math.round(slide.getBoundingClientRect().width);
+    read = Math.round(slideW - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
   }
-  return { vw, vh, app, bodyBg, appBg, cap, bar, fab, read };
+  return { vw, vh, app, bodyBg, appBg, cap, bar, fab, read, slideW };
 };
 
 /** 中で送る器が、棒のぶん狭くなって横に送れるようになっていない。 */
@@ -165,9 +166,10 @@ async function seed(page) {
       t.check(`${at}：アプリの地は窓いっぱい（灰の帯が無い）`,
         !!fr && fr.app.l === 0 && fr.app.r === fr.vw && fr.bodyBg === fr.appBg, JSON.stringify(fr && { app: fr.app, body: fr.bodyBg, bg: fr.appBg }));
       if (w >= 640) {
-        const want = w >= 840 ? 760 : 680;
-        t.check(`${at}：中身は読む幅 ${want}px に寄る`, !!fr && fr.read != null && fr.read <= want + 1 && fr.read >= Math.min(want, fr.vw - (w >= 840 ? 300 : 0)) - 1,
-          JSON.stringify(fr && fr.read));
+        const two = !!fr && fr.slideW >= 768;
+        const want = two ? Math.min(1180, fr.slideW - 32) : w >= 840 ? 760 : 680;
+        t.check(`${at}：中身は読む幅 ${want}px に寄る${two ? "（daily の二段）" : ""}`, !!fr && fr.read != null && fr.read <= want + 1 && fr.read >= Math.min(want, fr.vw - (w >= 840 ? 300 : 0)) - 1,
+          JSON.stringify(fr && { read: fr.read, slide: fr.slideW }));
       }
       if (w < 840) {
         const c = fr && fr.cap, p = fr && fr.fab;
