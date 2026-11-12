@@ -649,3 +649,7 @@ Enough?」CHI 2013／Apple WWDC 2018「Designing Fluid Interfaces」／WebKit Bu
 - **本棚の一冊（頭の無い冊）→ 冊の面**：表紙の写し（`.nt-fly`）が冊の行の絵（`.nb-ico`）へ縮んで飛び、絵が受け止める。面は寄せず（`go(p, fly)`）、
   冊の行が上から順に（`.nt-grp.m-in`）。頭のある冊はノートの紙が表紙から膨らむ（前のまま）。
 - **額の絵を押す**：候の絵（`.arc-season-art` は button に）と日の一枚は、額から黒地の一枚へ膨らみ、閉じると額へ縮む（`KN.dayPhoto.show` の `grow`）。
+- **広い幅で月の面へ**（`openMonth`・`setFace` の `weekBox`／`weekHop`）：盆は暦の出入りの一拍で滑り（`KN.head.moveCal(true)`）、
+  暦は今週の段を前の段の箱へ重ねた所（translate＋scale・原点は左上）から紙の左のカードへ収まる。
+- **暦を題で伸ばす（cal-peek の glide）は height のまま**：CPU 4倍で週→月 50コマ中 20ms 超 5・並べ直し 27（`frame-pace` の「暦を伸ばす」）。
+  直し方は docs/redesign.md 11節。

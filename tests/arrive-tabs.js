@@ -197,6 +197,24 @@ const away = async (page, tab) => {
     await browser.close();
   }
 
+  /* ---- RM：広い幅で月の面へ——今週の段が帯から紙の左のカードへ伸び縮みして移る ---- */
+  {
+    const { browser, page, errors } = await open({ viewport: { width: 1440, height: 900 }, before: async (cx, p) => { await p.clock.setFixedTime(AT); } });
+    await page.evaluate(() => { KN.store.addTodo({ title: "夕方の用事", due: KN.util.todayKey(), time: "16:00", minutes: 60 }); KN.app.showScreen("todo"); });
+    await page.waitForTimeout(900);
+    await page.locator('[data-face="month"]').first().click({ noWaitAfter: true });
+    const hop = await page.evaluate(() => {
+      const cal = document.querySelector("#screen-todo .mo-cal .cal");
+      const a = cal && cal.getAnimations().find((x) => !x.animationName);
+      const k = a && a.effect.getKeyframes()[0];
+      return { inCard: !!cal, from: k ? k.transform : null, head: document.querySelector("#head .head-cal.is-cal-out") !== null };
+    });
+    t.check("月の面：暦は紙のカードへ、帯の前の段の箱から伸び縮みして移る", hop.inCard && /scale/.test(hop.from || ""), JSON.stringify(hop));
+    t.check("月の面：帯の暦は出入りの一拍でしまわれる", hop.head);
+    t.check("月の面：エラーなし", errors.length === 0, errors.join(" | "));
+    await browser.close();
+  }
+
   /* ---- 動きを減らす設定 ---- */
   {
     const { browser, page, errors } = await open({

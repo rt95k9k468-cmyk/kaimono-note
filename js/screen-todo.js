@@ -2973,10 +2973,32 @@
 
   /** 面を替えて、その日（週の面ならその日の週）を出す。暦は指で引いたときと同じ滑りで（cal-peek の glide。
       書いて組み直すのが先で、暦だけが元の姿から滑る——前は一拍で跳んでいた）。 */
+  /* 広い幅で月の面へ出入り（RM）：盆は暦の出入りの一拍で滑り（KN.head.moveCal）、今週の段は帯と紙の左のカードのあいだを
+     伸び縮みしながら移る（暦ごと、段を前の段の箱へ重ねた所から。transform と opacity だけ）。 */
+  function weekBox() {
+    const cell = els.cal && els.cal.isConnected && els.cal.querySelector(`.cal-day[data-day="${shownDay()}"]`);
+    const grid = cell && cell.closest(".cal-grid");
+    if (!cell || KN.motion.still()) return null;
+    const c = cell.getBoundingClientRect(), g = grid.getBoundingClientRect();
+    return { left: g.left, width: g.width, top: c.top, height: c.height };
+  }
+  function weekHop(a) {
+    KN.head.moveCal(true);
+    const b = weekBox(), cal = els.cal;
+    if (!b || !(b.width > 0)) return;
+    const r = cal.getBoundingClientRect(), s = a.width / b.width;
+    const dx = a.left - (r.left + (b.left - r.left) * s), dy = a.top - (r.top + (b.top - r.top) * s);
+    cal.style.transformOrigin = "0 0";
+    cal.animate([{ transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s.toFixed(4)})`, opacity: .3 }, { transform: "none", opacity: 1 }],
+      { duration: KN.motion.ms("--m-nav"), easing: KN.motion.ease("--push-e") }).onfinish = () => { cal.style.transformOrigin = ""; };
+  }
+
   function setFace(to, day) {
     haptic();
     /* 広い幅で月の面へ出入りするときは、暦が帯と紙のあいだを移るので滑らせない（暦の出入りの一拍が受け持つ）。 */
-    const glide = face === "month" && DESK.matches ? (o, w) => w() : KN.calPeek.glide;
+    const desk = DESK.matches && (face === "month") !== (to === "month");
+    const glide = desk ? (o, w) => w() : KN.calPeek.glide;
+    const hop = desk ? weekBox() : null;
     glide(peekOpts, () => {
       // 月の面を出たら暦は週へ畳む。月の面の暦は札に書かないので、書くのは札が月を開いていたときだけ（組み直しは subscribe が）。
       const fold = face === "month" && to !== "month" && store.calPrefs("todo").open;
@@ -2987,6 +3009,7 @@
       if (!fold) render();
       keepAim++;
       if (root) KN.app.scrollerOf(root).scrollTop = 0;
+      if (hop) weekHop(hop);
     });
     if (to === "today" && shownDay() === todayKey()) requestAnimationFrame(toNow);
   }
@@ -3010,6 +3033,7 @@
   function openMonth() {
     haptic();
     const glide = DESK.matches ? (o, w) => w() : KN.calPeek.glide;
+    const hop = DESK.matches ? weekBox() : null;
     glide(peekOpts, () => {
       face = "month";
       hereDay = shownDay();
@@ -3017,6 +3041,7 @@
       render();
       if (root) KN.app.scrollerOf(root).scrollTop = 0;
       if (!DESK.matches) hidePastDays();
+      if (hop) weekHop(hop);
     });
   }
 

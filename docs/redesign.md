@@ -164,7 +164,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R6 | **済み（11月12日）**。daily（書く紙は RS） | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
 | R7 | **済み（11月12日）**。notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
 | RS | **済み（11月12日）**：1回目 tasks・shopping、2回目 health・daily・notes の紙。**紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
-| RM | **動きの総仕上げ**（7節の表で総ざらい） | motion.js・ui.js・base.css の `--m-*`・各席 | motion-dict・keyframes-one・smooth・still-js・feel-* | 大 |
+| RM | **済み（11月12日）**。**動きの総仕上げ**（7節の表で総ざらい。細目は motion の「動きの総仕上げ」。暦の背は 11節） | motion.js・ui.js・base.css の `--m-*`・各席 | motion-dict・keyframes-one・smooth・still-js・feel-* | 大 |
 | RI | **絵・写真・挿絵の検討**（下。最後に） | season-art.js・sky.js・empty-art.js・絵の一族・表紙 | season-art・sky・attire | 中 |
 | R8 | 設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
 
@@ -262,3 +262,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 - 広い幅（1440×900・1180×820）と iPad 縦（820×1180）の品物の紙で値段の欄を押すと、鍵盤が紙の下半分にかぶさり、欄と読み（税込・前回との差）が
   隠れる（紙が鍵盤の上に乗るのは電話の `--pad` だけ）。RS 1回目で値段を紙の頭へ上げたので店が二つまでは見えるが、三つ以上で隠れる
   （店六つで欄の下 781px・鍵盤の上 591px）。紙の置き方（dialog）と鍵盤の幅を一緒に決める要がある。
+- **暦を題で一段ずつ伸ばす／畳む（cal-peek の `glide`）が height のまま**（RM、11月12日）。CPU 4倍で週→月 50コマ中 20ms 超 5・並べ直し 27
+  （`tests/frame-pace.js` の「暦を伸ばす」）。直し方の案：押した一段は指で引くのと分け、先に行き着く段を書いて盆の背を取り、`.cal-slide` を
+  今週の段のずれ（`-week * rowH`）から 0 へ、下の画面を `slidePanes(-d)` で滑らせる（席を移るときの `resizeCal` と同じ形）。指で引く途中は
+  height のまま。cal-* と head-still・shared-day・day-swipe が絡むので、RM の一区切りに収めず残した。

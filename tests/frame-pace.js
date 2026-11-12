@@ -2,7 +2,7 @@
    requestAnimationFrame の間隔を集め、長いフレーム（20ms 超）の数と 95% 点を出す。
    - 帯を押す（daily → 買うもの）・道を開く（帯で やること へ。一日の道が組まれる）・
      暦をしまう／出す（やること ⇄ ノート。暦の出入りが横の流れと同じ一拍。head.js の moveCal）・
-     日の横払い（やることの紙）・一覧の送り（買うものの紙を縦に）・紙を開く（用事の行を押す）
+     日の横払い（やることの紙）・暦を伸ばす／畳む（題を押す一段。cal-peek）・一覧の送り（買うものの紙を縦に）・紙を開く（用事の行を押す）
    - 指は本物のタッチ（CDP の Input.dispatchTouchEvent）
    **門にも run-all にも入れない**（機械の揺れで止めないため。数字は目安）。動きを足す
    項目の前後で手で回し、数字をその項目の節に書く。落とすのはエラーが出たときだけ。
@@ -125,6 +125,9 @@ async function once() {
     await trace(p.x - 120, p.y, line(260, 0));
     await page.waitForTimeout(900);
   }
+  /* 暦を伸ばす（題を押して週 → 月。cal-peek の glide が暦の背を毎フレーム書く。RM で測った） */
+  out[name = "暦を伸ばす"] = await measure(() => tap("#head .js-day-title"), 900);
+  out[name = "暦を畳む"] = await measure(() => tap("#head .js-day-title"), 900);
   await page.evaluate(() => KN.app.showScreen("list"));
   await page.waitForTimeout(800);
   {
