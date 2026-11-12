@@ -163,6 +163,36 @@ const { open, checker } = require("./lib");
     await page.emulateMedia({ reducedMotion: "no-preference" });
   }
 
+  /* ---- RM：膨らむ途中で押したボタンは、そのボタンが押される（指の下から逃げない）／影武者は transform だけ ---- */
+  {
+    await rowOf("試験の用事").locator(".tl-open").click({ noWaitAfter: true });
+    await page.waitForTimeout(40);
+    const mid = await page.evaluate(() => {
+      document.getAnimations().forEach((a) => { const e = a.effect.getComputedTiming().endTime; if (isFinite(e) && e > 0) { a.pause(); a.currentTime = e * 0.3; } });
+      const x = document.querySelector(".sheet.is-open .sheet-x, .sheet.is-open [aria-label='閉じる']");
+      const g = document.querySelector(".sheet-morph.hero-node");
+      const r = x && x.getBoundingClientRect();
+      return { x: r && r.left + r.width / 2, y: r && r.top + r.height / 2,
+        ghost: g ? document.getAnimations().filter((a) => a.effect.target === g).flatMap((a) => a.effect.getKeyframes().flatMap(Object.keys)) : null };
+    });
+    t.check("影武者は left・top・width・height を動かさない", mid.ghost && !mid.ghost.some((k) => /^(left|top|width|height|boxShadow)$/.test(k)), String(mid.ghost));
+    await page.evaluate(() => document.getAnimations().forEach((a) => a.play()));
+    await page.mouse.click(mid.x, mid.y);
+    await page.waitForTimeout(900);
+    t.check("膨らむ途中で押した × で閉じる", await page.evaluate(() => !document.querySelector(".sheet.is-open")));
+  }
+
+  /* ---- RM：記録の紙の頭は、押したカードの絵から飛ぶ ---- */
+  {
+    await page.evaluate(() => { KN.store.addWeight({ day: KN.util.todayKey(), kg: 64 }); KN.app.showScreen("diet"); });
+    await page.waitForTimeout(900);
+    await page.click("#screen-diet .diet-hero-value", { noWaitAfter: true });
+    await page.waitForTimeout(60);
+    t.check("記録の頭：体重のカードの絵から飛ぶ", await page.evaluate(() => !!document.querySelector(".sheet-morph.hero-node") && !document.querySelector(".rec-hero.is-pop")));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(700);
+  }
+
   t.check("エラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
   t.done();

@@ -42,7 +42,7 @@
   document.addEventListener("pointerdown", (e) => {
     const b = e.target && e.target.closest
       && e.target.closest("button, [role='button'], a[href], [data-grow]");
-    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now(),
+    pressed = b ? { x: e.clientX, y: e.clientY, t: Date.now(), el: b,
       fab: !!b.closest(".add-fab, .fab-menu-b") } : null;
   }, true);
 
@@ -237,32 +237,51 @@
     ghost.append(under);
     const sizeOf = (x, d) => (x && parseFloat(getComputedStyle(x).width)) || d;
     const k = sizeOf(row.firstElementChild, 32) / sizeOf(hero.firstElementChild, 38);
-    const rowLook = { borderRadius: getComputedStyle(row).borderRadius,
-      boxShadow: "0 0 0 0 transparent" };
-    const heroLook = { borderRadius: cs.borderRadius, boxShadow: cs.boxShadow };
-    return { ghost, under, k, rowLook, heroLook };
+    /* 角の丸み（px。% は短い辺から）。 */
+    const rad = (el, r) => { const v = getComputedStyle(el).borderTopLeftRadius;
+      return /%/.test(v) ? parseFloat(v) / 100 * Math.min(r.width, r.height) : parseFloat(v) || 0; };
+    return { ghost, under, k, rad: (r) => rad(row, r), radH: (r) => rad(hero, r) };
   }
 
-  const pillBox = (r) => ({
-    left: `${r.left}px`, top: `${r.top}px`,
-    width: `${r.width}px`, height: `${r.height}px`,
-  });
-
-  /* 影武者の中身を動かします。t0 → t1 は「行らしさ」（1 ＝ 行、0 ＝ 頭）。
-     絵は行では 32px、頭では 38px。箱と一緒に伸び縮みさせます。 */
-  function pillInner(g, t0, t1, timing) {
-    const sc = (t) => (t ? `scale(${g.k.toFixed(3)})` : "none");
-    const usc = (t) => (t ? "none" : `scale(${(1 / g.k).toFixed(3)})`);
+  /* 影武者の拍（RM・docs/redesign.md 7節の 1）。箱は頭の丸薬の大きさ・場所に置いたまま、**transform だけ**で行の箱へ
+     寄せる（前は left・top・width・height・角・影を毎フレーム書いた）。縦横で倍率が違うと角と絵がゆがむので、各拍で
+     角は倍率で割った楕円（見えるのは丸い角）、絵は倍率を打ち消す。曲線は拍の置き方で持つ（各区間は等速）。
+     q0 → q1 は「行らしさ」（1 ＝ 行、0 ＝ 頭）。絵は行では 32px、頭では 38px。 */
+  function pillFrames(g, R, H, q0, q1, cv) {
+    const N = 24, F = [[], [], [], [], []];
+    const rR = g.rad(R), rH = g.radH(H);
+    /* 拍は道のりで等分し、時刻は曲線を逆に引く（倍率の逆数は線形に混ぜるとずれる——速い出だしで絵が膨らんだ）。 */
+    const at = (e) => { let lo = 0, hi = 1; for (let j = 0; j < 20; j++) { const m = (lo + hi) / 2; if (cv(m) < e) lo = m; else hi = m; } return (lo + hi) / 2; };
+    for (let i = 0; i <= N; i++) {
+      const offset = i === 0 || i === N ? i / N : at(i / N), q = q0 + (q1 - q0) * (i / N);
+      const w = H.width + (R.width - H.width) * q, h = H.height + (R.height - H.height) * q;
+      const x = (R.left - H.left) * q, y = (R.top - H.top) * q;
+      const sx = w / H.width, sy = h / H.height;
+      const r = Math.min(rH + (rR - rH) * q, w / 2, h / 2);
+      const f = 1 + (g.k - 1) * q, u = q + (1 - q) / g.k;
+      F[0].push({ offset, transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})` });
+      F[4].push({ offset, borderRadius: `${(r / sx).toFixed(2)}px / ${(r / sy).toFixed(2)}px` });
+      F[1].push({ offset, transform: `scale(${(f / sx).toFixed(4)}, ${(f / sy).toFixed(4)})` });
+      F[2].push({ offset, transform: `scale(${(u / sx).toFixed(4)}, ${(u / sy).toFixed(4)})` });
+      F[3].push({ offset, opacity: q });
+    }
+    return F;
+  }
+  /** 影武者を走らせる。返す aim(R) は行き先（行の箱）を替える（帰りで行が FLIP で動くとき）。 */
+  function pillRun(g, R, H, q0, q1, timing, cv) {
+    const t = { ...timing, easing: "linear" };
     const mark = g.ghost.firstElementChild;
-    if (mark && mark !== g.under) {
-      mark.animate([{ transform: sc(t0) }, { transform: sc(t1) }], timing);
-    }
-    const underMark = g.under.firstElementChild;
-    if (underMark) {
-      underMark.animate([{ transform: usc(t0) }, { transform: usc(t1) }], timing);
-    }
-    g.under.animate([{ opacity: t0 }, { opacity: t1 }], timing);
+    /* 角は別の一本に（角を混ぜると箱の動きが合成から外れ、合成で動く絵と一コマずれて絵が膨らんだ）。 */
+    const els = [g.ghost, mark !== g.under ? mark : null, g.under.firstElementChild, g.under, g.ghost];
+    const F = pillFrames(g, R, H, q0, q1, cv);
+    const runs = els.map((el, i) => (el ? el.animate(F[i], t) : null));
+    return { run: runs[0], aim: (R2) => {
+      const n = pillFrames(g, R2, H, q0, q1, cv);
+      runs.forEach((a, i) => { if (a) a.effect.setKeyframes(n[i]); });
+    } };
   }
+  const pillAt = (g, r) => Object.assign(g.ghost.style, { left: `${r.left}px`, top: `${r.top}px`,
+    width: `${r.width}px`, height: `${r.height}px`, transformOrigin: "0 0" });
 
   /* 行き（行 → 頭）。わけは上の「押した行の丸薬が、紙の頭の丸薬へ伸びていく」。
      返すのは、途中で紙が閉じたときの後始末（`.flying()` で、まだ飛んでいるか）。 */
@@ -295,13 +314,8 @@
     from.style.visibility = "hidden";
     to.style.visibility = "hidden";
 
-    const timing = { duration: KN.motion.ms("--m-sheet-grow"),
-      easing: KN.motion.ease("--push-e"), fill: "both" };
-    const run = g.ghost.animate([
-      { ...pillBox(a), ...g.rowLook },
-      { ...pillBox(b), ...g.heroLook },
-    ], timing);
-    pillInner(g, 1, 0, timing);
+    pillAt(g, b);
+    const { run } = pillRun(g, a, b, 1, 0, { duration: KN.motion.ms("--m-sheet-grow"), fill: "both" }, KN.motion.curve("--push-e"));
 
     let done = false;
     const finish = () => {
@@ -348,11 +362,8 @@
     hero.style.visibility = "hidden";
     row.style.visibility = "hidden";
 
-    const timing = { duration: KN.motion.ms("--m-settle"),
-      easing: KN.motion.ease("--ease-settle"), fill: "both" };
-    const frames = (r) => [{ ...pillBox(a), ...g.heroLook }, { ...pillBox(r), ...g.rowLook }];
-    const run = g.ghost.animate(frames(b), timing);
-    pillInner(g, 0, 1, timing);
+    pillAt(g, a);
+    const { run, aim } = pillRun(g, b, a, 0, 1, { duration: KN.motion.ms("--m-settle"), fill: "both" }, KN.motion.curve("--ease-settle"));
 
     let done = false;
     const finish = () => {
@@ -383,7 +394,7 @@
       if (Math.abs(r.left - b.left) + Math.abs(r.top - b.top)
           + Math.abs(r.width - b.width) + Math.abs(r.height - b.height) > 0.5) {
         b = r;
-        run.effect.setKeyframes(frames(b));
+        aim(b);
       }
       requestAnimationFrame(follow);
     };
@@ -446,6 +457,18 @@
     return g;
   }
   const kids = (el) => [...el.children];
+  /** 押した先を覚えておき、指を離した所が別の物なら、ふつうの click を止めて覚えた物を押す（払ったら何もしない）。 */
+  function keepAim(aim, e) {
+    const block = (c) => { c.preventDefault(); c.stopPropagation(); };
+    window.addEventListener("pointerup", (u) => {
+      if (Math.hypot(u.clientX - e.clientX, u.clientY - e.clientY) > 10) return;
+      const now = document.elementFromPoint(u.clientX, u.clientY);
+      if (now && aim.contains(now)) return;
+      if (aim.matches("input, textarea, select, [contenteditable]")) aim.focus(); else aim.click();
+      document.addEventListener("click", block, { capture: true, once: true });
+      setTimeout(() => document.removeEventListener("click", block, { capture: true }), KN.motion.ms("--m-state"));
+    }, { capture: true, once: true });
+  }
 
   /** 行き。育てたら true。 */
   function growCard(grow, el, z) {
@@ -468,8 +491,14 @@
       if (run.playState === "running") run.effect.setKeyframes(frames(el._rest));
     };
     kids(el).forEach((k) => k.animate([{ opacity: 0 }, { opacity: 0, offset: .3 }, { opacity: 1 }], timing));
-    /* 育つ途中で指が触れたら、開ききった姿にして指に渡す（下へ払えば、その場所から帰る）。 */
-    el.addEventListener("pointerdown", () => { if (run.playState === "running") run.finish(); }, { once: true });
+    /* 育つ途中で指が触れたら、開ききった姿にして指に渡す（下へ払えば、その場所から帰る）。押したのが小さく見えていた
+       ボタンなら、そのボタンを押したことにする（開ききると指の下から逃げていた。RM・docs/redesign.md 8節の R2）。 */
+    el.addEventListener("pointerdown", (e) => {
+      if (run.playState !== "running") return;
+      const aim = e.target.closest && e.target.closest("button, a, input, textarea, select, [role=button], [contenteditable]");
+      run.finish();
+      if (aim && el.contains(aim)) keepAim(aim, e);
+    }, { once: true });
     const g = cardGhost(card, a, z + 1, grow.hide);
     /* 写しは窓の角と同じ速さで滑る（薄れるのは前半で）。先に紙の頭まで着くと、紙が行より上に
        開くとき（やること）、写しが窓の外へ出て上の行に重なっていた。 */
@@ -815,6 +844,16 @@
     });
   }
 
+  /* 記録の紙の頭（recHero）は、押した所の絵から飛ぶ（RM）。絵が無い・＋からなら、その場で弾む（.is-pop）。 */
+  function recMorph(hero) {
+    const to = hero.querySelector(".hero-node");
+    const b = pressed && Date.now() - pressed.t < 800 && !pressed.fab ? pressed.el : null;
+    const from = b && b.isConnected && !b.closest(".sheet") && phone() ? b.querySelector(".ui-ico") : null;
+    if (from && to) return { from, to };
+    hero.classList.add("is-pop");
+    return null;
+  }
+
   function sheet(opts) {
     const { title, titleMark, hero, menu, content, footer, onClose, guard } = opts || {};
     if (pageHost && opts && opts.as !== "dialog" && !hero && !menu && pageHost.wants()) {
@@ -921,10 +960,11 @@
     let unmorph = null;
     /* カードから膨らむときは、紙はカードの箱へ重ねたところから開いた場所へ広がります（growCard）。 */
     const grown = grow ? growCard(grow, el, floor + 1 + depth * 2) : false;
+    const morph = (opts && opts.morph) || (hero && hero.classList.contains("rec-hero") ? recMorph(hero) : null);
     requestAnimationFrame(() => {
       if (grown && !closed && el._refit) el._refit();
       /* 行の丸薬から伸びるのは、押した点から育つときと、行から広がるとき（やること）。 */
-      if ((seed || grown) && opts && opts.morph && !closed) unmorph = morphPill(opts.morph, el, floor + 1 + depth * 2);
+      if ((seed || grown) && morph && !closed) unmorph = morphPill(morph, el, floor + 1 + depth * 2);
       backdrop.classList.add("is-open");
       el.classList.add("is-open");
     });

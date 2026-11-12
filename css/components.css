@@ -943,6 +943,7 @@ button, [role="tab"] {
 }
 .hero-node .todo-mark,
 .hero-node svg { width: 30px; height: 30px; }  /* 入れもの：紙の頭の丸 */
+.sheet.is-open .rec-hero.is-pop .hero-node { animation: arrive-pop var(--m-poke) var(--spring) both; }
 /* 行の丸薬から頭の丸薬へ伸びていく影武者（ui.js の morphPill）。箱の
    位置・大きさ・丸み・輪は、JS が測った数で動かします。 */
 .sheet-morph {
