@@ -28,6 +28,15 @@ const { open, checker } = require("./lib");
   });
   c.check("札は日付・時刻・くりかえし・済ませたの4つ（通知・カレンダーは⋯の中）",
     rows.length === 4 && /js-row-done/.test(rows[3]) && !rows.some((x) => /js-row-dur|js-row-limit|js-row-notify|js-row-cal/.test(x)), JSON.stringify(rows));
+  /* RS（11月12日）：何 → いつ → くわしく。種類の札は いつ の札の下、欄に「例：…」を書かない（字で説明しない）。 */
+  const order = await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const segs = sh.querySelector(".d-segs"), rows = sh.querySelectorAll(".d-row");
+    return { after: !!segs && !!(rows[rows.length - 1].compareDocumentPosition(segs) & Node.DOCUMENT_POSITION_FOLLOWING),
+      ph: [...sh.querySelectorAll("[placeholder]")].map((e) => e.placeholder) };
+  });
+  c.check("種類（やること｜予定・仕事｜くらし）は いつ の札の下、欄の字は一語（例：…なし）",
+    order.after && order.ph.length > 0 && order.ph.every((p) => !/例|…/.test(p) && p.length <= 6), JSON.stringify(order));
   c.check("決めていなければ「時刻なし」、長さは1時間", /^時刻なし\s*1時間$/.test(await rowText(".js-row-time")), await rowText(".js-row-time"));
   c.check("くりかえしの札は「くりかえし なし」", /くりかえし\s*なし/.test(await rowText(".js-row-repeat")), await rowText(".js-row-repeat"));
   await page.locator(".sheet.is-open .js-menu").last().click();

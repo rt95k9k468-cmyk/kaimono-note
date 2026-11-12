@@ -762,7 +762,7 @@
         <span class="hero-text">
           <span class="hero-cap js-cap" hidden></span>
           <span class="pd-name">
-            <input class="hero-title js-name" value="${name}" placeholder="例：食器用洗剤"
+            <input class="hero-title js-name" value="${name}" placeholder="品名"
                    autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="商品名">
             ${fav == null ? "" : html`<button type="button" class="pd-fav js-fav ${fav ? "is-on" : ""}"
                     aria-pressed="${String(!!fav)}" aria-label="今回買う">${icon("star")}</button>`}
@@ -780,7 +780,7 @@
           <button type="button" class="chip pd-chip js-memo-chip" ${memo ? "hidden" : ""}>${icon("edit")}<span>メモ</span></button>
         </div>
         <div class="js-more"></div>
-        <textarea class="d-memo pd-memo js-memo" rows="1" placeholder="メモ（例：詰め替え用）" ${memo ? "" : "hidden"}>${memo}</textarea>
+        <textarea class="d-memo pd-memo js-memo" rows="1" placeholder="メモ" ${memo ? "" : "hidden"}>${memo}</textarea>
       </div>
     `) : node(html`
       <div class="sheet-detail">
@@ -793,7 +793,7 @@
             <span class="d-go">${icon("chevron")}</span>
           </button>
           <div class="js-more"></div>
-          <textarea class="d-memo js-memo" rows="1" placeholder="メモ（例：詰め替え用）">${memo}</textarea>
+          <textarea class="d-memo js-memo" rows="1" placeholder="メモ">${memo}</textarea>
         </div>
       </div>
     `);

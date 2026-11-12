@@ -64,6 +64,8 @@ const { open, checker } = require("./lib");
   await page.click("#dock .add-fab");
   await page.waitForTimeout(150);
   t.check("＋の一拍で名前の欄に入る（キーボード）", (await sheet()).focus);
+  t.check("名前とメモの欄は一語（例：…を書かない。RS）", await page.evaluate(() =>
+    [...document.querySelector(".sheet.is-open").querySelectorAll("[placeholder]")].every((e) => !/例|…/.test(e.placeholder))));
   t.check("紙は＋から育つ", await page.evaluate(() => document.querySelector(".sheet.is-open").classList.contains("is-from-origin")));
   t.check("＋の紙は四隅の丸いカード（U17）", await page.evaluate(() => {
     const el = document.querySelector(".sheet.is-open"), r = el.getBoundingClientRect(), cs = getComputedStyle(el);

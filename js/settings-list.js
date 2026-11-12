@@ -113,7 +113,7 @@
       <div class="stack gap-4">
         <label class="field">
           <span class="field-label">お店の名前</span>
-          <input class="input js-name" value="${st ? st.name : ""}" placeholder="例：イオン 〇〇店">
+          <input class="input js-name" value="${st ? st.name : ""}" placeholder="店名">
         </label>
         <div class="field">
           <span class="field-label">色</span>

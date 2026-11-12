@@ -591,10 +591,6 @@
       <div class="sheet-detail">
         ${/* ---- 決めごと ---- */""}
         <div class="d-card">
-          <div class="d-segs">
-            <div class="seg js-kind" role="group"><button type="button" class="seg-btn" data-v="task">やること</button><button type="button" class="seg-btn" data-v="event">予定</button></div>
-            <div class="seg js-side" role="group"><button type="button" class="seg-btn" data-v="work">仕事</button><button type="button" class="seg-btn" data-v="life">くらし</button></div>
-          </div>
           <button type="button" class="d-row js-row-due">
             <span class="d-ico">${icon("calendar")}</span>
             <span class="d-label js-due-label"></span>
@@ -624,6 +620,11 @@
               <span class="toggle" aria-hidden="true"><span class="toggle-mark"></span><span class="toggle-knob"></span></span>
             </button>
           </div>`}
+          ${/* 種類は いつ の下（RS：何 → いつ → くわしく。時刻を打てば予定に寄るので、押すのはまれ）。 */""}
+          <div class="d-segs">
+            <div class="seg js-kind" role="group"><button type="button" class="seg-btn" data-v="task">やること</button><button type="button" class="seg-btn" data-v="event">予定</button></div>
+            <div class="seg js-side" role="group"><button type="button" class="seg-btn" data-v="work">仕事</button><button type="button" class="seg-btn" data-v="life">くらし</button></div>
+          </div>
         </div>
 
         ${/* 通知とカレンダーは頭の「⋯」の中（2026年10月2日・利用者の希望。知らせるは
@@ -637,7 +638,7 @@
             <span>手順を足す</span>
           </button>
           <textarea class="d-memo grow-field js-memo" rows="2"
-                    placeholder="メモ、持ちもの、電話番号…">${editing ? t.memo || "" : ""}</textarea>
+                    placeholder="メモ">${editing ? t.memo || "" : ""}</textarea>
         </div>
       </div>
     `);
@@ -738,7 +739,7 @@
                 Enter は下で止めてあるので、打って改行はできません——改行が
                 入るのは貼りつけたときだけ。wrap="off" で、一行のあいだは
                 input と同じく横へ流れます。 */""}
-          <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="例：ゴミ出し・電球を替える"
+          <textarea class="hero-title js-title" rows="1" wrap="off" placeholder="やること"
                  autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" data-yomi
                  aria-label="やること">${editing ? t.title : (opts && opts.title) || ""}</textarea>
           <span class="hero-facts js-hero-facts"></span>
@@ -1271,7 +1272,7 @@
             <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
             <button type="button" class="sub-check js-sub-check ${subOn(s) || subSkip(s) ? "is-on" : ""}" role="checkbox"
                     aria-checked="${subOn(s) ? "true" : subSkip(s) ? "mixed" : "false"}" aria-label="${i + 1}つめの手順を済ませる${subSkip(s) ? "（できなかった）" : ""}">${subSkip(s) && !subOn(s) ? icon("minus") : icon("check")}</button>
-            <input class="input js-sub" value="${s.title}" placeholder="例：顔を洗う" data-blank-ok
+            <input class="input js-sub" value="${s.title}" placeholder="手順" data-blank-ok
                    aria-label="${i + 1}つめの手順" autocomplete="off" enterkeyhint="enter">
             <button type="button" class="icon-btn js-sub-del"
                     aria-label="この手順を消す">${icon("close")}</button>

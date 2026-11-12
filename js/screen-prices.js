@@ -87,7 +87,7 @@
     const name = await KN.ui.prompt({
       title: "商品を追加",
       label: "商品名",
-      placeholder: "例：食器用洗剤",
+      placeholder: "品名",
       okLabel: "追加",
     });
     if (!name) return;

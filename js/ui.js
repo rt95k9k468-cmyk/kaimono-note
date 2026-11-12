@@ -2179,7 +2179,7 @@
 
       const addChip = node(html`<button type="button" class="chip">＋ お店を追加</button>`);
       addChip.addEventListener("click", async () => {
-        const name = await prompt({ title: "お店を追加", label: "お店の名前", placeholder: "例：イオン 〇〇店" });
+        const name = await prompt({ title: "お店を追加", label: "お店の名前", placeholder: "店名" });
         if (!name) return;
         const rec = KN.store.addStore(name);
         stores.length = 0;
