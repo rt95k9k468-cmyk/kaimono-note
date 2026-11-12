@@ -657,6 +657,29 @@
     return { kind: pct > 100 ? "over" : "ok", pct: Math.max(6, Math.min(100, pct)), g: t.alcoholG };
   }
 
+  /* H2 お酒の週（docs/health.md「お酒の週」）：週の頭（月曜）からその日までの純アルコール・350ml 缶の本数・
+     飲まなかった日を一行の事実で。飲まなかった日は暦の帯と同じ決め（drinkBar の dry）。色は付けない。折れるのは「・」で。 */
+  const CAN_G = 14; // ビール 350ml・5%：350 × 0.05 × 0.8
+  function drinkWeek(day) {
+    const wk = U.weekOf(day);
+    let g = 0, about = false, dry = 0;
+    for (let d = wk.from; d <= day; d = U.shiftDay(d, 1)) {
+      const t = store.drinkTotals(d);
+      if (t) { g += t.alcoholG || 0; about = about || !!t.estimated; continue; }
+      const b = drinkBar(d);
+      if (b && b.kind === "dry") dry++;
+    }
+    if (!g && !dry) return null;
+    const cans = Math.round(g / CAN_G * 2) / 2;
+    const parts = [
+      g ? `純アルコール ${about ? "約" : ""}${Math.round(g)}g` : "",
+      cans >= 0.5 ? `350ml 缶で${cans}本ぶん` : "",
+      dry ? `飲まなかった日 ${dry}日` : "",
+    ].filter(Boolean);
+    parts[0] = `${wk.from <= U.todayKey() && U.todayKey() <= wk.to ? "今週" : "この週"} ${parts[0]}`;
+    return parts;
+  }
+
   function monthCalendar() {
     const sec = node(html`<section class="cal"></section>`);
     /* 三層（曜日の行／伸び縮みする窓／その中のずらしと日のマス）は
@@ -1754,8 +1777,10 @@
 
     /* R4：山吹の淡い塗りのボタン（52px）。書いた一件は、その下に一枚のカード（RS 2回目：今日の食事と同じ行——
        46px の台に強さ・何を求めたか・時刻。あとで記入の一件が先で、時刻の横に「あとで記入」）。 */
+    const wk = drinkWeek(card.day);
     const sec = node(html`
       <div class="urge-bar">
+        ${wk ? html`<p class="hl-drink-week">${KN.util.raw(wk.map((x) => `<span>${KN.util.escapeHtml(x)}</span>`).join("・"))}</p>` : ""}
         ${canAdd ? html`
           <button class="btn btn-block hl-urge-btn js-urge">${icon("clock")}飲みたくなった</button>` : ""}
         ${rows.length ? html`<div class="card urge-rows js-rows"></div>` : ""}

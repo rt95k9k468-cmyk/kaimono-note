@@ -2666,6 +2666,9 @@ button.section-note:active { opacity: var(--press-fade); }
 
 /* 飲みたくなった（R4）：山吹の淡い塗りのボタン、書いた一件は下の行のカード（線で区切る）。 */
 .urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* H2：お酒の週の一行（事実だけ。色で採点しない）。 */
+.hl-drink-week { margin: 0; font-size: var(--fs-md); color: var(--c-text-2); }
+.hl-drink-week > span { white-space: nowrap; }
 .hl-urge-btn { background: var(--c-yamabuki-soft); color: var(--c-yamabuki); }
 .urge-rows { display: flex; flex-direction: column; padding: 0 14px; }
 /* 一件の行（RS 2回目）：今日の食事の行と同じ形。 */

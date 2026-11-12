@@ -60,7 +60,7 @@ const { open, checker } = require("./lib");
       seg: !!document.querySelector("#screen-diet .diet-panes, #screen-diet .js-pane"),
       ring: !!document.querySelector("#screen-diet .diet-ring"),
       body: box(q(".hl-body")), kg: box(q(".hl-hero.is-kg")), kcal: box(q(".hl-hero.is-kcal")),
-      list: box(q(".hl-list")), meals: box(q(".hl-meals")), urge: box(q(".js-urge")), chart: box(q(".hl-chart")),
+      list: box(q(".hl-list")), meals: box(q(".hl-meals")), urge: box(q(".hl-urge")), wk: box(q(".hl-drink-week")), chart: box(q(".hl-chart")),
       sheetBg: getComputedStyle(day.closest(".tl-sheet")).backgroundColor,
       mets: [...day.querySelectorAll(".hl-met")].map((m) => {
         const v = m.querySelector(".hl-met-v"), bars = [...m.querySelectorAll(".hl-bars i")];
@@ -119,7 +119,7 @@ const { open, checker } = require("./lib");
     && m.meals.l === m.kg.l && m.meals.r === m.kcal.r && m.meals.r < m.chart.l, JSON.stringify([m.kg, m.kcal, m.meals, m.chart].map((x) => [x.l, x.t, x.r, x.b])));
   t.check("iPad 縦：体重の下はすぐ今日の食事（推移の背に引っぱられない）", m.meals.t - m.kg.b <= 24 && m.chart.b > m.kg.b + 30,
     `${m.kg.b} → ${m.meals.t}（推移 ${m.chart.b}）`);
-  t.check("iPad 縦：飲みたくなったは推移のすぐ下", m.urge.l >= m.chart.l && m.urge.t - m.chart.b <= 24, `${m.chart.b} → ${m.urge.t}`);
+  t.check("iPad 縦：飲みたくなったは推移のすぐ下", m.urge.l >= m.chart.l && m.urge.t - m.chart.b <= 24, `${m.chart.b} → ${m.urge.t}・週の一行 ${JSON.stringify(m.wk)}`);
   t.check("iPad 縦：札は一段（四つ横に）", new Set(m.mets.map((x) => x.type)).size === 4 && m.mets.every((x) => x.over <= 1));
 
   /* ---- 広い幅（1440px）：札の下に三段 ---- */

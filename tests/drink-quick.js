@@ -1,4 +1,5 @@
 /* お酒の紙の「よく飲むもの」の札と −/＋（2026年9月30日、docs/health.md の「よく飲むもの」）。
+   - H2 お酒の週の一行（月曜からその日まで・缶の本数・飲まなかった日。色なし。2026年11月12日）。
 
    - 札は固定の8つ（ビール・糖質ゼロ・ビール4%・ビール6%・焼酎・焼酎半分・ワイン・ワイン半分）。記録があっても増えない。
    - 並びは縦に同じ種類（ビール/糖質ゼロ、ビール4%/6%、焼酎/焼酎半分、ワイン/ワイン半分）。札に絵がある。
@@ -157,6 +158,33 @@ const { open, checker } = require("./lib");
     return { fav: sh.querySelectorAll(".js-fav").length, q: sh.querySelector(".js-q").value };
   });
   c.check("直す紙には札が無く、欄に raw", edit.fav === 0 && edit.q === s0.raw, JSON.stringify(edit));
+
+  /* H2 お酒の週：月曜からその日までの純アルコール・350ml 缶の本数・飲まなかった日を一行で（色を付けない）。
+     2026年10月8日（木）20時。月 14g・水 28g、火と今日は体重だけ（飲まなかった日）、先週の日曜は数えない。 */
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  await page.clock.setFixedTime(new Date(2026, 9, 8, 20, 0));
+  const week = async () => {
+    await page.evaluate(() => { KN.app.showScreen("tasks"); KN.app.showScreen("diet"); });
+    await page.waitForTimeout(400);
+    return page.evaluate(() => {
+      const el = document.querySelector("#screen-diet .js-day-card .hl-drink-week");
+      return el ? { text: el.textContent.trim(), color: getComputedStyle(el).color, base: getComputedStyle(el.parentElement).color } : null;
+    });
+  };
+  await page.evaluate(() => KN.store.update((s) => { s.diet.drinks = []; s.diet.weights = []; }));
+  c.check("記録が無ければ週の一行は出ない", (await week()) === null);
+  await page.evaluate(() => {
+    const S = KN.store, b = { kind: "beer", volumeMl: 350, abv: 5, kcal: 140, time: "20:00", estimated: false };
+    S.addDrink({ ...b, day: "2026-10-04", alcoholG: 14 });
+    S.addDrink({ ...b, day: "2026-10-05", alcoholG: 14 });
+    S.addDrink({ ...b, day: "2026-10-07", alcoholG: 28, volumeMl: 700 });
+    ["2026-10-04", "2026-10-06", "2026-10-08"].forEach((day) => S.addWeight({ day, time: "07:00", kg: 70 }));
+  });
+  const wk = await week();
+  c.check("今週 純アルコール 42g・350ml 缶で3本ぶん・飲まなかった日 2日",
+    wk && wk.text === "今週 純アルコール 42g・350ml 缶で3本ぶん・飲まなかった日 2日", JSON.stringify(wk));
+  c.check("週の一行は採点の色を持たない（赤・緑でない）", wk && !/rgb\(2[0-9]{2}, [0-9]{1,2}, [0-9]{1,2}\)/.test(wk.color), JSON.stringify(wk));
 
   c.check("絵文字なし", await page.evaluate(() => !/\p{Extended_Pictographic}/u.test(document.body.innerText)));
   c.check("ページの例外なし", errors.length === 0, errors.join("\n"));
