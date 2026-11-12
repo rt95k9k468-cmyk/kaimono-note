@@ -4600,7 +4600,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 #screen-diet { overflow: hidden; }
 
 /* ---- 季節の絵（3.0 の E1・js/season-art.js） ----
-   daily は候の札の額の中（R6。紙には敷かない——上の .arc-season-art）。ノートは地に広重（下）。層は上から：候の色のぼかし・
+   daily は候の札の額の中（R6。紙には敷かない——上の .arc-season-art）。ノートは地（下）。層は上から：候の色のぼかし・
    地の色の幕・絵（読めたら）・地の色。絵の濃さは幕の濃さで決める（幕 66% ＝ 絵 34%）。幕は絵の高さ（--season-h ＝ 幅×縦横の比。
    比は js が --season-ar に）の半ばまで同じ濃さで、絵の下の端で閉じる。
    値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。濃さは iPhone で決める。
@@ -4611,8 +4611,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 @property --season-k { syntax: "<color>"; inherits: false; initial-value: transparent; }
 #screen-archive[data-season] .arc-season-art,
 #screen-notes[data-season] { --season-k: var(--season-c); }
-/* ノートの地にも同じ層（daily は写真、ノートは広重。2026年10月7日、利用者が見比べて選んだ・docs/season-art.md）。
-   ノートは紙を持たない地で、画面そのものが送る器なので、地の色（--c-bg）の上に画面へ敷く（送っても上に留まる）。
+/* ノートの地にも同じ層（出どころは装いで。docs/season-art.md）。画面そのものが送る器なので地の色の上に画面へ敷く。
    640px からは絵を電話くらいの大きさ（--season-art）で右上に置き、左へ地に溶かす（--season-fade。窓いっぱいだと地を覆う。R7）。 */
 #screen-notes[data-season] {
   --season-veil: color-mix(in srgb, var(--c-bg) calc(100% - var(--season-alpha, 34%)), transparent);
@@ -4752,7 +4751,8 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 表紙：冊の色を深くした面（棚は --shelf、ほかは名前の色 --cat）＋白い線の和柄を薄く＋題箋。 */
 .nt-cv { --cv: color-mix(in srgb, var(--shelf, var(--cat, var(--c-text-3))) 80%, #000); display: block; position: relative; overflow: hidden; background: var(--cv); }
 .nt-cv[data-pt="none"] { --cv: var(--c-surface-3); }
-.nt-cv::after { content: ""; position: absolute; inset: 0; opacity: .2; background: var(--pt, none); }
+.nt-cv:not(.is-pic)::after { content: ""; position: absolute; inset: 0; opacity: .2; background: var(--pt, none); }
+.nt-cv.is-pic { background: var(--pic) center / cover, var(--cv); }
 .nt-cv.is-book { aspect-ratio: 3 / 4; border-radius: 4px var(--r-sm) var(--r-sm) 4px;
   box-shadow: inset 9px 0 0 color-mix(in srgb, #000 16%, transparent), inset 10px 0 0 color-mix(in srgb, #fff 14%, transparent), var(--shadow-2); }
 .nt-lb { position: absolute; z-index: 1; left: 22%; right: 12%; top: 16%; padding: 7px 4px; border-radius: 2px; background: var(--c-surface);

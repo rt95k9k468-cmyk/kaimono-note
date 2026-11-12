@@ -202,6 +202,13 @@ const IMG_DB = "kaimono-note-images";
   });
   t.check("読むときは幅いっぱいの画像（中身は1600幅）", shown.w === 1600 && shown.full && Math.abs(shown.ratio - 4 / 3) < 0.02, JSON.stringify(shown));
   t.check("本文は参照の一行のまま保存される", (await page.evaluate((i) => KN.notes.get(i).body, ids.a)) === v1);
+  /* 画像のあるノートは一枚目が表紙（RI）：最近のカードと一覧の四角。記録には足さない（本文の参照から引く）。 */
+  await page.evaluate(() => KN.screens.notes.render());
+  const cv = await page.waitForFunction((id) => {
+    const els = [...document.querySelectorAll(`#screen-notes .nt-cv[data-pic="${id}"]`)];
+    return els.length && els.every((e) => e.classList.contains("is-pic") && /blob:/.test(getComputedStyle(e).backgroundImage)) && els.length;
+  }, A, { timeout: 4000 }).then((h) => h.jsonValue()).catch(() => 0);
+  t.check("画像のあるノートは一枚目が表紙（読めたら敷く）", cv > 0, String(cv));
   /* 押すと黒地の一枚で全体。 */
   await page.click(".sheet.is-note.is-open .js-view .nv-img.is-on");
   await page.waitForSelector(".sheet.is-pic.is-open .note-pic img", { timeout: 3000 }).catch(() => {});

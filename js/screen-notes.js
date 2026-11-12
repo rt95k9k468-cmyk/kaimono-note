@@ -101,6 +101,19 @@
     : SHELF[nb] ? html`data-shelf="${nb}" data-pt="${SHELF_PT[nb]}"`
       : html`style="--cat:${colorOf("nb", nb)}" data-pt="${PATTERNS[(hashOf(nb) >>> 3) % PATTERNS.length]}"`);
 
+  /* 画像のあるノートは一枚目が表紙（RI・11月12日、利用者が選んだ）。画像は IndexedDB から非同期——読めるまで冊の色と柄、
+     読めたら敷く。記録には何も足さない（本文の参照の一行から引く）。 */
+  const picOf = (n) => { const id = KN.noteImg && KN.noteImg.idsIn(n.body)[0]; return id ? html`data-pic="${id}"` : ""; };
+  function paintPics(box) {
+    const I = KN.noteImg;
+    if (I) box.querySelectorAll(".nt-cv[data-pic]").forEach((el) => {
+      const put = (v) => { if (v && v.url) { U.setVar(el, "--pic", `url("${v.url}")`); el.classList.add("is-pic"); } };
+      const k = I.known(el.dataset.pic);
+      if (k) put(k); else I.look(el.dataset.pic).then(put);
+    });
+    return box;
+  }
+
   function mount(el) {
     root = el;
     root.innerHTML = "";
@@ -454,7 +467,7 @@
     list.forEach((n) => {
       const c = node(html`
         <button type="button" class="nt-cover" role="listitem" data-id="${n.id}">
-          <span class="nt-cv" ${cover(n.notebook)}></span>
+          <span class="nt-cv" ${cover(n.notebook)} ${picOf(n)}></span>
           <span class="nt-cover-t">${headOf(n) || "ノート"}</span>
           <span class="nt-cover-d">${[n.notebook, editedOf(n)].filter(Boolean).join("・")}</span>
         </button>`);
@@ -462,7 +475,7 @@
       KN.ui.rowMenu(c, () => rowMenuOf(n.id));
       box.append(c);
     });
-    return box;
+    return paintPics(box);
   }
 
   /* ---------------- 木の行（③。ホーム・左の木・紙の中のノートで同じ。docs/notes-unify.md「画面」） ----------------
@@ -1090,7 +1103,7 @@
         </button>
         <button class="fav ${n.fav ? "is-on" : ""}" aria-pressed="${String(n.fav)}"
                 aria-label="${head || "ノート"} に★を付ける">${icon("star")}</button>
-        <span class="nt-cv is-mini" ${cover(n.notebook)} aria-hidden="true"></span>
+        <span class="nt-cv is-mini" ${cover(n.notebook)} ${picOf(n)} aria-hidden="true"></span>
       </div>
     `);
     el.querySelector(".js-open").addEventListener("click", () => (o && o.open ? o.open(n, el) : openNote(n.id, el)));
@@ -1100,7 +1113,7 @@
       N().setFav(n.id, !n.fav);
     });
     KN.ui.rowMenu(el, () => rowMenuOf(n.id));
-    return el;
+    return paintPics(el);
   }
 
   /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの。開いているノートは★だけ
