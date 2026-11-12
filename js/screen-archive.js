@@ -805,7 +805,7 @@
              data-day="${d.date}">
           <span class="arc-log-day">
             <b>${String(dt ? dt.getDate() : "")}</b>
-            <i>${dt ? U.weekdayJa(d.date) : ""}</i>
+            <i>${dt ? U.weekdayJa(d.date) : ""}</i>${wxOf(d.date)}
           </span>
           <span class="arc-log-text">
             ${/* 何も書いていない日の一行は、**押せば書けることを言います**。
@@ -1402,6 +1402,12 @@
 
   /** 時刻ごとの日記の行。本文の字は足し引きせず、切って並べるだけ。
       本文がまだ無い日（起床・就寝だけ入った日）も、一日ぶんなら頭の日付と育休の行を出す（空の日と同じ顔）。 */
+  /** 天気の一行（F6 の D3・js/weather.js）：日の数字の下に絵と「最高°／最低°」。場所を選んでいない・無い日は何も出さない。 */
+  function wxOf(day) {
+    const w = KN.weather && KN.weather.of(day);
+    return w ? html`<span class="arc-log-wx" role="img" aria-label="${w.label} 最高${w.max}度 最低${w.min}度">${icon(w.icon)}<span>${w.max}°／${w.min}°</span></span>` : "";
+  }
+
   function chatRow(d, one) {
     const dt = U.dayDate(d.date);
     const edited = edits(d);
@@ -1410,7 +1416,7 @@
       <div class="arc-log-row is-chat ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
         <span class="arc-log-day">
           <b>${String(dt ? dt.getDate() : "")}</b>
-          <i>${dt ? U.weekdayJa(d.date) : ""}</i>
+          <i>${dt ? U.weekdayJa(d.date) : ""}</i>${wxOf(d.date)}
         </span>
         <span class="arc-log-text">
           <span class="arc-posts">${items.length ? items.map((x, k) => html`
@@ -2126,6 +2132,7 @@
 
   function onEnter() {
     if (KN.healthRelay) KN.healthRelay.pullNow();
+    if (KN.weather) KN.weather.pull();   // 場所を選んでいなければ何もしない
   }
 
   /* 季節の変わり目の一拍（roadmap-seamless の N7・docs/daily.md の「季節のひとこと」）。

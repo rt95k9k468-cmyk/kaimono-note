@@ -129,10 +129,12 @@
         switchRow({
           title: "作成・更新の時刻", on: s.showStamps !== false,
           onTap: (v) => dailySet("showStamps", v),
-        })
+        }),
+        weatherRow()
       ),
-      /* 何が出るかが題だけでは分からないのは「あの日」だけ。 */
-      foot("「あの日」は、何年か前の同じ日に書いたものを暦の下に出します。"),
+      /* 何が出るかが題だけでは分からないのは「あの日」だけ。天気は出典（CC BY 4.0）と、送るもの。 */
+      foot("「あの日」は、何年か前の同じ日に書いたものを今日の紙に出します。"),
+      KN.weather ? foot("天気は Open-Meteo.com（CC BY 4.0）から。送るのは丸めた場所だけ。") : null,
       head("季節"),
       /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
          出典は畳んで——CC BY／BY-SA は作者・ライセンス・URL の表示が要る（docs/season-art.md）。広重はノートの設定へ。 */
@@ -173,6 +175,39 @@
       card(...dailyExportRows(), ...S.dailyImportRows()),
       foot(S.DIARY_IN_NOTE),
     ];
+  }
+
+  /** 天気の場所（F6 の D3・js/weather.js）。選ぶまでは取りに行かない。場所はこの端末だけ（0.1度に丸める）。 */
+  function weatherRow() {
+    const W = KN.weather;
+    if (!W) return null;
+    const p = W.place();
+    const set = (v) => { W.setPlace(v); render(); };
+    const prefs = () => {
+      const body = node(html`<div class="set-choose"></div>`);
+      const h = KN.ui.sheet({ title: "天気の場所", content: body });
+      W.PREFS.forEach((x) => {
+        const row = node(html`<button type="button" class="set-row is-choice"><span class="set-title">${x.name}</span></button>`);
+        row.addEventListener("click", () => { h.close(); set(x); });
+        body.append(row);
+      });
+    };
+    return pickRow({
+      title: "天気", value: p ? p.name : "なし",
+      onTap: () => choose({
+        title: "天気の場所", value: p ? "on" : "off",
+        options: [
+          { id: "off", label: "なし" },
+          { id: "here", label: "今いる場所" },
+          { id: "pref", label: "都道府県から" },
+        ],
+        onPick: (v) => {
+          if (v === "off") set(null);
+          else if (v === "pref") prefs();
+          else W.here().then(set, () => KN.ui.toast("場所を読めませんでした"));
+        },
+      }),
+    });
   }
 
   /** daily の書き出しの行（daily の一枚と「書き出し」の一枚の両方に出す）。年の本はバックアップの一枚から

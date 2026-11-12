@@ -17,6 +17,7 @@
   docs/image-design.md）・鳴らす役 `kaimono-note-bell`（下）。
 - 記録の外の小さな控え：消した直後の控え `kaimono-note-gone`・**変換の読み `kaimono-note-yomi`**
   （`js/yomi.js`。`data-yomi` の欄で打った変換の組。控え・書き出しに乗せない。消えても候補が漢字に当たりにくくなるだけ）。
+  天気の場所 `kn-weather-place`・日ごとの天気 `kn-weather`（`js/weather.js`。端末だけ。消えたら過ぎた92日は取り直せる）。
 - 大きな保存場所が使えない端末・使えなかった日は、**前のまま**（localStorage だけ）で
   動く。どちらのモジュールも、失敗したら「前のまま」が行き先。
 - `idb.js` は版を決め打ちにしない。版を持たずに開き、棚が足りなければ版を一つ上げて

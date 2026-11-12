@@ -103,6 +103,7 @@ const JS = [
   "js/sync.js",
   "js/due-sheet.js",
   "js/product-sheet.js",
+  "js/weather.js",
   "js/screen-archive.js",
   "js/screen-todo.js",
   "js/screen-diet.js",

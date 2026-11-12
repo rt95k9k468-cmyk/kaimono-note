@@ -7,7 +7,9 @@
    - js/・sw.js に eval と new Function が無い
    - 一通り動かしても、自分の origin と Dropbox 以外へ通信しない。道具の頁も CSP の違反なしに動く
    - 1ファイル版（build-standalone.js）にも CSP があり、起ち上がって違反が出ない（dist/ は .gitignore）
-   - よその頁の枠（iframe）の中では見せない（js/frame-guard.js。meta の CSP では frame-ancestors が効かない） */
+   - よその頁の枠（iframe）の中では見せない（js/frame-guard.js。meta の CSP では frame-ancestors が効かない）
+   - 天気（F6 の D3・js/weather.js）：宛ては api.open-meteo.com だけで、書くのは weather.js だけ。場所を選ぶまで行かない。
+     選んだら送るのは 0.1度に丸めた緯度経度と日数だけ・一日一度・電波が無ければ行かない。取った日の行に絵と「最高°／最低°」 */
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -32,6 +34,8 @@ const INDEX_CSP = {
 const TOOLS = ["tools/calendar.html", "tools/diary-import.html"];
 /* Dropbox の宛て：api・content（記録）・www（認可の頁へ移るだけ）・notify（ノートの同期の待ち受け）。 */
 const DROPBOX = ["api.dropboxapi.com", "content.dropboxapi.com", "www.dropbox.com", "notify.dropboxapi.com"];
+/* 天気（D3）。利用者が場所を選んだときだけ。 */
+const WEATHER = "api.open-meteo.com";
 
 const read = (f) => fs.readFileSync(path.join(ROOT, f), "utf8");
 const cspOf = (html) => {
@@ -88,6 +92,8 @@ let browser;
 
   const evals = js.filter((f) => /\beval\s*\(|\bnew\s+Function\s*\(/.test(read(f)));
   t.check("js/・sw.js に eval と new Function が無い", !evals.length, evals.join(", "));
+  const wxIn = js.filter((f) => read(f).includes(WEATHER));
+  t.check("天気の宛ては js/weather.js だけが持つ", JSON.stringify(wxIn) === JSON.stringify(["js/weather.js"]), wxIn.join(", "));
 
   /* ---------------- 動かして、宛てを見る ---------------- */
   const o = await open();
@@ -96,10 +102,21 @@ let browser;
   const ctx = page.context();
   const self = new URL(page.url()).origin;
   const away = [];
+  const wx = [];
   await ctx.route("**/*", (r) => {
     const u = new URL(r.request().url());
     if (u.origin === self) return r.continue();
     if (/^(data|blob|file):$/.test(u.protocol)) return r.continue();
+    if (u.protocol === "https:" && u.hostname === WEATHER) {
+      /* 天気は数えて、決まった答えを返す（過ぎた past_days 日と今日。どの日も印 2・14°・6°）。 */
+      wx.push(u);
+      const n = Number(u.searchParams.get("past_days")) || 0;
+      const time = [...Array(n + 1)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - n + i);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; });
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" },
+        body: JSON.stringify({ daily: { time, weather_code: time.map(() => 2), temperature_2m_max: time.map(() => 14.2),
+          temperature_2m_min: time.map(() => 5.6) } }) });
+    }
     if (!(u.protocol === "https:" && DROPBOX.includes(u.hostname))) away.push(u.origin);
     return r.abort();   // 試験では外へは出ない（Dropbox も数えるだけ）
   });
@@ -120,6 +137,39 @@ let browser;
   }
   t.check("一通り動かしても、自分の origin と Dropbox 以外へ通信しない", !away.length, [...new Set(away)].join(", "));
   t.check("アプリで CSP の違反が出ない", !violations.length && !errors.length, [...violations, ...errors].join(" / "));
+  t.check("天気：場所を選ぶまでは取りに行かない", !wx.length, wx.map(String).join(" "));
+
+  /* 天気（D3）：場所を選ぶと一度だけ。送るのは丸めた緯度経度と日数。daily の今日の行に絵と「14°／6°」。 */
+  await page.evaluate(() => KN.weather.setPlace({ lat: 35.6895, lon: 139.6917, name: "東京都" }));
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(600);
+  const sent = wx[0] ? [...wx[0].searchParams.keys()].sort().join(",") : "";
+  t.check("天気：選ぶと一度だけ、0.1度に丸めた緯度経度で", wx.length === 1 && wx[0].searchParams.get("latitude") === "35.7"
+    && wx[0].searchParams.get("longitude") === "139.7" && wx[0].searchParams.get("past_days") === "92", wx.map(String).join(" "));
+  t.check("天気：送るのは場所と日数と欲しい欄だけ", sent === "daily,forecast_days,latitude,longitude,past_days,timezone", sent);
+  const wxRow = await page.evaluate(() => {
+    const e = document.querySelector(`#screen-archive .arc-log-row[data-day="${KN.util.todayKey()}"] .arc-log-wx`);
+    return e ? { text: e.innerText.trim(), label: e.getAttribute("aria-label"), ico: !!e.querySelector('[data-ico="cloud-sun"]') } : null;
+  });
+  t.check("天気：今日の行の頭に絵と「14°／6°」", wxRow && wxRow.text === "14°／6°" && wxRow.ico && /最高14度 最低6度/.test(wxRow.label), JSON.stringify(wxRow));
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("kn-weather-place")));
+  t.check("天気：場所は丸めて端末だけに（記録には入らない）", kept && kept.lat === 35.7 && kept.lon === 139.7
+    && !JSON.stringify(await page.evaluate(() => KN.store.get())).includes("139.7"), JSON.stringify(kept));
+  await page.evaluate(() => KN.app.showScreen("notes"));
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(300);
+  t.check("天気：同じ日にもう一度開いても行かない", wx.length === 1, String(wx.length));
+  await ctx.setOffline(true);
+  const off = await page.evaluate(() => { KN.weather.setPlace({ lat: 34.69, lon: 135.52, name: "大阪府" }); return navigator.onLine; });
+  await page.waitForTimeout(300);
+  await ctx.setOffline(false);
+  t.check("天気：電波が無ければ行かない", off === false && wx.length === 1, `${off} ${wx.length}`);
+  await page.evaluate(() => KN.weather.setPlace(null));
+  await page.evaluate(() => KN.app.showScreen("notes"));
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(300);
+  t.check("天気：場所を外すと出さず、行かない", wx.length === 1
+    && await page.evaluate(() => !document.querySelector("#screen-archive .arc-log-wx")), String(wx.length));
 
   /* カレンダーの受け渡し：# の後ろの予定が読めて、札が出る（頁は 250ms 後に blob: へ移るので、その前に見る） */
   const ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nSUMMARY:test\r\nDTSTART:20261023T0900\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";

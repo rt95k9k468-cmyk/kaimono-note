@@ -2407,11 +2407,7 @@
    いる途中の click は day-swipe.js が止めます。**`pointer-events: none` は
    書かないこと**（2026年9月28日に外した）。子へ継がれる性質なので、据える
    ときに外すと紙ぜんぶのスタイルが計算し直され、滑り終えた一拍が重くなる。 */
-/* 行けない側（今日より先など）には、**何も置きません**。以前は中身の無い
-   一枚で場所を取っていました——真ん中を -100% に置くための足場として。
-   いまは真ん中の居場所を数（`originX`）で持っているので、足場が要りません。
-   動くのは transform だけなので、置いても置かなくても同じ絵で、置いたぶん
-   だけレイアウトの費用がかかります（`.is-void` ごと外しました）。 */
+/* 行けない側には何も置かない（真ん中の居場所は `originX` が持つ。`.is-void` は外した）。 */
 /* daily の紙は、段どうしのあいだを紙自身が空けていました（.tl-sheet.is-daily
    の gap）。中身がカルーセルの一枚へ移ったので、その役目もここへ移します
    ——移さないと、六つの段が隙間なく積み上がります。 */
@@ -3049,6 +3045,7 @@ a.btn { text-decoration: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 44px; flex: none; }
 .arc-log-day b { font-size: calc(26px * var(--fs-k)); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .arc-log-day i { font-size: var(--fs-sm); font-style: normal; color: var(--c-text-3); }
+.arc-log-wx { display: flex; flex-direction: column; align-items: center; margin-top: var(--sp-2); font: var(--fs-xs) var(--font-num); white-space: nowrap; color: var(--c-text-2); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
 .arc-log-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 /* 本文だけは、選べます。**ここに出ているのはその日に書いた文そのもの**

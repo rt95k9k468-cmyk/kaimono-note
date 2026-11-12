@@ -89,7 +89,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   **中身を一字でも直したら meta の値も直す**（門が落ちて、入れる値を出す）。
 - 見本（`tools/notes-proto*.html`・`todo-proto.html`・`redesign-proto.html`）は配らない（deploy が消す）。手元のサーバーで開く。
 - `js/`・`sw.js` に `eval`・`new Function`・外から読むスクリプトを置かない。通信してよいのは自分と Dropbox
-  （api・content・www・notify）と、利用者が入れた中継所だけ。
+  （api・content・www・notify）と、利用者が入れた中継所と、天気の `api.open-meteo.com`（場所を選んだときだけ・`js/weather.js` だけが持つ）。
 - `relay/` は `package-lock.json` を持つ。入れるのは `npm ci`、上げるときだけ `npm install` して lock ごとコミット。
 
 ## 画面の中の守り（セキュリティ S2、2026年10月23日）
