@@ -1006,15 +1006,6 @@
   padding: 0 6px;
 }
 
-/* A link inside a hint line: a button that reads as a sentence, because that
-   is where the reason for pressing it is. */
-.link-btn {
-  color: var(--c-primary);
-  font-weight: var(--fw-bold);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 /* ================= SWIPE PANELS (both screens) ================= */
 
 /* One gesture, two screens, two layouts: right is the tab's positive action,
@@ -2995,10 +2986,10 @@ a.btn { text-decoration: none; }
    読みと期間・当たる日の雑節と祝日。長い読みは折り返す（切ると言葉が欠ける）。期間は日付の途中で折り返さない。 */
 .arc-season { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3); }
 .arc-season-art {
-  flex: none; width: 92px; aspect-ratio: 4 / 5; margin: 5px; padding: 0; border: 0;
+  flex: none; width: 92px; aspect-ratio: 4 / 5; margin: 5px; padding: 0; border: 1px solid transparent;
   background: var(--season-img, none) center / cover no-repeat, var(--season-k);
 }
-/* 今日の一枚（F6 の D2）も候の札と同じ額。開いた日は本文の上に 3:2（左右は札の余白の差を埋めて真ん中）、月ぜんぶは行の右に 72px。背は先に取る。 */
+/* 今日の一枚（F6 の D2）も同じ額。開いた日は本文の上に 3:2、月ぜんぶは行の右に 72px。背は先に取る。押すと額から膨らむ（RM）。 */
 .arc-season-art, .nv-img.arc-photo { border-radius: 6px; box-shadow: 0 0 0 4px var(--c-surface), 0 0 0 5px var(--c-border-2), var(--shadow-1); }
 .nv-img.arc-photo { aspect-ratio: 3 / 2; margin: 5px 5px var(--sp-5) calc(5px + var(--sp-3)); }
 .nv-img.arc-photo img { object-fit: cover; }
@@ -4615,7 +4606,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    比は js が --season-ar に）の半ばまで同じ濃さで、絵の下の端で閉じる。
    値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。濃さは iPhone で決める。
    色の入れ替わりは --m-season でゆっくり。移すのは背景を塗る要素の --season-k だけ（受け継がない。js/season-art.js が
-   Web Animations で。受け継ぐ値を動かすと子の全部が毎フレーム当てはめ直し。docs/log/inspection.md の 1）。.tl-sheet には紙を滑らせる transition が
+   Web Animations で。docs/traps.md）。.tl-sheet には紙を滑らせる transition が
    あるので、ここに transition を足さない（詳細度で上書きして壊す）。 */
 @property --season-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --season-k { syntax: "<color>"; inherits: false; initial-value: transparent; }
@@ -7258,10 +7249,9 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* ひらいた道（前の道そのもの）。畳む印は右上。入るときは 8px 上がりながら（動きの辞書の「移る」）。 */
 /* ひらいた道は前の道の幅のまま（カードの地も線も持たない。道の札の置き方は紙の幅で数えてある）。 */
 .day-strip.is-open { margin: 0; padding-top: var(--sp-2); background: none; border: 0; box-shadow: none; border-radius: 0; }
-/* ひらいた拍（RM。.is-m-arrive は screen-todo.js が帯に付ける）：紙色の幕が下へ退き、道が上から描かれる。畳むと帯の中身が浮かぶ。 */
+/* 道がひらく・畳む拍（RM） */
 .day-strip.is-m-arrive.is-open::after { content: ""; position: absolute; inset: 0; background: var(--c-sheet); transform-origin: 50% 100%; scale: 1 0; animation: wipe-off var(--m-draw) var(--ease-out) both; pointer-events: none; }
 .day-strip.is-m-arrive:not(.is-open) > * { animation: m-add var(--m-add) var(--ease-out) backwards; }
-.nt-fly { position: fixed; margin: 0; z-index: var(--z-lift); pointer-events: none; transform-origin: 0 0; }
 .strip-fold {
   position: absolute; top: var(--sp-1); right: var(--sp-1); z-index: 2;
   display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%;

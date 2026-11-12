@@ -952,7 +952,8 @@
     if (!to || KN.motion.still() || !a.width) return;
     const b = to.getBoundingClientRect(), g = cv.cloneNode(true);
     g.classList.add("nt-fly");
-    Object.assign(g.style, { left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px` });
+    Object.assign(g.style, { position: "fixed", margin: "0", zIndex: "var(--z-lift)", pointerEvents: "none", transformOrigin: "0 0",
+      left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px` });
     document.body.append(g);
     const t = { duration: KN.motion.ms("--m-sheet-grow"), easing: KN.motion.ease("--push-e") };
     const s = Math.min(b.width / a.width, b.height / a.height);
