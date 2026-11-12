@@ -30,7 +30,9 @@ const { open, checker } = require("./lib");
       const cs = getComputedStyle(el), row = el.closest(".item, .product"), main = el.closest(".item-body, .product-main");
       return { ws: cs.whiteSpace, to: cs.textOverflow, cut: el.scrollWidth > el.clientWidth,
         h: el.getBoundingClientRect().height, lh: parseFloat(cs.lineHeight) || 0,
-        crown: !!row.querySelector(".item-price .crown"), mainH: Math.round(main.getBoundingClientRect().height) };
+        crown: !!row.querySelector(".item-price .crown"),
+        /* 品名のボタンは行の背いっぱい（R8）。上下の余白を引いた中身の背で見る。 */
+        mainH: Math.round(main.getBoundingClientRect().height - parseFloat(getComputedStyle(main).paddingTop) - parseFloat(getComputedStyle(main).paddingBottom)) };
     }, LONG);
     t.check(`${scr}：長い店の名前は「店・いつ」の一行で…で切れる`, !!m && m.ws === "nowrap" && m.to === "ellipsis" && m.cut, JSON.stringify(m));
     t.check(`${scr}：王冠（値段の下）があっても一行・名前の段は二行のまま（60px の行に収まる）`, !!m && m.crown && (!m.lh || m.h < m.lh * 1.6) && m.mainH <= 48, JSON.stringify(m));
