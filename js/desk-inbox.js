@@ -124,7 +124,7 @@
     cur.memo = memo;
     if (!cur.createdAt) cur.createdAt = now;
     cur.updatedAt = now;
-    if (!memo.trim() && !cur.wake && !cur.sleep && !cur.sleepStages) s.archive.days = s.archive.days.filter((d) => d !== cur);
+    if (!memo.trim() && !cur.wake && !cur.sleep && !cur.sleepStages && !cur.photo) s.archive.days = s.archive.days.filter((d) => d !== cur);
   }
 
   const fold = (v) => String(v || "").trim().toLowerCase();

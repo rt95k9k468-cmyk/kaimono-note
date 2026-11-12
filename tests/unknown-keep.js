@@ -143,6 +143,27 @@ const KNOWN = { open: [], import: [] };
   t.check("一件を直す道（食事・明細・お酒・飲みたい・手順）：知らない欄が残る", edit.kept.every(Boolean), JSON.stringify(edit.kept));
   t.check("一件を直す道：画面から来た余計な欄は残さない", !edit.ui);
 
+  /* 日の行を直す道（setDayLog・F6 の D2 で直した）：知らない欄と今日の一枚が残る。一枚だけの日は本文を消しても行が残る。
+     組み直す欄（睡眠の型）を外せば外れたまま。 */
+  const day = await page.evaluate(() => {
+    const S = KN.store;
+    const ref = { id: "0123456789abcdef", s: "fedcba9876543210" };
+    S.setDayLog("2026-09-02", { memo: "試験の日", sleepStages: { deep: 30 } });
+    S.update((s) => { const d = s.archive.days.find((x) => x.date === "2026-09-02"); d.__fut = "未来の欄"; });
+    S.setDayPhoto("2026-09-02", ref);
+    S.setDayLog("2026-09-02", { memo: "直した", sleepStages: null });
+    const a = JSON.parse(JSON.stringify(S.dayLog("2026-09-02")));
+    S.setDayLog("2026-09-02", { memo: "" });
+    const b = S.dayLog("2026-09-02");
+    const kept = !!(b && S.photoOf(b));
+    S.setDayPhoto("2026-09-02", null);
+    const c = S.dayLog("2026-09-02");
+    return { fut: a.__fut, photo: JSON.stringify(S.photoOf(a)) === JSON.stringify(ref), stages: "sleepStages" in a,
+      kept, off: !!c && !("photo" in c) };
+  });
+  t.check("日の行を直す道：知らない欄と今日の一枚が残る・外した睡眠の型は戻らない", day.fut === "未来の欄" && day.photo && !day.stages, JSON.stringify(day));
+  t.check("日の行を直す道：一枚だけの日は本文を消しても行が残り、外すと参照だけ消える", day.kept && day.off, JSON.stringify(day));
+
   t.check("エラーが出ない", errors.length === 0, errors.join("\n"));
   await browser.close();
   t.done();

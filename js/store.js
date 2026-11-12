@@ -4757,8 +4757,10 @@
         : (patch.sleepStages || null);
       if (stages) next.sleepStages = stages;
       if (out) next.memoOut = true;
+      /* 知らない欄・今日の一枚（photo）は元の一件から残す（docs/storage.md「知らない欄」。組み直す欄は落とす）。 */
+      keepUnknown(cur, next, ["sleepStages", "memoOut", "updatedAt"]);
 
-      const empty = !out && !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages;
+      const empty = !out && !next.memo.trim() && !next.wake && !next.sleep && !next.sleepStages && !photoOf(next);
       s.archive.days = s.archive.days.filter((d) => d.date !== day);
       if (!empty) {
         /* 「更新」は**人が書き直したこと**を言う印です。毎朝の取り込みで
@@ -5026,6 +5028,31 @@
       .map((c) => thenOfDay(c.date, c.label))
       .filter(Boolean);
     return years.length >= 2 ? years : null;
+  }
+
+  /** 今日の一枚（F6 の D2）：日の行の参照 `photo: { id, s }`（大きい一枚と小さい写し。ノートの画像の入れ物の id）。読めなければ null。
+      function 宣言なのは setDayLog（load の途中で呼ばれうる）から呼ぶため。 */
+  function photoOf(d) {
+    const p = d && d.photo;
+    const ok = (x) => typeof x === "string" && /^[0-9a-f]{16}$/.test(x);
+    return p && typeof p === "object" && ok(p.id) && ok(p.s) ? { id: p.id, s: p.s } : null;
+  }
+
+  /** その日の一枚を付ける・替える（ref）・外す（null）。行が無ければ作る。外しても行は残す（ほかの欄は触らない）。 */
+  function setDayPhoto(day, ref) {
+    const date = toDayKey(day);
+    const p = ref && photoOf({ photo: ref });
+    if (!date || (ref && !p)) return;
+    update((s) => {
+      let cur = s.archive.days.find((d) => d.date === date);
+      if (!cur) {
+        if (!p) return;
+        cur = { date, memo: "", wake: null, sleep: null, wakeSource: "manual", sleepSource: "manual", createdAt: stamp() };
+        s.archive.days.push(cur);
+      }
+      if (p) cur.photo = p; else delete cur.photo;
+      cur.updatedAt = stamp();
+    });
   }
 
   /** 偶然の一日（F6 の D1）：書いてある過ぎた日のどれか（except は除く）。無ければ null。数えない。 */
@@ -5369,7 +5396,7 @@
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
     stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, applyRefit, applyFill, importUnfold, slipFacts,
-    dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, archiveAny, isQuietDay, setQuietDay,
+    dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, archiveAny, photoOf, setDayPhoto, isQuietDay, setQuietDay,
     setAsks,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };

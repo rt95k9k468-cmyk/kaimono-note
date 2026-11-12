@@ -12,6 +12,8 @@
    - 参照が無くなった画像は印を付け、さらに30日出てこなければ消す（sweep）。
      数えられない日・疑わしい日は掃除をしない。
    - 一覧・起動時に画像は読まない。読むのは開いたノートが参照するものだけ。
+   - daily の今日の一枚（F6 の D2）も同じ入れ物：大きい一枚（長辺1600）と小さい写し（長辺320）を同じ形の二件で
+     （`addPair`）。日の行の参照 `photo: {id, s}`（store.photoOf）も、掃除と Dropbox から戻すときに数える。
    ========================================================= */
 (function () {
   "use strict";
@@ -21,6 +23,8 @@
   const DB = "kaimono-note-images";
   const OPEN_WAIT = 8000;                 // これだけ待って開かなければ off
   const SIDE = 1600;                      // 縮める長辺（px）
+  const SMALL = 320;                      // 今日の一枚の小さい写し（日の並び）
+  const LOW = 300 * 1048576;              // 空きがこれ（＋控えの上限の2倍）を切ったら設定で知らせる
   const QUALITY = 0.8;                    // JPEG
   const KEEP_ORPHAN = 30 * 864e5;         // 参照が無くなってから消すまで
   const SWEEP_WAIT = 4000;                // 開いてから掃除まで（backup.js の点検が済むのを待つ）
@@ -137,23 +141,28 @@
 
   const bytesOf = (blob) => (blob.arrayBuffer ? blob.arrayBuffer() : new Response(blob).arrayBuffer());
 
-  /** 長辺 SIDE・JPEG QUALITY に縮めた中身（ArrayBuffer）と大きさ。 */
-  async function shrink(file) {
+  /** 長辺 side（既定 SIDE）・JPEG QUALITY に描き直した中身（ArrayBuffer）と大きさ。描き直すので EXIF（撮った場所など）は残らない。 */
+  async function draw(pic, side) {
+    const k = Math.min(1, side / Math.max(pic.w, pic.h));
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(pic.w * k));
+    cv.height = Math.max(1, Math.round(pic.h * k));
+    const g = cv.getContext("2d");
+    /* 透ける画像（PNG）は白の上に（JPEG は透けを持てず、黒になる）。 */
+    g.fillStyle = "#fff";
+    g.fillRect(0, 0, cv.width, cv.height);
+    g.drawImage(pic.src, 0, 0, cv.width, cv.height);
+    const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/jpeg", QUALITY));
+    if (!blob) throw new Error("画像を縮められませんでした");
+    return { bytes: await bytesOf(blob), w: cv.width, h: cv.height };
+  }
+  async function shrink(file, sides = [SIDE]) {
     const pic = await decode(file);
     try {
       if (!pic.w || !pic.h) throw new Error("画像を開けませんでした");
-      const k = Math.min(1, SIDE / Math.max(pic.w, pic.h));
-      const cv = document.createElement("canvas");
-      cv.width = Math.max(1, Math.round(pic.w * k));
-      cv.height = Math.max(1, Math.round(pic.h * k));
-      const g = cv.getContext("2d");
-      /* 透ける画像（PNG）は白の上に（JPEG は透けを持てず、黒になる）。 */
-      g.fillStyle = "#fff";
-      g.fillRect(0, 0, cv.width, cv.height);
-      g.drawImage(pic.src, 0, 0, cv.width, cv.height);
-      const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/jpeg", QUALITY));
-      if (!blob) throw new Error("画像を縮められませんでした");
-      return { bytes: await bytesOf(blob), w: cv.width, h: cv.height };
+      const out = [];
+      for (const s of sides) out.push(await draw(pic, s));
+      return sides.length === 1 ? out[0] : out;
     } finally {
       pic.done();
     }
@@ -247,6 +256,47 @@
     return id;
   }
 
+  /** 今日の一枚（D2）：大きい一枚と小さい写しを書き、`{ id, s }` を返す。書けなければ断る（参照は呼ぶ側が入れない）。 */
+  async function addPair(file) {
+    await start();
+    if (phase !== "on") throw fail();
+    const pics = await shrink(file, [SIDE, SMALL]);
+    const ids = [];
+    for (const pic of pics) ids.push(await idOf(pic.bytes));
+    const had = await Promise.all(ids.map((id) => get(id).catch(() => null)));
+    const need = pics.filter((_, i) => !had[i]);
+    if (need.length && !(await roomFor(need.reduce((n, p) => n + p.bytes.byteLength, 0)))) throw fail();
+    try {
+      for (let i = 0; i < pics.length; i++) {
+        if (had[i]) await run(["meta"], "readwrite", (t) => dropMark(t, ids[i]));
+        else await put({ id: ids[i], type: "image/jpeg", w: pics[i].w, h: pics[i].h, at: new Date().toISOString(), bytes: pics[i].bytes });
+      }
+    } catch (_) {
+      throw fail();
+    }
+    return { id: ids[0], s: ids[1] };
+  }
+
+  /** この端末の保存場所（設定の使用量）。{ usage, quota, low } か null（estimate の無い端末）。 */
+  async function space() {
+    const st = navigator.storage;
+    if (!st || !st.estimate) return null;
+    try {
+      const e = await st.estimate();
+      if (!e || !isFinite(e.quota) || !isFinite(e.usage)) return null;
+      return { usage: e.usage, quota: e.quota, low: e.quota - e.usage < LOW + 2 * budget() };
+    } catch (_) { return null; }
+  }
+
+  /** daily の日の行が参照する画像（今日の一枚の二件）。 */
+  function dayIds() {
+    const S = KN.store;
+    const out = [];
+    if (!S || !S.photoOf) return out;
+    ((S.get().archive || {}).days || []).forEach((d) => { const p = S.photoOf(d); if (p) out.push(p.id, p.s); });
+    return out;
+  }
+
   /** 見せる口（object URL と大きさ）。無い・読めないなら null。 */
   function look(id) {
     if (looks.has(id)) return Promise.resolve(looks.get(id));
@@ -299,6 +349,7 @@
     const used = new Set();
     notes.forEach((n) => idsIn(n.body).forEach((id) => used.add(id)));
     vers.forEach((b) => idsIn(b).forEach((id) => used.add(id)));
+    dayIds().forEach((id) => used.add(id));
     const now = Date.now();
     const gone = [];
     await run(["img", "meta"], "readwrite", (t) => {
@@ -353,14 +404,14 @@
     });
   }
 
-  /** Dropbox の控えから戻したあと（settings-backup.js）。ノートが参照していて手元に無い画像だけ
+  /** Dropbox の控えから戻したあと（settings-backup.js）。ノートと daily の日の行が参照していて手元に無い画像だけ
       `images/<id>.jpg` を読み、中身の SHA-256 が名前と合うものだけ書きます。書けた数。 */
   async function pullMissing() {
     await start();
     const N = KN.notes;
-    if (phase !== "on" || !N || N.state() !== "on" || !KN.dropbox) return 0;
-    const want = new Set();
-    N.list().concat(N.trash()).forEach((n) => idsIn(n.body).forEach((id) => want.add(id)));
+    if (phase !== "on" || !KN.dropbox) return 0;
+    const want = new Set(dayIds());
+    if (N && N.state() === "on") N.list().concat(N.trash()).forEach((n) => idsIn(n.body).forEach((id) => want.add(id)));
     let n = 0;
     for (const id of want) {
       if (await get(id).catch(() => null)) continue;
@@ -382,7 +433,7 @@
   KN.noteImg = {
     ready: () => start(),
     state: () => phase,
-    refOf, idsIn, refLine, shrink, idOf, add, get, look, known, readMany,
+    refOf, idsIn, refLine, shrink, idOf, add, addPair, space, get, look, known, readMany,
     sweep, swept: () => sweptP, unsent, markSent, pullMissing,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   };

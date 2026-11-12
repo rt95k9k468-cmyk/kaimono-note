@@ -746,7 +746,17 @@
     let t = liveCopyText() + diaryCopyText(u.diary);
     if ((u.where === "idb" ? u.liveChars : u.liveChars + (u.snapChars || 0)) / IPHONE_CHARS >= 0.6) t += "記録が大きくなってきました。";
     if (u.tight) t += `自動バックアップは${u.fits}件まで。こまめに「バックアップを保存」を。`;
-    return [card(rows), foot(t)];
+    /* 保存場所の全体（写真・画像を含む。今日の一枚 F6 の D2）。足りなくなる前に一言（書くときは note-img の roomFor が断る）。 */
+    const disk = KN.noteImg && KN.noteImg.space ? fact("", "保存場所の全体", "…", "写真・画像を含む") : null;
+    if (disk) rows.push(disk);
+    const ft = foot(t || "-");
+    ft.hidden = !t;
+    if (disk) KN.noteImg.space().then((sp) => {
+      if (!sp) { disk.remove(); return; }
+      disk.querySelector(".set-val").textContent = sp.usage >= 1e9 ? `約${(sp.usage / 1e9).toFixed(1)}GB` : `約${Math.max(1, Math.round(sp.usage / 1e6))}MB`;
+      if (sp.low) { ft.textContent = `${t}保存場所の空きが少なくなってきました。`; ft.hidden = false; }
+    });
+    return [card(rows), ft];
   }
 
   /* 記録の写し（js/live-idb.js。B1）：いつの状態か。書くたびに追うので、ふだんは

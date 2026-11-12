@@ -110,7 +110,7 @@ const IMG_DB = "kaimono-note-images";
     }, null, { timeout: 10000 });
   };
   const field = () => page.$eval(".sheet.is-note.is-open .js-text", (e) => e.value);
-  const imgKeys = () => page.evaluate((name) => new Promise((res) => {
+  const imgKeys = (pg = page) => pg.evaluate((name) => new Promise((res) => {
     const r = indexedDB.open(name);
     r.onsuccess = () => {
       const d = r.result;
@@ -118,7 +118,7 @@ const IMG_DB = "kaimono-note-images";
       q.onsuccess = () => { res(q.result.map((x) => ({ id: x.id, w: x.w, h: x.h, n: x.bytes.byteLength, blob: x.bytes instanceof ArrayBuffer }))); d.close(); };
     };
   }), IMG_DB);
-  const metaOf = (k) => page.evaluate(([name, key]) => new Promise((res) => {
+  const metaOf = (k, pg = page) => pg.evaluate(([name, key]) => new Promise((res) => {
     const r = indexedDB.open(name);
     r.onsuccess = () => {
       const d = r.result;
@@ -544,5 +544,93 @@ const IMG_DB = "kaimono-note-images";
   t.check("入れ物が開かない日：ノートは書ける", (await p9.evaluate((i) => KN.notes.get(i).body, id9)).startsWith("はじめ書ける"));
   t.check("頁のエラーなし（開かない日）", o9.errors.length === 0, o9.errors.join(" / "));
   await o9.browser.close();
+
+  /* ---- 10. daily の今日の一枚（F6 の D2・docs/daily.md「F6 の働き」） ----
+     同じ入れ物に大きい一枚（1600）と小さい写し（320）・EXIF は残らない・日の行は参照 {id, s} だけ・額の背は先に取る・
+     月ぜんぶは小さい写しだけ読む・鍵で出ない・掃除は日の参照を数える・替えた古い絵に印・外す・起動では読まない。 */
+  const o10 = await open({ before: (c) => c.addInitScript(() => {
+    window.__imgReads = [];
+    const real = IDBObjectStore.prototype.get;
+    IDBObjectStore.prototype.get = function (k) { if (this.name === "img") window.__imgReads.push(k); return real.call(this, k); };
+  }) });
+  const p10 = o10.page;
+  await p10.evaluate(() => Promise.all([KN.notes.ready(), KN.noteImg.ready()]));
+  await p10.evaluate(() => { const n = { ...KN.notes.draft(), title: "掃除の相手", body: "画像なし" }; KN.notes.put(n); return KN.notes.flush(); });
+  await p10.evaluate(() => KN.app.showScreen("archive"));
+  await p10.waitForTimeout(400);
+  const jpeg = async (seed) => {
+    const buf = Buffer.from(await p10.evaluate((s) => { const cv = document.createElement("canvas"); cv.width = 4000; cv.height = 3000;
+      const g = cv.getContext("2d"); g.fillStyle = `hsl(${s * 60} 60% 50%)`; g.fillRect(0, 0, 4000, 3000);
+      return cv.toDataURL("image/jpeg", 0.9).split(",")[1]; }, seed), "base64");
+    /* 撮った場所の代わりの EXIF（APP1）を SOI の直後に。 */
+    const body = Buffer.concat([Buffer.from("Exif\0\0MM\0*\0\0\0\x08GPSTEST", "binary"), Buffer.alloc(16)]);
+    const app1 = Buffer.concat([Buffer.from([0xff, 0xe1, (body.length + 2) >> 8, (body.length + 2) & 255]), body]);
+    return { name: `d${seed}.jpg`, mimeType: "image/jpeg", buffer: Buffer.concat([buf.subarray(0, 2), app1, buf.subarray(2)]) };
+  };
+  const today10 = await p10.evaluate(() => KN.util.todayKey());
+  const choose10 = async (label, file) => {
+    await p10.click("#screen-archive .js-log-more");
+    const item = p10.locator(".note-pop.is-open .note-pop-item", { hasText: label });   // 閉じかけの小窓は数えない
+    if (!file) { await item.click(); return; }
+    const [fc] = await Promise.all([p10.waitForEvent("filechooser"), item.click()]);
+    await fc.setFiles(file);
+    await p10.waitForFunction((d) => { const p = KN.store.photoOf(KN.store.dayLog(d)); return p && p.id !== window.__lastId; }, today10, { timeout: 10000 });
+  };
+  await choose10("一枚を選ぶ", await jpeg(1));
+  const ref1 = await p10.evaluate((d) => (window.__lastId = KN.store.photoOf(KN.store.dayLog(d)).id, KN.store.photoOf(KN.store.dayLog(d))), today10);
+  const recs = (await imgKeys(p10)).filter((r) => r.id === ref1.id || r.id === ref1.s);
+  const big = recs.find((r) => r.id === ref1.id), small = recs.find((r) => r.id === ref1.s);
+  t.check("D2：同じ入れ物に大きい一枚（長辺1600）と小さい写し（長辺320）", big && small && Math.max(big.w, big.h) === 1600
+    && Math.max(small.w, small.h) === 320 && big.blob && small.blob, JSON.stringify(recs));
+  const exif = await p10.evaluate(([name, ids]) => new Promise((res) => {
+    const r = indexedDB.open(name);
+    r.onsuccess = () => { const q = r.result.transaction("img").objectStore("img").getAll();
+      q.onsuccess = () => { res(q.result.filter((x) => ids.includes(x.id)).some((x) => new TextDecoder("latin1").decode(x.bytes).includes("GPSTEST"))); r.result.close(); }; };
+  }), [IMG_DB, [ref1.id, ref1.s]]);
+  t.check("D2：描き直すので EXIF（撮った場所など）は残らない", exif === false);
+  const row10 = await p10.evaluate((d) => Object.keys(KN.store.dayLog(d)).filter((k) => !["date", "memo", "wake", "sleep", "wakeSource", "sleepSource", "createdAt", "updatedAt"].includes(k)), today10);
+  t.check("D2：日の行に足したのは参照 photo だけ", JSON.stringify(row10) === '["photo"]', JSON.stringify(row10));
+  await p10.waitForSelector("#screen-archive .arc-log-body > .arc-photo.is-on img", { timeout: 4000 }).catch(() => {});
+  const frame10 = await p10.evaluate(() => { const e = document.querySelector("#screen-archive .arc-log-body > .arc-photo"); const r = e && e.getBoundingClientRect();
+    return r ? { ratio: r.width / r.height, on: e.classList.contains("is-on"), first: e === e.parentNode.firstElementChild } : null; });
+  t.check("D2：開いた日は本文の上に一枚（額 3:2 の背は先に取る）", frame10 && frame10.on && frame10.first && Math.abs(frame10.ratio - 1.5) < 0.02, JSON.stringify(frame10));
+  t.check("D2：daily の禁止語・数を出さない（額は字を持たない）", await p10.evaluate(() => !document.querySelector("#screen-archive .arc-photo").innerText.trim()));
+  /* 月ぜんぶ：日の行の右に 72px、読むのは小さい写しだけ。 */
+  await p10.evaluate(() => { window.__imgReads = []; KN.store.update((s) => { s.settings.dailyScope = "month"; }); });
+  await p10.waitForSelector("#screen-archive .arc-log-row .arc-photo.is-s.is-on", { timeout: 4000 }).catch(() => {});
+  const month10 = await p10.evaluate(() => { const e = document.querySelector("#screen-archive .arc-log-row .arc-photo.is-s");
+    return e ? { w: e.getBoundingClientRect().width, h: e.getBoundingClientRect().height, reads: window.__imgReads } : null; });
+  t.check("D2：月ぜんぶは日の行の右に 72px、小さい写しだけ読む", month10 && month10.w === 72 && month10.h === 72
+    && month10.reads.includes(ref1.s) && !month10.reads.includes(ref1.id), JSON.stringify(month10));
+  await p10.evaluate(() => KN.store.update((s) => { s.settings.dailyScope = "day"; }));
+  /* 日記の鍵が掛かっていれば出さない（⋯ も）。 */
+  const shut10 = await p10.evaluate(() => { const real = KN.lock.hides; KN.lock.hides = (k) => k === "diary" || real(k); KN.screens.archive.render();
+    const r = { pic: !!document.querySelector("#screen-archive .arc-photo"), more: !!document.querySelector("#screen-archive .js-log-more") };
+    KN.lock.hides = real; KN.screens.archive.render(); return r; });
+  t.check("D2：日記の鍵が掛かっていれば一枚も ⋯ も出さない", !shut10.pic && !shut10.more, JSON.stringify(shut10));
+  /* 掃除は日の参照を数える。替えると古い二つに印（30日で消える道）・新しい二つは Dropbox の送り待ち。 */
+  await p10.evaluate(() => KN.noteImg.sweep());
+  let orphan = ((await metaOf("orphan", p10)) || {}).at || {};
+  t.check("D2：掃除は日の行の一枚を数える（印が付かない）", !(ref1.id in orphan) && !(ref1.s in orphan), JSON.stringify(orphan));
+  await choose10("一枚を替える", await jpeg(2));
+  const ref2 = await p10.evaluate((d) => KN.store.photoOf(KN.store.dayLog(d)), today10);
+  await p10.evaluate(() => KN.noteImg.sweep());
+  orphan = ((await metaOf("orphan", p10)) || {}).at || {};
+  const unsent10 = await p10.evaluate(() => KN.noteImg.unsent());
+  t.check("D2：替えると新しい一枚、古い二つに印", ref2.id !== ref1.id && ref1.id in orphan && ref1.s in orphan && !(ref2.id in orphan), JSON.stringify(orphan));
+  t.check("D2：Dropbox へはノートの画像と同じ送り待ち（images/）", unsent10.includes(ref2.id) && unsent10.includes(ref2.s), unsent10.join(","));
+  await choose10("一枚を外す");
+  await p10.waitForTimeout(300);
+  t.check("D2：外すと参照も額も消える（行は残る）", await p10.evaluate((d) => !!KN.store.dayLog(d) && !KN.store.photoOf(KN.store.dayLog(d))
+    && !document.querySelector("#screen-archive .arc-photo"), today10));
+  /* 起動では読まない：過ぎた日に一枚を付けて開き直す。見ていない日の絵は読まない。 */
+  await p10.evaluate((r) => KN.store.setDayPhoto("2026-11-01", r), ref2);
+  await p10.evaluate(() => KN.store.flush && KN.store.flush());
+  await p10.reload();
+  await p10.waitForFunction(() => window.KN && KN.app && KN.app.activeScreen());
+  await p10.waitForTimeout(1500);
+  t.check("D2：起動では読まない（見ていない日の一枚）", await p10.evaluate(() => window.__imgReads.length === 0), await p10.evaluate(() => window.__imgReads.join(",")));
+  t.check("頁のエラーなし（今日の一枚）", o10.errors.length === 0, o10.errors.join(" / "));
+  await o10.browser.close();
   t.done();
 })().catch((e) => { console.error(e); process.exit(1); });

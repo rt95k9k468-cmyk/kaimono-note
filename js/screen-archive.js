@@ -757,11 +757,20 @@
             <button type="button" class="icon-btn js-log-copy" aria-label="この日の記録をコピー">
               ${icon("copy")}
             </button>` : ""}
+          ${/* 今日の一枚（F6 の D2）を付ける・替える・外す。一日ぶん・鍵が開いている・写真の入れ物が使える日だけ。 */
+              oneDayLog() && only <= U.todayKey() && !diaryShut() && KN.dayPhoto && KN.dayPhoto.items(only).length ? html`
+            <button type="button" class="icon-btn js-log-more" aria-label="ほかの操作">${icon("more")}</button>` : ""}
         </header>
         <div class="arc-log-body"></div>
       </section>
     `);
     const body = sec.querySelector(".arc-log-body");
+    const moreBtn = sec.querySelector(".js-log-more");
+    if (moreBtn) moreBtn.addEventListener("click", () => KN.ui.popMenu(moreBtn, KN.dayPhoto.items(only)));
+    /* 開いた日は本文の上に一枚（額の背は CSS が先に取る）。月ぜんぶのときは日の行の右に小さく（下の rows）。 */
+    const pic = only && !diaryShut() && KN.dayPhoto ? KN.dayPhoto.frame(days[0], false) : null;
+    if (pic) body.append(pic);
+    const thumb = (d) => (!only && !diaryShut() && KN.dayPhoto ? KN.dayPhoto.frame(d, true) : null);
     const copyBtn = sec.querySelector(".js-log-copy");
     if (copyBtn) copyBtn.addEventListener("click", () => {
       if (diaryShut()) { askDiary(); return; }   // 開けたら、もう一度押して写す
@@ -787,7 +796,10 @@
       /* 時刻ごと（既定）：書いた日は一件ずつ。空の日・読めない日・本文を外した日は下の一行のまま
          （押せば書く紙。言うことも色も一枚のときと同じ）。 */
       if (chatView() && !d.isBlank && !unread && !outText(d) && !shut) {
-        body.append(chatRow(d, !!only));
+        const cr = chatRow(d, !!only);
+        const th = thumb(d);
+        if (th) cr.append(th);
+        body.append(cr);
         const feed = feedRows(d.date);
         if (feed) body.append(feed);
         return;
@@ -853,6 +865,8 @@
         e.preventDefault();
         write();
       });
+      const th = thumb(d);
+      if (th) row.append(th);
       body.append(row);
       /* 上を切ったときだけ、頭を薄くして「続きは上に」を見せます。 */
       const tail = row.querySelector(".arc-log-memo.is-tail");

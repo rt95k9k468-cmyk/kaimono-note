@@ -42,7 +42,7 @@
 | 同 `snaps`・`snapBodies` | 自動の控え（ノートつき） | 無い（端末の外が代わり）。いちばん新しくない控えへも戻せる | break 2、restore-drill 2 |
 | localStorage `kaimono-note-snapshots` | 大きな保存場所を使えない日の控え | 無い | （無し） |
 | idb `kaimono-note-notes` | ノート・前の版・同期の覚え | 自動の控え（設定の頭に一行）・Dropbox の `notes/`・書き出し | break 3、notes-restore、notes-sync |
-| idb `kaimono-note-images`・`-files` | ノートの画像・PDF | Dropbox の `images/`・`files/`（戻したあと `pullMissing`）。自動の控え・`exportJSON` には載らない。ノートの書き出し「1件ずつ（zip）」には入るが、**zip から戻す道は無い** | note-files |
+| idb `kaimono-note-images`・`-files` | ノートの画像・PDF・daily の今日の一枚（日の行の `photo`） | Dropbox の `images/`・`files/`（戻したあと `pullMissing`）。自動の控え・`exportJSON` には載らない。ノートの書き出し「1件ずつ（zip）」には入るが、**zip から戻す道は無い** | note-files |
 | meta `replica`・`kn-replica`・`kn-desk-held` | 写しの端末の写し・印・置く前の受け箱 | 写しは Dropbox から読み直す。置く前の受け箱は失う | desk-replica、desk-inbox |
 | idb `kaimono-note-sync` | 3台の同期：鍵の元・部屋の鍵と URL・前に合わせた中身・送り待ち（写しの端末では部屋から読んだ中身。docs/sync.md） | 鍵の元は Dropbox の `sync-key.json`。ほかは部屋から作り直せる写し（記録ではない） | sync-device |
 | idb `kaimono-note-bell` | 鳴らす予定 | 次に開いたとき作り直す（記録ではない） | bell |
