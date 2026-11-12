@@ -142,7 +142,8 @@
     els.dayTitle.addEventListener("click", () => {
       if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
-      store.setCalPref("diet", KN.head.nextStep(calShown(), calOpen()));
+      /* 滑らせる（cal-peek の glide。組み直しは store を書いた拍の subscribe が、その場で）。 */
+      KN.calPeek.glide(peekOpts, () => store.setCalPref("diet", KN.head.nextStep(calShown(), calOpen())));
     });
 
     /* 題の右の「今日へ戻る」。`viewDay` も `calMonth` も落とすと、どちらも
@@ -576,6 +577,17 @@
      組み直しは要らず、輪の位置も測り直さずに済みます。 */
   const calOpen = () => store.calPrefs("diet").open;
   const calShown = () => store.calPrefs("diet").shown;
+  /** 題を押して段を替えるとき、cal-peek の glide へ渡す口（やることの peekOpts と同じ形）。 */
+  const peekOpts = {
+    get root() { return root; },
+    cal: () => els.cal,
+    isOpen: () => calOpen(),
+    isShown: () => calShown(),
+    here: () => curDay(),
+    tagOffWeek: (sec, here) => tagOffWeek(sec, here),
+    ring: () => placeRing(true),
+    commit: () => placeRing(true),
+  };
 
   /** いま出している週だけを残して、ほかのマスに印を付けます。 */
   function markWeek(sec, here) {

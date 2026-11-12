@@ -108,7 +108,8 @@
     els.dayTitle.addEventListener("click", () => {
       if (!shopMine()) return;
       KN.motion.fire("select");
-      KN.store.setCalPref("list", nextStep(calShown(), calOpen()));   // 組み直しは subscribe が
+      /* 滑らせる（cal-peek の glide。組み直しは store を書いた拍の subscribe が、その場で）。 */
+      KN.calPeek.glide(shopPeek, () => KN.store.setCalPref("list", nextStep(calShown(), calOpen())));
     });
     /* 今日へ戻るのも、払いと同じ道（shopGo）を通します。前は日を戻して
        暦を塗るだけで、紙に知らせて（dayMoved）いなかったので、前の日の
@@ -351,6 +352,21 @@
   const shopMine = () => owner === "list" || owner === "prices";
   const calOpen = () => KN.store.calPrefs("list").open;
   const calShown = () => KN.store.calPrefs("list").shown;
+  /** 買うもの・価格の題を押して段を替えるとき、cal-peek の glide へ渡す口（やることの peekOpts と同じ形）。 */
+  const shopRing = () => {
+    const grid = sCal && sCal.querySelector(".cal-grid");
+    if (grid) moveRing(grid, grid.querySelector(".cal-day.is-here"), true);
+  };
+  const shopPeek = {
+    get root() { return document.getElementById(`screen-${owner}`); },
+    cal: () => sCal,
+    isOpen: () => calOpen(),
+    isShown: () => calShown(),
+    here: () => sCur(),
+    tagOffWeek: (sec, here) => tagOffWeek(sec, here),
+    ring: shopRing,
+    commit: shopRing,
+  };
 
   let sDay = null;      // 見ている日（null＝今日）
   let sMonth = null;    // 出している月（null＝見ている日の月）

@@ -9,6 +9,7 @@
    - 月の面は全タブの暦の札を書かない：買うものへ移っても暦は週。移るあいだ暦の置き場の背も滑る。
    - 週の面：頭から（今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初）・時刻の列と点の列がそろう・今日の日付は塗り
      （日曜の赤い字と見分ける）・「仕事だけ」に青い点が無い。
+   - からだ・買うものの題も同じ滑り（前は一拍で跳んでいた。2026年11月12日）。
    - 動きを減らす設定では滑らせない（一拍で行き先へ）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/cal-press-glide.js */
@@ -61,8 +62,8 @@ const { open, checker } = require("./lib");
   /** 盆は先に行き着く背を取る：置き場の背は「前」と「あと」の二つだけ（途中の背を通らない）。 */
   const snaps = (w) => new Set(w.map((f) => f.h)).size <= 2;
   /** 滑り終えたら、書いたものを残さない（暦の印・窓の背・ずらし・下の画面の translate・延ばした画面・送りしろ）。 */
-  const clean = () => page.evaluate(() => {
-    const cal = document.querySelector("#head .cal"), scr = document.querySelector("#screen-todo"), sc = KN.app.scrollerOf(scr);
+  const clean = (id = "todo") => page.evaluate((id) => {
+    const cal = document.querySelector("#head .cal"), scr = document.querySelector("#screen-" + id), sc = KN.app.scrollerOf(scr);
     const left = [];
     if (/is-peek|is-settling|is-rows/.test(cal.className)) left.push("cal:" + cal.className);
     if (/--cal-(ms|ease|o0|o1)/.test(cal.style.cssText)) left.push("cal.style:" + cal.style.cssText);   // --cal-row は画面のもの（fitTall）
@@ -73,7 +74,7 @@ const { open, checker } = require("./lib");
     if (sc.style.paddingBottom) left.push("pad:" + sc.style.paddingBottom);
     if (document.getAnimations().some((a) => a.effect && a.effect.target && (a.effect.target.id === "panes" || a.effect.target.closest(".cal")))) left.push("anim");
     return left;
-  });
+  }, id);
 
   // 週の面：頭から（今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初）、時刻の列と点の列がそろう、今日の日付は塗り、「仕事だけ」に青い点が無い
   await page.click('#screen-todo .wk-faces [data-face="week"]');
@@ -179,6 +180,27 @@ const { open, checker } = require("./lib");
     });
     c.check(`月を押して${wait}ms で週：週の面・週の暦で止まる（札は書かない）`, r.face === "週" && r.week && !r.tall && !r.busy && !r.open && r.h < 120, JSON.stringify(r));
   }
+
+  // からだ・買うものの題も同じ滑り（盆は押した一拍で背を取り、下の画面が見かけで寄る。輪は見ている日の上のまま）
+  for (const [tab, id, name] of [["diet", "diet", "からだ"], ["list", "list", "買うもの"]]) {
+    await page.click(`#tabbar .tab-${tab}`);
+    await page.waitForTimeout(800);
+    for (const step of ["開く", "畳む"]) {
+      await watch();
+      await page.click("#head .js-day-title");
+      w = await seen();
+      const at = await page.evaluate(() => {
+        const cal = document.querySelector("#head .cal"), r = cal.querySelector(".cal-ring").getBoundingClientRect(), n = cal.querySelector(".cal-day.is-here .cal-n").getBoundingClientRect();
+        return { week: cal.classList.contains("is-week"), ring: Math.round(Math.abs(r.top - n.top) + Math.abs(r.left - n.left)) };
+      });
+      left = await clean(id);
+      c.check(`${name}の題で${step}：下の画面が滑る・盆は先に背を取る・輪は見ている日の上・何も残さない`,
+        at.week === (step === "畳む") && between(of(w, "p")) >= 3 && leap(of(w, "p")) < 200 && snaps(w) && at.ring <= 3 && !left.length,
+        JSON.stringify([at, left, w.map((f) => f.p), w.map((f) => f.h)]));
+    }
+  }
+  await page.click("#tabbar .tab-todo");
+  await page.waitForTimeout(800);
 
   // 動きを減らす設定では滑らせない
   await page.emulateMedia({ reducedMotion: "reduce" });
