@@ -1,6 +1,6 @@
 /* 季節の絵（3.0 の E1、docs/roadmap-3.0.md・docs/season-art.md。2026年10月6日）。
-   daily は写真（Wikimedia Commons・img/season-photo/）、ノートは広重『名所江戸百景』（NDL・img/season/）。
-   どちらも72候すべてに一枚ずつ（2026年10月7日、利用者が見比べて選んだ）。見るのは：
+   写真（Wikimedia Commons・img/season-photo/）と広重『名所江戸百景』（NDL・img/season/）、どちらも72候すべてに一枚ずつ。
+   出どころは装いで替わる（RI・11月12日）：手帳は daily の額もノートの地も広重、モダンは daily が写真・ノートは色だけ。見るのは：
    - 72候のどれも絵と出どころ（題・作者・所蔵・URL・理由）を持ち、絵のファイルが揃っている
    - 72候のどれも色を持つ。隣の候と同じ色ではない（候ごとに変わる）
    - daily は候の札の額に、選んでいる日の候の色と写真（R6。紙の地には敷かない）。過去の日を開けばその日の候
@@ -95,10 +95,10 @@ const ROOT = path.resolve(__dirname, "..");
   c.check("daily に今日の候の色（10/6 は秋分の末候）。読めるまで額は候の色", r.k === String(r.want) && r.c === r.color && r.fill !== "rgba(0, 0, 0, 0)", JSON.stringify(r));
   await page.waitForFunction(() => document.querySelector("#screen-archive").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
   r = await read();
-  c.check("今日の候の写真が読めて候の札の額に入る（daily は写真）", r.img && r.bg.includes(`season-photo/k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
+  c.check("今日の候の絵が読めて候の札の額に入る（手帳の daily は広重）", r.img && r.bg.includes(`/img/season/k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
   /* 相対 URL は var() を使う css/screens.css から解決され css/img/season/… の 404 になる（10/6 まで絵が出ていなかった） */
   const imgUrl = (/url\("([^"]+)"\)/.exec(r.bg) || [])[1] || "";
-  c.check("写真の URL は配信元の img/season-photo/（css/ の下ではない）・読める", !/\/css\/img\//.test(imgUrl)
+  c.check("絵の URL は配信元の img/season/（css/ の下ではない）・読める", !/\/css\/img\//.test(imgUrl)
     && await page.evaluate((u) => fetch(u).then((x) => x.ok, () => false), imgUrl), imgUrl);
   c.check("紙の地には敷かない（R6。絵は額の中だけ・字は札の上）", r.sheetBg === "none", r.sheetBg.slice(0, 120));
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
@@ -122,6 +122,23 @@ const ROOT = path.resolve(__dirname, "..");
     && document.querySelector("#screen-archive").hasAttribute("data-season")));
   await page.evaluate(() => { KN.store.update((s) => { delete s.settings.notesSeasonArt; }); KN.screens.notes.render(); });
   c.check("ノートも既定は入", await page.evaluate(() => document.querySelector("#screen-notes").hasAttribute("data-season")));
+  /* モダンにすると、敷いてある画面がその場で替わる：daily の額は写真、ノートの地は候の色だけ。手帳へ戻せば広重。 */
+  const wear = async (a) => {
+    await page.evaluate((x) => { KN.store.update((s) => { s.settings.attire = x; }); KN.app.applyLook(); }, a);
+    await wait(900);
+  };
+  await wear("modern");
+  const md = await page.evaluate(() => ({
+    daily: getComputedStyle(document.querySelector("#screen-archive .arc-season-art")).backgroundImage,
+    notesImg: document.querySelector("#screen-notes").hasAttribute("data-season-img"),
+    notesK: document.querySelector("#screen-notes").hasAttribute("data-season"),
+    credits: KN.seasonArt.credits("notes").length,
+  }));
+  c.check("モダンは daily の額が写真・ノートの地は色だけ（出典の一覧も空）", /season-photo\/k\d\d\.webp/.test(md.daily) && !md.notesImg && md.notesK && md.credits === 0,
+    JSON.stringify(md).slice(0, 200));
+  await wear("now");
+  c.check("手帳へ戻せばノートの地に広重", await page.evaluate(() => document.querySelector("#screen-notes").hasAttribute("data-season-img")
+    && /\/img\/season\/k/.test(getComputedStyle(document.querySelector("#screen-notes")).backgroundImage)));
   await page.click('.tab[data-tab="archive"]');
   await wait(900);
 
@@ -185,20 +202,20 @@ const ROOT = path.resolve(__dirname, "..");
   await wait(1500);
   r = await read();
   const kSw = await page.evaluate(() => KN.season.of("2026-10-08").k);
-  c.check("払って次の候の日へ移れば、その候の写真", (await page.evaluate(() => KN.screens.archive.day())) === "2026-10-08"
-    && r.k === String(kSw) && r.bg.includes(`season-photo/k${String(kSw).padStart(2, "0")}.webp`), JSON.stringify({ k: r.k, kSw, bg: r.bg.slice(-60) }));
+  c.check("払って次の候の日へ移れば、その候の絵", (await page.evaluate(() => KN.screens.archive.day())) === "2026-10-08"
+    && r.k === String(kSw) && r.bg.includes(`/img/season/k${String(kSw).padStart(2, "0")}.webp`), JSON.stringify({ k: r.k, kSw, bg: r.bg.slice(-60) }));
 
   /* 絵があれば重ねる（試験のあいだだけ表に一つ足す。無い絵は読めず、色だけのまま） */
   const withImg = await page.evaluate(async () => {
     const A = KN.seasonArt;
     const el = document.querySelector("#screen-archive");
     const k = Number(el.getAttribute("data-season"));
-    const keep = A.PHOTO[k];
-    A.PHOTO[k] = { file: "img/season-photo/__no_such__.webp", title: "t", author: "a", license: "CC0", url: "u" };
+    const keep = A.ART[k];
+    A.ART[k] = { file: "img/season/__no_such__.webp", title: "t", author: "a", holder: "h", url: "u" };
     A.apply(el, KN.screens.archive.day(), "daily");
     await new Promise((res) => setTimeout(res, 600));
     const img = el.hasAttribute("data-season-img");
-    A.PHOTO[k] = keep;
+    A.ART[k] = keep;
     return img;
   });
   c.check("読めない絵（オフライン・まだ無い）は重ねず、色だけ", withImg === false);

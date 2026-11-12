@@ -6,7 +6,8 @@
    2. 絵をごく薄く。読めてから重ねる。NN は春分の初候から数えた候の番号 00〜71（js/season.js の `k`）。
       - daily：写真 `img/season-photo/kNN.webp`（Wikimedia Commons。`PHOTO`）
       - ノート：浮世絵 `img/season/kNN.webp`（歌川広重『名所江戸百景』、国立国会図書館・NDL イメージバンク。`ART`）
-      2026年10月7日、利用者が同じ日で並べて見比べて、daily を写真に、広重をノートへ移した。
+      装いで出どころを替える（RI・2026年11月12日、利用者が見比べて選んだ）：手帳は daily の額もノートの地も広重、
+      モダンは daily の額が写真で、ノートの地には敷かない（候の色だけ）。
 
    どちらも72候すべてに一枚ずつ。出どころは `PHOTO`・`ART` と docs/season-art.md の二つの表。
    出どころの分からない絵は置かない。直リンクはしない（同じ配信元の img/ から）。
@@ -198,11 +199,12 @@
   };
 
   const fileOf = (k) => `img/season/k${String(k).padStart(2, "0")}.webp`;
-  /* どの画面に、どの一揃いを敷くか（2026年10月7日、利用者が見比べて選んだ）。daily は写真、ノートは広重。
-     切るスイッチも画面ごと（既定は入。`!== false` なので、足す前の設定もそのまま入）。 */
+  /* どの画面に、どの一揃いを敷くか。装いで替わる（上の頭）。null は絵を敷かない（候の色だけ）。
+     切るスイッチは画面ごと（既定は入。`!== false` なので、足す前の設定もそのまま入）。 */
+  const modern = () => document.documentElement.getAttribute("data-attire") === "modern";
   const WHERE = {
-    daily: { set: () => PHOTO, key: "seasonArt" },
-    notes: { set: () => ART, key: "notesSeasonArt" },
+    daily: { set: () => (modern() ? PHOTO : ART), key: "seasonArt" },
+    notes: { set: () => (modern() ? null : ART), key: "notesSeasonArt" },
   };
   const placeOf = (where) => WHERE[where] || WHERE.daily;
   const on = (where) => KN.store.get().settings[placeOf(where).key] !== false;
@@ -271,8 +273,10 @@
    * カスタムプロパティは :root ではなくこの画面に書く（docs/traps.md）。設定で切ってあれば外す。
    * @param {string} where "daily"（写真）か "notes"（広重）
    */
+  const last = new Map();   // where → [画面, 日]。装いを替えたとき敷き直す（reapply）
   function apply(el, day, where) {
     if (!el) return;
+    last.set(where, [el, day]);
     if (!on(where)) {
       el.removeAttribute("data-season");
       el.removeAttribute("data-season-img");
@@ -283,7 +287,7 @@
     const set = placeOf(where).set();
     el.setAttribute("data-season", String(k));
     fadeTo(el, where, colorOf(k));
-    const a = set[k];
+    const a = set && set[k];
     if (!a || !a.file) { el.removeAttribute("data-season-img"); el.style.removeProperty("--season-img"); }
     else {
       /* まだ読めていない絵なら、前の候の絵を残さない（読めるまで色だけ。オフラインで持っていない日も） */
@@ -299,14 +303,18 @@
     }
     /* 次の候も、手の空いたときに覚えておく（オフラインで日をまたいでも、絵が待っている）。 */
     const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
-    idle(() => preload(set[(k + 1) % 72]));
+    if (set) idle(() => preload(set[(k + 1) % 72]));
+  }
+  /** 装いを替えたとき（app.js の applyLook）、敷いてある画面に今の出どころで敷き直す。 */
+  function reapply() {
+    last.forEach(([el, day], where) => { if (el.isConnected) apply(el, day, where); });
   }
 
-  /** 出典の一覧（設定の奥）。絵のある候だけ。daily は写真、notes は広重。 */
+  /** 出典の一覧（設定の奥）。絵のある候だけ。いまの装いで敷いている一揃い（無ければ空）。 */
   function credits(where) {
-    const set = placeOf(where).set();
+    const set = placeOf(where).set() || {};
     return Object.keys(set).map(Number).sort((a, b) => a - b).map((k) => ({ k, kou: KN.season.KOU[k][0], ...set[k] }));
   }
 
-  KN.seasonArt = { apply, colorOf, credits, fileOf, ART, PHOTO, SEKKI_C, SOURCE };
+  KN.seasonArt = { apply, reapply, isPhoto: () => modern(), colorOf, credits, fileOf, ART, PHOTO, SEKKI_C, SOURCE };
 })();

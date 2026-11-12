@@ -193,8 +193,10 @@
     const s = settings || store.get().settings;
     const root = document.documentElement;
     const { look, accent } = lookOf(s);
+    const was = root.getAttribute("data-attire");
     if (look === "modern") root.setAttribute("data-attire", "modern");
     else root.removeAttribute("data-attire");
+    if (was !== root.getAttribute("data-attire") && KN.seasonArt) KN.seasonArt.reapply();   // 候の絵の出どころは装いで替わる
     if (s.headFont === "same") root.setAttribute("data-head", "same");
     else root.removeAttribute("data-head");
     applyAccent(accent);

@@ -2,8 +2,7 @@
 
    - 数字は丸い字：体重の大きな数・帯の日付は --font-num（ui-rounded が先頭）。明朝を選ぶと外れる。
    - 買うものは棚ごとのカード：組は丸い角と面を持ち、頭に棚の名前（chip-dot つき）。
-   - daily の「あの日」は写真の上のガラス：ぼかしが効き、角が丸く、主色の柱は無い。写真が読めた日は
-     紙の地が写真の帯になる（薄い幕はほかの日と同じ）。
+   - daily の「あの日」は塗った札（11月10日から。前は写真の上のガラス）。候の絵は札の額の中だけ。
    日記の本文は試験用の無難な字だけ。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/look-1008.js */
@@ -82,8 +81,8 @@ const { open, checker } = require("./lib");
     const where = await page.evaluate(() => ({
       sheet: getComputedStyle(document.querySelector("#screen-archive .tl-sheet.is-daily")).backgroundImage,
       art: getComputedStyle(document.querySelector("#screen-archive .arc-season-art")).backgroundImage }));
-    t.check("写真は候の札の額の中だけ（紙の地・あの日の後ろには敷かない）", where.sheet === "none" && /url\(/.test(where.art), JSON.stringify(where).slice(0, 200));
-  } else t.check("写真が読めた（img/season-photo）", false);
+    t.check("候の絵は札の額の中だけ（紙の地・あの日の後ろには敷かない）", where.sheet === "none" && /url\(/.test(where.art), JSON.stringify(where).slice(0, 200));
+  } else t.check("候の絵が読めた（手帳は img/season・モダンは img/season-photo）", false);
 
   t.check("エラーが無い", errors.length === 0, errors.join("\n"));
   t.done();

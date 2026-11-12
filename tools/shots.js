@@ -10,7 +10,7 @@
                               （health）・diary（daily の日記）・note・note-menu（ノートと「⋯」）
      --scroll 400             送る器を下へ（px）
      --attire modern 装い（base.css の「モダン」）を列に足す。「今」はいつも撮る
-     --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。「今」（差し替えなし）はいつも撮る
+     --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。'B@modern=…' で装いも。「今」（差し替えなし）はいつも撮る
      --empty                  試しの記録を入れない
      --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）
      --out <dir>              置き場（既定 /tmp/kn-shots）
@@ -43,8 +43,8 @@ const DPR = +arg("dpr", 2);
 const PAGES = list("page", "");
 const VARIANTS = [{ name: "今", css: "" }, ...list("attire", "").map((a) => ({ name: a, css: "", attire: a })), ...all("css").map((s) => {
   const i = s.indexOf("=");
-  const name = s.slice(0, i), body = s.slice(i + 1);
-  return { name, css: fs.existsSync(body) ? fs.readFileSync(body, "utf8") : body };
+  const [name, attire] = s.slice(0, i).split("@"), body = s.slice(i + 1);
+  return { name: s.slice(0, i), attire, css: fs.existsSync(body) ? fs.readFileSync(body, "utf8") : body };
 })];
 
 /* 頁の中で走る。3週間ぶんの体重とお酒・二つの店の値段・時刻のある用事・daily の記録・ノート。 */
