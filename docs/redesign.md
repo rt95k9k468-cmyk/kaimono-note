@@ -163,7 +163,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R5 | **済み（11月11日）**。shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
 | R6 | **済み（11月12日）**。daily（書く紙は RS） | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
 | R7 | **済み（11月12日）**。notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
-| RS | **紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
+| RS | **1回目 済み（11月12日）**：tasks・shopping の紙（2回目は health・daily・notes）。**紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
 | RM | **動きの総仕上げ**（7節の表で総ざらい） | motion.js・ui.js・base.css の `--m-*`・各席 | motion-dict・keyframes-one・smooth・still-js・feel-* | 大 |
 | RI | **絵・写真・挿絵の検討**（下。最後に） | season-art.js・sky.js・empty-art.js・絵の一族・表紙 | season-art・sky・attire | 中 |
 | R8 | 設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
@@ -214,6 +214,10 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   中身 768px から（`#screen-archive` の container）二段：左に本体、右に候の札とあの日。**まとめは Daily Log の隣のまま**（6節は右だが daily-rules が勝つ）。
   季節の写真は紙に敷かず額の中だけ（出どころは写真のまま——装いごとの出どころは RI）。Daily Log の年月の札は出さない（帯と重なる）。
   **先の段へ送ったもの**：書く紙の中身（→ RS）・額の絵を押して大きく見る（写真→全面 → RM）・入りの stagger（→ RM）。
+- RS 1回目で決めたこと（tasks・shopping。細目は todo-items「時刻の紙は一枚」・shopping「RS の紙」）：用事の紙は 何 → いつ（日付・時刻・くりかえし）→
+  種類の札 → 手順・メモ。日付は札と暦の一つの小窓（`popCalendar` の `chips`）。電話の紙の中の背の高い小窓は画面の下（`popOver`）。
+  小窓で決める値は `sheet({ watch })` で閉じるときの見張りへ。品物の紙は値段が先、値段を足す鍵盤は「追加」の一押し（`okLabel`）。
+  欄の字は一語（例：…を書かない）。**先へ送ったもの**：広い幅の鍵盤（11節）・くりかえしの小窓と＋の足す紙は形を変えていない。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。
@@ -251,5 +255,6 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 
 段はふだんの重いモデルで進める（どれかは会話で言う。docs/dev.md「モデルと effort の目安」）。そこで手に負えなかった所だけ一行ずつ
 （何・どこまで試したか・なぜ届かなかったか）。済んだら消す。
-- 広い幅（1440×900）の品物の紙で値段の欄を押すと、鍵盤が紙の下半分にかぶさり、欄と読み（税込・前回との差）が隠れる（R4 から同じ。
-  紙が鍵盤の上に乗るのは電話の `--pad` だけ）。F5 では手を付けていない——紙の置き方（dialog）と鍵盤の幅を一緒に決める要がある。
+- 広い幅（1440×900・1180×820）と iPad 縦（820×1180）の品物の紙で値段の欄を押すと、鍵盤が紙の下半分にかぶさり、欄と読み（税込・前回との差）が
+  隠れる（紙が鍵盤の上に乗るのは電話の `--pad` だけ）。RS 1回目で値段を紙の頭へ上げたので店が二つまでは見えるが、三つ以上で隠れる
+  （店六つで欄の下 781px・鍵盤の上 591px）。紙の置き方（dialog）と鍵盤の幅を一緒に決める要がある。
