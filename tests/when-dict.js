@@ -29,8 +29,8 @@ const tags = [];
 for (const [f, s] of Object.entries(src)) {
   for (const m of s.matchAll(/<input\b[^>]*\bdata-when="(day|far|time)"[^>]*>/g)) tags.push({ f, tag: m[0] });
 }
-/* 積み上げの紙の日付は2026年10月12日に外した（十四 → 十三）。 */
-t.check("data-when の欄が十三より多くある", tags.length >= 13, `${tags.length} 個`);
+/* 積み上げの紙の日付は2026年10月12日に外した（十四 → 十三）。用事の日付の欄は RS で札つきの暦へ（11月12日、十三 → 十二）。 */
+t.check("data-when の欄が十二より多くある", tags.length >= 12, `${tags.length} 個`);
 const notHidden = tags.filter((x) => !/type="hidden"/.test(x.tag));
 t.check("data-when の欄はみな type=\"hidden\"", !notHidden.length, notHidden.map((x) => `${x.f}: ${x.tag}`).join("\n      "));
 const noCall = [...new Set(tags.map((x) => x.f))].filter((f) => !/KN\.ui\.whenFields\(/.test(src[f]));

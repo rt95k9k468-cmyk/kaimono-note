@@ -132,13 +132,30 @@ const { open, checker } = require("./lib");
   await page.evaluate((id) => KN.screens.todo.open(id), tid);
   await page.waitForSelector(S); await wait(400);
   await page.locator(`${S} .js-row-due`).click(); await wait(300);
-  await pickDay(".js-due", "2026-10-20");
+  /* RS（11月12日）：日付の行から札と暦の一つの小窓（今日・明日・明後日・なし＋月の暦）。小窓は重ならず、説明の一言も無い。 */
+  const dp = await page.evaluate(() => {
+    const pops = [...document.querySelectorAll(".note-pop.is-open")];
+    const p = pops[pops.length - 1];
+    return { n: pops.length, cal: !!p && p.matches(".is-cal"), chips: p ? [...p.querySelectorAll(".pop-cal-chips .chip")].map((c) => c.textContent.trim()) : [],
+      days: p ? p.querySelectorAll(".pop-cal-day").length : 0, hint: !!document.querySelector(".js-due-hint, .js-notify-on") };
+  });
+  t.check("用事：日付は札と暦の一つの小窓（今日・明日・明後日・なし）", dp.n === 1 && dp.cal && dp.chips.join() === "今日,明日,明後日,なし" && dp.days >= 28 && !dp.hint, JSON.stringify(dp));
+  await page.locator('.note-pop.is-cal .pop-cal-day[data-day="2026-10-20"]').click();   // 暦は用事の日の月（10月）で開く
   await wait(300);
-  t.check("用事：暦で選ぶと日付の紙が閉じる", await page.locator(".note-pop.is-form").count() === 0);
+  t.check("用事：暦で選ぶと小窓が閉じる", await page.locator(".note-pop.is-open").count() === 0);
   t.check("用事：札の行がその日になる", (await page.locator(`${S} .js-row-due .d-label`).textContent()).includes("10月20日"));
   await page.locator(`${S} .js-save`).last().click(); await wait(500);
   const td = await page.evaluate((id) => KN.store.getTodo(id).due, tid);
   t.check("用事：保存すると その日", td === "2026-10-20", td);
+  /* 札を押して、保存を押さずに閉じても残る（前は日付だけ変えて閉じると黙って捨てた） */
+  await page.evaluate((id) => KN.screens.todo.open(id), tid);
+  await page.waitForSelector(S); await wait(400);
+  await page.locator(`${S} .js-row-due`).click(); await wait(300);
+  await page.evaluate(() => [...document.querySelectorAll(".note-pop.is-cal .chip")].find((c) => c.textContent.trim() === "明日").click());
+  await wait(500);
+  await page.keyboard.press("Escape"); await wait(700);
+  const tm = await page.evaluate((id) => [KN.store.getTodo(id).due, (() => { const d = new Date(); d.setDate(d.getDate() + 1); return KN.util.dayKey(d); })()], tid);
+  t.check("用事：札（明日）で決めて閉じる → 保存", tm[0] === tm[1], JSON.stringify(tm));
 
   /* ---- 空へ戻す（data-clear） ---- */
   await page.evaluate(() => KN.app.showScreen("diet"));

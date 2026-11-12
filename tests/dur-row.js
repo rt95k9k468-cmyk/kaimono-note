@@ -51,6 +51,12 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(700);
   c.check("時刻は紙ではなく、押した札のそばの小窓", await page.evaluate(() =>
     !!document.querySelector(".note-pop.is-form.is-open .js-time-wheels") && document.querySelectorAll(".sheet.is-open").length === 1));
+  /* RS の⑤：口の下に入りきらない時刻の小窓は、電話の紙の中では上へ逃げず画面の下に寄る（指の届く所） */
+  const low = await page.evaluate(() => {
+    const p = document.querySelector(".note-pop.is-form.is-open").getBoundingClientRect();
+    return { top: Math.round(p.top), bottom: Math.round(p.bottom), vh: innerHeight };
+  });
+  c.check("時刻の小窓は画面の下に寄る（上の半分へ逃げない）", low.vh - low.bottom <= 12 && low.top > low.vh * 0.2, JSON.stringify(low));
   const sheet = () => page.evaluate(() => {
     const sh = document.querySelector(".note-pop.is-form");   // 10月2日から押した札のそばの小窓
     const on = sh.querySelector(".js-mins .chip.is-active, .js-mins .chip[aria-pressed='true']");

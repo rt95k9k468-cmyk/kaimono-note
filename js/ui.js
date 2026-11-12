@@ -622,7 +622,9 @@
      だと「何も変わっていない」と判定され、黙って捨てられていました。
      欄がどの段にあるかは、書いた人にとって何の意味も持ちません。数え
      ないのは帯（footer）の中だけ——押せば決まるものなので。 */
-  function makeGuard({ el, footer, guard, close, isClosed }) {
+  /* watch … 欄に持たない値（小窓で決める日付・時刻・くりかえし）を字にして返す。見張りに足す（RS、11月12日——
+     用事の紙で日付だけ変えて閉じると、黙って捨てていた）。書きかけの控え（keepDraft）は欄だけのまま。 */
+  function makeGuard({ el, footer, guard, watch, close, isClosed }) {
     const inFoot = (n) => !!(footer && footer.contains && footer.contains(n));
     const fields = () => [...el.querySelectorAll("input, textarea, select")]
       .filter((f) => !f.readOnly && !f.disabled && f.type !== "file" && !inFoot(f));
@@ -633,7 +635,8 @@
         .map((f) => (f.type === "checkbox" || f.type === "radio" ? String(f.checked) : String(f.value))).join("\u241F")
       + "\u241E"
       + [...el.querySelectorAll("[aria-pressed]")].filter((b) => !inFoot(b))
-        .map((b) => b.getAttribute("aria-pressed")).join(",");
+        .map((b) => b.getAttribute("aria-pressed")).join(",")
+      + (watch ? "\u241D" + watch() : "");
     /* 「押せば済む」ボタン。帯そのものがボタンのこともあれば（やること）、
        中に並んでいることもあります（体重、お酒）。押せない状態のものは
        数えません——押しても何も起きないので、聞く意味がありません。 */
@@ -1011,7 +1014,7 @@
        いない」と判定され、下へ払うと**黙って捨てられていました**。欄がどの
        段にあるかは、書いた人にとって何の意味も持ちません。紙ぜんぶを見ます
        （帯の中は押せば決まるものなので、そこだけ数えません）。 */
-    const tryClose = makeGuard({ el, footer, guard, close, isClosed: () => closed });
+    const tryClose = makeGuard({ el, footer, guard, watch: opts && opts.watch, close, isClosed: () => closed });
 
     backdrop.addEventListener("click", tryClose);
     el.querySelector(".js-close").addEventListener("click", tryClose);
@@ -1584,7 +1587,10 @@
       const below = vh - r.bottom - 12, above = r.top - 12;
       pop.style.maxHeight = `${Math.round(vh - 16)}px`;
       const h = pop.offsetHeight;
-      const up = h > below && above > below;
+      /* 電話の紙の中から開いて口の下に入りきらないものは、上へ逃がさず画面の下に寄せる（口に重なってよい）。
+         片手の指が届く（RS の⑤、11月12日。前は時刻・日付の小窓が画面のいちばん上へ行った）。 */
+      const thumb = vw < 640 && !!anchor.closest("#sheet-root");
+      const up = h > below && above > below && !thumb;
       let top = up ? Math.round(r.top - 4 - h) : Math.round(r.bottom + 4);
       top = Math.max(8, Math.min(top, Math.round(vh - 8 - h)));
       pop.classList.toggle("is-up", up);
@@ -1691,7 +1697,9 @@
      （`WEEKDAY_COLS`）。日を押すと onPick(日付キー) で閉じる。 */
   /* 今日は色だけで言わない（2026年10月6日・利用者の声「色を変えるだけでは分かりにくい」）：頭に「今日は
      10月6日（火）」、その日の升は輪と「今日」の字。min より前の日は押せない（見直しの紙が渡す）。 */
-  function popCalendar(anchor, { value, month, label = "日付", min, onPick, onClose } = {}) {
+  /* chips … 暦の上の札（[{ id: 日付キー or "", label }]。用事の紙の 今日・明日・明後日・なし）。押せば一拍点いて閉じ、
+     onPick(id)。札と暦を一つの小窓に（RS、11月12日——前は札の小窓の欄を押して暦が重なる三手だった）。 */
+  function popCalendar(anchor, { value, month, label = "日付", min, chips, onPick, onClose } = {}) {
     const U = KN.util;
     const today = U.todayKey();
     const td = U.dayDate(today);
@@ -1700,6 +1708,7 @@
     const p = popOver(anchor, { side: "left", label, cls: "is-cal", onClose });
     const box = node(html`
       <div class="pop-cal">
+        ${chips ? html`<div class="pop-cal-chips"></div>` : ""}
         <div class="pop-cal-head">
           <button type="button" class="icon-btn js-prev" aria-label="前の月">${icon("chevron-left")}</button>
           <b class="js-ym" aria-live="polite"></b>
@@ -1740,6 +1749,15 @@
     box.querySelector(".js-next").addEventListener("click", () => step(1));
     /* 「今日は…」を押せば今日の月へ戻る。 */
     box.querySelector(".js-now").addEventListener("click", () => { ym = today.slice(0, 7); paint(); p.place(); });
+    if (chips) {
+      const host = box.querySelector(".pop-cal-chips");
+      const lay = (on) => chipRow(host, chips, { activeId: on, onPick: (id) => {
+        lay(id);
+        haptic();
+        setTimeout(() => { p.close(); if (onPick) onPick(id); }, KN.motion.ms("--m-state"));
+      } });
+      lay(sel);
+    }
     paint();
     p.el.append(box);
     p.place();

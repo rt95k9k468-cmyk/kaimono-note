@@ -647,21 +647,6 @@
 
        中身は前と同じ部品です。body の中には置かず、ここで組んで持って
        おきます（開くときに紙へ差し込み、閉じたら戻します）。 */
-    const pickDue = node(html`
-      <div class="stack gap-3">
-        <div class="field">
-          <div class="js-due-chips"></div>
-          <div class="date-row">
-            <span class="date-cell">
-              <input class="input js-due" type="hidden" data-when="day" value="${due || ""}"
-                     aria-label="日付">
-            </span>
-          </div>
-          <span class="field-hint js-due-hint"></span>
-        </div>
-      </div>
-    `);
-
     /* 時刻の紙（2026年10月2日）。時刻・時間・期限を、詳細の紙と同じ一行ずつの枠に。
          時刻 … 自前の車輪（時と5分きざみの分。選んだ時刻がまん中、上下に前後）。
                  端末の時刻欄は iPhone で5分きざみに従わなかったのでやめた。空なら「なし」、×で外す。
@@ -707,7 +692,7 @@
     /* 紙の中の部品を、body から探せるようにします——下の配線は
        body.querySelector で書かれているので、探す先を広げるだけで
        そのまま通ります。 */
-    const parts = [body, pickDue, pickTime, pickRepeat];
+    const parts = [body, pickTime, pickRepeat];
     body.pick = (sel) => {
       for (const el of parts) { const hit = el.querySelector(sel); if (hit) return hit; }
       return null;
@@ -755,9 +740,6 @@
     `);
 
     const titleEl = hero.querySelector(".js-title");
-    KN.ui.whenFields(pickDue);
-    const dueEl = body.pick(".js-due");
-    const hintEl = body.pick(".js-due-hint");
 
     /* アイコン。選んだ鍵（iconKey）と、いま打ってある題の両方が見え方を
        決めます——おまかせのときは、打つそばから推す絵が変わるので。 */
@@ -923,6 +905,9 @@
       home: (opts && opts.home) || null,
       /* 書きかけのまま閉じようとしたら、一度だけ聞きます。 */
       guard: true,
+      /* 小窓で決める値は欄に無い——見張りに足す（日付だけ変えて閉じたら、黙って捨てていた。RS）。 */
+      watch: () => JSON.stringify([due, time, part, minutes, repeat, repeatDays, repeatNth, repeatEvery, repeatWeeks,
+        deadline, kind, side, flagged, lead, iconKey]),
       /* iOS に閉じられたら、書きかけを戻す（ui.js の keepDraft・N8）。 */
       draft: { kind: "todo", id: [todoId || null, !!(opts && opts.noDue)] },
       /* 別の日へ移したら、行はこの日から消えます。頭の丸薬が暦のその日へ
@@ -1000,8 +985,8 @@
 
     /* ---- 四つの札 ----
 
-       押すと、その一つだけの紙が開きます。中身は上で組んだ pickDue /
-       pickTime / pickRepeat をそのまま差し込むので、選び方は前と同じです。 */
+       押すと、その一つだけの小窓が開きます。時刻・くりかえしは上で組んだ pickTime / pickRepeat を
+       差し込み、日付は札つきの暦（popCalendar の chips）。 */
     /* 2026年10月2日から、紙ではなく**押した札のすぐ下（入らなければ上）に出る小窓**
        （利用者の声「日時・時刻・くりかえしは、シートではなくポッと表示されて欲しい」）。 */
     let pickHandle = null;
@@ -1062,7 +1047,11 @@
             : repeat === "after" ? `${repeatEvery}日ごと` : ""].filter(Boolean).join(" "));
       paintHeroFacts();
     }
-    body.querySelector(".js-row-due").addEventListener("click", (e) => openPick("日付", pickDue, e.currentTarget));
+    /* 日付は札と暦の一つの小窓（RS、11月12日）：今日・明日・明後日・なし と月の暦。どの日も二手。 */
+    body.querySelector(".js-row-due").addEventListener("click", (e) => {
+      pickHandle = KN.ui.popCalendar(e.currentTarget, { value: due, month: due || todayKey(), label: "日付",
+        chips: DUE_CHIPS(), onPick: (day) => setDue(day || null), onClose: () => { pickHandle = null; } });
+    });
     body.querySelector(".js-row-time").addEventListener("click", (e) => {
       openPick("時刻", pickTime, e.currentTarget);
       /* 車輪は紙が組まれてから合わせる（組む前は高さが無い）。 */
@@ -1115,92 +1104,21 @@
       { id: "", label: "なし" },
     ];
 
-    function paintDueChips() {
-      KN.ui.chipRow(body.pick(".js-due-chips"), DUE_CHIPS(), {
-        activeId: due || "",
-        onPick: (id) => {
-          due = id || null;
-          if (!due) { part = null; time = null; }
-          dueEl.value = due || "";
-          paintDueChips();
-          paintPart();
-          paintHint();
-          paintRepeatDetail();
-          haptic();
-          closePick();
-        },
-      });
+    /** 日を決める（札・暦）。日付を外すと、毎朝・毎晩の立つ場所が無くなるので、くりかえしの列も塗り直す。 */
+    function setDue(day) {
+      const dropped = !day && isBookend(part);
+      due = day;
+      if (!due) { part = null; time = null; }
+      haptic();
+      paintPart();
+      paintHint();
+      if (dropped) paintRepeat(); else paintRepeatDetail();
     }
 
-    /* What a date actually buys you is the number on the app icon — and on
-       iPhone that is behind a setting most people never open. So the hint says
-       so, and offers to switch it on from here, where the reason for it is on
-       screen. */
-    /** 「7:00 〜 7:30　30分」。時刻と長さの両方が決まったときだけ。 */
-    function paintSpanNote() {
-      const el = body.pick(".js-span-note");
-      if (!el) return;
-      const P = KN.plan;
-      const at = P.toMin(time);
-      if (at == null) { el.hidden = true; el.textContent = ""; return; }
-      const len = minutes || usual || P.DEFAULT_MINUTES;
-      const until = P.toTime(at + len);
-      const guess = minutes ? ""
-        : usual ? ""
-        : "（仮に30分）";
-      /* 時刻の書き方は、時間割の左の列と揃えます（頭の0を落とす）。
-         同じ時刻が画面によって「07:00」と「7:00」に見えると、同じもの
-         だと気づくのに一拍かかります。 */
-      el.hidden = false;
-      el.textContent = `${tlClock(time)} 〜 ${tlClock(until)}　${P.humanSpan(len)}${guess}`;
-    }
-
-    function paintHint() {
-      paintSpanNote();
-      /* 札の右の値も、決めごとが変わるたびに書き直します。ここは日付・
-         時刻・長さのどれが変わっても必ず通る合流点です。 */
-      paintRows();
-      hintEl.innerHTML = "";
-      if (!due) {
-        /* 何も言いません。日付が空であることは、欄そのもの（--/--/--）が
-           言っています。同じことを二度書くと、そのぶん縦に伸びます。 */
-        return;
-      }
-      /* Said here rather than discovered at 19:30. Two different sentences,
-         because with the switch on the app really does say something at the
-         time — just not while it is closed, which is the part that has to be
-         written down rather than assumed. */
-      if (time) {
-        const nt = KN.notify;
-        if (nt && nt.supported() && nt.enabled() && !nt.blocked()) {
-          hintEl.textContent = `${time}にお知らせします`;
-          return;
-        }
-        if (nt && nt.supported() && !nt.enabled()) {
-          const b = node(html`
-            <span>知らせるには
-              <button type="button" class="link-btn js-notify-on">オンにする</button></span>
-          `);
-          b.querySelector(".js-notify-on").addEventListener("click", async () => {
-            const ok = await nt.enable();
-            paintHint();
-            if (!ok) KN.ui.toast("端末の設定で通知が許可されていないため、出せませんでした");
-          });
-          hintEl.append(b);
-        }
-        return;
-      }
-      if (isBookend(part)) {
-        hintEl.textContent = part === "dawn"
-          ? "毎日、いちばん上に出ます"
-          : "毎日、いちばん下に出ます";
-        return;
-      }
-      /* 日付を選んだだけのときは、何も言いません。「その日が来ると
-         アイコンに数が出ます」は、毎回おなじことを読ませるだけで、
-         読む人はもう知っています（アイコンの数の入り切りは、設定に
-         あります）。 */
-    }
+    /* 札の右の値を、決めごとが変わるたびに書き直す（日付・時刻・長さのどれが変わっても通る合流点）。
+       日付の小窓の下の一言（「知らせるには オンにする」「◯時にお知らせします」「毎日、いちばん上に出ます」）は
+       RS で外した（字で説明しない。知らせの入り切りは ⋯ の「時刻に知らせる」）。 */
+    function paintHint() { paintRows(); }
 
     /* 朝・午後・夜 and the clock are one question with two grains, so they are
        drawn as one control: the chips say roughly when, the field says exactly
@@ -1458,7 +1376,6 @@
       haptic();
     });
 
-    paintDueChips();
     paintPart();
     paintHint();
 
@@ -1516,19 +1433,6 @@
       if (limitAsked) openLimitPicker();
     });
     paintLimit();
-
-    dueEl.addEventListener("change", () => {
-      due = dueEl.value || null;
-      // 日付を外すと、毎朝・毎晩の立つ場所が無くなります。くりかえしの
-      // 列にもそれが見えていないといけないので、そちらも塗り直します。
-      const dropped = !due && isBookend(part);
-      if (!due) { part = null; time = null; }
-      paintDueChips();
-      paintPart();
-      paintHint();
-      if (dropped) paintRepeat(); else paintRepeatDetail();
-      closePick();   // 暦で選んだら、札と同じく日付の紙も閉じる
-    });
 
     const detailEl = body.pick(".js-repeat-detail");
     const repeatHint = body.pick(".js-repeat-hint");
@@ -1792,8 +1696,6 @@
 
     /** 日付・時刻まわりの欄と札を、まとめて描き直します。 */
     function repaintWhen() {
-      dueEl.value = due || "";
-      paintDueChips();
       paintPart();
       paintMins();
       paintRepeat();
