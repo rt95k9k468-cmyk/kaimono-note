@@ -103,6 +103,36 @@ const touch = (cdp) => async (x, y, dx) => {
   c.check("行の払いの裏地は、価格のほかに無い", await page.evaluate(() =>
     [...document.querySelectorAll(".swipe-yes, .swipe-arch")].every((e) => e.closest("#screen-prices"))));
 
+  /* X3：長押しで持ち上げて、その場で離す＝行の小窓（本物のタッチ）。動かせば運ぶのは今まで。一覧と時間割の両方。 */
+  const cdp = await ctx.newCDPSession(page);
+  const holdAt = async (sel) => {
+    const b = await page.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.left + Math.min(60, r.width / 2), y: r.top + Math.min(14, r.height / 2) }; });
+    const pts = [{ x: b.x, y: b.y, radiusX: 12, radiusY: 12, force: 1 }];
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts });
+    await page.waitForTimeout(await page.evaluate(() => KN.gesture.HOLD) + 150);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await page.waitForTimeout(450);
+    return page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].filter((e) => e.offsetWidth).map((e) => e.textContent.trim()));
+  };
+  const m1 = await holdAt(`#screen-todo .item-wrap[data-todo-id="${id}"] .item-body`);
+  c.check("一覧：長押しで小窓（明日へ・日を選ぶ・写す・アーカイブ・消す）", m1.join() === "明日へ,日を選ぶ,写す,アーカイブする,このやることを消す", m1.join());
+  c.check("小窓が出ても用事の紙は開かない", !(await page.$(".sheet.is-open")));
+  await page.locator(".note-pop-item", { hasText: "明日へ" }).click();
+  await page.waitForTimeout(400);
+  c.check("「明日へ」で日が明日に", await page.evaluate((i) => KN.store.getTodo(i).due === KN.util.shiftDay(KN.util.todayKey(), 1), id));
+  const t2 = await page.evaluate(() => {
+    KN.store.update((s) => { s.settings.todoTimeline = true; });
+    return KN.store.addTodo({ title: "時間割の試し", due: KN.util.todayKey(), time: "10:00" }).id;
+  });
+  await page.waitForTimeout(700);
+  const m2 = await holdAt(`#screen-todo .tl-row[data-todo-id="${t2}"] .tl-open`);
+  c.check("時間割：長押しで同じ小窓", m2.includes("写す") && m2.includes("明日へ"), m2.join());
+  const n0 = await page.evaluate(() => KN.store.get().todos.length);
+  await page.locator(".note-pop-item", { hasText: "写す" }).click();
+  await page.waitForTimeout(400);
+  c.check("「写す」で同じ題がもう一つ", await page.evaluate((n) => KN.store.get().todos.length === n + 1
+    && KN.store.get().todos.filter((x) => x.title === "時間割の試し").length === 2, n0));
+
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
   c.done();

@@ -1629,12 +1629,15 @@
     return p;
   }
 
-  /** 行の右クリック（パソコン。docs/desk.md の段6）：払う操作と同じことを、押した所の小窓で。items() は開くたびに
-      組む（★の向きがいまの姿に合うように）。細かい指し手（マウス）の端末だけ——電話の長押しは今までどおり。 */
-  const FINE = window.matchMedia ? window.matchMedia("(pointer: fine)") : null;
+  /** 行の小窓（desk の段6・X3）：右クリックと、長押しで持ち上げてその場で離したとき（openRowMenu）。items() は開くたびに
+      組む（★の向きがいまの姿に合うように）。右クリックはマウス・トラックパッドだけ（iPad も）。指の長押しの
+      contextmenu（Android）は持ち上げる側に任せる。 */
+  const FINE = window.matchMedia ? window.matchMedia("(any-pointer: fine)") : null;
+  const MENUS = new WeakMap();
   function rowMenu(el, items) {
+    MENUS.set(el, items);
     el.addEventListener("contextmenu", (e) => {
-      if (!FINE || !FINE.matches) return;
+      if (e.pointerType === "touch" || e.pointerType === "pen" || !FINE || !FINE.matches) return;
       const sel = window.getSelection && window.getSelection();
       if (sel && !sel.isCollapsed && el.contains(sel.anchorNode)) return;   // 選んだ字はブラウザの小窓で写す
       const list = items();
@@ -1644,6 +1647,25 @@
       const at = e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : null;
       popMenu(el, list, at);
     });
+  }
+  /** 長押しで持ち上げて、動かさずに離した行（reorder の onStill・時間割の drop）：その行の小窓を行の下に。 */
+  function openRowMenu(el) {
+    for (let n = el; n; n = n.parentElement) {
+      const f = MENUS.get(n);
+      if (!f) continue;
+      const list = f();
+      if (!list.length) return false;
+      /* 指を離したあとの合成の click が、出たばかりの小窓の覆いに当たって閉じる。それを一度だけ食べる。 */
+      /* 新しく押したら（pointerdown）もう食べない。 */
+      const off = () => { window.removeEventListener("click", eat, true); window.removeEventListener("pointerdown", off, true); };
+      const eat = (e) => { off(); e.preventDefault(); e.stopPropagation(); };
+      window.addEventListener("click", eat, true);
+      window.addEventListener("pointerdown", off, true);
+      setTimeout(off, 600);
+      popMenu(n, list);
+      return true;
+    }
+    return false;
   }
 
   /** 一件の記録を消す「⋯」の一行（roadmap-unify の U11）。確かめずに消し、「元に戻す」だけ付ける。
@@ -2814,7 +2836,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, closePops, popMenu, rowMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
+    sheet, actionSheet, popOver, closePops, popMenu, rowMenu, openRowMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard, reopen, sheetsOpen: () => openSheets.length, keepDraft, dropDraft, takeDraft, takeGone,
     swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

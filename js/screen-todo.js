@@ -2471,7 +2471,7 @@
       <article class="item-wrap todo-wrap"
                data-todo-id="${t.id}" style="--cat:${colorOf(t, groups)}"></article>
     `);
-    KN.ui.rowMenu(wrap, () => rowMenuOf(t.id));
+    KN.ui.rowMenu(wrap, () => rowMenuOf(t.id, wrap));
 
     const row = node(html`
       <div class="item todo ${closed ? "is-checked" : ""}">
@@ -3205,7 +3205,7 @@
         </div>
       `);
       r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
-      KN.ui.rowMenu(r, () => rowMenuOf(t.id));
+      KN.ui.rowMenu(r, () => rowMenuOf(t.id, r));
       return r;
     };
     const list = (rows) => { const box = node(html`<div class="wk-list"></div>`); rows.forEach((r) => box.append(r)); return box; };
@@ -3402,7 +3402,7 @@
         </div>
       `);
       r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
-      KN.ui.rowMenu(r, () => rowMenuOf(t.id));
+      KN.ui.rowMenu(r, () => rowMenuOf(t.id, r));
       return r;
     };
     const byDay = (a, b) => ((a.due || a.deadline || "~") < (b.due || b.deadline || "~") ? -1
@@ -3987,10 +3987,33 @@
   }
 
   /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの（しまう・消す）。言葉と戻し方は紙と同じ。 */
-  function rowMenuOf(id) {
+  function rowMenuOf(id, el) {
     const t = store.getTodo(id);
     if (!t || store.replica()) return [];   // 写しの端末は直さない（docs/desk.md「段15」。押しても戻るだけ）
+    /* X3：明日へ・日を選ぶ・写す（くり返しと済んだものは日を動かさない——くり返しの「この回だけ」は紙で）。 */
+    const tomorrow = shiftDay(todayKey(), 1);
+    const movable = !t.done && !t.repeat;
+    const moveTo = (day) => {
+      const was = store.getTodo(id);
+      if (!was || was.due === day) return;
+      const back = was.due || null;
+      store.updateTodo(id, { due: day });
+      haptic(14);
+      KN.ui.toast(`「${was.title}」を${day === tomorrow ? "明日へ" : KN.util.formatDate(`${day}T00:00`) + "へ"}`, { action: { label: "元に戻す", onClick: () => store.updateTodo(id, { due: back }, { slip: false }) } });
+    };
     return [
+      movable && t.due !== tomorrow ? { icon: "chevron", label: "明日へ", onPick: () => moveTo(tomorrow) } : null,
+      movable ? { icon: "calendar", label: "日を選ぶ", onPick: () => KN.ui.popCalendar(el && el.isConnected ? el : document.querySelector(`#screen-todo [data-todo-id="${id}"]`) || document.body, { value: t.due, onPick: (d) => moveTo(d) }) } : null,
+      { icon: "copy", label: "写す", onPick: () => {
+        const cur = store.getTodo(id);
+        if (!cur) return;
+        const n = store.addTodo({ title: cur.title, due: cur.due, deadline: cur.deadline, part: cur.part, time: cur.time, memo: cur.memo,
+          flagged: cur.flagged, minutes: cur.minutes, lead: cur.lead, icon: cur.icon, act: cur.act, kind: cur.kind, side: cur.side,
+          subs: (cur.subs || []).map((x) => ({ title: x.title })) });
+        if (!n) return;
+        haptic(14);
+        KN.ui.toast("写しました", { action: { label: "元に戻す", onClick: () => store.removeTodo(n.id) } });
+      } },
       { icon: "download", label: t.archived ? "アーカイブから戻す" : "アーカイブする", onPick: () => {
         const cur = store.getTodo(id);
         if (!cur) return;
@@ -4006,7 +4029,7 @@
         haptic(14);
         KN.ui.toast("消しました", { action: { label: "元に戻す", onClick: undo } });
       } },
-    ];
+    ].filter(Boolean);
   }
 
   /** 一行を入れる（受け箱の取り込み・dropbox.js）。時刻があれば予定。日が今週なら今週の印、日が無ければこれから。 */
@@ -6279,6 +6302,13 @@
     if (d.eatClick) setTimeout(() => d.list.removeEventListener("click", d.eatClick, true), 0);
     if (els.cal) els.cal.querySelectorAll(".is-drop").forEach((el) => el.classList.remove("is-drop"));
     const t = store.getTodo(d.id);
+    /* X3：持ち上げて動かさずに離した（長さを引いたときは除く）＝その行の小窓。 */
+    if (commit && t && !d.moved && !d.size) {
+      render();
+      const r = root.querySelector(`.tl-row[data-todo-id="${d.id}"]`);
+      if (r) KN.ui.openRowMenu(r);
+      return;
+    }
     if (!commit || !d.target || !t) { render(); return; }
 
     /* **持ち上げて、そのまま離した。** 何も言っていないので、何もしません。
@@ -6578,7 +6608,7 @@
       </li>
     `);
     li.querySelector(".tl-open").addEventListener("click", () => openSheet(t.id, null));
-    KN.ui.rowMenu(li, () => rowMenuOf(t.id));
+    KN.ui.rowMenu(li, () => rowMenuOf(t.id, li));
     const at = li.querySelector("button.tl-doneat");
     if (at) at.addEventListener("click", (e) => { e.stopPropagation(); editDoneAt(t.id, at); });
     li.querySelector("button.check").addEventListener("click", (e) => {
@@ -6707,7 +6737,7 @@
     `);
     li.querySelector(".tl-open").addEventListener("click",
       () => openSheet(t.id, li.querySelector(".tl-node")));
-    KN.ui.rowMenu(li, () => rowMenuOf(t.id));
+    KN.ui.rowMenu(li, () => rowMenuOf(t.id, li));
     /* 絵（レールの丸）も、押せば詳細が開きます。行の中で絵だけが「押しても
        何も起きないところ」でした——見た目には題と同じ一つの行なので、
        どちらを押しても同じ場所へ行くのが素直です。
@@ -6989,6 +7019,7 @@
   function wireReorder(box, g) {
     KN.reorder.attach(box, {
       item: ".item-wrap",
+      onStill: (row) => KN.ui.openRowMenu(row),   // X3：持ち上げて、その場で離すと行の小窓
       onDrop: (from, to) => {
         const ids = Array.prototype.map.call(box.children, (w) => w.dataset.todoId).filter(Boolean);
         const [moved] = ids.splice(from, 1);

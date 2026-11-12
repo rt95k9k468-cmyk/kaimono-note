@@ -838,8 +838,8 @@
         });
         KN.motion.fire("save");
       },
-      /* 長押しで持ち上げて、その場で離すと☆の付け外し（行の左の☆は外した。docs/redesign.md R5）。 */
-      onStill: (row) => toggleFav(row.dataset.itemId, true),
+      /* 長押しで持ち上げて、その場で離すと行の小窓（X3。☆の付け外しは小窓の一行目——見えない身ぶりだった）。 */
+      onStill: (row) => KN.ui.openRowMenu(row),
     });
   }
 
