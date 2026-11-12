@@ -602,5 +602,115 @@
     h = KN.ui.sheet({ title: "取り込む", content: body });
   }
 
-  KN.noteImport = { md5, enml, parse, keysOf, count, run, batches, open, show, pdfText, keepOriginals };
+  /* ---------------- 受け口 inbox-notes/（F7 の N2。notes.md「F7 後半」） ----------------
+     Dropbox の inbox-notes/ に置いた .md・.txt・PDF を、開いたときノートへ。取り込むのは控えを送る一台だけ（二台で二度
+     取り込まない）。中継所は通さない。取り込んだ元のファイルは imports/<日>/ へ移す（消さない。11月12日、利用者）。
+     `key` は `inbox:<content_hash>`——移せなかったものは次に開いたとき移すだけ（二度取り込まない）。 */
+  const INBOX_DIR = "/inbox-notes";
+  const INBOX_EXT = /\.(md|markdown|txt|pdf)$/i;
+  const TEXT_MAX = 5 * 1024 * 1024;
+  let inboxRun = null;
+
+  /** .md・.txt の字 → { title, body }。頭の YAML（title・url/source/link）か、頭の一行の URL を、本文の頭の一行
+      `[場所](URL)` に。題は YAML の title、無ければ頭の `# 見出し`（外す）、無ければファイルの名前。 */
+  function inboxText(text, name) {
+    let s = String(text).replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+    let title = "", url = "";
+    const fm = /^---\n([\s\S]*?)\n---\n?/.exec(s);
+    if (fm) {
+      fm[1].split("\n").forEach((l) => {
+        const m = /^(title|url|source|link)\s*:\s*["']?(.*?)["']?\s*$/i.exec(l);
+        if (!m) return;
+        if (/^title$/i.test(m[1])) title = title || m[2];
+        else if (/^https?:\/\/\S+$/.test(m[2])) url = url || m[2];
+      });
+      s = s.slice(fm[0].length);
+    }
+    s = s.replace(/^\s*\n/, "");
+    const top = /^<?(https?:\/\/[^\s>]+)>?[ \t]*(?:\n|$)/.exec(s);
+    if (!url && top) { url = top[1]; s = s.slice(top[0].length).replace(/^\s*\n/, ""); }
+    const h = /^#[ \t]+(.+?)[ \t#]*(?:\n|$)/.exec(s);
+    if (h && (!title || h[1].trim() === title.trim())) { title = title || h[1]; s = s.slice(h[0].length).replace(/^\s*\n/, ""); }
+    title = (title || name.replace(INBOX_EXT, "")).normalize("NFC").trim().slice(0, 200);
+    let host = "";
+    try { host = new URL(url).hostname.replace(/^www\./, ""); } catch (_) { url = ""; }
+    const head = url ? `[${host.replace(/[[\]]/g, "")}](${url.replace(/[()\s]/g, (c) => `%${c.charCodeAt(0).toString(16).padStart(2, "0")}`)})` : "";
+    return { title, body: [head, s.replace(/\s+$/, "")].filter(Boolean).join("\n") };
+  }
+
+  function decode(bytes) {
+    try { return new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+    catch (_) { try { return new TextDecoder("shift_jis").decode(bytes); } catch (e) { return null; } }
+  }
+
+  /** 受け口を見る。返すのは取り込んだ数。 */
+  function takeInbox() {
+    if (inboxRun) return inboxRun;
+    inboxRun = inboxNow().catch(() => 0).finally(() => { inboxRun = null; });
+    return inboxRun;
+  }
+  async function inboxNow() {
+    const D = KN.dropbox, Nt = KN.notes;
+    if (!D || !D.api || !Nt || !(await D.api.ready())) return 0;
+    if (!D.status().sender || (KN.store.replica && KN.store.replica())) return 0;
+    await Nt.ready();
+    if (Nt.state() !== "on") return 0;
+    const { call, API, CONTENT } = D.api;
+    const r = await call(API, "/2/files/list_folder", { json: { path: INBOX_DIR, limit: 200 } });
+    if (!r.res.ok) {
+      /* 無ければ作っておく（Dropbox の アプリ のフォルダの中に見えるように）。 */
+      if (r.res.status === 409 && /not_found/.test(D.api.summary(r))) await call(API, "/2/files/create_folder_v2", { json: { path: INBOX_DIR } }).catch(() => {});
+      return 0;
+    }
+    const list = (r.body.entries || []).filter((e) => e[".tag"] === "file" && INBOX_EXT.test(e.name) && e.content_hash)
+      .sort((a, b) => String(a.client_modified).localeCompare(String(b.client_modified)));
+    if (!list.length) return 0;
+    const batch = U.today();
+    const day = U.dayKey(new Date());
+    const have = haveKeys();
+    const nb = Nt.notebooks().includes("reading") ? "reading" : "";
+    const F = KN.noteFile;
+    let n = 0;
+    for (const e of list) {
+      const key = `inbox:${e.content_hash}`;
+      if (!have.has(key)) {
+        const pdf = /\.pdf$/i.test(e.name);
+        if (e.size > (pdf ? 50 * 1024 * 1024 : TEXT_MAX) || (pdf && !F)) continue;   // 置いたまま（読まず・消さず）
+        const d = await call(CONTENT, "/2/files/download", { arg: { path: e.path_lower || `${INBOX_DIR}/${e.name}` }, raw: true });
+        if (!d.res.ok) continue;
+        const bytes = await d.res.arrayBuffer();
+        let note;
+        if (pdf) {
+          const got = await F.add(new File([bytes], e.name, { type: "application/pdf" })).catch(() => null);
+          if (!got) continue;
+          if (!F.hasText(got.id)) {
+            const text = await pdfText(bytes).catch(() => null);
+            if (text != null) await F.setText(got.id, text).catch(() => {});
+          }
+          note = { title: e.name.replace(INBOX_EXT, "").normalize("NFC").trim(), body: F.refLine(got.id, got.name) };
+        } else {
+          const text = decode(new Uint8Array(bytes));
+          if (text == null) continue;
+          note = inboxText(text, e.name);
+        }
+        const at = e.client_modified && !isNaN(Date.parse(e.client_modified)) && new Date(e.client_modified).toISOString() < batch
+          ? new Date(e.client_modified).toISOString() : batch;
+        await Nt.addMany([{ id: U.uid("n"), ...note, notebook: nb, tags: [], fav: false, createdAt: at, updatedAt: batch, deletedAt: null,
+          src: { from: "inbox", key, batch } }]);
+        have.add(key);
+        n++;
+      }
+      /* 取り込めた（前の回も含む）ものだけ移す。移せなければ次に開いたとき。 */
+      const name = e.name.normalize("NFC");
+      await call(API, "/2/files/move_v2", { json: { from_path: e.path_lower || `${INBOX_DIR}/${e.name}`, to_path: `/imports/${day}/${name}`, autorename: true } }).catch(() => {});
+    }
+    if (n) { await Nt.flush(); KN.ui.toast("ノートに取り込みました"); }
+    return n;
+  }
+
+  /* 開いてすぐは起動の邪魔をしない（控えの道と同じ8秒）。前に出てくるたびにも。 */
+  setTimeout(takeInbox, 9000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") takeInbox(); });
+
+  KN.noteImport = { md5, enml, parse, keysOf, count, run, batches, open, show, pdfText, keepOriginals, takeInbox, inboxText };
 })();

@@ -4,7 +4,7 @@
    画像は縮めた行のすぐ下に原本の行（files/<SHA>.png・中身はそのまま）／読む姿では原本の行を畳み、画像を押すと
    原本に差しかえる／冒頭は空・検索に名前／PDF の字を pdf.js で一度だけ（meta `ft:<id>`・検索に当たる）／
    控えの道で files/<id>.txt も送る・取る側は PDF と一緒に取る／Notion の表は CSV の原本（BOM のまま）を files/ へ／
-   元のファイルを imports/<日>/ へ（大きいものは分けて送る）。
+   元のファイルを imports/<日>/ へ（大きいものは分けて送る）／受け口 inbox-notes/ の .md・.txt・PDF をノートへ・元を imports/ へ移す（N2）。
 
    本物の Dropbox には繋がない（page.route）。
 
@@ -89,6 +89,7 @@ const NOTION = zip([
   const files = new Map();
   const calls = [];
   const sessions = new Map();
+  const moveFail = new Set();
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
   const json = (route, status, obj) =>
     route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
@@ -131,7 +132,21 @@ const NOTION = zip([
       put(arg.commit, Buffer.concat(s));
       return json(route, 200, { name: arg.commit.path.split("/").pop() });
     }
-    if (u.pathname === "/2/files/list_folder") return json(route, 200, { entries: [], has_more: false, cursor: "c" });
+    if (u.pathname === "/2/files/list_folder") {
+      const { path } = JSON.parse(req.postData());
+      const entries = path !== "/inbox-notes" ? [] : [...files.entries()].filter(([k]) => /^\/inbox-notes\/[^/]+$/.test(k))
+        .map(([k, v], i) => ({ ".tag": "file", name: k.split("/").pop(), path_lower: k.toLowerCase(), size: v.length, content_hash: sha(v),
+          client_modified: `2026-10-0${i + 1}T09:00:00Z` }));
+      return json(route, 200, { entries, has_more: false, cursor: "c" });
+    }
+    if (u.pathname === "/2/files/move_v2") {
+      const { from_path: from, to_path: to } = JSON.parse(req.postData());
+      const k = [...files.keys()].find((x) => x.toLowerCase() === from);
+      if (!k || moveFail.delete(k)) return json(route, 409, { error_summary: "from_lookup/not_found/.." });
+      files.set(to, files.get(k));
+      files.delete(k);
+      return json(route, 200, { metadata: { name: to.split("/").pop() } });
+    }
     if (u.pathname === "/2/files/get_metadata") {
       const { path } = JSON.parse(req.postData());
       if (!files.has(path)) return json(route, 409, { error_summary: "path/not_found/.." });
@@ -270,6 +285,35 @@ const NOTION = zip([
     for (let i = 0; i < 40 && !files.has(`/imports/${day}/原本.enex`); i++) await page.waitForTimeout(100);
     return String(files.get(`/imports/${day}/原本.enex`) || "") === ENEX;
   }));
+
+  /* ---- 5. 受け口 inbox-notes/（F7 の N2）：.md・.txt・PDF をノートへ・元は imports/<日>/ へ移す・二度取り込まない ---- */
+  const MD = "---\ntitle: \"記事の題\"\nurl: https://www.example.com/a(1)\n---\n\n# 記事の題\n\n本文の一行。\n";
+  const PDF3 = pdfWith("Inbox paper");
+  files.set("/inbox-notes/記事.md", Buffer.from(MD));
+  files.set("/inbox-notes/メモ.txt", Buffer.from("https://example.org/b\n素のメモ\n"));
+  files.set("/inbox-notes/論文.pdf", PDF3);
+  files.set("/inbox-notes/写真.jpg", PNG);
+  moveFail.add("/inbox-notes/メモ.txt");
+  const took = await page.evaluate(() => KN.noteImport.takeInbox());
+  const got = await page.evaluate(() => KN.notes.list().filter((n) => n.src && n.src.from === "inbox")
+    .map((n) => ({ title: n.title, body: n.body, nb: n.notebook, key: n.src.key, c: n.createdAt })));
+  const by = (title) => got.find((n) => n.title === title);
+  t.check("受け口：.md・.txt・PDF の三つを取り込む（ほかの種類は読まない）", took === 3 && got.length === 3, JSON.stringify(got));
+  t.check("受け口：YAML の題と URL → 頭に一行のリンク・同じ題の見出しは外す",
+    by("記事の題") && by("記事の題").body === "[example.com](https://www.example.com/a%281%29)\n本文の一行。", JSON.stringify(by("記事の題")));
+  t.check("受け口：頭の行の URL → リンクの一行・題はファイルの名前",
+    by("メモ") && by("メモ").body === "[example.org](https://example.org/b)\n素のメモ", JSON.stringify(by("メモ")));
+  const PDF3_ID = `${sha(PDF3)}.pdf`;
+  t.check("受け口：PDF は files/ の参照の行・字を取り出す",
+    by("論文") && by("論文").body === `[論文.pdf](file:${PDF3_ID})` && /Inbox paper/.test(await page.evaluate((id) => KN.noteFile.textOf(id), PDF3_ID)), JSON.stringify(by("論文")));
+  t.check("受け口：key は中身のハッシュ・作った日は置いた日", got.every((n) => /^inbox:[0-9a-f]{64}$/.test(n.key) && n.c.startsWith("2026-10-0")), JSON.stringify(got));
+  t.check("受け口：元は imports/<日>/ へ移す（消さない。移せなかったものは残す・知らない種類は触らない）",
+    String(files.get(`/imports/${day}/記事.md`)) === MD && files.has(`/imports/${day}/論文.pdf`) && files.has("/inbox-notes/メモ.txt")
+      && files.has("/inbox-notes/写真.jpg") && !files.has("/inbox-notes/記事.md"), JSON.stringify([...files.keys()].filter((k) => /inbox|imports\/2026-1[12]/.test(k))));
+  const again = await page.evaluate(() => KN.noteImport.takeInbox());
+  t.check("受け口：次に開いたら、残ったものは移すだけ（二度取り込まない）",
+    again === 0 && files.has(`/imports/${day}/メモ.txt`) && (await page.evaluate(() => KN.notes.list().filter((n) => n.src && n.src.from === "inbox").length)) === 3);
+  t.check("受け口：取り消せる取り込みの一覧に出る", await page.evaluate(() => KN.noteImport.batches().some((b) => b.n === 3)));
 
   t.check("頁の誤りなし", !errors.length, errors.join("\n"));
   await browser.close();

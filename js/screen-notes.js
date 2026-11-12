@@ -339,10 +339,12 @@
     }
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
     const recent = recentOf(all, two ? 12 : 8);
+    const met = chance(all, recent);
+    const meet = met ? [secTitle(met.label), cards([met.n], t)] : [];
     if (!two) {
       const find = node(html`<button type="button" class="nt-find">${icon("search")}<span>ノートをさがす</span></button>`);
       find.addEventListener("click", () => els.searchBtn.click());
-      box.append(find, gates);
+      box.append(find, gates, ...meet);
       if (recent.length) box.append(secTitle("最近"), coverCards(recent));
       box.append(...shelf);
       return;
@@ -350,7 +352,7 @@
     box.classList.add("nt-home-two");
     const l = node(html`<div class="nt-home-l"></div>`), r = node(html`<div class="nt-home-r"></div>`);
     l.append(...shelf);
-    r.append(gates);
+    r.append(gates, ...meet);
     if (recent.length) r.append(secTitle("最近直した"), cards(recent, t));
     box.append(l, r);
   }
@@ -408,7 +410,34 @@
 
   /* 問いの答えのノート（頭の行が「？問い」）は最近直したに出さない（答えるたびに積もる。11月3日・利用者。入口は「問い」）。 */
   const isAnswer = (n) => { const a = KN.noteFormat && KN.noteFormat.asks(n.body)[0]; return !!a && a.line === 0; };
-  const recentOf = (all, k) => all.filter((n) => (!n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)) && !isAnswer(n)).slice(0, k || 3);
+  const recentOf = (all, k) => all.filter((n) => (!n.src || !n.src.batch || n.src.from === "inbox" || String(n.updatedAt) > String(n.src.batch)) && !isAnswer(n)).slice(0, k || 3);
+
+  /* ふと出会う一枚（F7 の N4。notes.md「F7 後半」）：去年の今ごろ（±7日）直したノート、無ければ長く（90日）開いていない★。
+     日ごとに一つ（組み直すたびに替えない）。数も促しも出さない。★を開いた時刻は端末だけ（SEEN。記録に欄を足さない）。 */
+  const SEEN = "kn-note-seen";
+  const DAY = 864e5;
+  const seenMap = () => { try { return JSON.parse(localStorage.getItem(SEEN) || "{}") || {}; } catch (_) { return {}; } };
+  function seenNow(id) {
+    const m = seenMap();
+    const favs = new Set(N().list().filter((n) => n.fav).map((n) => n.id));
+    Object.keys(m).forEach((k) => { if (!favs.has(k)) delete m[k]; });
+    m[id] = Date.now();
+    try { localStorage.setItem(SEEN, JSON.stringify(m)); } catch (_) { /* 書けなければ直した日で見る */ }
+  }
+  function chance(all, recent) {
+    const now = Date.now();
+    const ago = new Date(now);
+    ago.setFullYear(ago.getFullYear() - 1);
+    const near = new Set(recent.map((n) => n.id));
+    const live = all.filter((n) => !near.has(n.id) && !isAnswer(n) && (n.title || n.body));
+    const day = [...U.todayKey()].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0;
+    const one = (list) => list[day % list.length];
+    const year = live.filter((n) => Math.abs(Date.parse(n.updatedAt) - ago) <= 7 * DAY);
+    if (year.length) return { n: one(year), label: "去年の今ごろ" };
+    const m = seenMap();
+    const old = live.filter((n) => n.fav && now - Math.max(Date.parse(n.updatedAt) || 0, m[n.id] || 0) >= 90 * DAY);
+    return old.length ? { n: one(old), label: "しばらく開いていない" } : null;
+  }
 
   /** 札の日付＝直した日。今年なら月日だけ、今日なら時刻。 */
   function editedOf(n) {
@@ -1110,6 +1139,7 @@
     let closed = false;
     let fold = null;
     N().begin(note.id);
+    if (!fresh && note.fav) seenNow(note.id);
 
     /* 全画面の一枚（段4。2026年10月1日、iPhone で「記事を書くときはフル
        画面が絶対使いやすい」）。段4.2で詰めた：ノートブックは頭の行（‹ の

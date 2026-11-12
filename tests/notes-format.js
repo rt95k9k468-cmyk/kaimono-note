@@ -12,7 +12,8 @@
    膨らみ、閉じると（‹・本物のタッチで払う）先頭へ移ったカードへ縮む／動きを減らす設定。
    リンク（notes-unify 段4の一部）：読む姿は字だけ・中のノートは紙を重ねる・外は新しい窓・見つからなければ開かない・
    押した字にカーソル・題と冒頭は字だけ・探すときは中のノートの id を拾わない。
-   F7：「[[」と帯の鎖で題から選ぶリンク・ここへのリンク／マーカー ==字==（読む姿・写し・印を外す）／⋯ の写して新しく。
+   F7：「[[」と帯の鎖で題から選ぶリンク・ここへのリンク／マーカー ==字==（読む姿・写し・印を外す）／⋯ の写して新しく／
+   ホームの一枚（去年の今ごろ・長く開いていない★）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-format.js */
 const { open, checker } = require("./lib");
@@ -690,6 +691,35 @@ const { open, checker } = require("./lib");
     await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 1);
     await closeSheet();
     t.check("写して新しく：元の本文と更新日はそのまま", (await page.evaluate((id) => { const n = KN.notes.get(id); return JSON.stringify([n.title, n.body, n.updatedAt]); }, src)) === orig);
+  }
+
+  /* N4：ホームに一枚——去年の今ごろ直したノート、無ければ長く開いていない★。数も促しも出さない・開いた★は端末だけに覚える。 */
+  {
+    const ago = new Date(); ago.setFullYear(ago.getFullYear() - 1); ago.setDate(ago.getDate() + 2);
+    const old = new Date(Date.now() - 200 * 864e5).toISOString();
+    await page.evaluate(([a, o]) => KN.notes.addMany([
+      { id: "n-meet-year", title: "一年前の紙", body: "去年", notebook: "", tags: [], fav: false, createdAt: a, updatedAt: a, deletedAt: null },
+      { id: "n-meet-fav", title: "しまった★", body: "星", notebook: "", tags: [], fav: true, createdAt: o, updatedAt: o, deletedAt: null },
+    ]).then(() => KN.notes.flush()), [ago.toISOString(), old]);
+    const meet = () => page.evaluate(() => {
+      KN.screens.notes.again() || KN.screens.notes.render();
+      const s = [...document.querySelectorAll("#screen-notes .notes-sec")].find((x) => /去年の今ごろ|しばらく開いていない/.test(x.textContent));
+      const card = s && s.nextElementSibling;
+      return s ? { label: s.textContent.trim(), ids: [...card.querySelectorAll(".note-row")].map((r) => r.dataset.id) } : null;
+    });
+    const m1 = await meet();
+    t.check("N4：去年の今ごろ直したノートを一枚（数は出さない）", !!m1 && m1.label === "去年の今ごろ" && m1.ids.join() === "n-meet-year" && !/\d/.test(m1.label), JSON.stringify(m1));
+    t.check("N4：組み直しても同じ一枚", JSON.stringify(await meet()) === JSON.stringify(m1));
+    await page.evaluate(() => KN.notes.remove("n-meet-year"));
+    const m2 = await meet();
+    t.check("N4：無ければ長く開いていない★", !!m2 && m2.label === "しばらく開いていない" && m2.ids.join() === "n-meet-fav", JSON.stringify(m2));
+    await page.evaluate(() => KN.screens.notes.open("n-meet-fav"));
+    await page.waitForSelector(".sheet.is-note.is-open");
+    await closeSheet();
+    const seen = await page.evaluate(() => JSON.parse(localStorage.getItem("kn-note-seen") || "{}"));
+    t.check("N4：開いた★はもう出ない（開いた時刻は端末だけ。★のものだけ覚える）", (await meet()) === null && !!seen["n-meet-fav"]
+      && (await page.evaluate((ks) => ks.every((k) => KN.notes.get(k).fav), Object.keys(seen)))
+      && (await page.evaluate(() => KN.notes.get("n-meet-fav").updatedAt)) === old, JSON.stringify(seen));
   }
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);
