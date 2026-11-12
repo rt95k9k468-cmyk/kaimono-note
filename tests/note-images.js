@@ -599,7 +599,8 @@ const IMG_DB = "kaimono-note-images";
   await p10.evaluate(() => { window.__imgReads = []; KN.store.update((s) => { s.settings.dailyScope = "month"; }); });
   await p10.waitForSelector("#screen-archive .arc-log-row .arc-photo.is-s.is-on", { timeout: 4000 }).catch(() => {});
   const month10 = await p10.evaluate(() => { const e = document.querySelector("#screen-archive .arc-log-row .arc-photo.is-s");
-    return e ? { w: e.getBoundingClientRect().width, h: e.getBoundingClientRect().height, reads: window.__imgReads } : null; });
+    /* 箱の大きさは組んだ寸法で（開いた一拍は行が浮かんで入る＝scale の途中。RM の .m-in）。 */
+    return e ? { w: e.offsetWidth, h: e.offsetHeight, reads: window.__imgReads } : null; });
   t.check("D2：月ぜんぶは日の行の右に 72px、小さい写しだけ読む", month10 && month10.w === 72 && month10.h === 72
     && month10.reads.includes(ref1.s) && !month10.reads.includes(ref1.id), JSON.stringify(month10));
   await p10.evaluate(() => KN.store.update((s) => { s.settings.dailyScope = "day"; }));

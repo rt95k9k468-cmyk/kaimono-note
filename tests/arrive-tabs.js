@@ -137,6 +137,7 @@ const away = async (page, tab) => {
       const S = KN.store, d = KN.util.todayKey();
       for (let i = 0; i < 7; i++) S.setHealth(KN.util.shiftDay(d, -i), "steps", 3000 + i * 400);
       S.addWeight({ day: KN.util.shiftDay(d, -1), kg: 63 });
+      S.addTodo({ title: "夕方の用事", due: d, time: "16:00", minutes: 60 });
     });
     await page.click('.tab[data-tab="diet"]');
     await page.waitForTimeout(80);
@@ -162,6 +163,36 @@ const away = async (page, tab) => {
     await page.waitForTimeout(60);
     const d2 = await delay("#screen-archive .day-slide.m-in > :nth-child(2)");
     t.check("daily の入り：二つめは遅れて浮かぶ", d2 > 0, String(d2));
+    /* 額の絵を押すと、額から膨らむ一枚（黒地の紙） */
+    const art = page.locator("#screen-archive .arc-season-art").first();
+    if (await art.count()) {
+      await page.waitForTimeout(1500);
+      await art.click();
+      await page.waitForTimeout(700);
+      t.check("候の絵を押すと大きな一枚", await page.evaluate(() => !!document.querySelector(".sheet.is-pic.is-open .note-pic img")));
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(700);
+    } else t.check("候の絵がある", false);
+    /* 道がひらく・畳む：帯に is-m-arrive（幕が退く／中身が浮かぶ） */
+    await page.click('.tab[data-tab="todo"]');
+    await page.waitForTimeout(400);
+    await page.click("#screen-todo .strip-open");
+    t.check("道がひらく拍に幕", await page.evaluate(() => {
+      const s = document.querySelector("#screen-todo .day-strip.is-open.is-m-arrive");
+      return !!s && getComputedStyle(s, "::after").animationName === "wipe-off";
+    }));
+    await page.click("#screen-todo .strip-fold");
+    t.check("畳むと帯の中身が浮かぶ", await page.evaluate(() => !!document.querySelector("#screen-todo .day-strip.is-m-arrive:not(.is-open)")));
+    /* 本棚の冊（頭の無い冊）を押すと、表紙が冊の行の絵へ飛ぶ */
+    await page.evaluate(async () => { await KN.notes.addMany([{ id: "n-rm", title: "棚の一冊", body: "", notebook: "private", tags: [], fav: false,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), deletedAt: null }]); });
+    await page.click('.tab[data-tab="notes"]');
+    await page.waitForTimeout(600);
+    const bk = page.locator('#screen-notes .nt-bk[data-nb="private"]:not([data-id])').first();
+    if (await bk.count()) {
+      await bk.click({ noWaitAfter: true });
+      t.check("本棚の表紙が飛ぶ", await page.evaluate(() => !!document.querySelector(".nt-fly")));
+    } else t.check("頭の無い冊がある", false);
     t.check("RM：エラーなし", errors.length === 0, errors.join(" | "));
     await browser.close();
   }

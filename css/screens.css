@@ -2995,7 +2995,7 @@ a.btn { text-decoration: none; }
    読みと期間・当たる日の雑節と祝日。長い読みは折り返す（切ると言葉が欠ける）。期間は日付の途中で折り返さない。 */
 .arc-season { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-3); }
 .arc-season-art {
-  flex: none; width: 92px; aspect-ratio: 4 / 5; margin: 5px;
+  flex: none; width: 92px; aspect-ratio: 4 / 5; margin: 5px; padding: 0; border: 0;
   background: var(--season-img, none) center / cover no-repeat, var(--season-k);
 }
 /* 今日の一枚（F6 の D2）も候の札と同じ額。開いた日は本文の上に 3:2（左右は札の余白の差を埋めて真ん中）、月ぜんぶは行の右に 72px。背は先に取る。 */
@@ -7258,7 +7258,10 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* ひらいた道（前の道そのもの）。畳む印は右上。入るときは 8px 上がりながら（動きの辞書の「移る」）。 */
 /* ひらいた道は前の道の幅のまま（カードの地も線も持たない。道の札の置き方は紙の幅で数えてある）。 */
 .day-strip.is-open { margin: 0; padding-top: var(--sp-2); background: none; border: 0; box-shadow: none; border-radius: 0; }
-.day-strip.is-open > .day-road { animation: desk-in-up var(--m-face) var(--ease-out) both; --desk-shift: -8px; }
+/* ひらいた拍（RM。.is-m-arrive は screen-todo.js が帯に付ける）：紙色の幕が下へ退き、道が上から描かれる。畳むと帯の中身が浮かぶ。 */
+.day-strip.is-m-arrive.is-open::after { content: ""; position: absolute; inset: 0; background: var(--c-sheet); transform-origin: 50% 100%; scale: 1 0; animation: wipe-off var(--m-draw) var(--ease-out) both; pointer-events: none; }
+.day-strip.is-m-arrive:not(.is-open) > * { animation: m-add var(--m-add) var(--ease-out) backwards; }
+.nt-fly { position: fixed; margin: 0; z-index: var(--z-lift); pointer-events: none; transform-origin: 0 0; }
 .strip-fold {
   position: absolute; top: var(--sp-1); right: var(--sp-1); z-index: 2;
   display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%;

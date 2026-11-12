@@ -373,7 +373,7 @@
       b.addEventListener("click", () => {
         KN.motion.fire("select");
         if (h) openNote(h.id, b, { back: ".nt-bks .nt-bk" });
-        else go({ k: "nb", v: nb });
+        else { const cv = b.querySelector(".nt-cv"), a = cv.getBoundingClientRect(); go({ k: "nb", v: nb }, !KN.motion.still()); flyCover(cv, a); }
       });
       box.append(b);
     });
@@ -572,7 +572,7 @@
       const h = t.head(nb);
       const open = tops.length > 0 && (one || o.open.has(key));
       const look = rowLook(0, open, o.stick);
-      const g = node(html`<div class="nt-grp ${shelf ? "nt-shelf" : ""}" role="none" ${shelf ? html`data-shelf="${nb}"` : ""}></div>`);
+      const g = node(html`<div class="nt-grp ${shelf ? "nt-shelf" : ""} ${one ? "m-in" : ""}" role="none" ${shelf ? html`data-shelf="${nb}"` : ""}></div>`);
       const r = node(html`
         <button type="button" class="nt-row is-book js-book ${look.cls}" role="treeitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""} data-d="0" style="${look.style}"
                 ${o.curNb === nb ? html`aria-current="true"` : ""} ${tops.length && !one ? html`aria-expanded="${String(open)}"` : ""}>
@@ -929,13 +929,15 @@
   }
 
   /** 面を降りる・戻る。降りる前の送りを持っておき、戻ったらそこへ。 */
-  function go(p) {
+  /** fly … 本棚の表紙が飛んでくる（面は寄せずに、行が上から順に入る）。 */
+  function go(p, fly) {
     const sc = root ? KN.app.scrollerOf(root) : null;
     page().y = sc ? sc.scrollTop : 0;
     pages.push(p);
     pick = p.pick || null;
     renderBody(0);
-    faceIn(1);
+    if (!fly) faceIn(1);
+    else KN.motion.arrive(root.querySelector(".notes-books .nt-grp"));
   }
   /** slid … 払って戻ったとき（面はもう指で動かした。重ねて流さない）。 */
   function back(slid) {
@@ -943,6 +945,20 @@
     pages.pop();
     renderBody(page().y || 0);
     if (slid !== true) faceIn(-1);
+  }
+  /** 本棚の一冊から面へ：表紙の写しが冊の行の絵へ縮んで飛び、着いたら絵が受け止める（RM・変わる）。a は押した表紙の箱。 */
+  function flyCover(cv, a) {
+    const to = root && root.querySelector(".notes-books .nt-row.is-book .nb-ico");
+    if (!to || KN.motion.still() || !a.width) return;
+    const b = to.getBoundingClientRect(), g = cv.cloneNode(true);
+    g.classList.add("nt-fly");
+    Object.assign(g.style, { left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px` });
+    document.body.append(g);
+    const t = { duration: KN.motion.ms("--m-sheet-grow"), easing: KN.motion.ease("--push-e") };
+    const s = Math.min(b.width / a.width, b.height / a.height);
+    const end = `translate(${b.left + b.width / 2 - a.left - a.width * s / 2}px, ${b.top + b.height / 2 - a.top - a.height * s / 2}px) scale(${s})`;
+    g.animate([{ transform: "none", opacity: 1 }, { opacity: 1, offset: .7 }, { transform: end, opacity: 0 }], t).onfinish = () => g.remove();
+    to.animate([{ opacity: 0, scale: .4 }, { opacity: 0, scale: .4, offset: .6 }, { opacity: 1, scale: 1 }], { ...t, easing: KN.motion.ease("--spring") });
   }
   /** 面が移る一拍：降りるときは右から、戻るときは左から、少しだけ寄って入る（帯の題はそのまま）。
       `translate` で動かす（払って戻る edge-back が握る transform と取り合わない。docs/traps.md）。 */

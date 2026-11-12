@@ -1949,9 +1949,9 @@
     if (!s) return null;
     const rows = KN.season.rows(day);
     const row = (i, inner) => html`<span class="arc-season-row${seasonTurn(day, i) ? " is-turn" : ""}">${inner}</span>`;
-    return node(html`
+    const card = node(html`
       <section class="card arc-season" data-day="${day}">
-        ${S().seasonArt === false ? "" : html`<span class="arc-season-art" aria-hidden="true"></span>`}
+        ${S().seasonArt === false ? "" : html`<button type="button" class="arc-season-art" aria-label="候の絵を大きく"></button>`}
         <p class="arc-season-main">
           ${row(0, html`<span class="arc-season-k">${rows[0][0]}</span>${rows[0][1]}<span class="arc-season-span">${rows[0][2]}</span>`)}
           ${row(1, html`<span class="arc-season-k">${rows[1][0]}</span><b class="arc-season-name">${s.kou}</b><span class="arc-season-yomi">${s.kouYomi}</span><span class="arc-season-span">${rows[1][2]}</span>`)}
@@ -1959,6 +1959,13 @@
         </p>
       </section>
     `);
+    /* 額の絵を押すと、額から全面へ膨らむ（日の一枚と同じ紙。RM） */
+    const art = card.querySelector(".arc-season-art");
+    if (art) art.addEventListener("click", () => {
+      const u = /url\(["']?([^"')]+)/.exec(getComputedStyle(art).backgroundImage);
+      if (u && KN.dayPhoto) KN.dayPhoto.show(u[1], art, `${s.kou}の絵`);
+    });
+    return card;
   }
 
   function daySlide(day) {

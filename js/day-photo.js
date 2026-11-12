@@ -52,18 +52,21 @@
     const p = store.photoOf(d);
     if (!p) return null;
     const el = node(html`<button type="button" class="nv-img arc-photo ${small ? "is-s" : ""}" data-id="${small ? p.s : p.id}" aria-label="この日の一枚"></button>`);
-    el.addEventListener("click", (e) => { e.stopPropagation(); view(p.id); });
+    el.addEventListener("click", (e) => { e.stopPropagation(); view(p.id, el); });
     seen().observe(el);
     return el;
   }
 
-  /** 黒地の一枚で全体を（ノートの画像と同じ紙）。 */
-  function view(id) {
-    urlOf(id).then((u) => {
-      if (!u) return;
-      const h = KN.ui.sheet({ title: "", content: node(html`<div class="note-pic"><img alt="" src="${u}"></div>`), cls: "is-pic", pull: () => true });
-      h.el.setAttribute("aria-label", "この日の一枚");
-    });
+  /** 黒地の一枚で全体を（ノートの画像と同じ紙）。from … 押した額（電話はそこから膨らみ、閉じると額へ縮む。RM）。
+      候の絵（screen-archive.js）も同じ紙で。 */
+  function show(u, from, label) {
+    const sel = from && from.dataset.id ? `.arc-photo[data-id="${CSS.escape(from.dataset.id)}"]` : ".arc-season-art";
+    const h = KN.ui.sheet({ title: "", content: node(html`<div class="note-pic"><img alt="" src="${u}"></div>`), cls: "is-pic", pull: () => true,
+      grow: from ? { from, back: () => document.querySelector(`.screen.is-active ${sel}`) } : null });
+    h.el.setAttribute("aria-label", label);
+  }
+  function view(id, from) {
+    urlOf(id).then((u) => { if (u) show(u, from, "この日の一枚"); });
   }
 
   /** 選ぶ（押した流れのまま。iOS は写真かカメラを選ばせる）。 */
@@ -92,5 +95,5 @@
     ].filter(Boolean);
   }
 
-  KN.dayPhoto = { frame, view, pick, items };
+  KN.dayPhoto = { frame, view, show, pick, items };
 })();

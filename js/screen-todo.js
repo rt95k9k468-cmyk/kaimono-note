@@ -3654,6 +3654,9 @@
       roadOpen = !roadOpen;
       try { if (roadOpen) sessionStorage.setItem("kn-todo-road", "open"); else sessionStorage.removeItem("kn-todo-road"); } catch (_) {}
       render();
+      /* ひらく：紙色の幕が下へ退いて道が上から描かれる／畳む：帯の中身が浮かぶ（.day-strip.is-m-arrive。RM） */
+      const strip = root && root.querySelector(".day-strip");
+      if (strip) KN.motion.arrive(strip);
       if (roadOpen && KN.dayRoad) requestAnimationFrame(() => KN.dayRoad.walk(root));
     });
     return box;
