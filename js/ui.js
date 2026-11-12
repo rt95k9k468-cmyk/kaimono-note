@@ -237,10 +237,10 @@
     ghost.append(under);
     const sizeOf = (x, d) => (x && parseFloat(getComputedStyle(x).width)) || d;
     const k = sizeOf(row.firstElementChild, 32) / sizeOf(hero.firstElementChild, 38);
-    /* 角の丸み（px。% は短い辺から）。 */
-    const rad = (el, r) => { const v = getComputedStyle(el).borderTopLeftRadius;
-      return /%/.test(v) ? parseFloat(v) / 100 * Math.min(r.width, r.height) : parseFloat(v) || 0; };
-    return { ghost, under, k, rad: (r) => rad(row, r), radH: (r) => rad(hero, r) };
+    /* 角の丸み（px。% は短い辺から）。値はここで読んでおく——影武者を置いて丸薬を隠したあとに読むと、その場で様式を計算し直す。 */
+    const vR = getComputedStyle(row).borderTopLeftRadius, vH = cs.borderTopLeftRadius;
+    const rad = (v, r) => (/%/.test(v) ? parseFloat(v) / 100 * Math.min(r.width, r.height) : parseFloat(v) || 0);
+    return { ghost, under, k, rad: (r) => rad(vR, r), radH: (r) => rad(vH, r) };
   }
 
   /* 影武者の拍（RM・docs/redesign.md 7節の 1）。箱は頭の丸薬の大きさ・場所に置いたまま、**transform だけ**で行の箱へ
@@ -1005,13 +1005,16 @@
     /* カードから膨らむときは、紙はカードの箱へ重ねたところから開いた場所へ広がります（growCard）。 */
     const grown = grow ? growCard(grow, el, floor + 1 + depth * 2) : false;
     const morph = (opts && opts.morph) || (hero && hero.classList.contains("rec-hero") ? recMorph(hero) : null);
-    requestAnimationFrame(() => {
+    const begin = () => {
       if (grown && !closed && el._refit) el._refit();
       /* 行の丸薬から伸びるのは、押した点から育つときと、行から広がるとき（やること）。 */
       if ((seed || grown) && morph && !closed) unmorph = morphPill(morph, el, floor + 1 + depth * 2);
       backdrop.classList.add("is-open");
       el.classList.add("is-open");
-    });
+    };
+    /* 行から広がる紙は、growCard がもう並べて動かし始めている。次のコマを待たず、押した拍のうちに（呼んだ側が中身を
+       足し終えたあと＝microtask）——次のコマで丸薬の影武者を組むと、動き出しの一コマが落ちた（CPU 4倍で 22〜28ms）。 */
+    if (grown) queueMicrotask(begin); else requestAnimationFrame(begin);
 
     let closed = false;
     function close() {
