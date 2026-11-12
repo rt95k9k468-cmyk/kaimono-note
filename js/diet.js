@@ -200,6 +200,33 @@
     };
   }
 
+  /* H1 見通し（docs/health.md「見通し」）：weightSummary の傾きを平均の日からそのまま延ばすだけ。
+     直近21日に量った日が8日未満・傾きが 0.05kg/週 未満・目標から離れる向きなら null（何も言わない）。 */
+  const OUTLOOK_MIN_DAYS = 8, OUTLOOK_MIN_SLOPE = 0.05, OUTLOOK_MAX = 365;
+  function outlook(sum, endDay) {
+    const day = endDay || U.todayKey();
+    if (!sum || sum.trendPerWeek == null || sum.ma7Now == null || !sum.latest) return null;
+    const from = U.shiftDay(day, -20);
+    const n = new Set(sum.points.filter((p) => p.day >= from).map((p) => p.day)).size;
+    if (n < OUTLOOK_MIN_DAYS || Math.abs(sum.trendPerWeek) < OUTLOOK_MIN_SLOPE) return null;
+    const perDay = sum.trendPerWeek / 7, base = sum.latest.day, now = sum.ma7Now;
+    const goal = sum.goal && sum.goal.targetKg != null ? sum.goal.targetKg : null;
+    const gap = goal == null ? 0 : goal - now;
+    if (Math.abs(gap) >= 0.1 && Math.sign(gap) !== Math.sign(perDay)) return null;
+    const ahead = Math.abs(gap) >= 0.1 ? Math.round(gap / perDay) : null;
+    const span = (d) => Math.round((U.dayDate(d) - U.dayDate(base)) / 86400000);
+    return {
+      goalKg: ahead != null && ahead <= OUTLOOK_MAX ? goal : null,
+      goalDay: ahead != null && ahead <= OUTLOOK_MAX ? U.shiftDay(base, ahead) : null,
+      /** その日のおよその体重（明日から1年先まで。ほかは null）。 */
+      kgOn(d) {
+        const k = span(d);
+        if (!(d > day) || k > OUTLOOK_MAX) return null;
+        return round(now + perDay * k, 1);
+      },
+    };
+  }
+
   /** 目標日までに必要な週あたりのペース。 */
   function neededPace() {
     const g = store.get().diet.goal;
@@ -1580,7 +1607,7 @@
     URGE, urgeCat, urgeCats, urgeOutcome,
     burnedOf,
     daysBetween, weightPoints, movingAverage, trendLine, slopePerWeek,
-    weightSummary, neededPace,
+    weightSummary, neededPace, outlook,
     dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit, countedIntake,
     analyze, coverage,
     EXPORT_COLS, exportRows, exportCsv, exportText,

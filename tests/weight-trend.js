@@ -138,6 +138,47 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("飲んだ日があれば「飲んだ日」", /飲んだ日/.test((await legend()) || ""));
   await page.evaluate(() => KN.store.update((s) => { s.diet.drinks = []; }));
 
+  /* ---- H1 見通し：「この傾きなら ◯kg は◯月◯日ごろ」・目標日の下に「その日はおよそ◯kg」 ---- */
+  const down = Array.from({ length: 21 }, (_, i) => [20 - i, Math.round((71 - i * 0.05) * 100) / 100]);
+  const outlookLine = async () => {
+    await show();
+    return page.evaluate(() => {
+      const el = document.querySelector("#screen-diet .js-day-card .hl-hero.is-kg .is-outlook");
+      return el ? el.textContent.trim() : null;
+    });
+  };
+  await seed(down, { targetKg: 68 });
+  const want = await page.evaluate(() => {
+    const o = KN.diet.outlook(KN.diet.weightSummary(30));
+    const d = o && KN.util.dayDate(o.goalDay);
+    return o ? { text: `この傾きなら 68.0kg は${d.getMonth() + 1}月${d.getDate()}日ごろ`, ahead: KN.util.daysUntil(o.goalDay) } : null;
+  });
+  const line = await outlookLine();
+  t.check("下る傾きで目標 68kg の日を言う", want && line === want.text && want.ahead > 7 && want.ahead < 120, `${line} / ${JSON.stringify(want)}`);
+  await seed(down, { targetKg: 72 });
+  t.check("傾きが目標と逆なら出さない", (await outlookLine()) === null);
+  await seed(down.filter((r, i) => i % 3 === 0), { targetKg: 68 });
+  t.check("21日に量った日が8日未満なら出さない", (await outlookLine()) === null);
+  await seed(down, { targetKg: 68 });
+  await outlookLine();
+  const est = await page.evaluate(async () => {
+    KN.screens.diet.openGoalSheet();
+    await new Promise((r) => setTimeout(r, 300));
+    const el = document.querySelector(".js-td-est"), td = document.querySelector(".js-td");
+    const before = el.hidden;
+    const day = KN.util.shiftDay(KN.util.todayKey(), 14);
+    td.value = day; td.dispatchEvent(new Event("change", { bubbles: true }));
+    const want = KN.diet.outlook(KN.diet.weightSummary(30)).kgOn(day);
+    const out = { before, text: el.hidden ? null : el.textContent, want: `その日はおよそ ${want.toFixed(1)}kg` };
+    td.value = KN.util.shiftDay(KN.util.todayKey(), -3); td.dispatchEvent(new Event("change", { bubbles: true }));
+    out.past = el.hidden;
+    return out;
+  });
+  t.check("目標日を選ぶと「その日はおよそ◯kg」（選ぶ前・過ぎた日は出さない）",
+    est.before && est.text === est.want && est.past, JSON.stringify(est));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
   /* ---- 記録を変えない ---- */
   const safe = await page.evaluate(() => {
     const before = JSON.stringify(KN.store.get().diet.weights);

@@ -819,18 +819,28 @@
     const toward = goal != null && tw != null && now != null && Math.abs(now - goal) >= 0.1
       && (now > goal ? tw < -0.03 : tw > 0.03);
     const extra = [w && w.source === "health" ? "ヘルスケア" : "", w && w.fat != null ? `体脂肪 ${w.fat.toFixed(1)}%` : "", condText(w)].filter(Boolean).join("・");
+    /* H1 見通し：今日の一枚だけ（過ぎた日の「ごろ」は話が合わない）。 */
+    const ol = card.day === U.todayKey() ? D.outlook(sum, card.day) : null;
     const sec = node(html`
       <span class="hl-hero-in">
         <span class="hl-hero-h diet-hero-label">${icon("scale")}${when === "今日" ? "" : when + "の"}体重</span>
         <span class="hl-hero-v diet-hero-value"><b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small></span>
         <span class="hl-hero-s"><span>${sum.avgWindowDays}日平均 <b>${now == null ? "—" : now.toFixed(1)}</b></span>・<span><b class="${toward ? "is-toward" : ""}">${tw == null ? "—" : signed(tw, 1)}</b> /週</span></span>
         ${extra ? html`<span class="hl-hero-s is-sub">${extra}</span>` : ""}
+        ${ol && ol.goalDay ? html`<span class="hl-hero-s is-outlook">この傾きなら ${ol.goalKg.toFixed(1)}kg は${longDay(ol.goalDay)}ごろ</span>` : ""}
         ${KN.util.raw(spark(card.day, sum.avgWindowDays))}
       </span>
     `);
     if (from != null) sec.querySelector(".diet-hero-value b").dataset.from = from;
     host.addEventListener("click", () => openWeightSheet(card.weight, card.day));
     host.append(sec);
+  }
+
+  /* 「11月30日」、年をまたげば「2027年1月5日」。 */
+  function longDay(key) {
+    const d = U.dayDate(key);
+    const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+    return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
   }
 
   /* 体重のカードの細い線：その日までの14日の N日平均（推移と同じ trendLine。記録の頭から均す）。面は薄い朱、
@@ -4058,6 +4068,7 @@
               ${icon("close")}
             </button>
           </div>
+          <p class="diet-outlook js-td-est" hidden></p>
         </div>
 
         <div class="divider"></div>
@@ -4140,8 +4151,14 @@
        手つきが無いので、外すための口を横に置きます。 */
     const tdEl = body.querySelector(".js-td");
     const tdClear = body.querySelector(".js-td-clear");
+    /* H1：日を選ぶと「その日はおよそ◯kg」（今の傾きを延ばすだけ。見通しが立たなければ出さない）。 */
+    const tdEst = body.querySelector(".js-td-est");
+    const ol = D.outlook(D.weightSummary(30));
     function paintTargetDay() {
       if (tdClear) tdClear.hidden = !tdEl.value;
+      const kg = ol && tdEl.value ? ol.kgOn(tdEl.value) : null;
+      tdEst.hidden = kg == null;
+      tdEst.textContent = kg == null ? "" : `その日はおよそ ${kg.toFixed(1)}kg`;
     }
     tdEl.addEventListener("change", paintTargetDay);
     if (tdClear) {

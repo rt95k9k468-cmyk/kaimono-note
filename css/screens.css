@@ -2407,6 +2407,8 @@
 }
 .diet-note b { color: var(--c-text); }
 .diet-note.is-warn { color: var(--c-danger); }
+/* H1：目標日の下の「その日はおよそ◯kg」（一言だけ、大きく）。 */
+.diet-outlook { margin: 8px 0 0; font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
 /* AIが返してきた、その日の評価。AI推計の枠の中、コピー・貼り付けの上に（枠がAI由来と言う）。 */
 .diet-ai-note { color: var(--c-text); margin-top: var(--sp-1); }
 
