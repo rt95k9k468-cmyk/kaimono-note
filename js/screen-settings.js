@@ -147,7 +147,7 @@
         commit: () => {
           if (!leaving.handle) {
             remember(leaving, under);
-            stack.pop(); leaving.el.remove(); KN.edgeBack.clear(under.el);
+            stack.pop(); giveRow(leaving, under); leaving.el.remove(); KN.edgeBack.clear(under.el);
             return;
           }
           /* 書きかけがあれば、ここで保存されます（`tryClose`）。うまく
@@ -182,6 +182,25 @@
     };
   }
 
+  /* 下に敷かれた一枚は、Tab も読み上げも通さない（B3。見えない行に止まっていた）。重なりを変えたら呼ぶ。 */
+  function cover() { stack.forEach((L, i) => { L.el.inert = i < stack.length - 1; }); }
+  const STOPS = "button, a[href], input, select, textarea, [tabindex]";
+  /** 奥へ入る：カーソルが下の一枚に居たら、新しい一枚へ移す（押した口は覚えておく）。 */
+  function carry(L, under) {
+    const a = document.activeElement;
+    L.opener = a && under.el.contains(a) ? { el: a, at: [...under.el.querySelectorAll(STOPS)].indexOf(a) } : null;
+    cover();
+    if (L.opener) { L.el.tabIndex = -1; L.el.focus({ preventScroll: true }); }
+  }
+  /** 戻る：押した口へ返す（組み直しで入れ替わっていたら、同じ順番の口へ）。 */
+  function giveRow(L, under) {
+    cover();
+    const a = document.activeElement, o = L.opener;
+    if (!o || !(!a || a === document.body || L.el.contains(a))) return;
+    const el = o.el.isConnected ? o.el : under.el.querySelectorAll(STOPS)[o.at];
+    if (el) el.focus({ preventScroll: true });
+  }
+
   /** 一枚を抜く。**もう指で出しきっている一枚は、そのまま外します**
       ——0 に戻してから右へ流し直すと、一拍だけ元の位置へ跳ねて見えます。 */
   function popLayer(L) {
@@ -189,6 +208,7 @@
     if (i <= 0) return;
     stack.splice(i, 1);
     const under = top();
+    giveRow(L, under);
     const at = /translate3d\(\s*(-?[\d.]+)px/.exec(L.el.style.transform || "");
     if (at && parseFloat(at[1]) > 4) {
       L.el.remove();
@@ -236,6 +256,7 @@
     stack.push(L);
     root.append(L.el);
     paintLayer(L);
+    carry(L, under);
     moving = true;
     KN.edgeBack.push(L.el, under.el, +1).then(() => { moving = false; });
   }
@@ -266,6 +287,7 @@
     stack.push(L);
     root.append(L.el);
     L.body.append(opts.content);
+    carry(L, under);
     /* 帯の題を出します。組み直しは通らない一枚（`paintLayer` が `handle` を
        見て素通りする）ので、ここで一度だけ。 */
     paintNav(L);
@@ -643,6 +665,7 @@
       L.el.remove();
       if (L.handle) L.handle.abandon();
     }
+    cover();
     KN.edgeBack.clear(stack[0].el);
     stack[0].scroll.scrollTop = 0;
     render();
@@ -673,6 +696,7 @@
         stack.push(L);
         root.append(L.el);
         paintLayer(L);
+        cover();
         KN.edgeBack.rest(under.el);
       }
       if (w.top > 0) L.scroll.scrollTop = w.top;

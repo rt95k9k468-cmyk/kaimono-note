@@ -350,6 +350,13 @@
       if (nx) nx.focus();
       return;
     }
+    /* ← → で畳む・ひらく（B3。矢印の口は行のボタンの中にあって Tab では届かない）。keys.js の「暦を送る」へは渡さない。 */
+    if ((k === "ArrowLeft" || k === "ArrowRight") && !e.altKey && !e.shiftKey && el.hasAttribute("aria-expanded")) {
+      e.preventDefault();
+      const tw = el.querySelector(".nt-twist");
+      if (tw && (el.getAttribute("aria-expanded") === "true") === (k === "ArrowLeft")) tw.click();
+      return;
+    }
     const row = rowsOf(box).find((r) => r.el === el);
     if (!row || (row.book && o.one) || !N() || N().state() !== "on") return;
     if ((k === "ArrowUp" || k === "ArrowDown") && e.altKey && !e.shiftKey) {

@@ -809,10 +809,11 @@ a { color: var(--c-primary); }
 /* 道すじ「Notes ›」（段1b）。今の面の名前より小さく薄く。押すとホーム。 */
 .head-crumb { flex: none; font-size: .7em; font-weight: var(--fw-regular); opacity: .86; padding: var(--sp-1) 0; }
 .head-crumb-sep { flex: none; font-size: .7em; font-weight: var(--fw-regular); opacity: .7; }
-.head.is-notes :is(.topbar-day, .js-go-today, .head-eye) { opacity: 0; pointer-events: none; }
+/* 薄れたものには Tab も読み上げも止まらない（visibility。B3）。 */
+.head.is-notes :is(.topbar-day, .js-go-today, .head-eye) { opacity: 0; pointer-events: none; visibility: hidden; }
 .head.is-notes .js-upcoming { display: none; }
 .head.is-cal-moving :is(.head-name, .topbar-day, .js-go-today, .head-eye) {
-  transition: opacity var(--m-nav) var(--ease-out);
+  transition: opacity var(--m-nav) var(--ease-out), visibility var(--m-nav);
 }
 /* ---- 帯の空（docs/sky.md・js/sky.js） ----
 
@@ -935,6 +936,8 @@ a { color: var(--c-primary); }
      最後の一件の下にあったのと同じ余白です。＋ が帯の上に立つ画面は、
      そのぶん（`--fab-room`）も。 */
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+  /* Tab で来たものが帯の下に隠れたまま止まらない（B3。カーソルを追う送りは、帯の上まで）。 */
+  scroll-padding-bottom: calc(var(--tabbar-space) + var(--sp-3));
   scrollbar-width: thin;
   /* Opaque, so nothing behind a screen shows through while the band at
      either end slides it. */

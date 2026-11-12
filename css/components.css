@@ -702,8 +702,8 @@ button, [role="tab"] {
 
 /* Horizontal centring lives in `transform` only — adding the standalone
    `translate` property as well would shift the sheet twice. */
-/* 指の端末では、開いた紙そのものがカーソルを持つ（ui.js。読み上げの入口）。紙ごとの輪は出さない。 */
-.sheet:focus-visible { outline: none; }
+/* 指の端末では、開いた紙・小窓そのものがカーソルを持つ（ui.js。読み上げの入口）。紙ごとの輪は出さない。 */
+.sheet:focus-visible, .note-pop:focus-visible { outline: none; }
 
 .sheet {
   position: fixed;

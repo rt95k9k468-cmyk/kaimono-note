@@ -148,7 +148,7 @@
           <input class="input js-amount grow" type="text" inputmode="none"
                  autocomplete="off" autocorrect="off" spellcheck="false"
                  value="${p.amount != null ? p.amount : ""}" placeholder="500">
-          <select class="select js-unit" style="flex:0 0 110px">
+          <select class="select js-unit" aria-label="単位" style="flex:0 0 110px">
             <option value="">単位なし</option>
             ${UNITS.map((u) => html`<option value="${u}" ${p.unit === u ? KN.util.raw("selected") : ""}>${u}</option>`)}
           </select>

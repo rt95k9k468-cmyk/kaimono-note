@@ -7,7 +7,8 @@
    - Windows（Win32）で近道の一覧は Ctrl／強制配色で形の無い押せるものが無い／時刻・値段・目方は等幅の数字
    - 指の端末（電話）：開いた紙そのものがカーソルを持つ（打つ欄へは入れない）・閉じても打つ欄へは置き直さない
    - B3：丸を Space で済ませるとカーソルは同じ場所の次の行へ（マウスなら輪なし）・知らせは読み上げにだけ「済ませました」・
-     行から膨らむ紙にもカーソルが入り、Esc で行へ戻る
+     行から膨らむ紙にもカーソルが入り、Esc で行へ戻る・小窓（日付）はカーソルが入って Tab が中を回る・下の帯に隠れて止まらない・
+     設定の下の一枚と上の帯は inert・ノートの木は ← → で畳む
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-hand.js */
 const { open, checker } = require("./lib");
 
@@ -57,6 +58,21 @@ async function roundTrip(page, sel, same) {
     await page.waitForTimeout(700);
     r = await roundTrip(page, "#screen-notes .note-row .js-open", () => document.activeElement.matches("#screen-notes .note-row .js-open"));
     t.check("ノートを閉じると、カーソルは組み直した一覧の同じ札へ", r.ok && r.opened && r.back, JSON.stringify(r));
+
+    /* ノートの木：← → で畳む・ひらく（B3。カーソルは同じ行に残る）。 */
+    {
+      const row = '#screen-notes .nt-row[aria-expanded], .notes-tree .nt-row[aria-expanded]';
+      const st = () => page.evaluate((row) => { const a = document.activeElement; return a && a.matches(row) ? a.getAttribute("aria-expanded") : "外"; }, row);
+      const had = await page.evaluate((row) => { const r = [...document.querySelectorAll(row)].find((x) => x.getClientRects().length); if (r) r.focus(); return r ? r.getAttribute("aria-expanded") : null; }, row);
+      const key = had === "true" ? ["ArrowLeft", "ArrowRight"] : ["ArrowRight", "ArrowLeft"];
+      const seen = [];
+      for (const k of key) {
+        await page.keyboard.press(k);
+        await page.waitForFunction(({ row, was }) => { const a = document.activeElement; return !!a && a.matches(row) && a.getAttribute("aria-expanded") !== was; }, { row, was: seen.length ? seen[seen.length - 1] : had }, { timeout: 3000 }).catch(() => {});
+        seen.push(await st());
+      }
+      t.check("ノートの木：← → で畳む・ひらく（カーソルは行に残る）", had !== null && seen[0] === String(had !== "true") && seen[1] === had, JSON.stringify({ had, seen }));
+    }
 
     /* 探す窓：Esc で閉じたら虫めがねへ。 */
     await page.click(".tab-list");
@@ -309,6 +325,64 @@ async function roundTrip(page, sel, same) {
     const next = await page.waitForFunction((first) => { const a = document.activeElement;
       return !!a && a.matches("#screen-list .check") && a.getAttribute("aria-label") !== first && a.getAttribute("aria-checked") !== "true"; }, first, { timeout: 4000 }).then(() => true, () => false);
     t.check("買った行のあと、カーソルは隣の行の丸へ", next, JSON.stringify(await cur()));
+    /* 小窓（日付）：カーソルが小窓へ入り、Tab は小窓の中を回り、Esc で押した行へ。読み上げの覆いは小窓が持つ。 */
+    await page.evaluate(() => KN.app.showScreen("todo"));
+    await page.waitForTimeout(600);
+    await page.evaluate(() => document.querySelector("#screen-todo .tl-open").focus());
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => { const sh = document.querySelector(".sheet.is-open"); return !!sh && sh.contains(document.activeElement); }, null, { timeout: 3000 }).catch(() => {});
+    await page.evaluate(() => document.querySelector(".sheet.is-open .js-row-due").focus());
+    await page.keyboard.press("Enter");
+    const inPop = await page.waitForFunction(() => { const p = document.querySelector(".note-pop.is-open"); return !!p && p.contains(document.activeElement) && document.activeElement !== p; }, null, { timeout: 3000 }).then(() => true, () => false);
+    const modal = await page.evaluate(() => [document.querySelector(".note-pop.is-open").getAttribute("aria-modal"), document.querySelector(".sheet.is-open").getAttribute("aria-modal")]);
+    let stays = true;
+    for (let i = 0; i < 45; i++) { await page.keyboard.press("Tab"); stays = stays && await page.evaluate(() => !!document.activeElement.closest(".note-pop.is-open")); }
+    await page.keyboard.press("Escape");
+    const toRow = await landed(".sheet.is-open .js-row-due");
+    const modalBack = await page.evaluate(() => document.querySelector(".sheet.is-open").getAttribute("aria-modal"));
+    t.check("小窓：カーソルが入り、Tab は中を回り、Esc で押した行へ（覆いは小窓 → 紙へ戻る）",
+      inPop && stays && toRow && modal[0] === "true" && modal[1] === "false" && modalBack === "true", JSON.stringify({ inPop, stays, toRow, modal, modalBack }));
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+
+    /* 帯の下に隠れたまま止まらない（送る器の scroll-padding）。 */
+    await page.evaluate(() => { for (let i = 0; i < 8; i++) KN.store.addTodo({ title: `時刻なし${i}`, due: null }); });
+    await page.waitForTimeout(500);
+    const clear = await page.evaluate(() => {
+      const bar = document.getElementById("tabbar").getBoundingClientRect().top;
+      return [...document.querySelectorAll("#screen-todo .tl-open, #screen-todo .tl-someday-add")].filter((b) => b.getClientRects().length)
+        .map((b) => { b.focus(); const r = b.getBoundingClientRect(); return r.bottom <= bar + 0.5 ? "" : `${b.textContent.trim().slice(0, 8)} ${Math.round(r.bottom)}>${Math.round(bar)}`; }).filter(Boolean);
+    });
+    t.check("Tab で来たものが下の帯に隠れない", !clear.length, clear.join(" / "));
+
+    /* ノートの席：薄れた日付に止まらない。設定：上の帯と下に敷かれた一枚は通さず、奥へ入ったカーソルは戻ると押した行へ。 */
+    await page.evaluate(() => KN.app.showScreen("notes"));
+    await page.waitForFunction(() => getComputedStyle(document.querySelector("#head .topbar-day")).visibility === "hidden", null, { timeout: 3000 }).catch(() => {});
+    const dayGone = await page.evaluate(() => getComputedStyle(document.querySelector("#head .topbar-day")).visibility);
+    await page.evaluate(() => KN.app.showScreen("todo"));
+    await page.waitForTimeout(700);
+    const dayBack = await page.evaluate(() => getComputedStyle(document.querySelector("#head .topbar-day")).visibility);
+    t.check("ノートの席：薄れた日付は Tab・読み上げから外れ、ほかの席で戻る", dayGone === "hidden" && dayBack === "visible", `${dayGone} / ${dayBack}`);
+
+    await page.evaluate(() => KN.app.showScreen("settings"));
+    await page.waitForTimeout(700);
+    await page.evaluate(() => document.querySelector("#screen-settings .set-row.is-nav").focus());
+    await page.keyboard.press("Enter");
+    const deep = await page.waitForFunction(() => { const l = document.querySelectorAll("#screen-settings .set-layer"); return l.length === 2 && l[1].contains(document.activeElement); }, null, { timeout: 3000 }).then(() => true, () => false);
+    const lay = await page.evaluate(() => ({ under: document.querySelector("#screen-settings .set-layer").inert, head: document.getElementById("head").inert }));
+    await page.waitForTimeout(700);
+    await page.keyboard.press("Tab");
+    const onBack = await page.evaluate(() => document.activeElement.matches(".set-layer:last-child .js-back"));
+    await page.keyboard.press("Escape");
+    const onRow = await landed("#screen-settings .set-row.is-nav");
+    const free = await page.evaluate(() => !document.querySelector("#screen-settings .set-layer").inert);
+    /* 戻る動きのあいだの Esc は受けない（screen-settings.js の moving）。奥の一枚が外れてから。 */
+    await page.waitForFunction(() => document.querySelectorAll("#screen-settings .set-layer").length === 1, null, { timeout: 3000 }).catch(() => {});
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => KN.app.activeScreen() !== "settings", null, { timeout: 3000 }).catch(() => {});
+    const headBack = await page.evaluate(() => !document.getElementById("head").inert);
+    t.check("設定：下の一枚と上の帯は通さず、奥のカーソルは「もどる」から、戻ると押した行へ",
+      deep && lay.under && lay.head && onBack && onRow && free && headBack, JSON.stringify({ deep, lay, onBack, onRow, free, headBack }));
     t.check("B3 のカーソル：エラーなし", !errors.length, errors.join(" | "));
     await browser.close();
   }

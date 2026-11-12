@@ -1626,6 +1626,8 @@
   padding-bottom: 0;
 }
 
+/* 奥へ入った一枚そのものがカーソルを持つ（screen-settings.js の carry）。一枚ごとの輪は出さない。 */
+.set-layer:focus-visible { outline: none; }
 .set-layer {
   position: absolute;
   inset: 0;
@@ -1654,6 +1656,7 @@
      まで止まります。 */
   touch-action: pan-y;
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+  scroll-padding-bottom: calc(var(--tabbar-space) + var(--sp-3));
 }
 
 /* 押せば決まるもの（保存・外す）の帯。紙のときは中身の最後に置いていま
@@ -4658,6 +4661,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   /* 下の帯のぶんは、紙の中の余白が持ちます（器が変わったので、画面の
      padding では中身の下に空きができません）。 */
   padding-bottom: calc(var(--tabbar-space) + var(--sp-8) + var(--sp-6));
+  scroll-padding-bottom: calc(var(--tabbar-space) + var(--sp-3));
 }
 /* 価格の一覧が乗るところ。**紙ではありません。**
 

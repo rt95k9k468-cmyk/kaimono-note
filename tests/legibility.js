@@ -6,6 +6,8 @@
    - 潰れ：字のある箱の幅が 4px 未満になっていない（特大の「kg/週」が 1px になっていた）
    主な紙（用事・品物・daily の記録）と小窓の暦も開いて同じく数え、SVG の字は描かれた大きさで 11px を見る
    （docs/log/design-review.md の Y7）。
+   名札（B3）：同じ巡りで一度、読み上げの木（ブラウザが組んだもの）を引き、押せるもの・打つ欄・絵・紙に名前が無いもの、
+   記号だけの名前のものが 0（7画面と紙。からだの紙・ノート・さがすも開く）。Chromium だけ（CDP）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/legibility.js
    VIEW=375 で幅を変える（既定 375×667、10月10日の総点検と同じ）。 */
 const { open, checker } = require("./lib");
@@ -22,10 +24,47 @@ const waitOf = (b) => { const w = WAIT.find(([re]) => re.test(b.name)); return w
 const SHEETS = [["用事の紙", ".sheet.is-open"], ["新しい用事の紙", ".sheet.is-open"], ["品物の紙", ".sheet.is-open"],
   ["daily の記録の紙", ".sheet.is-open"], ["小窓の暦", ".note-pop.is-cal.is-open"]];
 
+/* 名札だけ見る紙（からだ・ノート・さがす）。 */
+const NAME_SHEETS = ["体重の紙", "食事の紙", "お酒の紙", "ノートの紙", "さがすの紙"];
+const NAMED = new Set(["button", "link", "textbox", "searchbox", "checkbox", "radio", "switch", "tab", "combobox", "slider",
+  "spinbutton", "menuitem", "option", "image", "dialog"]);
+/** 読み上げの木で、名前の無いもの・記号だけの名前のもの。 */
+async function unnamed(cdp) {
+  const { nodes } = await cdp.send("Accessibility.getFullAXTree");
+  const bad = [];
+  for (const n of nodes) {
+    const role = n.role && n.role.value;
+    if (n.ignored || !NAMED.has(role)) continue;
+    const name = ((n.name && n.name.value) || "").trim();
+    if (name && !/^[\s×✕⋯…＋+\-−›‹<>・•↻✓→←↑↓|｜/]+$/.test(name)) continue;
+    let what = role;
+    if (n.backendDOMNodeId) {
+      try {
+        const { node } = await cdp.send("DOM.describeNode", { backendNodeId: n.backendDOMNodeId });
+        const a = node.attributes || [], i = a.indexOf("class");
+        what = `${role} ${node.nodeName.toLowerCase()}.${i >= 0 ? a[i + 1].trim().split(/\s+/).slice(0, 2).join(".") : ""}`;
+      } catch (_) { /* もう外れた */ }
+    }
+    bad.push(name ? `${what}「${name}」` : what);
+  }
+  return [...new Set(bad)];
+}
+
 /* 頁の中で走る。紙を開く（tools/shots.js の --sheet と同じ開き方）。 */
 async function openSheet(name) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const S = KN.store;
+  if (name === "体重の紙" || name === "食事の紙" || name === "お酒の紙") {
+    KN.app.showScreen("diet");
+    await wait(400);
+    const D = KN.screens.diet, today = KN.util.todayKey();
+    if (name === "体重の紙") D.openWeightSheet(S.weightOfDay(today), today);
+    else if (name === "食事の紙") D.openMealMemoSheet(today);
+    else D.openDrinkSheet(today);
+    return;
+  }
+  if (name === "ノートの紙") { KN.screens.notes.open("n-shelf0"); return; }
+  if (name === "さがすの紙") { KN.searchAll.open("牛乳", "todo"); return; }
   if (name === "用事の紙" || name === "新しい用事の紙") {
     KN.app.showScreen("todo");
     await wait(400);
@@ -145,8 +184,10 @@ function waited(bad, where) {
     KN.notes.setBooks(KN.noteOrganize.SHELVES);
   });
 
+  const cdp = process.env.KN_BROWSER === "webkit" ? null : await page.context().newCDPSession(page);
   for (const theme of ["light", "dark"]) {
     for (const size of ["std", "xl"]) {
+      const names = cdp && theme === "light" && size === "std";   // 名札は一度だけ
       await page.evaluate(({ theme, size }) => {
         if (theme === "dark") document.documentElement.setAttribute("data-theme", "dark");
         else document.documentElement.removeAttribute("data-theme");
@@ -165,6 +206,7 @@ function waited(bad, where) {
           t.check(`${theme}・${size}・${id}：${{ contrast: "コントラスト不足", small: "11px 未満", squash: "潰れ" }[kind]}が0`,
             !hit.length, hit.map((b) => `${b.name}「${b.text}」${b.v}`).join(" / "));
         }
+        if (names) { const no = await unnamed(cdp); t.check(`名札・${id}：名前の無いものが0`, !no.length, no.join(" / ")); }
       }
       /* 紙と小窓（design-review の Y7。用事の紙の頭 Y3 はここで漏れていた）。 */
       for (const [name, sel] of SHEETS) {
@@ -178,9 +220,18 @@ function waited(bad, where) {
           t.check(`${theme}・${size}・${name}：${{ contrast: "コントラスト不足", small: "11px 未満", squash: "潰れ" }[kind]}が0`,
             !hit.length, hit.map((b) => `${b.name}「${b.text}」${b.v}`).join(" / "));
         }
+        if (names) { const no = await unnamed(cdp); t.check(`名札・${name}：名前の無いものが0`, !no.length, no.join(" / ")); }
         await page.keyboard.press("Escape");
         await page.waitForTimeout(600);
         if (await page.evaluate((s) => !!document.querySelector(s), sel)) { await page.keyboard.press("Escape"); await page.waitForTimeout(600); }
+      }
+      for (const name of names ? NAME_SHEETS : []) {
+        await page.evaluate(openSheet, name);
+        await page.waitForTimeout(900);
+        const up = await page.evaluate(() => !!document.querySelector(".sheet.is-open"));
+        const no = await unnamed(cdp);
+        t.check(`名札・${name}：開いて、名前の無いものが0`, up && !no.length, up ? no.join(" / ") : "開かない");
+        for (let i = 0; i < 3 && await page.evaluate(() => !!document.querySelector(".sheet.is-open")); i++) { await page.keyboard.press("Escape"); await page.waitForTimeout(600); }
       }
     }
   }

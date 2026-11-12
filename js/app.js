@@ -769,6 +769,9 @@
     /* いまの画面を根に（下の帯の幕・ノートの左の木。CSS の `:has(#screen-….is-active)` をやめた——画面の中で
        何かが出入りするたびに入れ物ごと見直しが掛かり、席を移る一拍が重くなっていた。2026年10月24日）。 */
     document.documentElement.dataset.screen = id;
+    /* 設定は帯ごと覆う一枚。下に敷かれた帯のボタンに、Tab も読み上げも止めない（B3）。 */
+    const headEl = document.getElementById("head");
+    if (headEl) headEl.inert = id === "settings";
     /* `face === "settled"` は「呼んだ側がもう動かし終えた」の合図です
        （買うもの ⇄ 価格の重なり）。ここで重ねて動かすと、指で置いた
        ところから跳ねます。 */

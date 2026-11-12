@@ -829,13 +829,18 @@
     for (let a = e; a && a !== document.body && !key; a = a.parentElement) {
       for (const at of a.attributes) if (/^data-[\w-]*id$/.test(at.name) && at.value) { key = { name: at.name, value: at.value, self: a === e }; break; }
     }
-    return { el: e, key, tag: e.tagName, cls: e.classList[0] || "", label: e.getAttribute("aria-label") || "" };
+    const h = { el: e, key, tag: e.tagName, cls: e.classList[0] || "", label: e.getAttribute("aria-label") || "" };
+    /* 印の無い口は、同じ入れ物の同じ種類の口の中での順番で探し直す。 */
+    h.scope = e.closest(HELD_IN);
+    h.sel = e.tagName.toLowerCase() + (h.cls && window.CSS && CSS.escape ? "." + CSS.escape(h.cls) : "");
+    h.at = peers(h).indexOf(e);
+    return h;
   }
   const shownEl = (x) => !!x && x.isConnected && x.getClientRects().length > 0 && !x.closest("[inert], [hidden]");
   /** 覚えたもの（snap）を、組み直したあとの画面で探し直す。 */
   function findAgain(o) {
     if (shownEl(o.el)) return o.el;
-    if (!o.key || !window.CSS || !CSS.escape) return null;
+    if (!o.key || !window.CSS || !CSS.escape) return (o.at >= 0 && peers(o)[o.at]) || null;
     const host = [...document.querySelectorAll(`[${o.key.name}="${CSS.escape(o.key.value)}"]`)].find(shownEl);
     if (!host) return null;
     if (o.key.self) return host;
@@ -861,23 +866,19 @@
      書かれた次のコマに、カーソルが宙に浮いていたら戻す。行が動いた・消えたら、その場所へ来た隣へ——済ませた用事は
      いちばん下へ行くので、付いて行くと続きの行から離れる。紙ごと閉じたときは giveBack に任せる。 */
   let held = null;
-  const HELD_IN = ".sheet, .note-pop, .set-layer, .screen, #head, #tabbar";
+  const HELD_IN = ".sheet, .note-pop, .set-layer, .screen, .notes-tree, #head, #tabbar";
   const peers = (h) => (h.scope && h.scope.isConnected ? [...h.scope.querySelectorAll(h.sel)].filter(shownEl) : []);
   function hold(e) {
     held = null;
     if (!e || e === document.body || !e.closest || typingField(e) || !window.CSS || !CSS.escape) return;
-    const h = snap(e);
-    h.scope = e.closest(HELD_IN);
-    h.sel = e.tagName.toLowerCase() + (h.cls ? "." + CSS.escape(h.cls) : "");
-    h.at = peers(h).indexOf(e);
-    held = h;
+    held = snap(e);
   }
   function rehold() {
     const h = held, now = document.activeElement;
     if (!h || h.el.isConnected) return;                                // まだ居る
     held = null;
     if ((now && now !== document.body) || !h.scope || !h.scope.isConnected) return;   // ほかへ移った・紙ごと閉じた
-    const list = peers(h), same = findAgain(h);
+    const list = peers(h), same = h.key ? findAgain(h) : null;
     const el = same && list.indexOf(same) === h.at ? same : (h.at >= 0 && list[Math.min(h.at, list.length - 1)]) || same;
     if (!el) return;
     el.focus({ preventScroll: true });
@@ -1314,13 +1315,13 @@
       (top.tryClose || top.close)();
       return;
     }
-    if (e.key === "Tab" && openSheets.length) {
-      const top = openSheets[openSheets.length - 1];
-      const list = focusableIn(top.el);
+    if (e.key === "Tab" && (popEls.length || openSheets.length)) {
+      const box = popEls.length ? popEls[popEls.length - 1] : openSheets[openSheets.length - 1].el;
+      const list = focusableIn(box);
       if (!list.length) return;
       const first = list[0], last = list[list.length - 1];
       const active = document.activeElement;
-      const inside = top.el.contains(active);
+      const inside = box.contains(active) && active !== box;
       if (e.shiftKey) {
         if (!inside || active === first) { e.preventDefault(); last.focus(); }
       } else if (!inside || active === last) { e.preventDefault(); first.focus(); }
@@ -1580,6 +1581,7 @@
      閉じたら onClose。重なりは開いている紙の一段上。下に入りきらなければ、口の上に
      出す（place() は中身を足したあとに呼ぶ）。 */
   const pops = [];   // 開いている小窓の close（上が後ろ）
+  const popEls = []; // その小窓（Tab はいちばん上の小窓の中だけを回る）
   function popOver(anchor, { role = "dialog", side = "right", label = "", cls = "", lift = false, follow = false, at = null, onClose } = {}) {
     const sheetEl = anchor.closest(".sheet, .note-pop");   // 小窓の中から開く小窓は、その上に
     /* lift … 画面から開く背の高い小窓（見直す）。下の帯（--z-bar）に潜らないよう紙の高さに。 */
@@ -1590,11 +1592,20 @@
     const pop = node(html`<div class="note-pop is-${side} ${cls}" role="${role}" aria-label="${label}"></div>`);
     cover.style.zIndex = String(z + 1);
     pop.style.zIndex = String(z + 2);
+    /* 鍵盤と読み上げ（B3）：小窓は紙の外（body）に出るので、覆いのある紙（aria-modal）の後ろに隠れ、Tab も紙の中だけを
+       回っていた。開いているあいだは小窓が覆いを持ち、カーソルは小窓へ入って、閉じたら押した口へ戻る。 */
+    const opener = keepOpener();
+    const under = [...document.querySelectorAll('.sheet[aria-modal="true"], .note-pop[aria-modal="true"]')];
+    under.forEach((x) => x.setAttribute("aria-modal", "false"));
+    if (role === "dialog") pop.setAttribute("aria-modal", "true");
     let gone = false;
     const close = () => {
       if (gone) return;
       gone = true;
       pops.splice(pops.indexOf(close), 1);
+      popEls.splice(popEls.indexOf(pop), 1);
+      under.forEach((x) => { if (x.isConnected) x.setAttribute("aria-modal", "true"); });
+      giveBack(opener, pop);
       /* 帰り先は閉じる瞬間に測り直す（開いてからキーボードが出て画面が動くと、
          開いたときの点は押したものから外れている）。 */
       const o = originOf();
@@ -1644,6 +1655,7 @@
       });
     };
     pops.push(close);
+    popEls.push(pop);
     cover.addEventListener("click", close);
     cover.addEventListener("contextmenu", (e) => { e.preventDefault(); close(); });
     if (follow) document.addEventListener("scroll", onScroll, { capture: true, passive: true });
@@ -1696,7 +1708,16 @@
       return `${Math.round(ox)}px ${Math.round(oy)}px`;
     }
     place();
-    requestAnimationFrame(() => { if (!gone) pop.classList.add("is-open"); });
+    requestAnimationFrame(() => {
+      if (gone) return;
+      pop.classList.add("is-open");
+      /* 打っている欄からは奪わない（候補の小窓）。指の端末は欄へ入れず、小窓そのものへ（紙と同じ）。 */
+      const a = document.activeElement;
+      if (pop.contains(a) || typingField(a)) return;
+      const to = !("ontouchstart" in window) && (pop.querySelector('[aria-pressed="true"]:not(:disabled), [aria-checked="true"]:not(:disabled)') || focusableIn(pop)[0]);
+      if (to) to.focus({ preventScroll: true });
+      else { pop.tabIndex = -1; pop.focus({ preventScroll: true }); }
+    });
     return { el: pop, close, place };
   }
   /** 開いている小窓を全部閉じる（画面を移るとき。帯は覆いより手前なので、覆いが受けない）。 */
