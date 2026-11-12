@@ -4923,7 +4923,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-path-sep { color: var(--c-text-3); }
 .note-kids:not(:empty) { margin-top: var(--sp-6); }
 .note-edit:has(.note-kids:not(:empty)) .note-view { min-height: 0; }
-.note-kids .nt-tree { display: flex; flex-direction: column; padding-top: var(--sp-2); margin: 0 calc(-1 * var(--sp-2)); }
+.note-kids .nt-tree { display: flex; flex-direction: column; padding-top: var(--sp-2); margin: 0 calc(-1 * var(--sp-2)); }  .note-kids .notes-list { margin-inline: 0; }  /* ここへのリンク（N1）は本文の列に揃える */
 /* 移す先の紙：ノートブックの行と、その中の木。 */
 .notes-place { display: flex; flex-direction: column; }
 .notes-place-row { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: var(--row-h-compact); border-radius: var(--r-sm);
