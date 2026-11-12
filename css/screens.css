@@ -1604,12 +1604,11 @@
   --set-bg: var(--c-bg);
   --set-card-shadow: var(--shadow-1);
   --set-art-op: 1;
-  --set-art-mask: radial-gradient(closest-side, #000 56%, transparent 100%);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
+  :root:not([data-theme="light"]) { --set-card-shadow: none; --set-art-op: .9; }
 }
-:root[data-theme="dark"] { --set-card-shadow: none; --set-art-op: .9; --set-art-mask: var(--set-art-mask-dk); }
+:root[data-theme="dark"] { --set-card-shadow: none; --set-art-op: .9; }
 
 /* ---- 一段は、紙の重なり ----
 
@@ -1789,15 +1788,15 @@
   height: 116px;
   width: auto;
   opacity: var(--set-art-op);
-  -webkit-mask-image: var(--set-art-mask);
-  mask-image: var(--set-art-mask);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 93%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 93%, transparent 100%);
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
 }
-/* 暗いときは、素材の淡い地がぼやけた光の塊に見えるので、丸い札に切って「置いた絵」にする。 */
-:root { --set-art-mask-dk: radial-gradient(circle closest-side, #000 93%, transparent 100%); }
-.set-top:not(.is-page) .set-art { height: 120px; margin: var(--sp-1) -4px 0 0; }
+/* 挿絵は丸い札に切り、水彩（img/think/）と色味を生成りへ寄せる（RI。docs/redesign.md 8節）。 */
+.set-art, .think-card-art, .think-today-art, .sheet-mark-art { filter: sepia(.22) saturate(.8); }
+.set-top:not(.is-page) .set-art { height: 104px; margin: var(--sp-1) -4px 0 0; }
 .set-top .set-hero { margin-bottom: var(--sp-3); }
 
 /* ---- 節の見出しと、カードの下の説明 ---- */
