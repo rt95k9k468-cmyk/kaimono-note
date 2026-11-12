@@ -162,7 +162,7 @@
       haptic();
       /* 指で引いたときと同じ滑りで（cal-peek の glide）。月の面で押せば、暦を畳んで週の面へ。 */
       KN.calPeek.glide(peekOpts, () => {
-        if (!monthFace()) { store.setCalPref("todo", { open: !calOpen() }); return; }
+        if (!monthFace()) { store.setCalPref("todo", KN.head.nextStep(calShown(), calOpen())); return; }
         face = "week";
         if (store.calPrefs("todo").open) store.setCalPref("todo", { open: false });
         else render();
@@ -2894,12 +2894,6 @@
          （day-swipe.js の「受け口は紙ぜんぶ」）。 */
       wireDaySwipe(car, track, open, cols ? car : sheet);
       if (cols) fitTall(els.cal);
-      wireCalPull(sheet);
-      /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました
-         ——紙のどこを持っても下へ引けば暦が出た時期の名残です。段を
-         替えられるのが掴み手だけになったいま、紙の本体は「引いて更新」の
-         ものなので、そのまま譲ります（ダイエットで引いて更新が効かなく
-         なっていたのは、これでした）。 */
 
       /* 次の組み直しで使い回せるように、いまの姿を控えます。 */
       sheetNode = sheet;
@@ -5111,32 +5105,6 @@
         jumpToDay(key);
       },
       busy: () => !!tlDrag || KN.reorder.isActive(),
-    });
-  }
-
-  /* ---------------- 紙を下に引くと、月が出てくる ----------------
-
-     仕掛けそのものは js/cal-peek.js が持ちます（daily と分け合うため
-     ——二枚書き写すと、片方だけを直した日に二つの暦が違う動きをします）。
-     ここが答えるのは「この画面では何が『いま見ている日』か」「いつ引いて
-     よいか」だけです。 */
-  function wireCalPull() {
-    KN.head.peek("todo", {
-      root,
-      cal: () => els.cal,
-      isOpen: calOpen,
-      isShown: calShown,
-      /* 探している最中だけ引きません。**暦をしまっていても引けます**
-         ——三段目（暦なし）から週へ戻す道が、ここしかないので。 */
-      enabled: () => !query && oneDay(),
-      /* 用事を運んでいる指を、暦に取られては困ります。暦を横に払って
-         いる最中も同じ——cal-swipe が生きている盤を運んでいるので、
-         ここで高さまで書くと二つが同じものを取り合います。 */
-      busy: () => !!tlDrag || KN.calSwipe.isActive(),
-      here: () => hereDay || todayKey(),
-      tagOffWeek,
-      commit: calCommit,
-      tall: () => peekOpts.tall(),
     });
   }
 

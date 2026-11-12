@@ -73,13 +73,10 @@
         </div>
       </header>
     `));
-    /* 暦は紙色の盆（.head-tray）の上。盆はいつも居て（ノートは盆だけ）、暦の置き場（.head-cal）と、その下の
-       取っ手（.cal-grip）を載せる。取っ手は 暦なし／週／月 を行き来する口——紙は引かない（docs/redesign.md 5節）。 */
-    root.append(node(html`<div class="head-tray"><div class="head-cal"></div><button type="button"
-      class="cal-grip js-cal-grip" aria-label="暦をひらく・たたむ"><i></i></button></div>`));
+    /* 暦は紙色の盆（.head-tray）の上。盆はいつも居て（ノートは盆だけ）、暦の置き場（.head-cal）を載せる。
+       段（暦なし／週／月）は題を押して替える——取っ手は置かない（docs/shared-header.md の頭）。 */
+    root.append(node(html`<div class="head-tray"><div class="head-cal"></div></div>`));
     els.tray = root.querySelector(".head-tray");
-    els.grip = root.querySelector(".cal-grip");
-    wireGrip();
     els.topbar = root.querySelector(".topbar");
     els.dayRow = root.querySelector(".topbar-dayrow");
     els.dayTitle = root.querySelector(".js-day-title");
@@ -111,7 +108,7 @@
     els.dayTitle.addEventListener("click", () => {
       if (!shopMine()) return;
       KN.motion.fire("select");
-      KN.store.setCalPref("list", { open: !calOpen() });   // 組み直しは subscribe が
+      KN.store.setCalPref("list", nextStep(calShown(), calOpen()));   // 組み直しは subscribe が
     });
     /* 今日へ戻るのも、払いと同じ道（shopGo）を通します。前は日を戻して
        暦を塗るだけで、紙に知らせて（dayMoved）いなかったので、前の日の
@@ -603,56 +600,8 @@
     return sCal;
   }
 
-  /* ---------------- 取っ手（暦の下）：暦なし／週／月 ----------------
-
-     取っ手は帯に一つ。引く・押すの中身は席ごと（どの暦か・いま見ている日・段をどこへ書くか）なので、
-     席が `peek(id, o)` で自分の答えを置いておき、持ち主のぶんを取り次ぎます（o は cal-peek.js の wire と同じ）。
-     指の重さ・速く払えば短くても行く・途中で掴めるは cal-peek のまま。押すと一段（暦なし→週→月→週）。 */
-  const peeks = {};
-  const peekOf = () => peeks[owner === "prices" ? "list" : owner] || null;
-  const ask = (k, d) => (...a) => { const o = peekOf(); return o && o[k] ? o[k](...a) : d; };
-  const gripOpts = {
-    get sheet() { return els.grip; },
-    get root() { const o = peekOf(); return o ? o.root : null; },
-    cal: ask("cal", null), isOpen: ask("isOpen", false), isShown: ask("isShown", false),
-    enabled: () => { const o = peekOf(); return !!o && (!o.enabled || !!o.enabled()); },
-    busy: ask("busy", false), here: ask("here", ""), tagOffWeek: ask("tagOffWeek"), commit: ask("commit"), tall: ask("tall", false),
-    tap: () => {
-      const o = peekOf();
-      if (!o || (o.enabled && !o.enabled())) return;
-      KN.motion.fire("select");
-      const to = { shown: true, open: o.isShown() && !o.isOpen() };
-      KN.calPeek.glide(gripOpts, () => o.commit(to));
-    },
-  };
-  function wireGrip() {
-    KN.calPeek.wire(gripOpts);
-    /* キーボードの Enter・Space（指とマウスは cal-peek が離したところで tap を呼ぶ）。 */
-    els.grip.addEventListener("click", (e) => { if (e.detail === 0) gripOpts.tap(); });
-  }
-  /** 席が、取っ手への答えを置く（組み直すたびに呼んでよい）。 */
-  function peek(id, o) { peeks[id] = o; }
-
-  /** 買うもの・価格の答え（暦はここが持つので）。 */
-  function shopPeek(o) {
-    peek("list", {
-      root: o.root,
-      cal: () => sCal,
-      isOpen: calOpen,
-      isShown: calShown,
-      enabled: () => o.enabled(),
-      busy: () => KN.calSwipe.isActive(),
-      here: sCur,
-      tagOffWeek,
-      /* 段が変わったら書くだけ（組み直しは store の subscribe から）。
-         変わらなかったときは、引きはじめに付けた印を塗り直します。 */
-      commit: ({ shown, open }) => {
-        if (open !== calOpen() || shown !== calShown()) {
-          KN.store.setCalPref("list", { open, shown });
-        } else if (sCal) markWeek(sCal);
-      },
-    });
-  }
+  /** 題を押すと一段：暦なし → 週 → 月 → 週（設定で暦を消していても、題から戻れる）。 */
+  const nextStep = (shown, open) => (shown ? { open: !open } : { shown: true, open: false });
 
   /* 端末の外の控えの見張り（R25、js/backup.js の offDeviceStale）。古く
      なったら歯車に小さな点だけ。押すまで何も言いません（トースト・通知・赤
@@ -745,5 +694,5 @@
     els.name.append(t);
   }
 
-  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, shopPeek, peek };
+  KN.head = { els, mine, enter, notesTitle, snapFor, putCal, moveCal, has, TABS, shopCal, shopDay: sCur, shopGo, nextStep };
 })();

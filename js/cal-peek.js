@@ -1,14 +1,8 @@
 /* =========================================================
-   くらしノート — 暦を、紙を引いて開く
+   くらしノート — 暦の三段（暦なし・週・月）を滑らせる
 
-   暦は既定では今週の一行だけです。月ぜんぶを見たいときは題を押せば
-   開きますが、押して開くのは「切り替え」であって、**引き出す**のとは
-   手つきが違います。下の紙をつまんで下げると、その下から月が出てきます
-   ——指が止まればそこで止まり、離せば近いほう（週か月か）へ収まります。
-
-   ここは、その仕掛けだけを持ちます。やること（screen-todo）と daily
-   （screen-archive）が、同じものを二枚書き写して持たないために。書き写す
-   と、片方だけを直した日に二つの暦が違う動きをします。
+   段は題を押して替える（取っ手は置かない。docs/shared-header.md の頭）。ここは、段が替わるときの
+   滑り（glide）と暦の三層（mount）だけを持つ。やること・からだ・買うもので同じものを使う。
 
    ■ 動かすのは、暦の高さ。紙はそのぶんだけ上下する
 
@@ -46,44 +40,19 @@
       0 … 今週の一行
       1 … 月ぜんぶ
 
-   数はひとつ（p）で、-1 から 1 まで続いています。真ん中の 0 が週なので、
-   週から下へ引けば月、**週から上へ押せば暦そのものが消えます**。段の
-   あいだは指について連続に動くので、どこで手を離しても近いほうへ収まる。
+   数はひとつ（p）で、-1 から 1 まで続いています（真ん中の 0 が週）。
 
    画面へ渡すのは --cal-p で、こちらは **0〜1 だけ**です（隣の週の濃さと
    題の「›」の傾きが見ている数で、負の側には意味がありません）。消える
    ぶんの縮みは、JSが曜日の行と余白に直に書きます。
 
-   ■ 取る向きは、いる段による
-
-   いちばん上（月）からは上へだけ、いちばん下（暦なし）からは下へだけ。
-   真ん中（週）からは**両方**へ行けます。取れるのは**掴み手からだけ**です
-   ——紙の本体は、下のリストを送るスクロールのもの。
-
-   **スクロール位置は問いません。** 前は「いちばん上にいるときだけ」でした
-   が、掴み手はどこまで送っても上に居る（sticky）ので、そこを掴んだのに
-   何も起きないのは筋が通りません。
    ========================================================= */
 (function () {
   "use strict";
 
   const KN = window.KN;
-  const { html, node, haptic } = KN.util;
+  const { html, node } = KN.util;
 
-  /* これだけ動いてから、引く手つきだと決めます。10 だと、決まるまでに
-     ブラウザのほうが先に画面を送りはじめて、そのとき指の追跡ごと取り
-     上げられます（pointercancel）——「掴み手からしか動かない」ように
-     感じていたのはこれで、掴み手だけは touch-action: none なので
-     ブラウザが手を出さなかったからです。 */
-  const SLOP = KN.gesture.AXIS;
-  const DONE = 0.34;    // ここまで来ていたら、行った先へ収めます
-  /* **速く払ったら、短くても行きます。**
-
-     ここは長いあいだ距離だけで決めていました——`DONE` まで来ていなければ
-     戻る。だから**ぱっと弾いても戻り、のろのろ引くと開く**という、紙の節
-     （「紙は、指につく」）で一度直したのとまったく同じことが残っていました。
-     日送り（day-swipe）は前から勢いを見ているので、同じ数に揃えます。 */
-  const { FLING_V, FLING_MIN } = KN.gesture;   // これだけ速ければ、短くても行った先へ
 
   /**
    * 暦の三層を組んで、節に足します。中身（曜日・日のマス）を書くのは
@@ -157,7 +126,6 @@
   /** lo段から hi段までの、指の道のり（px）。**暦が伸び縮みする量そのもの**
       ＝ 紙が上下する量です。ここを別に決めると、指の下で紙が速すぎたり
       遅すぎたりします。 */
-  const spanOf = (m, lo, hi) => Math.abs(visibleH(m, hi) - visibleH(m, lo));
 
   /** -1（暦なし）〜0（週）〜1（月）のあいだの、途中の姿を描きます。
 
@@ -425,142 +393,5 @@
     requestAnimationFrame(tick);
   }
 
-  /**
-   * 紙に、引く手つきを結びます。
-   *
-   * o.sheet      引く紙（.tl-sheet）
-   * o.root       その画面（スクロールする器）
-   * o.cal()      いまの .cal
-   * o.isOpen()   月ぜんぶを出しているか
-   * o.isShown()  暦そのものを出しているか
-   * o.enabled()  いま引いてよいか（探している最中は false）
-   * o.busy()     ほかの手つきが指を持っているか（用事を運んでいる最中など）
-   * o.here()     いま見ている日（どの週を窓に出すか）
-   * o.tagOffWeek(sec, here)  いまの週の外に印を付ける
-   * o.commit({shown, open})  行き先が決まった。設定に書く／塗り直す
-   */
-  function wire(o) {
-    const el = o.sheet;
-    let pid = null, x0 = 0, y0 = 0, p0 = 0, p = 0, m = null, live = false, on = false;
-    /* 指の速さ（px/ms、下向きが正）。行くか戻るかと、離したあとの滑りの
-       長さ・曲線が、ここから出ます。 */
-    let lastT = 0, lastY = 0, vy = 0;
-    /* いま動いているのは、どの段のあいだか。[lo, hi] と、その道のり（span）。 */
-    let lo = 0, hi = 1, span = 1;
-    /* 掴み手から始めたかどうか。上へ押し戻すのは、ここからだけです。 */
-    let byGrip = false;
-    const drop = () => { live = false; on = false; pid = null; m = null; };
-
-    el.addEventListener("pointerdown", (e) => {
-      if (!o.cal() || (o.busy && o.busy())) return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      /* **スクロール位置は問いません。** 前はここに「いちばん上にいる
-         ときだけ」がありました。掴み手はどこまで送っても上に居る（sticky）
-         ので、そこを掴んだのに何も起きないのは筋が通りません。 */
-      if (o.enabled && !o.enabled()) return;
-      byGrip = !!(e.target.closest && e.target.closest(".cal-grip"));
-      /* **切り替えるのは掴み手からだけ。** 紙のどこを持っても下へ引けば
-         暦が出る、という作りにしていたことがありましたが、使いづらい
-         ——読んでいて下を見ようとするたびに暦が伸びてきます。掴み手は
-         そのぶん広く取ってあります（見えている棒は5px、掴めるのは29px）。 */
-      if (!byGrip) return;
-      if (KN.util.selecting(e)) return;      // 字を選んでいる指は引く指ではない
-      pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
-      p0 = at(o); p = p0;
-      lastT = performance.now(); lastY = e.clientY; vy = 0;
-      live = true; on = false;
-      /* 掴み手からのぶんは、この場で指を預かります。上へ押すと紙のほうが
-         縮んで指の下から逃げるので、預けておかないと、途中から動きが
-         暦のほうへ流れてしまいます（掴み手には押すものが無いので、
-         ここで預かって困るものもありません）。 */
-      if (byGrip) { try { el.setPointerCapture(pid); } catch (_) { /* だめでも続けます */ } }
-    }, { passive: true });
-
-    /* 字を選びはじめた指は、出ていた段へ戻して放します。 */
-    const abort = () => {
-      const was = on, mm = m, pp = p, from = p0, sp = span;
-      drop();
-      if (was) settle(o, mm, from, { v: 0, span: sp, from: pp });
-    };
-
-    el.addEventListener("pointermove", (e) => {
-      if (!live || e.pointerId !== pid) return;
-      if (KN.util.selecting(e)) { abort(); return; }
-      if (o.busy && o.busy()) { if (on) settle(o, m, p0 === 1); drop(); return; }
-      const dy = e.clientY - y0, dx = e.clientX - x0;
-      if (!on) {
-        // 横が勝ったら、日送り（wireDaySwipe）の番です。
-        if (Math.abs(dx) > SLOP && Math.abs(dx) > Math.abs(dy)) { drop(); return; }
-        if (Math.abs(dy) < SLOP || Math.abs(dy) <= Math.abs(dx)) return;
-        /* いちばん上（月）からは上へだけ、いちばん下（暦なし）からは下へ
-           だけ。真ん中（週）からは両方へ行けます。 */
-        if (p0 === 1 && dy > 0) { drop(); return; }
-        if (p0 === -1 && dy < 0) { drop(); return; }
-        m = begin(o);
-        if (!m) { drop(); return; }
-        /* どの段のあいだを動くかは、いる段と向きで決まります。決めるのは
-           ここ一度きり——途中で測り直すと、境目をまたぐたびに指の下で
-           速さが変わります。 */
-        if (p0 === 1 || (p0 === 0 && dy > 0)) {
-          lo = 0; hi = 1;                               // 週 ⇄ 月
-        } else {
-          lo = -1; hi = 0;                              // 暦なし ⇄ 週
-        }
-        span = spanOf(m, lo, hi);
-        on = true;
-        try { el.setPointerCapture(pid); } catch (_) { /* 取れなくても続けます */ }
-      }
-      // 取ったからには、スクロールには渡しません。
-      if (e.cancelable) e.preventDefault();
-      const now = performance.now();
-      if (now > lastT) { vy = (e.clientY - lastY) / (now - lastT); lastT = now; lastY = e.clientY; }
-      const moved = dy - Math.sign(dy) * SLOP;
-      p = Math.min(hi, Math.max(lo, p0 + moved / (span || 1)));
-      paint(o, m, p);
-    }, { passive: false });
-
-    const up = (e) => {
-      if (!live || e.pointerId !== pid) return;
-      if (KN.util.selecting(e)) { abort(); return; }
-      const was = on, mm = m, pp = p, from = p0, a = lo, b = hi;
-      const v = vy, sp = span, dy = e.clientY - y0;
-      drop();
-      /* 動かさずに離したら、押した（一段。head.js の tap）。 */
-      if (!was) { if (o.tap && e.type === "pointerup" && Math.hypot(e.clientX - x0, dy) < SLOP) o.tap(); return; }
-      /* 出てきた側から DONE ぶん離れていたら、行った先へ。**または、
-         そこまで来ていなくても、速く払っていたら**——距離だけで決めると、
-         ぱっと弾いた指が戻されます（紙の節で一度直したのと同じ話）。 */
-      const fling = Math.abs(v) > FLING_V && Math.abs(dy) >= FLING_MIN;
-      const toward = v > 0 ? b : a;          // 下へ払えば開くほう、上へ払えば畳むほう
-      const to = fling ? toward
-        : (from === a ? (pp > a + DONE ? b : a) : (pp < b - DONE ? a : b));
-      if (to !== from) haptic();
-      settle(o, mm, to, { v, span: sp, from: pp });
-    };
-    el.addEventListener("pointerup", up);
-    el.addEventListener("pointercancel", up);
-
-    /* **これは pointermove では止まりません。**
-
-       上まで来ているところから下へ引くと、ブラウザは先に「画面を送る」
-       ほうを始めます。始まってしまえば指の追跡は取り上げられ（pointercancel）、
-       暦は出てきません。pointermove で preventDefault しても、送るのを
-       止めるのは touchmove のほうなので間に合いません。
-
-       だから、こちらが取ると決める前でも——掴み手にいて、その向きへ
-       行けるあいだは——ここで渡さないでおきます。掴み手から始めた手つき
-       だけが live なので、ここに来るのはそのぶんだけです。 */
-    el.addEventListener("touchmove", (e) => {
-      if (!live || !e.cancelable) return;
-      if (on) { e.preventDefault(); return; }
-      const t = e.touches && e.touches[0];
-      if (!t) return;
-      const dy = t.clientY - y0, dx = t.clientX - x0;
-      if (Math.abs(dx) > Math.abs(dy)) return;      // 横は日送りの番
-      // 下へ行けるのは月にいないとき、上へは暦なしでないとき。
-      if (dy > 0 ? p0 !== 1 : p0 !== -1) e.preventDefault();
-    }, { passive: false });
-  }
-
-  KN.calPeek = { mount, wire, glide };
+  KN.calPeek = { mount, glide };
 })();

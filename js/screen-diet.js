@@ -142,7 +142,7 @@
     els.dayTitle.addEventListener("click", () => {
       if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       KN.motion.fire("select");
-      store.setCalPref("diet", { open: !calOpen() });
+      store.setCalPref("diet", KN.head.nextStep(calShown(), calOpen()));
     });
 
     /* 題の右の「今日へ戻る」。`viewDay` も `calMonth` も落とすと、どちらも
@@ -473,9 +473,6 @@
       <div class="tl-sheet is-bare"></div>
     `);
     els.body.append(sheet);
-    wireCalPull(sheet);
-    /* **印は掴み手だけ。** 紙ぜんぶに付けていたので、この画面では
-       「引いて更新」がまるごと効かなくなっていました。 */
 
     sheet.append(node(html`
       <div class="diet">
@@ -622,34 +619,6 @@
     U.paintDayTitleInto(els.dayRow, curDay(),
       `押すと暦を${calOpen() ? "たたむ" : "ひらく"}`);
     els.dayTitle.setAttribute("aria-expanded", String(calOpen()));
-  }
-
-  /* ---------------- 紙を下に引くと、月が出てくる ----------------
-
-     やること・daily と同じ仕掛けです（js/cal-peek.js）。ここが答えるのは
-     「この画面では何が『いま見ている日』か」「いつ引いてよいか」だけ。 */
-  function wireCalPull() {
-    KN.head.peek("diet", {
-      root,
-      cal: () => els.cal,
-      isOpen: calOpen,
-      isShown: calShown,
-      // 探している最中だけ引きません（暦をしまっていても引けます）。
-      enabled: () => !query.trim(),
-      /* 暦を横に払っている最中は、この指は向こうのものです（cal-swipe が
-         生きている盤を運んでいるので、ここで高さまで書くと二つが同じ
-         ものを取り合います）。 */
-      busy: () => KN.calSwipe.isActive(),
-      here: () => curDay(),
-      tagOffWeek,
-      /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
-         ときだけ塗り直し——書けば store が組み直すので、二度手間になります。 */
-      commit: ({ shown, open }) => {
-        if (open !== calOpen() || shown !== calShown()) {
-          store.setCalPref("diet", { open, shown });
-        } else markWeek(els.cal, curDay());
-      },
-    });
   }
 
   function shownMonth() {

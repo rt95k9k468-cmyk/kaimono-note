@@ -71,18 +71,12 @@
       body:       chrome.querySelector(".js-body"),
     };
 
-    /* 紙の頭に リスト｜価格 の札（app.js の faceSeg。前は紙を下げて価格へ行った）。暦の段は帯の取っ手で
-       （head.js が暦を持っているので、答えを置くのもあちら）。 */
+    /* 紙の頭に リスト｜価格 の札（app.js の faceSeg。前は紙を下げて価格へ行った）。暦の段は帯の題で（head.js）。 */
     /* 札の右に品数（まだ買っていないもの。docs/redesign.md R5）。 */
     const seg = KN.app.faceSeg("list");
     els.count = seg.appendChild(node(html`<span class="face-n"></span>`));
     chrome.querySelector(".js-sheet").prepend(seg);
     els.stores = seg.parentNode.insertBefore(node(html`<div class="shop-stores"></div>`), els.body);
-    KN.head.shopPeek({
-      root,
-      // 探している最中だけ引きません（ほかのタブと同じ）。
-      enabled: () => !query.trim(),
-    });
 
     /* 紙を横に払うと、日が動きます（ほかのタブと同じ手つき・同じ一つの
        仕掛け js/day-swipe.js）。買うものの紙は日で中身が変わらないので、

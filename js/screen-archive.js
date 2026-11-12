@@ -590,36 +590,6 @@
     moveRing(grid, grid.querySelector(`.cal-day[data-day="${viewDay || today}"]`), true);
   }
 
-  /* ---------------- 紙を下に引くと、月が出てくる ----------------
-
-     やることと同じ仕掛けです（js/cal-peek.js）。ここが答えるのは「この
-     画面では何が『いま見ている日』か」「いつ引いてよいか」だけ。
-
-     この画面は一日ずつではなく**月ぶん**を出しているので、窓に来る週は
-     「選んでいる日」か、選んでいなければ今日の週です。 */
-  function wireCalPull() {
-    KN.head.peek("archive", {
-      root,
-      cal: () => els.cal,
-      isOpen: calOpen,
-      isShown: calShown,
-      // 暦をしまっていても引けます（そこから週へ戻す道がここなので）。
-      /* 暦を横に払っている最中は、この指は向こうのものです（cal-swipe が
-         生きている盤を運んでいるので、ここで高さまで書くと二つが同じ
-         ものを取り合います）。 */
-      busy: () => KN.calSwipe.isActive(),
-      here: () => viewDay || U.todayKey(),
-      tagOffWeek,
-      /* 三段（暦なし・週・月）ぶんを、まとめて書きます。段が変わらなかった
-         ときだけ塗り直し——書けば store が組み直すので、二度手間になります。 */
-      commit: ({ shown, open }) => {
-        if (open !== calOpen() || shown !== calShown()) {
-          store.setCalPref("archive", { open, shown });
-        } else markWeek(els.cal, viewDay || U.todayKey());
-      },
-    });
-  }
-
 
   /* ================================================================
      ②あの日 — 貯めたものを、返すところ
@@ -2075,11 +2045,6 @@
       <div class="tl-sheet is-daily"></div>
     `);
     els.body.append(sheet);
-    wireCalPull(sheet);
-    /* **印は掴み手だけに付けます。** 前は紙ぜんぶに付けていました——紙の
-       どこを持っても下へ引けば暦が出た時期の名残です。段を替えられるのが
-       掴み手だけになったいま、紙の本体は「引いて更新」のものなので、
-       そのまま譲ります。 */
 
     /* 中身は、横に払える一枚（.day-slide）にまとめて入れます。払っている
        あいだ、隣の日の紙が指のぶんだけ入ってきます。 */

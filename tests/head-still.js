@@ -6,7 +6,7 @@
      買うものも入る）。
      入ってくる画面のほうは本当に流れていること（流れていなければ試験にならない）。
      下の帯のボタンは CDP の本物のタッチで押す。
-   - 暦の下の取っ手（#head .cal-grip。docs/redesign.md 5節）を本物のタッチで下へ引くと、帯の暦が月へ開き（帯の題は
+   - 暦の下に取っ手は無い（docs/shared-header.md の頭）。題を本物のタッチで押すと帯の暦が月へ開き（帯の題は
      動かない）、紙の上端は帯（盆）の下端に来る。月のまま daily へ移っても帯は動かない。
      **紙は引かない**：紙の本体を上端で下へ引くと送る器に transform が付く（端の give）だけで、暦の段は変わらない。
    - 暦のマスの印はタブごと（ダイエットの飲酒の帯が daily・やることに出ない）。
@@ -20,8 +20,8 @@
      帯の「買うもの」で戻る・価格からよそのタブへ、のどれも 0px。暦は一枚のまま
      差し替わらず、印は無い。題を押すと週⇄月。日を押すと題と共通の日が動き、
      買うものの行はそのまま。紙の空白を横に払うと日が動く（行はそのまま）。月に開いた暦のぶん狭く
-     なっても、価格の地は帯の下から始まり、いちばん下の行まで送れる。取っ手は買うものでも暦の三段
-     （引く・押すと一段）で、価格へは行かない。 */
+     なっても、価格の地は帯の下から始まり、いちばん下の行まで送れる。題は一段ずつ（暦なし → 週 → 月 → 週）で、
+     価格へは行かない（やること・からだも同じ）。 */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -40,14 +40,7 @@ const { open, checker } = require("./lib");
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   });
   const tapSel = async (sel) => { const p = await center(sel); await tapAt(p.x, p.y); };
-  const drag = async (x, y0, dy, steps = 14) => {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(x, y0) });
-    for (let i = 1; i <= steps; i++) {
-      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(x, y0 + (dy * i) / steps) });
-      await page.waitForTimeout(16);
-    }
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  };
+
   const go = async (id) => { await page.evaluate((i) => KN.app.showScreen(i), id); await page.waitForTimeout(700); };
   const owner = () => page.evaluate(() => KN.head.TABS.find((t) => KN.head.mine(t)) || null);
 
@@ -129,21 +122,20 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
   await page.waitForTimeout(500);
 
-  /* ---- 暦の下の取っ手を本物のタッチで引く → 帯の暦が月へ。題は動かない ---- */
+  /* ---- 取っ手は無い。題を本物のタッチで押す → 帯の暦が月へ。題は動かない ---- */
   await go("todo");
-  c.check("紙に掴み手は無い・取っ手は帯に一つ", await page.evaluate(() =>
-    !document.querySelector(".tl-grip") && document.querySelectorAll("#head .cal-grip").length === 1));
-  const grip = await center("#head .cal-grip");
+  c.check("紙に掴み手は無く、帯にも取っ手は無い", await page.evaluate(() =>
+    !document.querySelector(".tl-grip, .cal-grip")));
   await startRec();
-  await drag(grip.x, grip.y, 260);
+  await tapSel("#head .js-day-title");
   await page.waitForTimeout(700);
   const pull = await stopRec();
   const pd = drift(pull, ["bar", "title"]);
-  c.check("取っ手を引くと暦が月へ（本物のタッチ）",
+  c.check("題を押すと暦が月へ（本物のタッチ）",
     await page.evaluate(() => KN.store.calPrefs("todo").open === true));
-  c.check("引いているあいだ、帯の題は動かない", pd.worst === 0, `${pd.worst}px ${pd.what}`);
+  c.check("開くあいだ、帯の題は動かない", pd.worst === 0, `${pd.worst}px ${pd.what}`);
   const calTopMoved = Math.max(...pull.map((f) => Math.abs(f.cal[1] - pull[0].cal[1])));
-  c.check("引いているあいだ、暦の上端は動かない", calTopMoved === 0, `${calTopMoved}px`);
+  c.check("開くあいだ、暦の上端は動かない", calTopMoved === 0, `${calTopMoved}px`);
   const seam = await page.evaluate(() => {
     const head = document.getElementById("head").getBoundingClientRect();
     const sheet = document.querySelector(".panes > .screen.is-active .tl-sheet").getBoundingClientRect();
@@ -463,58 +455,20 @@ const { open, checker } = require("./lib");
   }
   await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
 
-  /* ---- 買うものでも、取っ手は暦のもの（ほかのタブと同じ三段。価格へは行かない） ---- */
+  /* ---- 題は一段ずつ：暦なし → 週 → 月 → 週。価格へは行かない（設定で暦を消していても題から戻れる） ---- */
   await go("list");
   await page.waitForTimeout(300);
   c.check("買うものにカテゴリの札の帯は無い",
     await page.evaluate(() => !document.querySelector("#screen-list .js-filter, #screen-list .chip")));
-  c.check("取っ手は押せる相手（ボタン・名前がある）", await page.evaluate(() => {
-    const g = document.querySelector("#head .cal-grip");
-    return g.tagName === "BUTTON" && !!g.getAttribute("aria-label");
-  }));
-  {
-    const g = await center("#head .cal-grip");
-    await startRec();
-    await drag(g.x, g.y, 260);
+  for (const tab of ["list", "diet", "todo"]) {
+    const id = tab === "list" ? null : tab;
+    await page.evaluate((i) => KN.store.setCalPref(i, { shown: false, open: false }), id);
+    await go(tab);
+    await tapSel("#head .js-day-title");
     await page.waitForTimeout(700);
-    const pr = drift(await stopRec(), ["bar", "title"]);
-    c.check("買うもので取っ手を引くと暦が月へ（本物のタッチ）", await page.evaluate(() =>
-      KN.store.calPrefs(null).open === true && (KN.head.mine("list")) && !KN.app.faceAt()),
-      String(await owner()));
-    c.check("引いているあいだ、帯の題は動かない（買うもの）", pr.worst === 0, `${pr.worst}px ${pr.what}`);
-    const seam2 = await page.evaluate(() => {
-      const head = document.getElementById("head").getBoundingClientRect();
-      const sheet = document.querySelector("#screen-list .tl-sheet").getBoundingClientRect();
-      return Math.abs(sheet.top - head.bottom);
-    });
-    c.check("買うものの紙の上端が帯（盆）の下端に来る（±1px）", seam2 <= 1, `${seam2}px`);
-    // 月から上へ押すと週へ、週から上へ押すと暦なし、下へ引けば週に戻る（三段）
-    const g2 = await center("#head .cal-grip");
-    await drag(g2.x, g2.y, -260);
-    await page.waitForTimeout(700);
-    c.check("月から上へ押すと週へ", await page.evaluate(() =>
-      KN.store.calPrefs(null).open === false && KN.store.calPrefs(null).shown === true));
-    const g3 = await center("#head .cal-grip");
-    await drag(g3.x, g3.y, -200);
-    await page.waitForTimeout(700);
-    c.check("週から上へ押すと暦なし", await page.evaluate(() => KN.store.calPrefs(null).shown === false));
-    const g4 = await center("#head .cal-grip");
-    await drag(g4.x, g4.y, 200);
-    await page.waitForTimeout(700);
-    c.check("暦なしから下へ引くと週に戻る", await page.evaluate(() =>
-      KN.store.calPrefs(null).shown === true && KN.store.calPrefs(null).open === false));
-    // 取っ手を押す（引かずに離す）と一段：週 → 月 → 週。価格へは行かない
-    const g5 = await center("#head .cal-grip");
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(g5.x, g5.y) });
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await page.waitForTimeout(700);
-    c.check("取っ手を押すと一段（週 → 月）・価格へは行かない", (await owner()) === "list"
-      && await page.evaluate(() => KN.store.calPrefs(null).open === true && KN.store.calPrefs(null).shown === true));
-    const g6 = await center("#head .cal-grip");
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(g6.x, g6.y) });
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-    await page.waitForTimeout(700);
-    c.check("もう一度押すと週へ", await page.evaluate(() => KN.store.calPrefs(null).open === false && KN.store.calPrefs(null).shown === true));
+    const st = await page.evaluate((i) => KN.store.calPrefs(i), id);
+    c.check(`${tab}：暦なしで題を押すと週へ・価格へは行かない`, st.shown === true && st.open === false
+      && (await owner()) === tab, JSON.stringify(st));
   }
   await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
   await page.waitForTimeout(400);

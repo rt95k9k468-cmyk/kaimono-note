@@ -98,7 +98,6 @@ const { open, checker } = require("./lib");
     const cal = document.querySelector("#head .head-cal");
     return {
       gap: document.getElementById("panes").getBoundingClientRect().top - top,
-      grip: vis(document.querySelector("#head .cal-grip")),
       cal: vis(cal) && cal.getBoundingClientRect().height > 0,
       name: vis(document.querySelector(".head-name")),
       date: vis(document.querySelector(".topbar-day")),
@@ -112,7 +111,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(500);
   const inNotes = await headLook();
   /* ノートの帯は盆だけ。盆は透かし、中身の面が盆の丈ぶん上がって角を持つ（暦も取っ手も載せない。base.css の is-bare）。 */
-  t.check("ノートに暦は無く、中身は題の段のすぐ下から（盆に重なる）", !inNotes.cal && !inNotes.grip && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
+  t.check("ノートに暦は無く、中身は題の段のすぐ下から（盆に重なる）", !inNotes.cal && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
   t.check("ノートの帯は題 Notes・さがす・設定だけ",
     inNotes.name && !inNotes.date && !inNotes.upcoming && inNotes.search && inNotes.gear, JSON.stringify(inNotes));
   await page.click("#head .js-settings");
@@ -167,8 +166,8 @@ const { open, checker } = require("./lib");
   await settled("todo");
   await calGone();
   const again = await headLook();
-  t.check("行き来の途中で押し直しても、暦は一枚で、紙は帯（盆と取っ手）のすぐ下", again.cal && again.grip && await page.evaluate(() =>
-    document.querySelectorAll("#head .head-cal > .cal").length === 1
+  t.check("行き来の途中で押し直しても、暦は一枚で、紙は帯（盆）のすぐ下・取っ手は無い", again.cal && await page.evaluate(() => !document.querySelector(".cal-grip")
+    && document.querySelectorAll("#head .head-cal > .cal").length === 1
     && Math.abs(document.getElementById("panes").getBoundingClientRect().top - document.getElementById("head").getBoundingClientRect().bottom) <= 1),
     JSON.stringify(again));
 

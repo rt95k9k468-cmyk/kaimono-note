@@ -745,30 +745,17 @@ a { color: var(--c-primary); }
 /* 薄いところから出るだけ。暦の印・ダイエットの線ほか、同じ中身は名前を一つに（U5）。 */
 @keyframes fade-in { from { opacity: 0; } }
 
-/* ---- 盆と取っ手（docs/redesign.md 5節） ----
-   暦は紙色の盆（.head-tray）の上。盆は写真へ --tray-lap かぶさり、暦の置き場（.head-cal）と取っ手（.cal-grip）を載せる。
-   ノートは盆だけ。取っ手は 暦なし／週／月 の口（cal-peek.js。見えている棒は 5px、的は 40px）。 */
+/* ---- 盆（docs/redesign.md 5節） ----
+   暦は紙色の盆（.head-tray）の上。盆は写真へ --tray-lap かぶさり、暦の置き場（.head-cal）を載せる。ノートは盆だけ。
+   取っ手は置かない（段は題で。docs/shared-header.md の頭）。 */
 .head-tray {
   position: relative;
   min-height: var(--tray-lap);
-  padding: var(--sp-3) var(--sp-2) 0;
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);
   background: var(--c-bg);
   border-radius: 24px 24px 0 0;
 }
-.cal-grip {
-  display: block; position: relative; width: 100%; height: 24px;
-  touch-action: none; cursor: grab; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
-}
-.cal-grip::before { content: ""; position: absolute; inset: -16px 0 0; }
-.cal-grip > i {
-  position: absolute; left: 50%; top: 9px; width: 38px; height: 5px; margin-left: -19px;
-  border-radius: var(--r-full); background: var(--c-border-2);
-  transition: scale var(--m-press) var(--ease), background var(--m-state) var(--ease);
-}
-.cal-grip:active > i { background: var(--c-text-3); }
-.cal-grip:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -4px; border-radius: var(--r-sm); }
 /* 暦の無い席（ノート・daily）：盆は透かし、下の画面が盆に重なって角を持つ（季節の絵が角まで）。 */
-.head.is-bare .cal-grip { display: none; }
 .head.is-bare > .head-tray { background: none; }
 .head.is-bare ~ .panes { margin-top: calc(-1 * var(--tray-lap)); border-radius: 24px 24px 0 0; overflow: clip; }
 
@@ -1071,7 +1058,7 @@ a { color: var(--c-primary); }
 @media (min-width: 640px) {
   .deck { --head-top: calc(96px + var(--safe-t)); }
   .topbar { padding: var(--safe-t) var(--sp-6) var(--sp-3) var(--sp-8); }
-  .head-tray { padding: 14px var(--sp-6) 0; }
+  .head-tray { padding: 14px var(--sp-6) var(--sp-2); }
   .head-cal.is-cal-out { left: var(--sp-6); right: var(--sp-6); }
 }
 @media (min-width: 840px) {
@@ -1079,8 +1066,6 @@ a { color: var(--c-primary); }
   .topbar { padding: var(--safe-t) 28px 14px 36px; }
   .head-tray { padding-inline: 28px; }
   .head-cal.is-cal-out { left: 28px; right: 28px; }
-  /* 取っ手は指の道具。マウスの端末では出さない（題を押せば暦は開く）。 */
-  @media (hover: hover) and (pointer: fine) { .cal-grip { display: none; } .head-tray { padding-bottom: var(--sp-2); } }
 }
 
 /* ---------------- tab bar ---------------- */
@@ -1702,7 +1687,7 @@ a { color: var(--c-primary); }
   /* 写真の段は取らない（背が足りない）：地の色の一段に墨の字、盆は形を持たない。 */
   .deck { --tray-lap: 0px; }
   .head, .head[data-sky] { --head-ink: var(--c-text); --head-disc: var(--c-surface-2); --head-ring: transparent; background: var(--c-bg); }
-  .head[data-sky]::before, .cal-grip, .head-eye { display: none; }
+  .head[data-sky]::before, .head-eye { display: none; }
   .head[data-sky] .topbar-dayrow { text-shadow: none; }
   .topbar-day .topbar-title, .head-name { font-size: calc(21px * var(--fs-k)); }
   .head-tray { padding: 0; min-height: 0; border-radius: 0; background: none; }
