@@ -341,12 +341,12 @@ const { open, checker } = require("./lib");
   await settled("todo");
   await page.click(".js-search-btn");
   await page.fill("#screen-todo .js-search", "読書");
-  await page.waitForSelector("#screen-todo .sa-more", { timeout: 3000 });
-  await page.click("#screen-todo .sa-more");
+  await page.waitForSelector('#screen-todo .sa-seat[data-place="notes"]', { timeout: 3000 });
+  await page.click('#screen-todo .sa-seat[data-place="notes"]');
   await page.waitForSelector('.sa-group[data-place="notes"]', { timeout: 3000 });
   const saRow = await page.$eval('.sa-group[data-place="notes"]', (g) => ({
     head: g.querySelector(".sa-head").textContent, title: g.querySelector(".sa-title").textContent }));
-  t.check("ほかのタブの虫めがねで、ノートに出る", saRow.head === "ノート" && saRow.title === "読書メモ", JSON.stringify(saRow));
+  t.check("ほかのタブの虫めがねで、ノートに出る", saRow.head === "notes1" && saRow.title === "読書メモ", JSON.stringify(saRow));
   await page.click('.sa-group[data-place="notes"] .sa-row');
   await settled("notes");
   await page.waitForSelector(".sheet.is-note.is-open", { timeout: 3000 });
@@ -354,8 +354,8 @@ const { open, checker } = require("./lib");
     (await active()) === "notes" && (await page.$eval(".sheet.is-note .note-title-in", (e) => e.value)) === "読書メモ");
   await escTop();
   await page.fill("#screen-todo .js-search", "").catch(() => {});
-  const fromNotes = await page.evaluate(() => KN.searchAll.find("読書", "notes").groups.map((g) => g.id));
-  t.check("ノートの面からはノートを数えない", !fromNotes.includes("notes"), fromNotes.join());
+  const fromNotes = await page.evaluate(() => { const r = KN.searchAll.find("読書", "notes"); return { ids: r.groups.map((g) => g.id), here: r.groups[0] && r.groups[0].here, total: r.total }; });
+  t.check("ノートの面からはノートが先頭（ほかの数には入れない）", fromNotes.ids[0] === "notes" && fromNotes.here && fromNotes.total === 0, JSON.stringify(fromNotes));
   const byTag = await page.evaluate(() => (KN.searchAll.find("台所", "todo").groups.find((g) => g.id === "notes") || { rows: [] }).rows.map((r) => r.title));
   t.check("ぜんぶをさがすもタグに当たる", byTag.join() === "買い置き", byTag.join());
 

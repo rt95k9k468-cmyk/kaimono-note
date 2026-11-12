@@ -52,7 +52,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   });
   const r = await page.evaluate(() => {
     const before = JSON.stringify(KN.store.get()).length;
-    const pick = (res) => res.groups.map((g) => [g.id, g.rows.length]);
+    const pick = (res) => res.groups.filter((g) => !g.here).map((g) => [g.id, g.rows.length]);
     const fromList = KN.searchAll.find("しおかぜ", "list");
     const fromTodo = KN.searchAll.find("シオカゼ", "todo");
     const none = KN.searchAll.find("ぜったいにない字", "todo");
@@ -62,7 +62,8 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     KN.diaryIdb.body = real;
     const daily = fromTodo.groups.find((g) => g.id === "daily");
     return {
-      list: pick(fromList), todo: pick(fromTodo), none: none.total, off: pick(off), offNote: off.bodyNote,
+      list: pick(fromList), todo: pick(fromTodo), first: fromList.groups[0] && [fromList.groups[0].id, fromList.groups[0].here],
+      order: fromTodo.groups.map((g) => g.id), set: KN.searchAll.find("バックアップ", "todo").settings.map((x) => x.path.join("/")), none: none.total, off: pick(off), offNote: off.bodyNote,
       done: (fromList.groups.find((g) => g.id === "todo") || { rows: [] }).rows.map((x) => x.sub),
       dailyRow: daily && daily.rows[0].title,
       after: JSON.stringify(KN.store.get()).length, before,
@@ -71,6 +72,9 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   const has = (arr, id) => arr.some((x) => x[0] === id);
   t.check("買うものから：やること・daily・からだ（買うものは数えない）",
     has(r.list, "todo") && has(r.list, "daily") && has(r.list, "body") && !has(r.list, "shop"), JSON.stringify(r.list));
+  t.check("いまの席（買うもの）が先頭に", JSON.stringify(r.first) === '["shop",true]', JSON.stringify(r.first));
+  t.check("並びは いまの席 → 帯の順（daily・tasks・shopping・health）", r.order.join() === "todo,daily,shop,body", r.order.join());
+  t.check("設定の入口：バックアップ → データ・同期", r.set.join() === "data", r.set.join());
   t.check("やることは済んだものも（と日付の無いもの）", r.done.length === 2 && r.done.some((x) => x.includes("済"))
     && r.done.some((x) => x.includes("日付なし")), JSON.stringify(r.done));
   t.check("やることから：やることは数えない・品物は2つ・かなの違いも拾う",
@@ -91,13 +95,10 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     await page.waitForTimeout(450);
   };
   await typeIn("todo", "しおかぜ");
-  const h = await page.evaluate(() => {
-    const b = document.querySelector("#screen-todo .sa-more");
-    return { text: b && b.textContent.trim(), vis: !!(b && b.offsetWidth),
-      rows: document.querySelectorAll("#screen-todo .tl-row, #screen-todo .item").length };
-  });
-  t.check("窓の下に「ほかの場所に4件」（品物2・daily1・からだ1）", h.vis && h.text === "ほかの場所に 4件", h.text);
-  await page.click("#screen-todo .sa-more");
+  const h = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .sa-hint .sa-link")]
+    .filter((b) => b.offsetWidth).map((b) => b.textContent.trim() + (b.classList.contains("is-here") ? "*" : "")));
+  t.check("窓の下の札：いまの席 → ほかの席（品物2・daily1・からだ1）", h.join() === "tasks2*,daily1,shopping2,health1", h.join());
+  await page.click('#screen-todo .sa-seat[data-place="shop"]');
   await page.waitForSelector(".sheet .sa", { state: "visible" });
   await page.waitForTimeout(350);
   const sh = await page.evaluate(() => {
@@ -106,7 +107,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
       heads: [...s.querySelectorAll(".sa-head")].map((e) => e.textContent.trim()), text: s.textContent };
   });
   t.check("紙の題", sh.title === "「しおかぜ」をぜんぶから", sh.title);
-  t.check("場所ごとの見出し", JSON.stringify(sh.heads) === JSON.stringify(["買うもの・価格", "daily", "からだ"]), JSON.stringify(sh.heads));
+  t.check("紙も同じ並び（いまの席が先頭）", sh.heads.join() === "tasks2,daily1,shopping2,health1", sh.heads.join());
   t.check("絵文字なし", !EMOJI.test(sh.text));
   await page.click('.sheet .sa-group[data-place="daily"] .sa-row');
   await page.waitForTimeout(700);
@@ -123,7 +124,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 
   // daily から品物の行 → 買うものの窓に同じ字
   await typeIn("archive", "しおかぜ");
-  await page.click("#screen-archive .sa-more");
+  await page.click('#screen-archive .sa-seat[data-place="shop"]');
   await page.waitForSelector(".sheet .sa", { state: "visible" });
   await page.waitForTimeout(350);
   await page.click('.sheet .sa-group[data-place="shop"] .sa-row');
@@ -134,7 +135,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   t.check("品物の行で買うものへ、窓に同じ字", g2.active === "list" && g2.q === "しおかぜ" && g2.wrap, JSON.stringify(g2));
 
   // からだの行 → その日のダイエット
-  await page.click("#screen-list .sa-more");
+  await page.click('#screen-list .sa-seat[data-place="body"]');
   await page.waitForSelector(".sheet .sa", { state: "visible" });
   await page.waitForTimeout(350);
   await page.click('.sheet .sa-group[data-place="body"] .sa-row');
@@ -174,6 +175,14 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.click("#head .js-search-btn");
   await page.waitForTimeout(300);
   t.check("空の窓も、虫めがねをもう一度押すと閉じる", await wrapHidden());
+
+  /* 設定の入口（X1）：札を押すと、その一枚まで重ねて開く。 */
+  await page.click("#head .js-search-btn");
+  await typeIn("list", "バックアップ");
+  await page.click("#screen-list .sa-set");
+  await page.waitForTimeout(600);
+  const st = await page.evaluate(() => ({ a: KN.app.activeScreen(), w: KN.screens.settings.where().map((x) => x.id).join("/") }));
+  t.check("設定の札でデータ・同期の一枚へ", st.a === "settings" && st.w === "/data", JSON.stringify(st));
 
   t.check("ページのエラーなし", !errors.length, errors.join(" / "));
   await browser.close();

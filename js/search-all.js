@@ -2,17 +2,16 @@
    ぜんぶをさがす（R8、2026年9月28日。docs/screens-nav.md の
    「ぜんぶをさがす」）
 
-   虫めがねの役目は**今のまま**：そのタブの中を絞り込む。そこへ一つだけ
-   足します——打った字が、**ほかの場所**にもあれば、窓のすぐ下に
-   「ほかの場所に ◯件」の一行。押すと、場所ごとにまとめた紙が開き、
-   行を押せばその日・その品へ。
+   虫めがねの役目は**今のまま**：そのタブの中を絞り込む。窓のすぐ下に、
+   どの席でも同じ並びの札（X1・2026年11月12日）：いまの席 → ほかの席
+   （帯の順・席の印と件数）→ 過去の日付の言葉 → 設定の入口。札を押すと
+   同じ並びの紙が開き（押した席まで送る）、行を押せばその日・その品へ。
 
    - 一行を窓の下に置くのは、タブの一覧の「終わり」だと長い一覧では
      指が届かないから（そして、タブの中に一件も無いときほど要る）。
-   - ほかの場所：やること（済んだものも）・買うもの（品物と価格）・daily
+   - 場所：やること（済んだものも）・買うもの（品物と価格）・daily
      （日記の本文・積み上げ）・からだ（食べたもの・メモ・お酒）・ノート
-     （題・本文・ノートブック・タグ。行を押すとノートの席でそのノートを開く）。いまの
-     タブの場所は数えません（もう絞り込んで見えているので）。
+     （題・本文・ノートブック・タグ。行を押すとノートの席でそのノートを開く）。
    - 「2025年9月」「去年の夏」「先月」のような**過去の**日付の言葉は、
      daily のその月へ飛ぶ口として出します。`when-parse` は先の日しか
      読まない決めごとなので、ここに過去だけを読む別の読み方（`pastWhen`）
@@ -96,7 +95,7 @@
 
   /* ---------------- 探す ---------------- */
 
-  /** いまのタブが受け持つ場所（そこは数えない）。 */
+  /** いまのタブが受け持つ場所（紙では先頭に、「ほかの場所」の数には入れない）。 */
   const PLACE_OF = { todo: "todo", list: "shop", prices: "shop", archive: "daily", diet: "body", notes: "notes" };
 
   /** 当たった前後を少しだけ（本文・メモの行に）。 */
@@ -207,41 +206,68 @@
       });
   }
 
+  /* 並びは下の帯の席の順（X1。どの席でも同じ並びで、いまの席だけ先頭へ）。名前と印も帯と同じ。 */
   const PLACES = [
-    { id: "todo", label: "やること", find: findTodo },
-    { id: "shop", label: "買うもの・価格", find: findShop },
-    { id: "daily", label: "daily", find: findDaily },
-    { id: "body", label: "からだ", find: findBody },
-    { id: "notes", label: "ノート", find: findNotes },
+    { id: "daily", label: "daily", ico: "book", find: findDaily },
+    { id: "notes", label: "notes", ico: "notes", find: findNotes },
+    { id: "todo", label: "tasks", ico: "checklist", find: findTodo },
+    { id: "shop", label: "shopping", ico: "cart", find: findShop },
+    { id: "body", label: "health", ico: "heart", find: findBody },
   ];
 
+  /* 設定の入口（X1）。打った字が名前か言葉に当たれば、その一枚へ（`goTo` の道。中身は読まない）。 */
+  const SETTINGS = [
+    ["表示・操作", ["look"], "表示 操作 外観 キーボード 近道 字 文字 暗い 明るい 色"],
+    ["通知・プライバシー", ["privacy"], "通知 ロック 鍵 プライバシー"],
+    ["データ・同期", ["data"], "データ 同期 バックアップ 控え 復元 戻す"],
+    ["書き出し", ["data", "dataOut"], "書き出し 書き出す"],
+    ["取り込み", ["data", "dataIn"], "取り込み 取り込む"],
+    ["連携・ヘルプ", ["help"], "連携 ヘルプ"],
+    ["ショートカットの作り方", ["help", "recipes"], "ショートカット 作り方 Siri Watch ウォッチ"],
+    ["中継所", ["help", "relay"], "中継所 健康 ヘルスケア"],
+    ["エラーの記録", ["help", "errors"], "エラー"],
+    ["お店", ["shopping", "stores"], "お店 店"],
+    ["カテゴリ", ["shopping", "cats"], "カテゴリ 棚"],
+    ["おぼえた振り分け", ["shopping", "learned"], "振り分け"],
+    ["ノートブック", ["notes", "notesBooks"], "ノートブック"],
+    ["タグ", ["notes", "notesTags"], "タグ"],
+  ];
+  function findSettings(q) {
+    if (!q || q.length < 2) return [];
+    return SETTINGS.filter(([label, , words]) => fold(`${label} ${words}`).includes(q))
+      .slice(0, 2).map(([label, path]) => ({ label, path }));
+  }
+
   /**
-   * 打った字で、ほかの場所を探します。
+   * 打った字で、どの場所も探します。いまのタブの場所は先頭に（here）。
    * @param {string} raw 打ったままの字
-   * @param {string} from いまのタブ（その場所は数えない）
+   * @param {string} from いまのタブ
+   * @returns total はほかの場所の件数（いまの場所は数えない）
    */
   function find(raw, from) {
     const q = fold(String(raw || "").trim());
     const s = KN.store.get();
     const bodyState = KN.diaryIdb ? KN.diaryIdb.body() : "ok";
-    const skip = PLACE_OF[from];
+    const mine = PLACE_OF[from];
     const groups = [];
     let total = 0;
     if (q) {
       PLACES.forEach((p) => {
-        if (p.id === skip) return;
         if (KN.lock && KN.lock.hides(p.id)) return;   // 鍵のかかった daily・ノート（js/lock.js）
         const rows = p.find(s, q, bodyState === "ok");
         if (!rows.length) return;
-        total += rows.length;
-        groups.push({ id: p.id, label: p.label, rows: rows.slice(0, LIMIT), more: Math.max(0, rows.length - LIMIT) });
+        const here = p.id === mine;
+        if (!here) total += rows.length;
+        const g = { id: p.id, label: p.label, ico: p.ico, here, count: rows.length, rows: rows.slice(0, LIMIT), more: Math.max(0, rows.length - LIMIT) };
+        if (here) groups.unshift(g); else groups.push(g);
       });
     }
     return {
       groups, total,
       when: pastWhen(raw),
+      settings: findSettings(q),
       /* daily を探したのに、本文だけは探せなかった */
-      bodyNote: q && skip !== "daily" && bodyState !== "ok" && !(KN.lock && KN.lock.hides("daily")) ? bodyState : null,
+      bodyNote: q && bodyState !== "ok" && !(KN.lock && KN.lock.hides("daily")) ? bodyState : null,
     };
   }
 
@@ -263,28 +289,35 @@
     }, 180));
   }
 
+  /** 札の並び（X1・どの席でも同じ）：いまの席 → ほかの席 → 日付の言葉 → 設定の入口。 */
   function paintHint(wrap, r, raw, from) {
     let row = wrap.querySelector(".sa-hint");
+    const any = !!r && (r.groups.length || r.when || r.settings.length);
     /* daily はこの画面では絞らない（字はここへ渡すだけ）ので、どこにも無いときに何も出ないと、探せたのかが分からない
        （2026年10月24日）。ほかの画面は自分の一覧が「見つかりませんでした」と言う。 */
-    const none = !!r && !r.total && !r.when && from === "archive";
-    if (!r || (!r.total && !r.when && !none)) { if (row) row.remove(); return; }
+    const none = !!r && !any && from === "archive";
+    if (!r || (!any && !none)) { if (row) row.remove(); return; }
     if (!row) {
       row = node(html`<div class="sa-hint"></div>`);
       wrap.append(row);
     }
     row.innerHTML = "";
     if (none) { row.append(node(html`<p class="sa-none">見つかりませんでした</p>`)); return; }
+    r.groups.forEach((g) => {
+      const b = node(html`<button type="button" class="sa-link sa-seat${g.here ? " is-here" : ""}" data-place="${g.id}">${icon(g.ico)}${g.label}<b>${g.count}</b></button>`);
+      b.addEventListener("click", () => { U.haptic(); open(raw, from, g.id); });
+      row.append(b);
+    });
     if (r.when) {
-      const b = node(html`<button type="button" class="sa-link sa-when">${r.when.label}の daily へ${icon("chevron")}</button>`);
+      const b = node(html`<button type="button" class="sa-link sa-when">${icon("calendar")}${r.when.label}の daily へ</button>`);
       b.addEventListener("click", () => go({ screen: "archive", day: monthDay(r.when.ym) }, raw));
       row.append(b);
     }
-    if (r.total) {
-      const b = node(html`<button type="button" class="sa-link sa-more">ほかの場所に ${r.total}件${icon("chevron")}</button>`);
-      b.addEventListener("click", () => { U.haptic(); open(raw, from); });
+    r.settings.forEach((x) => {
+      const b = node(html`<button type="button" class="sa-link sa-set">${icon("gear")}${x.label}</button>`);
+      b.addEventListener("click", () => go({ set: x.path }, raw));
       row.append(b);
-    }
+    });
   }
 
   /** その月の daily で開く日：今月なら今日、過ぎた月なら1日。 */
@@ -297,24 +330,16 @@
 
   let handle = null;
 
-  function open(raw, from) {
+  /** 窓の下と同じ並びの紙。at の場所があれば、そこまで送って開きます。 */
+  function open(raw, from, at) {
     const r = find(raw, from);
     const body = node(html`<div class="sa"></div>`);
-    if (r.when) {
-      const b = node(html`
-        <button type="button" class="sa-row sa-jump">
-          <span class="sa-title">${r.when.label}</span>
-          <span class="sa-sub">daily のその月へ</span>
-        </button>`);
-      b.addEventListener("click", () => go({ screen: "archive", day: monthDay(r.when.ym) }, raw));
-      body.append(b);
-    }
     r.groups.forEach((g) => {
       const sec = node(html`
-        <section class="sa-group" data-place="${g.id}">
-          <h3 class="sa-head">${g.label}</h3>
+        <section class="sa-group${g.here ? " is-here" : ""}" data-place="${g.id}">
+          <h3 class="sa-head">${icon(g.ico)}${g.label}<b>${g.count}</b></h3>
           <div class="sa-rows"></div>
-          ${g.more ? html`<p class="sa-more-note">ほか ${g.more}件</p>` : ""}
+          ${g.more ? html`<p class="sa-note">ほか ${g.more}件</p>` : ""}
         </section>`);
       const box = sec.querySelector(".sa-rows");
       g.rows.forEach((x) => {
@@ -328,15 +353,28 @@
       });
       body.append(sec);
     });
+    const jump = (ico, title, sub, fn) => {
+      const b = node(html`
+        <button type="button" class="sa-row sa-jump">
+          <span class="sa-title">${icon(ico)}${title}</span>
+          <span class="sa-sub">${sub}</span>
+        </button>`);
+      b.addEventListener("click", fn);
+      body.append(b);
+    };
+    if (r.when) jump("calendar", r.when.label, "daily のその月へ", () => go({ screen: "archive", day: monthDay(r.when.ym) }, raw));
+    r.settings.forEach((x) => jump("gear", x.label, "設定", () => go({ set: x.path }, raw)));
     if (r.bodyNote) {
       body.append(node(html`<p class="sa-note">${r.bodyNote === "loading"
         ? "日記の本文は読み込み中です"
         : "日記の本文はいま読めません"}</p>`));
     }
-    if (!r.groups.length && !r.when) {
+    if (!r.groups.length && !r.when && !r.settings.length) {
       body.append(node(html`<p class="sa-note">見つかりませんでした</p>`));
     }
     handle = KN.ui.sheet({ title: `「${raw.trim()}」をぜんぶから`, content: body });
+    const sec = at && body.querySelector(`.sa-group[data-place="${at}"]`);
+    if (sec && sec.previousElementSibling) requestAnimationFrame(() => sec.scrollIntoView({ block: "start" }));
     return handle;
   }
 
@@ -348,6 +386,13 @@
   function go(to, raw) {
     U.haptic();
     if (handle) { handle.close(); handle = null; }
+    /* 設定の入口（X1）：根っこから、その一枚まで重ねて開きます（動かさずに。app.js の居た場所と同じ道）。 */
+    if (to.set) {
+      if (KN.app.activeScreen() !== "settings") KN.app.showScreen("settings");
+      const S = KN.screens.settings;
+      if (S && S.goTo) S.goTo([{ id: "" }, ...to.set.map((id) => ({ id }))]);
+      return;
+    }
     const scr = to.screen;
     /* 先に移ってから日を置く——移るとき app.js の show() が、出ていく
        画面の日で共通の日を上書きするので。 */

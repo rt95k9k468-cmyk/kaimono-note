@@ -6561,35 +6561,21 @@ button.note-when:active { opacity: var(--press-fade); }
   .topbar-row { gap: var(--sp-2); }
 }
 
-/* ---------- ぜんぶをさがす（R8・js/search-all.js） ----------
-   虫めがねの窓のすぐ下の一行（ほかの場所に◯件／その月の daily へ）と、
-   押すと開く紙。窓の役目（タブの中の絞り込み）はそのまま。 */
-.sa-hint {
-  display: flex; flex-wrap: wrap; gap: var(--sp-2);
-  padding: var(--sp-2) 0 0;
-}
-.sa-link {
-  display: inline-flex; align-items: center; gap: 2px;
-  min-height: 30px; padding: 0 var(--sp-3);
-  border: 1px solid var(--c-border); border-radius: var(--r-full);
-  background: var(--c-surface); color: var(--c-primary);
-  font-size: var(--fs-sm);
-}
-.sa-link svg { width: var(--ico-sm); height: var(--ico-sm); }
-.sa-none { min-height: 32px; display: flex; align-items: center; padding: 0 var(--sp-1); color: var(--c-text-3); font-size: var(--fs-sm); }
+/* ---------- さがす（X1・js/search-all.js）：窓の下の札と、同じ並びの紙 ---------- */
+.sa-hint { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-2) 0 0; }
+.sa-link, .sa-head, .sa-title { display: inline-flex; align-items: center; gap: var(--sp-1); }
+.sa-link { min-height: 30px; padding: 0 var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--r-full); background: var(--c-surface); color: var(--c-text); font-size: var(--fs-sm); }
+.sa-link.is-here { background: var(--c-primary-soft); border-color: transparent; color: var(--c-primary-ink); }
+.sa-hint svg, .sa svg { width: var(--ico-sm); height: var(--ico-sm); }
+.sa-none { margin: 0; padding: var(--sp-1); color: var(--c-text-3); font-size: var(--fs-sm); }
 .sa { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
-.sa-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); margin: 0 0 var(--sp-1); }
+.sa-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); margin: 0 0 var(--sp-1); }
 .sa-rows { display: flex; flex-direction: column; }
-.sa-row {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  width: 100%; min-height: var(--row-h-compact); padding: var(--sp-2) 0;
-  border: none; border-top: 1px solid var(--c-border); background: none;
-  text-align: left; color: var(--c-text); line-height: 1.5;
-}
+.sa-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: var(--row-h-compact); padding: var(--sp-2) 0; border: none; border-top: 1px solid var(--c-border); background: none; text-align: left; color: var(--c-text); line-height: 1.5; }
 .sa-title { overflow-wrap: anywhere; }
 .sa-sub { font-size: var(--fs-xs); color: var(--c-text-2); }
 .sa-jump { border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); }
-.sa-more-note, .sa-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-1) 0 0; }
+.sa-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-1) 0 0; }
 
 /* ---------------- 一日の道（js/day-road.js・docs/todo-timeline.md の「一日の道」） ----------------
 
