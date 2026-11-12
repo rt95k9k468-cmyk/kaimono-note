@@ -3,13 +3,13 @@
    どちらも72候すべてに一枚ずつ（2026年10月7日、利用者が見比べて選んだ）。見るのは：
    - 72候のどれも絵と出どころ（題・作者・所蔵・URL・理由）を持ち、絵のファイルが揃っている
    - 72候のどれも色を持つ。隣の候と同じ色ではない（候ごとに変わる）
-   - daily の画面に、選んでいる日の候の色と写真が敷かれる。過去の日を開けばその日の候
+   - daily は候の札の額に、選んでいる日の候の色と写真（R6。紙の地には敷かない）。過去の日を開けばその日の候
    - ノートの地に、今日の候の色と広重が敷かれる。ノートの設定で外せる
    - 読めない絵（オフラインでまだ持っていない）では色だけ（data-season-img なし）
    - 出典の頭に NDL の求める一行
-   - 敷くのは daily の画面だけ（ほかのタブには無い）・紙の後ろ（z-index -1、押す邪魔をしない）
+   - 置くのは daily とノートだけ（ほかのタブには無い）
    - 設定で外せる（既定は入）
-   - 字の濃さの比：本文の字と、背景のいちばん濃い所で 4.5:1 以上（明るい面・暗い面）
+   - 字の濃さの比（ノートの地）：本文の字と、背景のいちばん濃い所で 4.5:1 以上（明るい面・暗い面）
    - 大きさ：img/season/ は1枚25KB・合計2MB、img/season-photo/ は1枚120KB・合計9MBまで。img/ 全体は .webp だけ・
      1枚180KB・合計12MBまで（門で見張る）
    - sw.js は絵を別の名前のキャッシュ（kaimono-note- で始めない）に覚え、activate で前の名前の置き場を消す
@@ -81,28 +81,26 @@ const ROOT = path.resolve(__dirname, "..");
   await wait(700);
   const read = () => page.evaluate(() => {
     const el = document.querySelector("#screen-archive");
-    const sheet = el.querySelector(".tl-sheet.is-daily");
+    const sheet = el.querySelector(".tl-sheet.is-daily"), art = el.querySelector(".arc-season-art");
     return {
       k: el.getAttribute("data-season"), img: el.hasAttribute("data-season-img"),
       c: el.style.getPropertyValue("--season-c"),
-      bg: sheet ? getComputedStyle(sheet).backgroundImage : "",
+      bg: art ? getComputedStyle(art).backgroundImage : "", fill: art ? getComputedStyle(art).backgroundColor : "",
+      sheetBg: sheet ? getComputedStyle(sheet).backgroundImage : "",
       want: KN.season.of(KN.screens.archive.day()).k,
       color: KN.seasonArt.colorOf(KN.season.of(KN.screens.archive.day()).k),
     };
   });
   let r = await read();
-  c.check("daily に今日の候の色（10/6 は秋分の末候）", r.k === String(r.want) && r.c === r.color && /gradient/.test(r.bg), JSON.stringify(r));
+  c.check("daily に今日の候の色（10/6 は秋分の末候）。読めるまで額は候の色", r.k === String(r.want) && r.c === r.color && r.fill !== "rgba(0, 0, 0, 0)", JSON.stringify(r));
   await page.waitForFunction(() => document.querySelector("#screen-archive").hasAttribute("data-season-img"), null, { timeout: 5000 }).catch(() => {});
   r = await read();
-  c.check("今日の候の写真が読めて重なる（daily は写真）", r.img && r.bg.includes(`season-photo/k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
+  c.check("今日の候の写真が読めて候の札の額に入る（daily は写真）", r.img && r.bg.includes(`season-photo/k${String(r.want).padStart(2, "0")}.webp`), r.bg.slice(0, 200));
   /* 相対 URL は var() を使う css/screens.css から解決され css/img/season/… の 404 になる（10/6 まで絵が出ていなかった） */
   const imgUrl = (/url\("([^"]+)"\)/.exec(r.bg) || [])[1] || "";
   c.check("写真の URL は配信元の img/season-photo/（css/ の下ではない）・読める", !/\/css\/img\//.test(imgUrl)
     && await page.evaluate((u) => fetch(u).then((x) => x.ok, () => false), imgUrl), imgUrl);
-  c.check("紙の地に敷く（中身の後ろ。押す的は増えない）", (r.bg.match(/linear-gradient/g) || []).length === 2, r.bg.slice(0, 120));
-  c.check("月のまとめ・Daily Log の段は白く抜けない（地を透かす）", await page.evaluate(() =>
-    [".card.arc-log", ".card.arc-counts"].every((q) => { const e = document.querySelector(`#screen-archive ${q}`);
-      return !e || getComputedStyle(e).backgroundColor === "rgba(0, 0, 0, 0)"; })));
+  c.check("紙の地には敷かない（R6。絵は額の中だけ・字は札の上）", r.sheetBg === "none", r.sheetBg.slice(0, 120));
   c.check("ほかのタブには敷かない", await page.evaluate(() =>
     ["todo", "list", "diet"].every((s) => !document.querySelector(`#screen-${s}`).hasAttribute("data-season"))));
 
@@ -133,8 +131,8 @@ const ROOT = path.resolve(__dirname, "..");
   await page.evaluate((d) => { const S = KN.screens.archive; if (S.goDay) S.goDay(d); }, past);
   const goDayOk = await page.evaluate(() => !!KN.screens.archive.goDay);
   if (goDayOk) {
-    /* 候の色は --m-season でゆっくり移る。移すのは紙の --season-k（受け継がない）だけで、画面（受け継ぐ）は移さない
-       （画面ごと毎フレーム当てはめ直さない。inspection.md の 1）。移る途中で紙を組み直しても、続きから移る。 */
+    /* 候の色は --m-season でゆっくり移る。移すのは候の札の額の --season-k（受け継がない）だけで、画面（受け継ぐ）は移さない
+       （画面ごと毎フレーム当てはめ直さない。inspection.md の 1）。移る途中で組み直しても、続きから移る。 */
     const fade = await page.evaluate(async () => {
       const el = document.querySelector("#screen-archive");
       const t0 = performance.now();
@@ -143,24 +141,24 @@ const ROOT = path.resolve(__dirname, "..");
       /* 動きが**走り出すまで**待つ（1.2s のうち、遅くとも 600ms まで）。並べて混んだ CI では 200ms の時点でまだ
          始まっておらず（currentTime 0）落ちた（2026年11月8日）。 */
       for (let i = 0; i < 40; i++) {
-        const x = on(el.querySelector(".tl-sheet.is-daily"))[0];
+        const x = on(el.querySelector(".arc-season-art"))[0];
         if (!x || x.currentTime > 0 || performance.now() - t0 > 600) break;
         await new Promise((res) => requestAnimationFrame(res));
       }
-      const sheet = el.querySelector(".tl-sheet.is-daily");
+      const sheet = el.querySelector(".arc-season-art");
       const a = on(sheet)[0];
       const mid = getComputedStyle(sheet).getPropertyValue("--season-k").trim();
       const t1 = a ? a.currentTime : -1;
       KN.screens.archive.render();
       await Promise.resolve();
-      const sheet2 = el.querySelector(".tl-sheet.is-daily");
+      const sheet2 = el.querySelector(".arc-season-art");
       const b = on(sheet2)[0];
       return { sheet: !!a, mid, end: el.style.getPropertyValue("--season-c"), screen: getComputedStyle(el).transitionProperty,
                screenAnims: el.getAnimations().map((x) => x.animationName || x.transitionProperty).filter((n) => /season/.test(n)), fresh: sheet2 !== sheet, t1, t2: b ? b.currentTime : -1 };
     });
-    c.check("候が変わると、紙の色だけゆっくり移る（画面は移さない）", fade.sheet && fade.t1 > 0 && fade.mid
+    c.check("候が変わると、額の色だけゆっくり移る（画面は移さない）", fade.sheet && fade.t1 > 0 && fade.mid
       && !/season/.test(fade.screen) && fade.screenAnims.length === 0, JSON.stringify(fade));
-    c.check("移る途中で紙を組み直しても、続きから移る", fade.fresh && fade.t2 >= fade.t1, JSON.stringify(fade));
+    c.check("移る途中で組み直しても、続きから移る", fade.fresh && fade.t2 >= fade.t1, JSON.stringify(fade));
     await wait(1400);
     r = await read();
     c.check("過去の日を開けば、その日の候の色", r.k === String(r.want) && r.want === (await page.evaluate((d) => KN.season.of(d).k, past)), JSON.stringify(r));
@@ -211,7 +209,8 @@ const ROOT = path.resolve(__dirname, "..");
   await wait(300);
   await page.evaluate(() => KN.app.showScreen("archive"));
   await wait(600);
-  c.check("設定で外せば敷かない", await page.evaluate(() => !document.querySelector("#screen-archive").hasAttribute("data-season")));
+  c.check("設定で外せば敷かない（額も出さない）", await page.evaluate(() => !document.querySelector("#screen-archive").hasAttribute("data-season")
+    && !document.querySelector("#screen-archive .arc-season-art") && !!document.querySelector("#screen-archive .arc-season")));
   await page.evaluate(() => { KN.store.update((s) => { delete s.settings.seasonArt; }); });
   await page.evaluate(() => KN.app.showScreen("todo"));
   await wait(300);
@@ -220,7 +219,8 @@ const ROOT = path.resolve(__dirname, "..");
   c.check("既定は入", await page.evaluate(() => document.querySelector("#screen-archive").hasAttribute("data-season")));
 
   /* 字の濃さの比（背景のいちばん濃い所＝上の端。72候すべて） */
-  const contrast = async (sel = "#screen-archive", ground = "--c-sheet") => page.evaluate(([sel, ground]) => {
+  /* daily は R6 から絵を額に入れ、字の後ろに敷かない——比を測るのはノートの地だけ。 */
+  const contrast = async (sel, ground) => page.evaluate(([sel, ground]) => {
     const el = document.querySelector(sel);
     const css = getComputedStyle(el);
     const probe = document.createElement("div");
@@ -244,15 +244,10 @@ const ROOT = path.resolve(__dirname, "..");
     }
     return { worst: Math.round(worst * 100) / 100, at, tint, head: Math.round(head * 100) / 100 };
   }, [sel, ground]);
-  let ct = await contrast();
-  c.check("明るい面：本文の字と背景のいちばん濃い所で 4.5:1 以上", ct.worst >= 4.5, JSON.stringify(ct));
-  c.check("明るい面：見出し（主色の大きな太字）は 3:1 以上", ct.head >= 3, JSON.stringify(ct));
   const cn = await contrast("#screen-notes", "--c-bg");
   c.check("ノートの地（明るい面）：本文の字 4.5:1・主色 3:1 以上", cn.worst >= 4.5 && cn.head >= 3, JSON.stringify(cn));
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   await wait(200);
-  ct = await contrast();
-  c.check("暗い面：本文の字と背景のいちばん濃い所で 4.5:1 以上（さらに薄く）", ct.worst >= 4.5 && ct.tint < 38 && ct.head >= 3, JSON.stringify(ct));
   const cnd = await contrast("#screen-notes", "--c-bg");
   c.check("ノートの地（暗い面）：4.5:1 以上（さらに薄く）", cnd.worst >= 4.5 && cnd.tint < 38 && cnd.head >= 3, JSON.stringify(cnd));
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));

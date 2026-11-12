@@ -213,7 +213,7 @@ t.check("季節のひとこと：ふつうの日は今までどおり二行", SE
   const rowsAt = async (d) => {
     await page.evaluate((x) => KN.screens.archive.goDay(x), d);
     await page.waitForTimeout(450);
-    return page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log .arc-season-row")]
+    return page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-season .arc-season-row")]
       .map((r) => r.textContent.replace(/\s+/g, "")));
   };
   const kokumin = await rowsAt("2026-09-22");

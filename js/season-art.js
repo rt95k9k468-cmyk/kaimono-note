@@ -227,7 +227,7 @@
      transition にしないのは、.tl-sheet の紙を滑らせる transition を上書きするから。daily の紙は描き直すたびに
      作り直されるので、移っているあいだに描き直されたら、新しい紙にも同じ時刻から付け直す（途切れない）。 */
   const fades = new WeakMap();   // 画面 → { from, to, t0, dur, on: [[塗る要素, 動き]] }
-  const paintersOf = (el, where) => where === "notes" ? [el] : [...el.querySelectorAll(".tl-sheet.is-daily")];
+  const paintersOf = (el, where) => where === "notes" ? [el] : [...el.querySelectorAll(".arc-season-art")];
   const clock = () => (document.timeline && document.timeline.currentTime) || null;
   function fadeTo(el, where, c) {
     const was = el.style.getPropertyValue("--season-c");

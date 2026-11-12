@@ -162,7 +162,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R3 | **済み（11月11日）**。tasks（今日・週・月・紙） | screen-todo.js・day-road.js・tl-layout.js | road-*・timeline-*・tl-*・one-screen・work-*・week-pick | 大 |
 | R4 | **済み（11月11日）**。health | screen-diet.js・diet.js | diet・diet-panes・weight-trend・drink-*・urge-quick・look-1008 | 中 |
 | R5 | **済み（11月11日）**。shopping・価格・品物の紙 | screen-list.js・screen-prices.js・product-sheet.js | shop-*・crown・shun・empty-no-text・kept-as-is | 中 |
-| R6 | daily・書く紙 | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
+| R6 | **済み（11月12日）**。daily（書く紙は RS） | screen-archive.js・season-art.js | daily-rules・daily-*・then-years・season*・diary-* | 中 |
 | R7 | **済み（11月12日）**。notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
 | RS | **紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
 | RM | **動きの総仕上げ**（7節の表で総ざらい） | motion.js・ui.js・base.css の `--m-*`・各席 | motion-dict・keyframes-one・smooth・still-js・feel-* | 大 |
@@ -211,6 +211,10 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
   その冊の面（`{ k: "nb" }`。中は前のホームの木）。一覧は一枚のカードに行と表紙の四角。題と見出しは明朝。地の広重は 640px から 460px で右上。
   **先の段へ送ったもの**：画像のあるノートの一枚目を表紙に（画像は IndexedDB から非同期 → RI）・カードから一冊の面へつながる動き・
   最近のカードの入りの stagger（→ RM）・本棚の並べ替えは左の木と設定だけ（電話で冊を運ぶ口は無い → FX で要るか訊く）。
+- R6 で決めたこと（細目は daily の「R6 の形」）：日の一枚＝候の札（`.arc-season`）→ 本体 `.day-main`（書く口・今日の問い・Daily Log・まとめ）→ あの日。
+  中身 768px から（`#screen-archive` の container）二段：左に本体、右に候の札とあの日。**まとめは Daily Log の隣のまま**（6節は右だが daily-rules が勝つ）。
+  季節の写真は紙に敷かず額の中だけ（出どころは写真のまま——装いごとの出どころは RI）。Daily Log の年月の札は出さない（帯と重なる）。
+  **先の段へ送ったもの**：書く紙の中身（→ RS）・額の絵を押して大きく見る（写真→全面 → RM）・入りの stagger（→ RM）。
 - **R1 と R2 は続けて流す**（札だけ替えた姿でも崩れないが、帯と頭が古い形のまま残る）。そのあとは tasks → shopping → health → notes → daily（形の次に同じ席の働き。redesign-features.md 6節）。
 - 一段の終わり：門と触った画面の試験 → main → 全部を裏で → `tools/shots.js` で いま｜見本｜できたもの を撮って利用者へ → 新しいセッション。
 - 試験は今の形を守るために書かれている。**形を変えた所は、台本を新しい決めに書き直す**（外して緑にしない。道は「ひらいた姿」で今の台本を回す）。

@@ -647,7 +647,6 @@
     const sec = node(html`
       <div class="card arc-then is-years">
         <span class="arc-then-head">
-          <span class="arc-then-ico">${icon("clock", "is-sub")}</span>
           <b>あの日</b>
           <i class="arc-then-when">${md}の年々</i>
         </span>
@@ -683,7 +682,6 @@
     const sec = node(html`
       <button type="button" class="card arc-then" data-day="${then.date}">
         <span class="arc-then-head">
-          <span class="arc-then-ico">${icon("clock", "is-sub")}</span>
           <b>あの日</b>
           ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
         </span>
@@ -743,7 +741,7 @@
     const days = (only && !mine.length ? [{ date: only, memo: "", isBlank: true }] : mine)
       .map((d) => (d.isBlank || blank(d)) ? Object.assign({}, d, { isBlank: true }) : d);
     const sec = node(html`
-      <section class="card arc-log">
+      <section class="arc-log">
         <header class="arc-log-head">
           ${/* 見出しから年月を外しました。すぐ上の暦が「8月 2026」と言っていて、
                 さらにその上の帯も月を言っていた——一画面に三回。行そのものは
@@ -760,13 +758,6 @@
               ${icon("copy")}
             </button>` : ""}
         </header>
-        ${/* 季節のひとこと（R2）。その日の二十四節気と七十二候を、日付の行の
-              すぐ上に小さく一行（当たる日だけ、雑節・五節句と祝日も一行ずつ。
-              roadmap-3.1 の K1・K2。並べるのは KN.season.rows）。一日ぶんのときだけ——月ぜんぶでは「どの日の」が
-              一つに決まらないので。色は変えず、字を一行足すだけ。数えも比べも
-              しない、ただの暦の言葉です（daily は評価しない）。 */
-            only && S().showSeason !== false && KN.season ? html`
-          <p class="arc-season" data-day="${only}">${KN.season.rows(only).map(([k, v, span], i) => html`<span class="arc-season-row${seasonTurn(only, i) ? " is-turn" : ""}"><span class="arc-season-k">${k}</span>${v}<span class="arc-season-span">${span}</span></span>`)}</p>` : ""}
         <div class="arc-log-body"></div>
       </section>
     `);
@@ -829,9 +820,9 @@
             ${only && !unread && (d.isBlank || (!String(d.memo || "").trim() && !store.memoOut(d))) ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}
             ${/* 「数行」は**終わりの数行**（2026年10月6日、利用者）。日記は頭に決まった行が
                   並ぶので、その日の地の文は終わりのほうにある。下に寄せて上を切ります。 */""}
-            <span class="arc-log-memo ${S().logFull === false && !shut ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""}"
+            <span class="arc-log-memo ${S().logFull === false && !shut ? "is-tail" : ""} ${d.isBlank || unread || out ? "is-blank" : ""} ${only && d.isBlank && !unread && !shut ? "is-write" : ""}"
                   style="--tail-n: ${S().logLines === 3 ? 3 : 5}"
-                  ><span>${shut ? (head.length ? html`${head.join("\n")}\n${SHUT}` : SHUT) : unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
+                  >${only && d.isBlank && !unread && !shut ? icon("edit") : ""}<span>${shut ? (head.length ? html`${head.join("\n")}\n${SHUT}` : SHUT) : unread ? UNREAD : out || (d.isBlank ? (only ? "この日のことを書く" : "—") : orDash(d.memo))}</span></span>
             ${/* その日のことを言う時刻（起床・就寝）と、書いた記録の時刻
                   （作成・更新）が、数字として同じ顔で並んでいました。前者は
                   中身、後者は帳簿です。帳簿のほうを薄い地に沈めて、目が
@@ -915,48 +906,22 @@
     const feed = store.dayFeed(day);
     if (!feed.length) return null;
 
-    /* 種類ごとにまとめます。前は一件ずつに「やること」の札を付けていて、
-       五件あれば同じ札が五つ縦に並びました——同じことを繰り返し言うより、
-       ひとつの枠に入れて「ここからはやること」と一度だけ言うほうが済みます。 */
+    /* 小さな札で引く（R6・docs/redesign.md 6節）。種類は絵が言う（やること＝✓・買うもの＝カート）——
+       枠と「やること」の見出しはやめた。並びは種類ごと、中は時刻の順。時刻は読み上げにだけ残す。 */
     const wrap = node(html`<div class="arc-feed"></div>`);
-    FEED_ORDER.forEach((src) => {
-      const rows = feed.filter((f) => f.src === src);
-      if (!rows.length) return;
-
-      /* 二件以上あるときは、枠の中を左右に分けます。件数の半分で切って、
-         前半が左・後半が右——上から下へ読んで、右へ折り返す形です
-         （5件なら 1,2,3 が左、4,5 が右）。一件のときは分けません
-         ——一列に一件だけ置いて右を空けても、幅が余るだけなので。 */
-      const twoCol = rows.length >= 2;
-      const box = node(html`
-        <section class="arc-feed-box ${twoCol ? "is-split" : ""}" data-src="${src}">
-          <h4 class="arc-feed-box-head">${FEED_LABEL[src] || ""}</h4>
-          <div class="arc-feed-list"></div>
-        </section>
+    FEED_ORDER.forEach((src) => feed.filter((f) => f.src === src).forEach((f) => {
+      const at = feedClock(f.at);
+      const row = node(html`
+        <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}"
+                aria-label="${FEED_LABEL[src] || ""} ${at} ${f.title}">${icon(src === "todo" ? "check" : "cart")}<span class="arc-feed-title">${f.title}</span></button>
       `);
-      const list = box.querySelector(".arc-feed-list");
-      if (twoCol) {
-        const half = Math.ceil(rows.length / 2);
-        list.style.setProperty("--rows", String(half));
-      }
-
-      rows.forEach((f) => {
-        const at = feedClock(f.at);
-        const row = node(html`
-          <button type="button" class="arc-feed-row" data-src="${f.src}" data-feed-id="${f.id}">
-            <span class="arc-feed-when">${at}</span>
-            <span class="arc-feed-title">${f.title}</span>
-          </button>
-        `);
-        row.addEventListener("click", () => {
-          KN.motion.fire("select");
-          /* やること・買うものは、それぞれのタブが本体です。 */
-          KN.app.showScreen(f.src === "todo" ? "todo" : "list");
-        });
-        list.append(row);
+      row.addEventListener("click", () => {
+        KN.motion.fire("select");
+        /* やること・買うものは、それぞれのタブが本体です。 */
+        KN.app.showScreen(f.src === "todo" ? "todo" : "list");
       });
-      wrap.append(box);
-    });
+      wrap.append(row);
+    }));
     return wrap;
   }
 
@@ -1287,17 +1252,17 @@
 
   /** daily の冒頭：日記に書く・ノートを書く・思考 の三枚と、今日の問い。説明は書かない。 */
   function thinkHome(day) {
-    const card = (cls, tone, img, a, b) => html`
-      <button type="button" class="think-card is-${tone} ${cls}">
+    const card = (cls, img, a, b) => html`
+      <button type="button" class="think-card ${cls}">
         <img class="think-card-art" src="img/think/${img}.webp" alt="" decoding="async" draggable="false">
         <span class="think-card-t">${a}<wbr>${b}</span>
       </button>`;
     const el = node(html`
       <div class="think-home">
         <div class="think-cards">
-          ${card("js-think-write", "sea", "diary", "日記に", "書く")}
-          ${card("js-think-note", "leaf", "note", "ノートを", "書く")}
-          ${card("js-think-new", "sun", "think", "思考", "")}
+          ${card("js-think-write is-main", "diary", "日記に", "書く")}
+          ${card("js-think-note", "note", "ノート", "")}
+          ${card("js-think-new", "think", "思考", "")}
         </div>
         <section class="think-today">
           <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
@@ -1457,7 +1422,7 @@
                 }<span class="arc-post-text">${KN.diaryPosts.bare(x.text)}</span
                 ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="全文を読む">${icon("chevron-down")}<span>全文を読む</span></button
                 ><span class="arc-post-tail" aria-hidden="true">${KN.diaryPosts.bare(x.text)}</span></span></span>`)
-            : html`${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">この日のことを書く</span></span></span>`}</span>
+            : html`${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span>`}</span>
           ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
               S().showDayTimes === false ? "" : html`
             <span class="arc-log-times js-times" role="button" tabindex="0">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
@@ -1983,9 +1948,33 @@
 
   /** その日ぶんの紙まるごと。横に払うと、この一枚が隣の日のものと
       入れ替わります。 */
+  /** 候の札（R6・docs/redesign.md 6節）：額に入れた候の絵・節気・候の名（明朝）・読みと期間、当たる日は雑節・祝日。
+      前は Daily Log の見出しの下の小さな二行（季節のひとこと R2）。行の字と並びは `KN.season.rows` のまま
+      （試験と同じものを見る）。一日ぶんのときだけ。絵は `season-art.js` がこの画面に置く `--season-img`。 */
+  function seasonCard(day) {
+    if (!oneDayLog() || S().showSeason === false || !KN.season) return null;
+    const s = KN.season.of(day);
+    if (!s) return null;
+    const rows = KN.season.rows(day);
+    const row = (i, inner) => html`<span class="arc-season-row${seasonTurn(day, i) ? " is-turn" : ""}">${inner}</span>`;
+    return node(html`
+      <section class="card arc-season" data-day="${day}">
+        ${S().seasonArt === false ? "" : html`<span class="arc-season-art" aria-hidden="true"></span>`}
+        <p class="arc-season-main">
+          ${row(0, html`<span class="arc-season-k">${rows[0][0]}</span>${rows[0][1]}<span class="arc-season-span">${rows[0][2]}</span>`)}
+          ${row(1, html`<span class="arc-season-k">${rows[1][0]}</span><b class="arc-season-name">${s.kou}</b><span class="arc-season-yomi">${s.kouYomi}</span><span class="arc-season-span">${rows[1][2]}</span>`)}
+          ${rows.slice(2).map(([k, v], i) => row(i + 2, html`<span class="arc-season-k">${k}</span>${v}`))}
+        </p>
+      </section>
+    `);
+  }
+
   function daySlide(day) {
     const ym = day.slice(0, 7);
     const el = node(html`<div class="day-slide"></div>`);
+    /* 二段の器（R6）：電話は一列（候の札 → 書く口 → Daily Log → あの日）、中身 768px からは左に書く口と Daily Log、
+       右に候の札とあの日（CSS の grid。紙を払う幅は変えない）。まとめは Daily Log の隣のまま（daily-rules）。 */
+    const main = node(html`<div class="day-main"></div>`);
 
     /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
        「その月の成績」に見えるので、必ず地の文の隣に並べる、という
@@ -2001,14 +1990,17 @@
     /* 「あの日」は Daily Log の下（外）。出すのは今日の紙だけ、出すかどうかは設定で
        （2026年10月10日・利用者。Daily Log の中に入れたら起床・就寝や幅が崩れた）。 */
     const then = day === U.todayKey() && S().showThen !== false ? thenCard() : null;
-    el.append(logBlock);
+    const season = seasonCard(day);
+    main.append(logBlock);
+    if (season) el.append(season);
+    el.append(main);
     if (then) el.append(then);
     /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
     if (day > U.todayKey()) { el.inert = true; el.classList.add("is-ahead"); }
-    /* 思考のホームは冒頭に（時刻ごとのときだけ。一枚のときは今までの紙のまま）。まだ来ていない日は書けないので出さない。 */
-    else if (chatView()) el.prepend(thinkHome(day));
+    /* 思考のホームは Daily Log の上に（時刻ごとのときだけ。一枚のときは今までの紙のまま）。まだ来ていない日は書けないので出さない。 */
+    else if (chatView()) main.prepend(thinkHome(day));
     return el;
   }
 
@@ -2034,7 +2026,7 @@
        動くだけの出来事なのに、いままでは別の絵に置き換わっていました。
        月をめくったときのように丸ごと入れ替わる場合は、向こうが見送ります。 */
     const settle = KN.ui.flipRows(els.body, ".arc-row");
-    /* 季節の絵（3.0 の E1）。選んでいる日の候の色と、あれば絵を紙の後ろに。 */
+    /* 季節の絵（3.0 の E1）。選んでいる日の候の色と、あれば絵を候の札の額に（R6。紙には敷かない）。 */
     if (KN.seasonArt) KN.seasonArt.apply(root, focusDay(), "daily");
 
     rendering = true;

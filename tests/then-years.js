@@ -111,6 +111,27 @@ const FORBIDDEN = [
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(400);
 
+  /* 置き場（R6）：電話は一列（Daily Log の下）。iPad の縦（820px）と広い幅（1440px）は二段——左に書く口と Daily Log、
+     右に候の札とあの日。右の段は左の背に引かれず、候の札のすぐ下にあの日。 */
+  const place = () => page.evaluate(() => {
+    const root = document.getElementById("screen-archive");
+    const r = (q) => { const e = root.querySelector(q); return e ? e.getBoundingClientRect() : null; };
+    const log = r(".arc-log"), then = r(".arc-then"), kou = r(".arc-season"), write = r(".think-cards");
+    return { log, then, kou, write, slide: r(".day-slide") };
+  });
+  let at = await place();
+  t.check("電話：あの日は Daily Log の下・同じ列", at.then && at.then.top > at.log.bottom && Math.abs(at.then.left - at.log.left) < 2, JSON.stringify(at));
+  for (const [w, h] of [[820, 1180], [1440, 900]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(400);
+    at = await place();
+    t.check(`${w}px：二段（右に候の札とあの日、左に書く口と Daily Log）`, at.kou && at.then && at.kou.left > at.log.right
+      && at.then.left > at.log.right && at.write.left === at.log.left && Math.abs(at.kou.top - at.write.top) < 2
+      && at.then.top - at.kou.bottom < 20, JSON.stringify(at));
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+
   /* 設定で「あの日」を切ると、年々も出ない。 */
   await page.evaluate(() => { KN.store.update((s) => { s.settings.showThen = false; }); });
   await page.waitForTimeout(400);

@@ -67,33 +67,22 @@ const { open, checker } = require("./lib");
   t.check("明朝を選ぶと丸い字は外れる", f2.every((f) => !/ui-rounded/.test(f)), f2.join(" / "));
   await page.evaluate(() => document.documentElement.removeAttribute("data-font"));
 
-  // daily：あの日は塗った札（2026年11月10日。前は後ろをぼかすガラス）
+  // daily：あの日は塗った札（2026年11月10日。前は後ろをぼかすガラス）。R6 から季節の写真は候の札の額の中だけ
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
   const glass = await page.$eval("#screen-archive .arc-then", (el) => {
     const cs = getComputedStyle(el);
     return { bf: cs.backdropFilter || cs.webkitBackdropFilter || "none", bg: cs.backgroundColor, r: parseFloat(cs.borderTopLeftRadius),
-      left: cs.borderLeftColor === cs.borderRightColor, mx: parseFloat(cs.marginLeft) };
+      left: cs.borderLeftColor === cs.borderRightColor, x: el.getBoundingClientRect().left };
   });
   t.check("あの日は塗った札（ぼかさない・透かさない）・丸い角・左の柱は無い・端から離れる",
-    !/blur/.test(glass.bf) && /^rgb\(/.test(glass.bg) && glass.r > 0 && glass.left && glass.mx > 0, JSON.stringify(glass));
+    !/blur/.test(glass.bf) && /^rgb\(/.test(glass.bg) && glass.r > 0 && glass.left && glass.x >= 12, JSON.stringify(glass));
   const photo = await page.waitForSelector("#screen-archive[data-season-img]", { timeout: 8000 }).then(() => true).catch(() => false);
   if (photo) {
-    // 候の色は --m-season でゆっくり入る。入り終えてから読む
-    const settled = () => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
-    await settled();
-    const bg = await page.$eval("#screen-archive .tl-sheet.is-daily", (s) => getComputedStyle(s).backgroundImage);
-    t.check("写真が読めた日は、あの日の後ろに写真の帯（候の色のぼかしと幕はほかの日と同じ二枚）",
-      /url\(/.test(bg) && (bg.match(/gradient/g) || []).length === 2, bg.slice(0, 160));
-    // 幕の色は「あの日」の有無で変わらない（2026年10月8日、利用者「膜の色が違う」）
-    const layers = (s) => s.split(/,\s*(?=linear-gradient|url)/).slice(0, 2).map((l) => l.replace(/\s[\d.]+px/g, "").replace(/\s[\d.]+%/g, ""));
-    const withThen = layers(bg);
-    await page.evaluate(() => document.querySelector("#screen-archive .arc-then").remove());
-    await page.waitForTimeout(100);
-    await settled();
-    const without = layers(await page.$eval("#screen-archive .tl-sheet.is-daily", (s) => getComputedStyle(s).backgroundImage));
-    t.check("候の色と幕の色は、あの日の有無で同じ", JSON.stringify(withThen) === JSON.stringify(without),
-      JSON.stringify({ withThen, without }).slice(0, 400));
+    const where = await page.evaluate(() => ({
+      sheet: getComputedStyle(document.querySelector("#screen-archive .tl-sheet.is-daily")).backgroundImage,
+      art: getComputedStyle(document.querySelector("#screen-archive .arc-season-art")).backgroundImage }));
+    t.check("写真は候の札の額の中だけ（紙の地・あの日の後ろには敷かない）", where.sheet === "none" && /url\(/.test(where.art), JSON.stringify(where).slice(0, 200));
   } else t.check("写真が読めた（img/season-photo）", false);
 
   t.check("エラーが無い", errors.length === 0, errors.join("\n"));

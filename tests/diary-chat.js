@@ -118,7 +118,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const h = root.querySelector(".think-home");
     const slide = root.querySelector(".day-slide");
     const blank = root.querySelector(".arc-log-row.is-today .arc-log-memo");
-    return { home: !!h, first: !!(h && slide && slide.firstElementChild === h), write: h ? h.querySelector(".js-think-write").textContent.trim() : "",
+    const main = root.querySelector(".day-slide > .day-main");
+    return { home: !!h, first: !!(h && main && main.firstElementChild === h && (!slide.firstElementChild.classList.contains("arc-season") || slide.firstElementChild.nextElementSibling === main)),
+      mainFill: !!h && (() => { const b = h.querySelector(".js-think-write"), p = document.createElement("i");
+        p.style.color = "var(--c-primary)"; b.append(p); const c = getComputedStyle(p).color; p.remove();
+        return getComputedStyle(b).backgroundColor === c; })(), write: h ? h.querySelector(".js-think-write").textContent.trim() : "",
       think: !!(h && h.querySelector(".js-think-new")), blank: blank ? blank.textContent.trim() : null,
       cards: h ? [...h.querySelectorAll(".think-card-t")].map((x) => x.textContent.trim()) : [],
       cardIcons: h ? h.querySelectorAll(".think-card svg").length : -1,
@@ -126,8 +130,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
-  t.check("daily の冒頭に三枚の札（日記に書く・ノートを書く・思考）", home.home && home.first
-    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノートを書く|思考", JSON.stringify(home));
+  t.check("daily の冒頭（候の札の次）に三枚の札（日記に書く・ノート・思考）。日記に書くが主（朱の塗り）", home.home && home.first && home.mainFill
+    && home.write === "日記に書く" && home.cards.join("|") === "日記に書く|ノート|思考", JSON.stringify(home));
   t.check("札に「＞」は付けない", home.cardIcons === 0, String(home.cardIcons));
   t.check("思考の札がある", home.think);
   t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 4 && home.arts.every(Boolean), JSON.stringify(home));
