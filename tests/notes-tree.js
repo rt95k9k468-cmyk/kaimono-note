@@ -27,6 +27,7 @@ const { open, checker } = require("./lib");
     let n = 0;
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
+      if (k === "kn-note-seen") continue;   // ★を開いた時刻（id と時刻だけ・★の数で頭打ち。notes.md「F7 後半」の N4）
       n += k.length + (localStorage.getItem(k) || "").length;
     }
     return n;
