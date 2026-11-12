@@ -148,8 +148,10 @@
     if (rate) pad.querySelector(".js-rate").textContent = `${Math.round(parseFloat(rate) * 100)}%`;
     const sum = !!field && KN.util.isExpression(field.value);
     ok.classList.toggle("is-equals", sum);
-    ok.textContent = sum ? "＝" : "確定";
-    ok.setAttribute("aria-label", sum ? "計算する" : "確定");
+    /* okLabel … 確定がそのまま決める欄（品物の紙の値段を足す欄＝「追加」「更新」。RS の④、主のボタンは鍵盤の上に一つ）。 */
+    const word = (opts && opts.okLabel && opts.okLabel()) || "確定";
+    ok.textContent = sum ? "＝" : word;
+    ok.setAttribute("aria-label", sum ? "計算する" : word);
   }
 
   /* Work the sum out and leave it on screen. The pad stays up and the caret
@@ -373,6 +375,7 @@
    * @param {object} [options]
    * @param {Function} [options.onOpen]    after the pad is up and measured
    * @param {Function} [options.onCommit]  after 確定
+   * @param {Function} [options.okLabel]   the 確定 key's word when it also saves (「追加」)
    */
   function bind(input, options) {
     // `none` is the whole trick: the field still focuses, still shows a caret,
@@ -391,5 +394,5 @@
     });
   }
 
-  KN.keypad = { bind, open, close, isOpen, price };
+  KN.keypad = { bind, open, close, isOpen, price, refresh: refreshOk };
 })();

@@ -79,7 +79,11 @@ const { open, checker } = require("./lib");
   const rate1 = rate0 === 8 ? 10 : 8;
   const o2 = await out();
   t.check("S3：率の札で率が替わる", o2.includes(taxed(rate1)) && (await page.$eval(".keypad .js-rate", (e) => e.textContent.trim())) === `${rate1}%`, o2);
-  await page.click(".sheet.is-open .price-add .js-add");
+  /* RS の②④（11月12日）：鍵盤が出ているあいだ主のボタンは鍵盤の上に一つ——確定の札が「追加」で、一押しで足す。欄の横の 追加 は隠れる。 */
+  const one = await page.evaluate(() => ({ ok: document.querySelector(".keypad .js-ok").textContent.trim(),
+    side: !document.querySelector(".sheet.is-open .price-add .js-add").hidden }));
+  t.check("鍵盤の主のボタンは「追加」、欄の横の追加は隠れる", one.ok === "追加" && !one.side, JSON.stringify(one));
+  await page.click(".keypad .js-ok");
   await wait(600);
   const saved = await page.evaluate((id) => {
     const S = KN.store, p = S.getProduct(id), b = S.get().stores.find((x) => x.name === "試しの店B");

@@ -510,14 +510,18 @@
       if (!strip.hidden) strip.scrollIntoView({ block: "nearest", behavior: KN.motion.smooth() });
     }, ms));
 
+    /* 鍵盤の確定がそのまま「追加」（すでに値段のある店なら「更新」）。欄の横のボタンは鍵盤が出ているあいだ隠す——
+       主のボタンを二つ並べない（RS の②④、11月12日。前は 確定 → 追加 の二手）。空のまま押したら閉じるだけ。 */
+    const addBtn = form.querySelector(".js-add");
     fields.forEach((f) => {
       KN.keypad.bind(f, {
-        onOpen: () => { last = f; strip.hidden = false; paint(); revealStrip(); },
-        onCommit: () => { strip.hidden = true; },
+        okLabel: () => addBtn.textContent.trim(),
+        onOpen: () => { last = f; strip.hidden = false; addBtn.hidden = true; paint(); revealStrip(); },
+        onCommit: () => { strip.hidden = true; addBtn.hidden = false; if (f.value.trim()) form.requestSubmit(); },
       });
       f.addEventListener("input", () => { last = f; paint(); });
       f.addEventListener("blur", () => setTimeout(() => {
-        if (!KN.keypad.isOpen()) strip.hidden = true;
+        if (!KN.keypad.isOpen()) { strip.hidden = true; addBtn.hidden = false; }
       }, 120));
     });
 
@@ -607,7 +611,7 @@
     KN.ui.storePicker(form.querySelector(".js-stores"), {
       selectedId: selectedStore,
       autoPick: false,
-      onSelect: (id) => { selectedStore = id; paintStore(); repaint(); },
+      onSelect: (id) => { selectedStore = id; paintStore(); repaint(); if (KN.keypad.isOpen()) KN.keypad.refresh(); },
     });
 
     const priceEl = form.querySelector(".js-price");
@@ -918,7 +922,8 @@
     size.append(sizeField(productId, rerenderPrices));
     f.more.append(size);
 
-    f.body.append(pricesWrap);
+    /* 値段が先（RS の③、11月12日：開いていちばん多いのは店の値段を見る・足す）。カテゴリ・内容量・メモはその下のカード。 */
+    f.body.querySelector(".d-card").before(pricesWrap);
     rerenderPrices();
     f.body.append(historySection(productId));
 

@@ -83,6 +83,13 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(800);
   const e1 = await top();
   t.check("直す紙も同じ形（頭・名前・★・カテゴリ・メモ）", e1 && e1.hero && e1.name && e1.fav && e1.cat && e1.memo, JSON.stringify(e1));
+  /* RS の③（11月12日）：直す紙は お店ごとの値段（と値段を足す欄）が先、カテゴリ・内容量・メモのカードはその下 */
+  const ord = await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const pr = sh.querySelector(".js-prices"), card = sh.querySelector(".sheet-detail > .d-card");
+    return !!pr && !!card && !!(pr.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) && !!sh.querySelector(".js-prices .price-add");
+  });
+  t.check("直す紙は値段が先、カテゴリ・メモのカードはその下", ord);
   t.check("数量を出さない・値段の欄は下にある", !e1.qty && e1.price, JSON.stringify(e1));
   /* V26：頭は行と同じ淡い地・字は地の字の色。値段を足す欄は枠の箱なし、お店の札は一列。 */
   const look = await page.evaluate(() => {
