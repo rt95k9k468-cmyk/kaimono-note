@@ -272,25 +272,26 @@ const { open, checker } = require("./lib");
   t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 256 && tree.t >= lastSeat.b
     && tree.b < 900 && tree.b > 820 && notesScr.l === 256, JSON.stringify({ tree, lastSeat, notesScr }));
 
-  /* 段7・P2：ホームは木｜本文の二列（真ん中の一覧は出さない）。本文の段は最近直したノートの札（題・頭の数行・日付）、
-     ★・問い は木に（最近直したは札にあるので木には出さない）。 */
+  /* 段7・P2 → R7：ホームは木｜本文（真ん中の一覧は出さない）。本文は二段——左に本棚、右に札と最近直したの一覧
+     （題・頭の一行・日付・表紙の四角）。★・問い は木にも（最近直したは本文にあるので木には出さない）。 */
   const shown = (s) => page.evaluate((q) => { const e = document.querySelector(q); return !!e && getComputedStyle(e).display !== "none"; }, s);
   const homeLook = () => page.evaluate(() => {
-    const cards = [...document.querySelectorAll("#screen-notes .nt-card")];
-    const r0 = cards[0] && cards[0].getBoundingClientRect(), r1 = cards[1] && cards[1].getBoundingClientRect();
+    const rows = [...document.querySelectorAll("#screen-notes .nt-home-r .note-row")];
+    const bks = document.querySelector("#screen-notes .nt-home-l .nt-bks"), list = document.querySelector("#screen-notes .nt-home-r .notes-list");
+    const b = bks && bks.getBoundingClientRect(), r = list && list.getBoundingClientRect();
     return {
-      n: cards.length, l: r0 && Math.round(r0.left), side: !!(r0 && r1 && Math.abs(r0.top - r1.top) < 2 && r1.left > r0.right),
-      parts: cards[0] ? ["title", "lead", "when"].map((k) => cards[0].querySelector(`.nt-card-${k}`).textContent.trim()) : [],
-      tree: document.querySelectorAll('#screen-notes .notes-books[role="tree"], #screen-notes .nt-gates').length,
+      n: rows.length, l: b && Math.round(b.left), side: !!(b && r && r.left > b.right),
+      parts: rows[0] ? [".note-t", ".note-x", ".note-d", ".nt-cv"].map((k) => (rows[0].querySelector(k) ? rows[0].querySelector(k).textContent.trim() || "□" : "")) : [],
+      tree: document.querySelectorAll('#screen-notes .notes-books[role="tree"]').length,
       mid: document.documentElement.classList.contains("notes-mid"),
       quick: [...document.querySelectorAll(".notes-tree .nt-quick")].map((e) => e.getAttribute("aria-label")),
     };
   });
   const home = await homeLook();
-  t.check("二列のホーム：本文の段に最近直したの札が横に並ぶ（題・頭・日付）、木と同じものは出さない", home.n === 3 && home.side && home.l >= 256
-    && home.parts[0] === "一つめ" && home.parts[1] === "試しの本文" && /^\d+:\d\d$/.test(home.parts[2]) && home.tree === 0 && !home.mid
+  t.check("二列のホーム：左に本棚、右に最近直したの一覧（題・頭の一行・日付・表紙）、木は左の列だけ", home.n === 3 && home.side && home.l >= 256
+    && home.parts[0] === "一つめ" && home.parts[1] === "試しの本文" && /\d+:\d\d$/.test(home.parts[2]) && home.parts[3] === "□" && home.tree === 0 && !home.mid
     && await shown(".notes-tree .js-tree-asks") && !home.quick.includes("最近直した"), JSON.stringify(home));
-  await page.click('#screen-notes .nt-card[data-id="n-desk0"]');
+  await page.click('#screen-notes .note-row[data-id="n-desk0"] .js-open');
   await page.waitForSelector(".sheet.is-note.is-open");
   await wait(500);
   const pane0 = await box(".sheet.is-note.is-open"), fab0 = await box("#dock");
@@ -303,7 +304,7 @@ const { open, checker } = require("./lib");
     && Math.round((await box(".sheet.is-note.is-open")).l) >= 256 + 380);
   await page.evaluate(() => document.activeElement.blur());
   await wait(400);
-  t.check("空のまま窓を離れると二列へ戻る", !(await homeLook()).mid && await shown("#screen-notes .nt-cards"));
+  t.check("空のまま窓を離れると二列へ戻る", !(await homeLook()).mid && await shown("#screen-notes .nt-home-two"));
   await page.evaluate(() => document.querySelector(".notes-tree .js-tree-all").click());
   await wait(600);
 
@@ -391,7 +392,7 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("Control+Backslash");
   await wait(600);
   const homeF = await homeLook();
-  t.check("列を畳むと（木が無い）ホームは木に戻る", homeF.n === 0 && homeF.tree > 0, JSON.stringify(homeF));
+  t.check("列を畳んでも（木が無い）ホームは同じ二段（木は本棚の一冊の中）", homeF.n === 3 && homeF.side && homeF.tree === 0, JSON.stringify(homeF));
   await page.keyboard.press("Control+Backslash");
   await wait(400);
 
@@ -430,7 +431,7 @@ const { open, checker } = require("./lib");
     await c.page.waitForTimeout(600);
     const tree = await c.page.evaluate(() => {
       const last = [...document.querySelectorAll("#tabbar .tab")].pop().getBoundingClientRect();
-      const t = [...document.querySelectorAll(".notes-tree, .notes-books")].find((e) => e.getClientRects().length);
+      const t = [...document.querySelectorAll(".notes-tree")].find((e) => e.getClientRects().length);
       return { last: Math.round(last.bottom), tree: t ? Math.round(t.getBoundingClientRect().top) : null };
     });
     t.check("指の 1180px：ノートの木は席の行の下から（重ならない）", tree.tree != null && tree.tree >= tree.last, JSON.stringify(tree));

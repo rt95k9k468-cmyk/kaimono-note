@@ -46,6 +46,7 @@
    * @param {object} o
    * @param {string} o.scope   "books"（ホーム・左の木：ノートブックの行と、ノートブックの無いノートが一番上）
    *                           か、紙の根のノートの id（紙の中の「中のノート」）
+   * @param {boolean} [o.one]   "books" のうち本棚の一冊の面（冊の行は一つ。運ばない・冊の外へは出さない）
    * @param {Set} o.open       開いた枝（運ぶ先で閉じた枝をその場で開くのにだけ使う）
    * @param {Function} o.root  () => いまの器（組み直したあと、キーで動かした行へ戻る）
    * @param {Function} [o.scroller]  () => 送る器
@@ -64,7 +65,7 @@
     if (!N() || N().state() !== "on" || KN.util.selecting(e)) return;
     const el = e.target.closest(".nt-row");
     const row = el && box.contains(el) ? rowsOf(box).find((r) => r.el === el) : null;
-    if (!row || (row.book && o.scope !== "books")) return;
+    if (!row || (row.book && (o.scope !== "books" || o.one))) return;
     const p = { x0: e.clientX, y0: e.clientY, pid: e.pointerId, target: e.target, mouse: e.pointerType === "mouse" };
     let timer = 0;
     const off = () => {
@@ -210,7 +211,7 @@
     const prev = L[gap - 1] || null, next = L[gap] || null;
     const hi = prev ? (prev.leaf ? prev.d : prev.d + 1) : 0;
     /* 一番上の段はノートブックの無いノートの場所。ノートブックの行のあいだには置けない。 */
-    const lo = Math.max(next ? next.d : 0, books && next && next.book ? 1 : 0);
+    const lo = Math.max(next ? next.d : 0, books && (d.o.one || (next && next.book)) ? 1 : 0);
     if (lo > hi) return null;
     const depth = Math.max(lo, Math.min(hi, d.row.d + Math.round((d.cx - d.x0) / d.step)));
     let up = null, after = null;
@@ -350,7 +351,7 @@
       return;
     }
     const row = rowsOf(box).find((r) => r.el === el);
-    if (!row || !N() || N().state() !== "on") return;
+    if (!row || (row.book && o.one) || !N() || N().state() !== "on") return;
     if ((k === "ArrowUp" || k === "ArrowDown") && e.altKey && !e.shiftKey) {
       e.preventDefault();
       shift(box, o, row, k === "ArrowUp" ? -1 : 1);

@@ -4657,12 +4657,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    紙の色に溶ける。層は上から：候の色のぼかし（いつも）・紙の色の幕・絵（読めたら）・紙の色。絵の濃さは幕の
    濃さで決める（幕 66% ＝ 絵 34%。8% では iPhone で絵があるかさえ見えなかった）。紙は送る器なので、地は送っても上に留まる（background-attachment は既定）。
    絵は**横幅いっぱいに一枚まるごと**（100vw auto）。幕は絵の高さ（--season-h ＝ 幅×縦横の比。比は js が --season-ar に）の
-   半ばまで同じ濃さで、絵の下の端で閉じる。10/7 までは cover で縦長の紙に敷いていて、横長の写真は真ん中の三分の一だけが
-   約3倍に引き伸ばされ（雁は両端へ切れて空だけ）、主役のいる中ほどは幕で消えていた——「ぼかしがきつくて何かわからない」の正体。
+   半ばまで同じ濃さで、絵の下の端で閉じる（cover だと横長の写真が引き伸ばされ、主役が幕で消えた。10/7）。
    値（--season-c / --season-img）は js がこの画面に書く（:root には書かない）。濃さは iPhone で決める。
    色の入れ替わりは --m-season でゆっくり。移すのは背景を塗る要素の --season-k だけ（受け継がない。js/season-art.js が
-   Web Animations で）。前は画面の --season-c（受け継ぐ）を transition していて、移るあいだ毎フレーム画面の子の全部
-   （daily で約1,700）が当てはめ直しになっていた（docs/log/inspection.md の 1）。.tl-sheet には紙を滑らせる transition が
+   Web Animations で。受け継ぐ値を動かすと子の全部が毎フレーム当てはめ直し。docs/log/inspection.md の 1）。.tl-sheet には紙を滑らせる transition が
    あるので、ここに transition を足さない（詳細度で上書きして壊す）。 */
 @property --season-c { syntax: "<color>"; inherits: true; initial-value: transparent; }
 @property --season-k { syntax: "<color>"; inherits: false; initial-value: transparent; }
@@ -4685,22 +4683,24 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* まとめの札も写真を透かす（2026年10月10日・利用者「まとめも透過させて」）。 */
 #screen-archive[data-season] .tl-sheet.is-daily .arc-counts-item { background: color-mix(in srgb, var(--c-surface-2) 55%, transparent); }
 /* ノートの地にも同じ層（daily は写真、ノートは広重。2026年10月7日、利用者が見比べて選んだ・docs/season-art.md）。
-   ノートは紙を持たない地で、画面そのものが送る器なので、地の色（--c-bg）の上に画面へ敷く（送っても上に留まる）。 */
+   ノートは紙を持たない地で、画面そのものが送る器なので、地の色（--c-bg）の上に画面へ敷く（送っても上に留まる）。
+   640px からは絵を電話くらいの大きさ（--season-art）で右上に置き、左へ地に溶かす（--season-fade。窓いっぱいだと地を覆う。R7）。 */
 #screen-notes[data-season] {
   --season-veil: color-mix(in srgb, var(--c-bg) calc(100% - var(--season-alpha, 34%)), transparent);
-  --season-h: calc(100vw * var(--season-ar, 0.67));
+  --season-art: 100vw; --season-h: calc(var(--season-art) * var(--season-ar, 0.67));
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent 55%),
     linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-h) * 0.55), var(--c-bg) var(--season-h)),
-    var(--season-img, none) center top / 100vw auto no-repeat,
+    var(--season-fade, linear-gradient(transparent, transparent)),
+    var(--season-img, none) right top / var(--season-art) auto no-repeat,
     var(--c-bg);
 }
-/* 一覧のカードは少しだけ透かし、後ろの絵をほんのり見せる（2026年10月7日、利用者の頼み）。開いた紙は透かさない。 */
-#screen-notes[data-season] .note-row.is-card { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
+/* 一覧は少し透かして絵を見せる（10月7日、利用者）。開いた紙は透かさない。 */
+#screen-notes[data-season] .notes-list { background: color-mix(in srgb, var(--c-surface) 88%, transparent); }
 /* 暗い色のときは、さらに薄く。 */
-:root[data-theme="dark"] :is(#screen-archive, #screen-notes, #head) { --season-tint: 14%; --season-alpha: 14%; }
+:root[data-theme="dark"] :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes, #head) { --season-tint: 14%; --season-alpha: 14%; }
+  :root:not([data-theme="light"]) :is(#screen-archive, #screen-notes) { --season-tint: 14%; --season-alpha: 14%; }
 }
 /* 紙まで、高さの割り当てを通します。途中の箱が `flex:1; min-height:0` を
    持っていないと、紙は中身ぶんに伸びて器になりません。 */
@@ -4755,39 +4755,21 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
 /* ---------------- ノート（daily の紙の裏。docs/notes.md） ----------------
 
-   価格と同じく**地**です。紙も丸角も掴み手も持ちません（前に居る daily の
-   紙だけが持つ）。画面そのものが送ります（`scrollerOf` が overflow を見て
-   答える）。下まで伸ばすのは `flex` だけで、`min-height: 0` は持たせません
-   （価格の地と同じ理由——末尾の余白が中身の後ろに付いてくるように）。 */
+   価格と同じく**地**（紙を持たず、画面そのものが送る）。伸ばすのは `flex` だけ（価格の地と同じ理由）。 */
 #screen-notes > .stack { flex: 1; min-height: 0; }
 .notes-ground { flex: 1; padding-bottom: calc(var(--tabbar-space) + 56px + var(--sp-6)); }
-/* 右へ払って一つ上の面へ（screen-notes.js）。縦はブラウザに、横はこちらに——無いと iPhone は横に動いた指を
-   送りとして取り（pointercancel）、引いた面が途中で戻されていた。 */
+/* 右へ払って一つ上の面へ。縦はブラウザに、横はこちらに（無いと iPhone は横の指を送りに取り pointercancel）。 */
 #screen-notes { touch-action: pan-y; }
-/* 引くあいだ後ろに見せる一つ上の面の写し。見えている高さだけ（送る器の中身を伸ばさない）。 */
+/* 引くあいだ後ろに見せる一つ上の面の写し（見えている高さだけ）。 */
 .notes-under { position: absolute; overflow: hidden; pointer-events: none; }
-.notes-list { display: flex; flex-direction: column; }
-/* 行のあいだに線は引きません（余白だけで分かれる。価格の行と同じ）。 */
-.note-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: 0 var(--sp-5) 0 var(--sp-4);
-}
-/* 一覧は白いカード（段3）。地の上に、間を空けて一枚ずつ。★はカードの
-   縦の真ん中（段4。右上では「高すぎる」と言われた）。
-   カードにするのは一覧だけ——最近削除・前の版の紙の行は今のまま。 */
-.notes-list { gap: var(--sp-2); padding: var(--sp-2) var(--sp-4) 0; }
-.note-row.is-card {
-  align-items: flex-start;
-  padding: 0 var(--sp-2) 0 var(--sp-4);
-  background: var(--c-surface);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
-}
-.note-row.is-card .fav { align-self: center; }
-.note-row.is-card { transition: background var(--m-state) var(--ease); }
+.note-row { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-5) 0 var(--sp-4); }
+/* 一覧は一枚のカードに行（R7）：題・頭の一行・日付・★・表紙の四角。最近削除・前の版の紙の行は今のまま。 */
+.notes-list { margin: var(--sp-2) var(--sp-4) 0; border-radius: var(--r-lg); overflow: clip; }
+.note-row.is-card { align-items: center; gap: var(--sp-2); padding: 0 14px; transition: background var(--m-state) var(--ease); }
+.note-row.is-card + .note-row.is-card { border-top: 1px solid var(--c-border); }
 .note-row.is-card:has(> .note-open:active) { background: var(--press-sink); transition-delay: var(--m-press); }
+.note-row.is-card .note-x { -webkit-line-clamp: 1; font-size: var(--fs-sm); }
+.nt-cv.is-mini { flex: none; width: 56px; height: 56px; border-radius: var(--r-sm); }
 .note-foot {
   display: flex;
   flex-wrap: wrap;
@@ -4810,64 +4792,80 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* ホーム（段1・③。docs/notes-unify.md「画面」）：★・最近直した（行）と、ノートブックの木。白い箱に行。
-   箱は clip（hidden だと送る器になり、木の行が上に留まらない）。 */
+/* 木の箱は clip（hidden だと送る器になり、木の行が上に留まらない）。 */
 .notes-sec { padding: var(--sp-5) var(--sp-4) 0; }
 .notes-sec.is-sub { padding-top: var(--sp-3); }
 .notes-sec.is-sub .section-title { color: var(--c-text-3); font-weight: var(--fw-regular); }
 .notes-books { margin: var(--sp-2) var(--sp-4) 0; padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .notes-books { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
-/* 6つの棚（docs/notes.md「6つの棚」。js/screen-notes.js の SHELF）：棚ごとに和色のごく薄いカード、見出しと絵は濃いほう。
-   色は灰を混ぜて彩度を抑える（地の浮世絵に合わせて）。暗い面は塗りを濃く、字は白へ寄せる（--shelf-x・--shelf-to）。
-   archive は閉じて始まり、ほかより控えめ。★・最近直した・「すべてのノート」「問い」は枠に入れない（棚と見分ける）。 */
-.notes-books:is(.notes-flat, .nt-gates), #screen-notes[data-season] .notes-books:is(.notes-flat, .nt-gates) {
-  padding: 0; background: none; box-shadow: none; border-radius: 0; }
-/* 「すべてのノート」「問い」は一番上に、左へ詰めて横並び（半分ずつに割ると問いが真ん中に浮く）。枠も塗りも持たない
-   （10月16日、利用者「無駄に目立つ」）。字は大きく太く。絵の列は最近直した・棚の見出しにそろえる。 */
-.notes-books.nt-gates { display: flex; flex-wrap: wrap; gap: 0 var(--sp-6); margin-top: var(--sp-3); overflow: visible; }
-.nt-gate { display: flex; align-items: center; gap: var(--sp-1); min-height: 44px; min-width: 0; padding: 0 var(--sp-2) 0 2px;
-  border-radius: var(--r-sm); color: var(--c-text); font-size: var(--nt-fs); font-weight: var(--fw-bold); text-align: left;
-  transition: background-color var(--m-state) var(--ease); }
-@media (pointer: fine) { .nt-gate { padding-left: 4px; } }
-.nt-gate:active { background-color: var(--press-sink); transition-delay: var(--m-press); }
-.nt-gate > svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; color: var(--c-text-2);
-  margin: 0 calc(var(--sp-1) + (var(--ico) - var(--ico-sm)) / 2); }
-.notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { display: flex; flex-direction: column; gap: var(--sp-4);
-  margin-top: var(--sp-6); padding: 0; background: none; box-shadow: none; overflow: visible; }
-.nt-plain { padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
-#screen-notes[data-season] .nt-plain { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
-/* 見出しの字は 60%（札の色を替えた 11月10日、66% では暗い面の thinking が 4.47。70% → 66% は 10月17日の T1）。 */
+/* ホーム（R7、docs/redesign.md 6節）：さがす → 札（数は出さない）→ 最近（表紙のカードを横へ）→ 本棚（背・柄・題箋）→ タグ。 */
+:is(.nt-find, .nt-gate, .nt-cover, .notes-list) { background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-1); }
+.nt-find { display: flex; align-items: center; gap: 10px; width: calc(100% - var(--sp-4) * 2); height: 48px; margin: var(--sp-3) var(--sp-4) 0;
+  padding: 0 var(--sp-4); border-radius: var(--r-md); color: var(--c-text-3); font-size: var(--fs-lg); }
+.search-wrap:not([hidden]) ~ .notes-ground .nt-find { display: none; }
+.notes-books.nt-gates, #screen-notes[data-season] .notes-books.nt-gates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px; margin-top: var(--sp-3); padding: 0; background: none; box-shadow: none; overflow: visible; }
+:is(.nt-gate, .nt-cover, .nt-bk) { transition: background-color var(--m-state) var(--ease), scale var(--m-press) var(--ease); }
+:is(.nt-gate, .nt-cover):active { background-color: var(--press-sink); transition-delay: var(--m-press); }
+:is(.nt-gate, .nt-cover, .nt-bk):active { scale: var(--press-wide); }
+.nt-gate { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; height: 52px; padding: 0 var(--sp-3); border-radius: var(--r-md);
+  color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); text-align: left; }
+.nt-gate > svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
+.nt-covers { display: flex; gap: var(--sp-3); overflow-x: auto; padding: 2px var(--sp-4) 10px; margin-top: var(--sp-2);
+  scroll-snap-type: x proximity; scroll-padding-inline: var(--sp-4); scrollbar-width: none; }
+.nt-cover { flex: none; width: 156px; display: flex; flex-direction: column; overflow: clip; text-align: left; border-radius: var(--r-lg); scroll-snap-align: start; }
+.nt-cover > .nt-cv { height: 92px; }
+.nt-cover-t { height: calc(2lh + 10px); padding: 10px 12px 0; font-family: var(--font-display); font-size: var(--fs-md);
+  font-weight: var(--fw-bold); line-height: 1.4; overflow: hidden; overflow-wrap: anywhere; }
+.nt-cover-d { padding: var(--sp-1) 12px 12px; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-bks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4) var(--sp-3); margin: var(--sp-2) var(--sp-4) 0; }
+/* 表紙：冊の色を深くした面（棚は --shelf、ほかは名前の色 --cat）＋白い線の和柄を薄く＋題箋。 */
+.nt-cv { --cv: color-mix(in srgb, var(--shelf, var(--cat, var(--c-text-3))) 80%, #000); display: block; position: relative; overflow: hidden; background: var(--cv); }
+.nt-cv[data-pt="none"] { --cv: var(--c-surface-3); }
+.nt-cv::after { content: ""; position: absolute; inset: 0; opacity: .2; background: var(--pt, none); }
+.nt-cv.is-book { aspect-ratio: 3 / 4; border-radius: 4px var(--r-sm) var(--r-sm) 4px;
+  box-shadow: inset 9px 0 0 color-mix(in srgb, #000 16%, transparent), inset 10px 0 0 color-mix(in srgb, #fff 14%, transparent), var(--shadow-2); }
+.nt-lb { position: absolute; z-index: 1; left: 22%; right: 12%; top: 16%; padding: 7px 4px; border-radius: 2px; background: var(--c-surface);
+  box-shadow: 0 0 0 1px var(--c-border-2); font-family: var(--font-display); font-size: var(--fs-sm); font-weight: var(--fw-bold); line-height: 1.35;
+  text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+[data-pt="asa"] { --pt: repeating-linear-gradient(60deg, #fff 0 1.5px, #0000 0 14px), repeating-linear-gradient(-60deg, #fff 0 1.5px, #0000 0 14px); }
+[data-pt="ichi"] { --pt: repeating-conic-gradient(#fff 0 25%, #0000 0 50%) 0 0 / 22px 22px; }
+[data-pt="shima"] { --pt: repeating-linear-gradient(90deg, #fff 0 3px, #0000 0 9px, #fff 0 10px, #0000 0 18px); }
+[data-pt="nami"] { --wv: radial-gradient(circle at 50% 100%, #0000 5px, #fff 0 7px, #0000 0 10px, #fff 0 12px, #0000 0);
+  --pt: var(--wv) 0 0 / 26px 13px, var(--wv) 13px 6.5px / 26px 13px; }
+[data-pt="ten"] { --dt: radial-gradient(#fff 2px, #0000 2.5px); --pt: var(--dt) 0 0 / 14px 14px, var(--dt) 7px 7px / 14px 14px; }
+/* モダンの表紙は色の面に白い題（和柄と題箋は出さない。docs/redesign.md 4節）。 */
+:root[data-attire="modern"] .nt-cv::after { display: none; }
+:root[data-attire="modern"] .nt-cv.is-book { border-radius: var(--r-md); box-shadow: var(--shadow-1); }
+:root[data-attire="modern"] .nt-lb { inset: auto 10px 10px 12px; padding: 0; background: none; box-shadow: none; color: #fff;
+  font-family: var(--font); text-align: left; }
+.nt-tags { margin-top: var(--sp-2); flex-wrap: wrap; }
+.notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { padding: 0; background: none; box-shadow: none; overflow: visible; }
+/* 6つの棚（SHELF）：一冊の面は棚の色の薄いカード（暗い面は塗りを濃く字を白へ）。見出しの字は 60%（66% では暗い thinking が 4.47）。 */
 .nt-shelf { --shelf-a: 8%; --shelf-c: color-mix(in srgb, var(--shelf) 85%, #888);
   --shelf-ink: color-mix(in srgb, var(--shelf-c) 60%, var(--shelf-to, #000));
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
-/* thinking は灰の archive と並ぶので、赤みの紫を濃いめに（10月16日、利用者「見分けづらい」）。 */
-:is(.nt-shelf, .nb-ico)[data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
-:is(.nt-shelf, .nb-ico)[data-shelf="reading"] { --shelf: #007B43; }
-:is(.nt-shelf, .nb-ico)[data-shelf="teaching"] { --shelf: #ED6D3D; }
-:is(.nt-shelf, .nb-ico)[data-shelf="learning"] { --shelf: #00A3AF; }
-:is(.nt-shelf, .nb-ico)[data-shelf="living"] { --shelf: #F0908D; }
-:is(.nt-shelf, .nb-ico)[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
+/* thinking は灰の archive と見分けるため濃いめ（10月16日）。 */
+[data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
+[data-shelf="reading"] { --shelf: #007B43; }
+[data-shelf="teaching"] { --shelf: #ED6D3D; }
+[data-shelf="learning"] { --shelf: #00A3AF; }
+[data-shelf="living"] { --shelf: #F0908D; }
+[data-shelf="archive"] { --shelf: #949495; --shelf-a: 5%; }
 .nb-ico[data-shelf] { --cat: color-mix(in srgb, var(--shelf) 85%, #888); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shelf-x: 1.8; --shelf-to: #fff; } }
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
-/* ホームの木は詰める（10月16日、利用者「Notion くらい狭く」。閉じなくても全体が見える）。字はほかの面より一回り大きく
-   （同じ日、利用者「全体的にもう少しだけ大きく」。すべてのノート・問いも同じ大きさ）。 */
+/* 一冊の面の木は詰め（「Notion くらい狭く」）、字は一回り大きく（10月16日）。 */
 .notes-ground { --nt-fs: calc(17px * var(--fs-k)); }
 @media (pointer: fine) { .notes-ground { --nt-fs: calc(15px * var(--fs-k)); } }
 .notes-books .nt-row { --nt-h: 38px; font-size: var(--nt-fs); }
 .notes-books .nt-row :is(.nt-twist, .nt-add) { height: var(--nt-h); }
 @media (pointer: fine) { .notes-books .nt-row { --nt-h: 32px; } }
-.notes-ground .notes-sec .section-title { font-size: var(--fs-md); }
+.notes-ground .notes-sec .section-title { font-family: var(--font-display); font-size: var(--fs-xl); }
 .nt-shelf .nt-row.is-stick:not([aria-current="true"]):not(:active) { background-color: var(--shelf-bg); }
 .nt-shelf > .nt-row.is-book, .nt-shelf > .nt-row.is-book .nt-twist { color: var(--shelf-ink); }
-.nt-shelf-ico { display: inline-flex; flex: none; margin-right: var(--sp-1); color: var(--shelf-ink); }
-.nt-shelf-ico svg { width: var(--ico); height: var(--ico); }
-/* 棚の見出しの ▸ は右端（閉じて ›・開いて ⌄）。 */
-.nt-shelf > .nt-row.is-book > .nt-twist { margin-left: auto; }
-.nt-shelf[data-shelf="archive"] > .nt-row.is-book, .nt-shelf[data-shelf="archive"] > .nt-row.is-book .nt-twist,
-.nt-shelf[data-shelf="archive"] .nt-shelf-ico { color: var(--c-text-3); }
 /* 木の行（ホーム・左の木・紙の中のノート。js/screen-notes.js の treeRows・bookRows）。字下げは --u 段ぶん
    （5段目から半分ずつ）、縦の線は先祖の ▸ の真ん中に一本ずつ（行の style が background-image と位置を持つ）。 */
 .nt-row { --nt-base: 2px; --nt-step: 18px; --nt-mid: 16px; --nt-h: var(--row-h-compact);
@@ -4900,7 +4898,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-ico { display: inline-flex; flex: none; color: var(--c-text-3); }
 .nt-add { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--c-text-2); }
 .nt-add:active { background-color: var(--press-sink); }
-/* ★・最近直した：色の丸ではなく、ノートブックの絵を小さく（10月16日、利用者）。 */
+/* 左の木の★：ノートブックの絵を小さく（10月16日）。 */
 .nt-row.is-flat .nb-ico { width: var(--ico); justify-content: center; margin: 0 var(--sp-1) 0 var(--sp-1); }
 .nt-row.is-flat .nb-ico svg { width: calc(var(--ico-sm) - 2px); height: calc(var(--ico-sm) - 2px); }
 .nt-row.is-flat .nb-ico.is-blank { visibility: hidden; }
@@ -4950,18 +4948,17 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
     border-top: 1px solid var(--c-border);
     overflow-y: auto; overscroll-behavior: contain;
   }
-  /* 畳んだ列（base.css の「左の列を畳む」）に木は入らない——ノートの一覧から行く。 */
+  /* 畳んだ列に木は入らない（本棚の一冊から行く）。 */
   :root.rail-fold[data-screen="notes"] .notes-tree { display: none; }
 }
 @media print { .notes-tree { display: none !important; } }
 .notes-tree > [role="tree"] { display: flex; flex-direction: column; }
-/* 左の木の行はホームの木と同じ（.nt-row）。ここは地の上なので、押したとき・寄せたときは白。
-   頭の「Notes」（ホーム）は出さない——すぐ上の席の行（notes）が同じ所へ行き、印も持つので、二つ並ぶと印が二重になる。 */
+/* 左の木の行は一冊の面と同じ（.nt-row）。地の上なので寄せたときは白。頭の「Notes」は出さない（席の行と印が二重になる）。 */
 .notes-tree .nt-row { font-size: var(--fs-md); }
 .notes-tree .nt-row.is-head { display: none; }
 .notes-tree .nt-grp:has(> .nt-row.is-book) { margin-top: var(--sp-2); }
 @media (hover: hover) { .notes-tree .nt-row:not([aria-current="true"]):hover { background-color: var(--c-surface); } }
-/* ★・最近直した（木の上）。三列のホームは真ん中を出さないので、ここに（1280px から。下の「三列」）。 */
+/* ★（木の上。下の「三列」）。 */
 .notes-tree .nt-quick { display: none; margin-top: var(--sp-2); }
 .notes-tree .nt-quick > .section-title { padding-inline: var(--sp-2); }
 /* 絞り込みのチップ（一覧の上。横へ流れる）。 */
@@ -5082,9 +5079,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .note-t {
   max-width: 100%;
+  font-family: var(--font-display);
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
-  color: var(--c-primary);
+  color: var(--c-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7098,6 +7096,9 @@ button.note-when:active { opacity: var(--press-fade); }
   .cal:not(.is-tall) .cal-dots { height: 64px; padding: 0 var(--sp-1); }
   .cal:not(.is-tall) .cal-name ~ .cal-name ~ .cal-name { display: block; }
   .cal:not(.is-tall) .cal-name ~ .cal-name ~ .cal-name ~ .cal-name { display: none; }
+  #screen-notes[data-season] { --season-art: 460px;
+    --season-fade: linear-gradient(to right, var(--c-bg) calc(100% - var(--season-art)), transparent calc(100% - var(--season-art) * .35)); }
+  .nt-bks { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (min-width: 840px) {
   :root { --desk-read: 760px; --desk-wide: 1180px; }
@@ -7131,39 +7132,7 @@ button.note-when:active { opacity: var(--press-fade); }
     background-size: auto, auto, var(--season-w) auto, auto;
     background-position: 0 0, 0 0, center calc((var(--season-h) - var(--season-w) * var(--season-ar, 0.67)) / 2), 0 0;
   }
-  /* ノートのホーム＝最近直したノートの札（screen-notes.js の recentCards。左の列に木があるときだけ組む）。
-     題・頭の数行・日付。札の背はそろえる（行ごとに一番高い札へ）。 */
-  .nt-cards {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-4);
-    padding: var(--sp-4) var(--sp-4) var(--sp-8);
-  }
-  .nt-card {
-    display: flex; flex-direction: column; gap: var(--sp-2); min-height: 148px; min-width: 0;
-    padding: var(--sp-4); text-align: left; cursor: pointer;
-    background: var(--c-surface); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
-    transition: background var(--m-state) var(--ease);
-  }
-  .nt-card:active { background: var(--press-sink); transition-delay: var(--m-press); }
-  .nt-card:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
-  @media (hover: hover) and (pointer: fine) { .nt-card:hover { background: color-mix(in srgb, var(--c-text) 4%, var(--c-surface)); } }
-  .nt-card-title, .nt-card-lead { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-  .nt-card-title { -webkit-line-clamp: 2; font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--c-text); }
-  .nt-card-lead { -webkit-line-clamp: 3; font-size: var(--fs-sm); line-height: var(--lh-ui); color: var(--c-text-2); }
-  .nt-card-when { display: flex; align-items: center; gap: var(--sp-2); margin-top: auto; font-size: var(--fs-xs); color: var(--c-text-3); }
-  .nt-card-when .nb-ico svg { width: calc(var(--ico-sm) - 2px); height: calc(var(--ico-sm) - 2px); }
-  /* ★は木の上（最近直したは札にあるので木には出さない）。 */
   .notes-tree .nt-quick { display: block; }
-  /* 頭の帯の広重（base.css の「ノートは上から一枚の絵」）：電話と同じ「窓の幅いっぱい」だと、広い幅では帯の背に
-     絵の上の端（暗いぼかしと余白）しか入らず灰の帯に見えた。広い幅では電話くらいの大きさで右に置き、左へ地の色に溶かす。 */
-  .head[data-season]::after {
-    --season-art: 460px;
-    background:
-      linear-gradient(to bottom, color-mix(in srgb, var(--season-k) var(--season-tint, 38%), transparent), transparent var(--season-end)),
-      linear-gradient(to bottom, var(--season-veil) 0, var(--season-veil) calc(var(--season-end) - 70px), var(--c-bg) var(--season-end)),
-      linear-gradient(to right, var(--c-bg) calc(100% - var(--season-art)), transparent calc(100% - var(--season-art) * .35)),
-      var(--season-img, none) right top / var(--season-art) auto no-repeat,
-      var(--c-bg);
-  }
   /* 書く紙（ノート・日記・積み上げ）は読む幅の大きな一枚。真ん中のまま、背は窓のほぼいっぱい。 */
   .sheet.is-note:not(.is-wide), .sheet.is-card {
     width: min(100% - var(--sp-8) * 2, var(--desk-read));
@@ -7238,17 +7207,17 @@ button.note-when:active { opacity: var(--press-fade); }
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
-  :root.notes-dock:not(.notes-mid, .rail-fold) .head ~ .panes > #screen-notes { background: transparent; }
   /* ＋は段の左：一覧の右下、一覧を並べないときは木の右下（木＝--z-bar より前へ）。畳んだ列が細いときは窓の右下のまま
      （段に隠れる——開いたノートを閉じれば出る）。 */
   :root.notes-dock[data-screen="notes"]:is(.notes-three, :not(.rail-fold)).has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
   /* 木の右下：settings の行と畳む口の上に立つ。 */
   :root.notes-dock[data-screen="notes"]:not(.rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 2); bottom: calc(var(--side-pad) + var(--side-row) + var(--sp-3)); }
 }
-/* ノートのホームを二段に（screen-notes.js の homeBody。広い幅で列を畳んだとき・横にした電話）：左に入口・★・最近直した、右に木。 */
+/* ノートのホームを二段に（screen-notes.js の homeBody。840px から）：左に本棚とタグ、右に札と最近直したの一覧。 */
 @media (min-width: 840px) {
-  .nt-home-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-4); align-items: start; }
-  .nt-home-two > .notes-books[role="tree"] { margin-top: var(--sp-2); }
+  .nt-home-two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); align-items: start; }
+  .nt-home-l { margin-right: -8px; } .nt-home-r { margin-left: -8px; }
+  .nt-home-two .nt-bks { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 22px var(--sp-5); }
 }
 /* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
    重ねられるよう、塗りは background-image の一枚で（色の地はそのまま）。透けるカードは下の色で。 */

@@ -37,7 +37,14 @@ const { open, checker } = require("./lib");
   const pos = () => page.evaluate(() => KN.notes.list().map((n) => `${n.id}:${n.pos}:${n.updatedAt}`).sort().join());
   const pos0 = await pos();
 
+  /* 棚は本棚の一冊の面に（R7）。reading を見てから thinking へ。 */
   await page.click('.tab[data-tab="notes"]');
+  await page.click('#screen-notes .nt-bk[data-nb="reading"]');
+  await page.waitForFunction(() => document.querySelector('.nt-shelf[data-shelf="reading"]'));
+  const reading = await page.evaluate(() => ({ ids: [...document.querySelectorAll('.nt-shelf[data-shelf="reading"] .js-tree-note')].map((r) => r.dataset.id).join(),
+    fold: !!document.querySelector('.nt-shelf[data-shelf="reading"] .is-fold') }));
+  await page.click("#head .js-notes-home");
+  await page.click('#screen-notes .nt-bk[data-nb="thinking"]');
   await page.waitForFunction(() => document.querySelector('.nt-shelf[data-shelf="thinking"]'));
   const shelf = () => page.evaluate(() => {
     const g = document.querySelector('.nt-shelf[data-shelf="thinking"]');
@@ -48,14 +55,12 @@ const { open, checker } = require("./lib");
       last: !!fold && g.lastElementChild === fold.parentElement,
       months: [...g.querySelectorAll(".nt-row.is-month")].map((r) => r.innerText.trim()).join("|"),
       old: [...g.querySelectorAll(".js-old-note")].map((r) => r.dataset.id).join(),
-      reading: [...document.querySelectorAll('.nt-shelf[data-shelf="reading"] .js-tree-note')].map((r) => r.dataset.id).join(),
-      readingFold: !!document.querySelector('.nt-shelf[data-shelf="reading"] .is-fold'),
     };
   });
   let s = await shelf();
   t.check("見えるのは最近・★・束だけ（並びの順）", s.shown === "f-a,f-c,f-d,f-h", s.shown);
   t.check("棚の終わりに「前のもの」一行・閉じて始まる・数は出さない", s.fold === "前のもの" && s.foldOpen === "false" && s.last, JSON.stringify(s));
-  t.check("ほかの棚は畳まない", s.reading === "f-r" && !s.readingFold, JSON.stringify(s));
+  t.check("ほかの棚は畳まない", reading.ids === "f-r" && !reading.fold, JSON.stringify(reading));
 
   await page.click('.nt-shelf[data-shelf="thinking"] .nt-row.is-fold');
   await page.waitForTimeout(300);

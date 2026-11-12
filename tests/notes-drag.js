@@ -7,7 +7,7 @@
    同期のファイルの pos・labels.json の books（古い版の books の無いファイルはこちらのまま）／書き出しは木の順・
    order・空のノートブックのフォルダ／localStorage が変わらない。
    画面（マウス・幅のある画面）：押すだけなら開く／行のあいだへ・行の上で中へ・右へずらして段を下げる／元に戻す／
-   閉じた枝の上で待つと開く／ノートブックの行の並べ替え／左の木でも運べる／＋で空のノートブック／
+   閉じた枝の上で待つと開く／ノートブックの行の並べ替え（左の木。本棚の一冊の面の冊の行は運ばない）／左の木でも運べる／＋で空のノートブック／
    Tab・Shift+Tab・Alt+↑↓・↑↓／「⋯」のリンク先を中へ（目次の行だけ・行の順・子孫ごと・控え・元に戻す）。
    画面（指・電話の幅）：長押しで持ち上げて運ぶ／運んでいるあいだ器は送らない／紙の中のノートを右へずらしても紙は戻らない。
 
@@ -22,8 +22,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   const t = checker("notes-drag");
 
   /* ================= データ（幅のある画面で開いて、そのまま画面へ） ================= */
-  /* 1200px（マウスの幅）。左の列に木があるとホームは札なので（docs/desk.md の段7・P2）、ホームの木は列を畳んで運び、
-     左の木を運ぶときだけ開く。 */
+  /* 1200px（マウスの幅）。木は本棚の一冊の面（R7）で列を畳んで運び、左の木を運ぶときだけ開く。 */
   const { browser, page, errors } = await open({ viewport: { width: 1200, height: 900 } });
   await page.evaluate(() => KN.notes.ready());
   const lsSize = () => page.evaluate(() => {
@@ -192,10 +191,10 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   ]));
   await page.evaluate(() => KN.app.foldRail());
   await page.click('.tab[data-tab="notes"]');
-  await page.waitForSelector('#screen-notes .js-book[data-nb="庭"]');
+  await page.click('#screen-notes .nt-bk[data-nb="庭"]');
   const book = (n) => `#screen-notes .js-book[data-nb="${n}"]`;
+  const sideBook = (n) => `.notes-tree .js-book[data-nb="${n}"]`;
   const row = (id) => `#screen-notes .notes-books[role="tree"] .js-tree-note[data-id="${id}"]`;
-  await page.click(`${book("庭")} .nt-twist`);
   await page.waitForSelector(row("n-x1"));
   await page.waitForTimeout(400);   // 枝が伸び終わるまで（--m-grow）
   const garden = () => page.evaluate(() => KN.notes.tree().tops("庭").map((n) => n.title).join());
@@ -261,16 +260,28 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   t.check("閉じた枝の上で待つと開く（運んでいるまま）", sprang && await page.evaluate(() => KN.notes.tree().kids("n-x2").map((n) => n.title).join()) === "二の子,三");
   await page.click(".toast .toast-action");
 
-  /* ノートブックの行の並べ替え */
+  /* 一冊の面の冊の行は運ばない（並びは左の木と設定で） */
   const books0 = await page.evaluate(() => KN.notes.notebooks().join());
+  await carry(book("庭"), async (x) => { const b = await box(row("n-x1")); return [x, b.y + b.height + 4]; });
+  await page.focus(book("庭"));
+  await page.keyboard.press("Alt+ArrowDown");
+  t.check("一冊の面の冊の行は運ばない（指でもキーでも）", await page.evaluate(() => KN.notes.notebooks().join()) === books0);
+
+  /* ノートブックの行の並べ替え（左の木） */
+  await page.evaluate(() => KN.app.foldRail());
+  await page.waitForSelector(sideBook("庭"));
   const firstBook = await page.evaluate(() => KN.notes.notebooks()[0]);
-  await carry(book("庭"), async (x) => { const b = await box(book(firstBook)); return [x, b.y + 2]; });
+  await carry(sideBook("庭"), async (x) => { const b = await box(sideBook(firstBook)); return [x, b.y + 2]; });
   t.check("ノートブックの行を一番上へ", await page.evaluate(() => KN.notes.notebooks()[0]) === "庭", `${books0} → ${await page.evaluate(() => KN.notes.notebooks().join())}`);
+  await page.focus(sideBook("庭"));
+  await page.keyboard.press("Alt+ArrowDown");
+  t.check("ノートブックの行は Alt+↓ で並び", await page.evaluate(() => KN.notes.notebooks()[1]) === "庭");
 
   /* 左の木でも運べる */
   const side = (id) => `.notes-tree .js-tree-note[data-id="${id}"]`;
-  await page.evaluate(() => KN.app.foldRail());
+  if ((await page.$eval(sideBook("庭"), (e) => e.getAttribute("aria-expanded"))) !== "true") await page.click(`${sideBook("庭")} .nt-twist`);
   await page.waitForSelector(side("n-x1"));
+  await page.waitForTimeout(400);   // 枝が伸び終わるまで（--m-grow）
   const sGap = await gapY(side("n-x2k"), side("n-x3"));     // 二 は開いている（ホームと一つ）
   await carry(side("n-x1"), (x) => [x, sGap]);
   t.check("左の木でも運べる", (await garden()) === "二,一,三", await garden());
@@ -288,16 +299,14 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   t.check("Shift+Tab で親の次へ", (await garden()) === "二,三,一", await garden());
   await page.keyboard.press("ArrowDown");
   t.check("↑↓ で行を移る", await page.evaluate(() => document.activeElement && document.activeElement.dataset.id === "n-x1"));
-  await page.focus(book("庭"));
-  await page.keyboard.press("Alt+ArrowDown");
-  t.check("ノートブックの行は Alt+↓ で並び", await page.evaluate(() => KN.notes.notebooks()[1]) === "庭");
 
   /* 空のノートブック（ホームの＋は外した。設定と同じ口） */
   await page.evaluate(() => { KN.screens.notes.newBook(); });
   await page.waitForSelector(".sheet.is-open .js-input");
   await page.fill(".sheet.is-open .js-input", "新しい棚");
   await page.click(".sheet.is-open .js-ok");
-  t.check("空のノートブック（木の終わりに）", await page.waitForSelector(book("新しい棚"), { timeout: 3000 }).then(() => true, () => false)
+  await page.evaluate(() => KN.screens.notes.again());
+  t.check("空のノートブック（本棚に）", await page.waitForSelector('#screen-notes .nt-bk[data-nb="新しい棚"]', { timeout: 3000 }).then(() => true, () => false)
     && await page.evaluate(() => KN.notes.notebooks().slice(-1)[0]) === "新しい棚");
 
   /* リンク先を中へ（「⋯」）：目次の行（リンクだけの行）が指すノートを、行の順に中の頭へ。文の途中・上の段・消したものは外す */
@@ -345,8 +354,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
     .concat(["1", "2", "3"].map((k, i) => ({ id: `n-k${k}`, title: `中${k}`, body: "x", notebook: "指", parent: "n-f1", tags: [], fav: false,
       createdAt: `2026-09-03T0${i}:00:00.000Z`, updatedAt: `2026-09-03T0${i}:00:00.000Z`, deletedAt: null })))));
   await P.click('.tab[data-tab="notes"]');
-  await P.waitForSelector('#screen-notes .js-book[data-nb="指"]');
-  await P.tap('#screen-notes .js-book[data-nb="指"] .nt-twist');
+  await P.tap('#screen-notes .nt-bk[data-nb="指"]');
   await P.waitForSelector('#screen-notes .js-tree-note[data-id="n-f4"]');
   await P.waitForTimeout(400);   // 枝が伸び終わるまで（--m-grow）
   const cdp = await m.ctx.newCDPSession(P);
@@ -372,7 +380,7 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   t.check("運んでいるあいだ器は送らない", Math.abs(sc1 - sc0) < 2, `${sc0} → ${sc1}`);
   /* 横にずらして段を下げる（指3 を一つ右へ → 一つ上の兄弟 指2 の中）。面は替わらない */
   await hold(fr("n-f3"), async (x) => { const b = await fbox(fr("n-f3")); return [x + 70, b.y - 1]; });
-  t.check("指で右へずらすと段が下がる（ホームの木）", await P.evaluate(() => (KN.notes.tree().parentOf("n-f3") || {}).id) === "n-f2"
+  t.check("指で右へずらすと段が下がる（一冊の面の木。面は戻らない）", await P.evaluate(() => (KN.notes.tree().parentOf("n-f3") || {}).id) === "n-f2"
     && await P.evaluate(() => document.querySelector(".screen.is-active").dataset.screen) === "notes");
   await P.click(".toast .toast-action");
   t.check("元に戻す（指）", (await fingers()) === "指1,指4,指2,指3", await fingers());

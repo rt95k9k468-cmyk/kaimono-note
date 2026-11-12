@@ -5,7 +5,7 @@
    - ＋の紙・据えたノート・設定（外観の一枚）を開いたまま縦へ回して戻す：開いたまま・島の下に押せるもの無し
    - 背の低い窓を使い切る：題と週の暦は一段（帯の背 90px まで）・からだと買うものは二段・設定は見出しごとに二段
    - ＋は列の底・今日は時間割｜時刻なし・月は右に立てて紙は題の下の左・棚のカードは段で割れない
-   - ＋の紙は頭が左・中身が右（窓に収まる）・ノートのホームは二段（左に最近直した、右に木）・日記の「保存する」は開いてすぐ見える
+   - ＋の紙は頭が左・中身が右（窓に収まる）・ノートのホームは二段（左に本棚、右に札と最近直した）・日記の「保存する」は開いてすぐ見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
 const { open, checker } = require("./lib");
 
@@ -197,11 +197,11 @@ function under(safe) {
     await wait(600);
     const home = await page.evaluate(() => {
       const two = document.querySelector("#screen-notes .nt-home-two");
-      const l = two && two.querySelector(".nt-home-l"), tr = two && two.querySelector('.notes-books[role="tree"]');
-      return { two: !!two, side: !!(l && tr) && tr.getBoundingClientRect().left >= l.getBoundingClientRect().right };
+      const l = two && two.querySelector(".nt-home-l .nt-bks"), r = two && two.querySelector(".nt-home-r .notes-list");
+      return { two: !!two, side: !!(l && r) && r.getBoundingClientRect().left >= l.getBoundingClientRect().right };
     });
-    t.check(`${at}：ノートのホームは二段（左に最近直した、右に木）`, home.two && home.side, JSON.stringify(home));
-    await page.locator("#screen-notes .nt-row", { hasText: "一つめ" }).first().click();
+    t.check(`${at}：ノートのホームは二段（左に本棚、右に札と最近直した）`, home.two && home.side, JSON.stringify(home));
+    await page.locator("#screen-notes .note-row .js-open", { hasText: "一つめ" }).first().click();
     await page.waitForSelector(".sheet.is-note.is-open.is-docked", { timeout: 3000 }).catch(() => {});
     await wait(500);
     const dock = async () => page.evaluate(() => {

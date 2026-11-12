@@ -174,7 +174,7 @@
 | `notes-drag.js` | ノートの木を手で組み替える（notes-unify.md「並び」）：pos は動かしたノートだけ・有る無しが混ざっても… |
 | `urge-quick.js` | 飲みたくなったの紙：はじめは二段で強さだけで保存・札は固定で増えない・あとで記入・旧い記録を書き換えず読みかえる・書き… |
 | `notes-title-tree.js` | 目次をコピー（notes.md「題の木」）：ノートブック → 字下げで深さ・id の頭6字・空は □・本文と最近削除は… |
-| `notes-six.js` | ノートを6つに分ける（notes.md「6つの棚」）：棚のカード・すべてのノートは一番上・使っていない冊を消す・表のと… |
+| `notes-six.js` | ノートを6つに分ける（notes.md「6つの棚」）：本棚と一冊の面・使っていない冊を消す・表のとおり冊と親だけ付… |
 | `notes-ask-move.js` | 冊なしの問いのノートを thinking へ（thinking.md「考えたことは thinking へ」）：対象は冊… |
 | `notes-fold.js` | 前のもの（notes-structure.md の段1）：thinking の一段目で★・束でなく30日触っていないノ… |
 | `notes-bundle.js` | 話題を立てる道（notes-structure.md の段2）：「⋯」の束ねる（同じ段から選ぶ・題が空なら押せない・話… |

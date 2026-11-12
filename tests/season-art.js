@@ -118,7 +118,7 @@ const ROOT = path.resolve(__dirname, "..");
   });
   let rn = await readNotes();
   c.check("ノートの地に今日の候の色と広重（画面が敷く。帯には置かない）", !rn.head && rn.k === String(rn.want) && rn.img && rn.c === await page.evaluate((k) => KN.seasonArt.colorOf(k), rn.want)
-    && rn.bg.includes(`/img/season/k${String(rn.want).padStart(2, "0")}.webp`) && (rn.bg.match(/linear-gradient/g) || []).length === 2, JSON.stringify(rn).slice(0, 240));
+    && rn.bg.includes(`/img/season/k${String(rn.want).padStart(2, "0")}.webp`) && (rn.bg.match(/linear-gradient/g) || []).length === 3, JSON.stringify(rn).slice(0, 240));
   await page.evaluate(() => { KN.store.update((s) => { s.settings.notesSeasonArt = false; }); KN.screens.notes.render(); });
   c.check("ノートの設定で外せば敷かない（daily はそのまま）", await page.evaluate(() => !document.querySelector("#screen-notes").hasAttribute("data-season")
     && document.querySelector("#screen-archive").hasAttribute("data-season")));

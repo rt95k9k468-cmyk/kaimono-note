@@ -5,10 +5,10 @@
    更新日は動かない）／ノートブックを替えると一番上へ／消すと子孫も同じ時刻の印・戻すと一緒に戻る
    （先に消した子はそのまま）／中にノートがあれば空でも drop しない／書き出しに parent・復元で合わせても
    今あるノートの親はこちらのまま／localStorage が変わらない。
-   画面：最初の面はホーム（一番上に「すべてのノート」＝今の一覧と「問い」の二枚・★・最近直した（行・3件）・ノートブックの木）／
-   ③：ノートブックはその場に開く（面は移らない）・▸ で開け閉め・段の縦線・開いた枝の三段は上に留まる・5段目から
-   字下げは半分ずつ・木から開いた紙を閉じるとその行に印（移したら移した先で）・頭のある冊は名前で頭の紙・＋はその冊に
-   （頭の中に）・道すじの冊（頭なし）はホームの木に印／帯に ‹ と面の名前／一覧の子のカードに親の題（頭は重ねない）／
+   画面：最初の面はホーム（R7：さがす・札「すべて」「★」「問い」・最近（表紙のカード）・本棚。数は出さない）／
+   本棚の一冊＝その冊の面（帯に名前と ‹・中は木）・▸ で開け閉め・段の縦線・開いた枝の三段は上に留まる・5段目から
+   字下げは半分ずつ・木から開いた紙を閉じるとその行に印（移したら移した先の冊の面で）・頭のある冊は本棚から頭の紙・＋はその冊に
+   （頭の中に）・道すじの冊（頭なし）はその冊の面で冊の行に印／帯に ‹ と面の名前／一覧の子のカードに親の題（頭は重ねない）／
    書く紙の道すじ・中のノート（木の行）・紙を重ねる／「⋯」の中にノートを足す・移す／席をもう一度押すとホーム／
    ホームで探すと一覧。
    段1b：帯の道すじ「Notes ›」／右へ払って戻る（どこからでも）／書き出しはフォルダの入れ子（頭に id・parent）／幅のある画面の木。
@@ -150,23 +150,25 @@ const { open, checker } = require("./lib");
   t.check("最初の面はホーム（チップは無い）", !(await page.$("#screen-notes .notes-chips")) && !!(await page.$("#screen-notes .notes-books .js-all")));
   t.check("帯はホームでは Notes だけ", (await headName()) === "Notes" && !(await page.$("#head .js-notes-back")));
   const secs = await ground(".notes-sec");
-  t.check("ホームに★・最近直した（見出し「ノートブック」は無い）", secs.join() === "★,最近直した", secs.join());
-  const nRecent = await page.evaluate(() => document.querySelectorAll("#screen-notes .notes-sec")[1].nextElementSibling.children.length);
-  t.check("最近直したは3件まで（行。カードは「すべてのノート」だけ）", nRecent === 3 && !(await page.$("#screen-notes .notes-books .note-row")), String(nRecent));
-  const treeTop = '.notes-books[role="tree"] > .nt-row, .notes-books[role="tree"] > .nt-grp > .nt-row';
-  const heads = await ground(treeTop);
+  t.check("ホームは 最近・本棚（見出し「ノートブック」は無い）", secs.join() === "最近,本棚", secs.join());
+  const nRecent = await page.$$eval("#screen-notes .nt-covers .nt-cover", (r) => r.length);
+  t.check("最近は表紙のカード（木と行はホームに無い）", nRecent >= 3 && nRecent <= 8 && !(await page.$('#screen-notes .notes-books[role="tree"]')), String(nRecent));
   const gates = await ground(".nt-gates > .nt-gate");
-  const first = await page.evaluate(() => document.querySelector("#screen-notes .js-body").firstElementChild.classList.contains("nt-gates"));
-  t.check("一番上に「すべてのノート」「問い」の二枚、木はノートブック", gates.join() === "すべてのノート,問い" && first
-    && !heads.includes("すべてのノート") && heads.includes("暮らし") && heads.includes("仕事"), `${gates.join()} / ${heads.join()}`);
+  const first = await page.evaluate(() => [...document.querySelector("#screen-notes .js-body").children].slice(0, 2).map((e) => e.className).join("|"));
+  t.check("一番上に さがす、次に札「すべて」「★」「問い」", gates.join() === "すべて,★,問い" && /nt-find\|.*nt-gates/.test(first), `${gates.join()} / ${first}`);
+  const shelf = await page.$$eval("#screen-notes .nt-bks .nt-bk", (bs) => bs.map((b) => b.dataset.nb));
+  const shelfText = (await ground(".nt-bks")).join("");
+  t.check("本棚にノートブック（題箋は名前だけ・数は出さない）", shelf.includes("暮らし") && shelf.includes("仕事") && !/\d/.test(shelfText), shelf.join());
+  const bk = (nb) => `#screen-notes .nt-bk[data-nb="${nb}"]`;
   const book = (nb) => `#screen-notes .js-book[data-nb="${nb}"]`;
   const note = (title) => `#screen-notes .notes-books[role="tree"] .js-tree-note:has(> .nt-name:text-is("${title}"))`;
+  const home = async () => { await page.click("#head .js-notes-home"); await page.waitForFunction(() => !document.querySelector("#head .js-notes-back")); };
 
-  /* ③：ノートブックはその場に開く（面は移らない） */
-  await page.click(`${book("暮らし")} .nt-name`);
+  /* 本棚の一冊：その冊の面（中は木） */
+  await page.click(bk("暮らし"));
   await page.waitForSelector(note("家"));
-  t.check("頭の無いノートブックは名前でもその場に開く（面は移らない）", !(await page.$("#head .js-notes-back"))
-    && (await page.$eval(book("暮らし"), (e) => e.getAttribute("aria-expanded"))) === "true");
+  t.check("頭の無いノートブックは本棚からその冊の面（帯に名前と ‹・冊の行は閉じない）", (await headName()) === "暮らし" && !!(await page.$("#head .js-notes-back"))
+    && (await page.$eval(book("暮らし"), (e) => e.getAttribute("aria-expanded"))) === null && !(await page.$(`${book("暮らし")} .nt-twist`)));
   const tops = await ground('.notes-books[role="tree"] .js-tree-note .nt-name');
   t.check("開くと一番上のノートだけ（中は ▸ で）", tops.includes("家") && !tops.includes("台所") && !tops.includes("鍋"), tops.join());
   await page.click(`${note("家")} .nt-twist`);
@@ -181,7 +183,8 @@ const { open, checker } = require("./lib");
   t.check("留まる行は sticky（箱は送る器にしない）", sticky === "sticky"
     && (await page.$eval('#screen-notes .notes-books[role="tree"]', (e) => getComputedStyle(e).overflowY)) === "clip", sticky);
   /* 深い枝：5段目から字下げは半分ずつ */
-  await page.click(`${book("深い")} .nt-name`);
+  await home();
+  await page.click(bk("深い"));
   for (let i = 1; i <= 5; i++) {
     await page.waitForSelector(note(`深さ${i}`));
     await page.click(`${note(`深さ${i}`)} .nt-twist`);
@@ -190,11 +193,14 @@ const { open, checker } = require("./lib");
   const us = await page.$$eval('#screen-notes .js-tree-note', (r) => r.filter((e) => /^深さ\d$/.test(e.textContent.trim()))
     .map((e) => e.style.getPropertyValue("--u")));
   t.check("5段目から字下げは半分ずつ", us.join() === "1,2,3,4,4.5,5", us.join());
-  await page.click(`${book("深い")} .nt-twist`);
-  t.check("▸ で閉じる", await page.waitForFunction(() => !document.querySelector('#screen-notes .js-tree-note[data-id="n-deep-1"]'), null, { timeout: 3000 })
+  await page.click(`${note("深さ1")} .nt-twist`);
+  t.check("▸ で閉じる", await page.waitForFunction(() => !document.querySelector('#screen-notes .js-tree-note[data-id="n-deep-2"]'), null, { timeout: 3000 })
     .then(() => true, () => false));
 
-  /* 木から開いた紙を閉じると、木のその行に印（移したら、移した先で） */
+  /* 木から開いた紙を閉じると、木のその行に印（移したら、移した先の冊の面で） */
+  await home();
+  await page.click(bk("暮らし"));
+  await page.waitForSelector(note("鍋"));
   await page.click(`${note("鍋")} .nt-name`);
   await openPapers(1);
   await top(".js-close").click();
@@ -213,40 +219,39 @@ const { open, checker } = require("./lib");
   await openPapers(0);
   const cur2 = await page.evaluate(() => {
     const r = document.querySelector('#screen-notes .notes-books[role="tree"] [aria-current="true"]');
-    const g = r && r.closest('.nt-grp:has(> .js-book)');
-    return [r ? r.textContent.trim() : "", g ? g.querySelector(".js-book").dataset.nb : ""].join("@");
+    const g = document.querySelector('#screen-notes .notes-books[role="tree"] .js-book');
+    return [r ? r.textContent.trim() : "", g ? g.dataset.nb : ""].join("@");
   });
-  t.check("移したノートは、閉じると移した先の枝を開いて印", cur2 === "鍋@仕事", cur2);
+  t.check("移したノートは、閉じると移した先の冊の面で印", cur2 === "鍋@仕事" && (await headName()) === "仕事", cur2);
   await page.evaluate((i) => KN.notes.move(i.grand, i.kid), ids);
 
-  /* 頭のある冊：名前で頭の紙（中のノートは木の行）、＋は頭の中に */
-  await page.click(`${book("冊")} .nt-name`);
+  /* 頭のある冊：本棚から頭の紙（中のノートは木の行）、＋は頭の中に */
+  await home();
+  await page.click(bk("冊"));
   await openPapers(1);
   const headKids = await texts(".note-kids .nt-name");
-  t.check("頭のある冊は名前で頭の紙（中のノートは木の行）", (await top(".js-title").inputValue()) === "冊の頭" && headKids.join() === "冊の子", headKids.join());
+  t.check("頭のある冊は本棚から頭の紙（中のノートは木の行）", (await top(".js-title").inputValue()) === "冊の頭" && headKids.join() === "冊の子", headKids.join());
   await top(".js-close").click();
   await openPapers(0);
-  await page.click(`${book("冊")} .nt-add`);
-  await openPapers(1);
-  await page.keyboard.type("冊に足した");
-  await top(".js-close").click();
-  await openPapers(0);
-  const added = await page.evaluate(() => { const n = KN.notes.list().find((x) => x.title === "冊に足した" || x.body.includes("冊に足した")); return n ? [n.parent, n.notebook].join() : ""; });
-  t.check("頭のある冊の＋は頭の中に", added === "n-head,冊", added);
+  await page.click(bk("暮らし"));
+  await page.waitForSelector(book("暮らし"));
   await page.click(`${book("暮らし")} .nt-add`);
   await openPapers(1);
   await page.keyboard.type("暮らしに足した");
   await top(".js-close").click();
   await openPapers(0);
   const added2 = await page.evaluate(() => { const n = KN.notes.list().find((x) => x.title === "暮らしに足した" || x.body.includes("暮らしに足した")); return n ? [n.parent || "", n.notebook].join() : ""; });
-  t.check("頭の無い冊の＋はその冊の一番上に", added2 === ",暮らし", added2);
+  t.check("冊の面の＋はその冊の一番上に", added2 === ",暮らし", added2);
 
-  /* 道すじの冊：頭の無い冊は、紙を閉じてホームの木のその冊に印 */
+  /* 道すじの冊：頭の無い冊は、紙を閉じてその冊の面へ・冊の行に印 */
+  await home();
   await page.evaluate((i) => KN.screens.notes.open(i.grand), ids);
   await openPapers(1);
   await page.click('.sheet.is-note .note-path button:has-text("暮らし")');
   await openPapers(0);
-  t.check("道すじの冊（頭なし）→ ホームの木のその冊に印", (await page.$eval(book("暮らし"), (e) => e.getAttribute("aria-current"))) === "true");
+  t.check("道すじの冊（頭なし）→ その冊の面で冊の行に印", (await headName()) === "暮らし"
+    && (await page.$eval(book("暮らし"), (e) => e.getAttribute("aria-current"))) === "true");
+  await home();
 
   /* 降りた面（すべてのノート）は右へ払って戻る（段1b。左端でなくても、面のどこからでも） */
   await page.click("#screen-notes .notes-book.js-all");

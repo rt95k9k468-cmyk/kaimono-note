@@ -145,15 +145,12 @@ const importBtn = (page) => page.evaluate(() => {
   await page.evaluate(() => KN.app.showScreen("notes"));
   await page.waitForSelector("#screen-notes .notes-books");
   const recent = await page.evaluate(() => {
-    const sec = [...document.querySelectorAll("#screen-notes .notes-sec")].find((e) => e.textContent.includes("最近直した"));
-    return sec ? [...sec.nextElementSibling.querySelectorAll(".nt-name")].map((e) => e.textContent.trim()) : [];
+    const sec = [...document.querySelectorAll("#screen-notes .notes-sec")].find((e) => e.textContent.trim() === "最近");
+    return sec ? [...sec.nextElementSibling.querySelectorAll(".nt-cover-t")].map((e) => e.textContent.trim()) : [];
   });
-  t.check("最近直した：取り込んだまま触っていないものは出さない", recent.includes("行事") && !recent.includes("授業") && !recent.includes("肉じゃが"), recent.join());
-  await page.click('#screen-notes .js-book[data-nb="仕事"] .nt-twist');
-  await page.waitForSelector('#screen-notes .js-tree-note[data-id="n-gyoji"]');
-  const inTree = await page.$$eval('#screen-notes .js-book[data-nb="仕事"] ~ .nt-grp > .js-tree-note .nt-name', (r) => r.map((e) => e.textContent.trim()));
-  t.check("ホームの木：冊を開くと頭の中が一番上（Notion の並び・頭そのものは並べない）", inTree.join() === "行事,授業,来年", inTree.join());
-  await page.click('#screen-notes .js-book[data-nb="仕事"] .nt-name');
+  t.check("最近：取り込んだまま触っていないものは出さない", recent.includes("行事") && !recent.includes("授業") && !recent.includes("肉じゃが"), recent.join());
+  /* 本棚の頭のある冊は頭の紙（R7。中の木は紙の「中のノート」）。 */
+  await page.click('#screen-notes .nt-bk[data-nb="仕事"]');
   await page.waitForSelector(".sheet.is-note.is-open .note-kids .nt-row");
   const headSheet = await page.evaluate(() => ({
     title: document.querySelector(".sheet.is-note.is-open .js-title").value,

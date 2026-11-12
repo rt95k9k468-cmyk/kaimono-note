@@ -199,16 +199,16 @@ print(json.dumps(out, ensure_ascii=False))
   await back();
   t.check("タグが無くなったら notes の一枚にタグの行は出ない", !/\nタグ\n/.test("\n" + (await topText()) + "\n"));
 
-  /* ホームの木のノートブックは選んだ色（仕事に色を付けて確かめる。カードは「すべてのノート」にだけ。③）。 */
+  /* 本棚の表紙は選んだ色（仕事に色を付けて確かめる。R7）。 */
   await page.evaluate(() => {
     KN.notes.setColors((all) => { all.nb = { "仕事": "#e07fa8" }; });
     KN.screens.notes.render();
   });
   const card = await page.evaluate(() => {
-    const ico = document.querySelector('#screen-notes .js-book[data-nb="仕事"] .nb-ico');
+    const ico = document.querySelector('#screen-notes .nt-bk[data-nb="仕事"] .nt-cv');
     return ico ? ico.style.getPropertyValue("--cat") : "";
   });
-  t.check("ホームの木のノートブックも選んだ色", card === "#e07fa8", card);
+  t.check("本棚の表紙も選んだ色", card === "#e07fa8", card);
 
   /* ---- 書き出し：中身 ---- */
   await page.evaluate((x) => KN.notes.setLabels(x.a, { tags: ["料理"] }), ids);

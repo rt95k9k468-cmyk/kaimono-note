@@ -1,8 +1,8 @@
 /* 余白の物差し（docs/log/design-review.md 10節の P7）。席ごと・幅ごとに、窓の端からカードまで・段の間・カードの中を測る。
    - 電話（393）：今の値をそのまま見張る（一画素も変えない）。カードは窓の端から 16px（買うものの棚は 12px、設定は 20px）。
-   - 段を並べる席（840px〜：からだの段組み・ノートの札・設定の二段）：中身は --desk-wide 1180px まで。
+   - 段を並べる席（840px〜：からだの段組み・ノートのホームの二段・設定の二段）：中身は --desk-wide 1180px まで。
      窓の端からカードまで＝ max(16, (席の幅 − 1180) / 2 + 16)、段の間 16px、札の行の間 16px。
-   - カードの中は電話と同じ（ノートの札 16px。からだのカードは R4 で 14px＝見本の #health）。角は札の5段のまま（ここでは見ない。look-tokens・shape-tokens）。
+   - カードの中は電話と同じ（からだのカードは R4 で 14px＝見本の #health）。角は札の5段のまま（ここでは見ない。look-tokens・shape-tokens）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/gutters.js */
 const { open, checker } = require("./lib");
 
@@ -71,11 +71,12 @@ const near = (a, b) => Math.abs(a - b) <= 1;
     t.check(`${w} からだ：カードの行の間 16px`, dg.v.every((g) => near(g, 16)), JSON.stringify(dg.v));
 
     await seat("notes");
-    const n = await M("#screen-notes .nt-card");
+    /* ノートのホーム（R7）：左に本棚、右に札と最近直したの一覧。 */
+    const n = await M("#screen-notes .nt-home-two :is(.nt-bks, .nt-gates, .notes-list)");
     const ne = n.length ? edgeOf(n[0].seat) : 0, ng = gaps(n);
-    t.check(`${w} ノートの札：窓の端から ${ne}px・札の間 16px・中 16px`,
-      n.length > 1 && near(Math.min(...n.map((c) => c.l)), ne) && ng.h.every((g) => near(g, 16)) && ng.v.every((g) => near(g, 16)) && n.every((c) => c.pad === 16),
-      JSON.stringify({ l: Math.min(...n.map((c) => c.l)), ne, ...ng }));
+    t.check(`${w} ノートのホーム：窓の端から ${ne}px・段の間 16px`,
+      n.length > 1 && near(Math.min(...n.map((c) => c.l)), ne) && near(Math.min(...n.map((c) => c.r)), ne) && ng.h.length > 0 && ng.h.every((g) => near(g, 16)),
+      JSON.stringify({ l: Math.min(...n.map((c) => c.l)), r: Math.min(...n.map((c) => c.r)), ne, h: ng.h }));
 
     if (w >= 1280) {
       await page.keyboard.press(",");

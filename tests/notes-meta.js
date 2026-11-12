@@ -178,10 +178,11 @@ const { open, checker } = require("./lib");
     const od = await page.$eval(`#screen-notes .note-row[data-id="${other}"] .note-d`, (e) => e.textContent.trim());
     t.check("時刻のあるノートは年月日と時刻", /^\d{4}年\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}$/.test(od), od);
   }
-  const tc = await page.$eval("#screen-notes .note-t", (e) => [getComputedStyle(e).color,
-    getComputedStyle(document.documentElement).getPropertyValue("--c-primary").trim()]);
-  const rgb = await page.evaluate((c) => { const d = document.createElement("i"); d.style.color = c; document.body.append(d); const v = getComputedStyle(d).color; d.remove(); return v; }, tc[1]);
-  t.check("カードの題はテーマ色", tc[0] === rgb, JSON.stringify(tc));
+  /* 題は墨の明朝（R7、docs/redesign.md 6節。前はテーマ色）。 */
+  const tc = await page.$eval("#screen-notes .note-t", (e) => [getComputedStyle(e).color, getComputedStyle(e).fontFamily,
+    getComputedStyle(document.documentElement).getPropertyValue("--c-text").trim()]);
+  const rgb = await page.evaluate((c) => { const d = document.createElement("i"); d.style.color = c; document.body.append(d); const v = getComputedStyle(d).color; d.remove(); return v; }, tc[2]);
+  t.check("カードの題は墨の明朝", tc[0] === rgb && /Mincho|Serif/.test(tc[1]), JSON.stringify(tc));
 
   /* ---- 段4.5：設定で作った日の順 ---- */
   await page.evaluate(() => { KN.store.update((s) => { s.settings.notesOrder = "created"; }); KN.screens.notes.render(); });

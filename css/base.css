@@ -451,7 +451,7 @@
    明朝の太字は端末の W6（取りに行かない。字が欠けない、は本文と同じ約束）。 */
 :root { --font-display: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", serif; }
 :root[data-head="same"] { --font-display: var(--font); }
-.topbar-title, .sheet-title, .section-title.is-block-head, .arc-log-head h2, .arc-log-day b, .note-head-t, .shelf-head { font-family: var(--font-display); }
+.topbar-title, .sheet-title, .section-title.is-block-head, .arc-log-head h2, .arc-log-day b, .note-head-t, .shelf-head, .note-title-in, .nv-h { font-family: var(--font-display); }
 
 /* ---- 暗い面（墨）。システムに従う @media と、自分で選んだ [data-theme="dark"] は一行も違えない（tests/look-tokens.js）。
    塗り（-fill）は --c-primary を引くので、暗い面では明るい朱に白ではなく地の黒が乗る（--c-text-on）。 */

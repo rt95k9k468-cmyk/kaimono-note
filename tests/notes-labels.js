@@ -116,8 +116,9 @@ const { open, checker } = require("./lib");
   t.check("前の版を取らない", (await page.evaluate((i) => KN.notes.versions(i.a).then((v) => v.length), ids)) === 0);
 
   /* ---- カード ---- */
+  /* 一覧は一枚のカードに行を重ねる（R7）。面と角はカード（.notes-list）の。 */
   const card = await page.$eval(`#screen-notes .note-row[data-id="${ids.a}"]`, (e) => {
-    const cs = getComputedStyle(e);
+    const cs = getComputedStyle(e.closest(".notes-list"));
     const dot = e.querySelector(".note-tag .chip-dot");
     return {
       card: e.classList.contains("is-card"),
@@ -125,11 +126,12 @@ const { open, checker } = require("./lib");
       nb: (e.querySelector(".note-nb") || {}).textContent,
       tags: [...e.querySelectorAll(".note-tag")].map((x) => x.textContent.trim()),
       dot: dot ? getComputedStyle(dot).backgroundColor : "",
-      left: e.getBoundingClientRect().left,
+      left: e.closest(".notes-list").getBoundingClientRect().left,
+      cover: !!e.querySelector(".nt-cv.is-mini"),
     };
   });
-  t.check("一覧はカード（地と違う面・丸角・端から離れる）",
-    card.card && card.bg !== "rgba(0, 0, 0, 0)" && card.radius >= 8 && card.left >= 12, JSON.stringify(card));
+  t.check("一覧はカード（地と違う面・丸角・端から離れる）・行の右に表紙の四角",
+    card.card && card.bg !== "rgba(0, 0, 0, 0)" && card.radius >= 8 && card.left >= 12 && card.cover, JSON.stringify(card));
   t.check("カードの下にノートブックとタグ", (card.nb || "").trim() === "旅" && card.tags.join(",") === "京都,予定", JSON.stringify(card));
   t.check("タグは色の丸", /^rgb/.test(card.dot) && card.dot !== "rgba(0, 0, 0, 0)", card.dot);
   const dotSame = await page.evaluate(() => {

@@ -22,8 +22,8 @@
      { k: "fav" } ／ { k: "nb", v: 名前 } ／ { k: "tag", v: 名前 } */
   let pick = null;
   /* 面の重なり（段1。docs/notes-unify.md「画面」）。いちばん下はホーム。記憶だけに持ちます。
-     { k: "home" } ／ { k: "list" }（すべてのノート＝今の一覧）／ { k: "ask" }（問い）。y は降りる前の送り。
-     ノートブックは面にしない——ホームの木でその場に開く（③。利用者「面が次々に移ると階層が見えづらい」）。 */
+     { k: "home" } ／ { k: "list", pick? }（すべてのノート＝今の一覧）／ { k: "ask" }（問い）／ { k: "nb", v }（本棚の一冊＝その冊の木。
+     R7、docs/redesign.md 6節）。y は降りる前の送り。 */
   let pages = [{ k: "home" }];
   const page = () => pages[pages.length - 1];
   /* 開いている書く紙（重ねた順）。道すじの親へ戻るとき、重ねた紙にあればそこまで閉じる。 */
@@ -73,11 +73,12 @@
      ——丸が見えなくなるので）。 */
   const TAG_COLORS = ["#5ea55a", "#d4695f", "#d79a4a", "#5b9bd5", "#4fb3c4", "#9b7ede", "#48b39a", "#e07fa8"];
   const COLOR_NAMES = ["緑", "赤", "橙", "青", "水色", "紫", "青緑", "桃"];
-  function hashColor(name) {
+  function hashOf(name) {
     let h = 0;
     for (const c of String(name)) h = (h * 31 + c.codePointAt(0)) >>> 0;
-    return TAG_COLORS[h % TAG_COLORS.length];
+    return h;
   }
+  const hashColor = (name) => TAG_COLORS[hashOf(name) % TAG_COLORS.length];
   /* 設定（notes →「ノートブック」「タグ」）で選んだ色があればそれ。無ければ
      名前から決まった一色。置き場は `KN.notes.colors()`（ノートの入れ物。読めない日は前の
      `settings.noteColors`）——無い・知らない色は名前の色へ戻る。kind は "nb"・"tag"。 */
@@ -92,6 +93,13 @@
   /* 6つの棚は棚の絵と色（2026年10月15日、利用者の頼み）。 */
   const book = (b) => (SHELF[b] ? html`<span class="nb-ico" data-shelf="${b}">${shelfIcon(SHELF[b].ico)}</span>`
     : html`<span class="nb-ico" style="--cat:${colorOf("nb", b)}">${icon("book")}</span>`);
+  /* 表紙（docs/redesign.md 4節）：ノートブックの色＋和柄（css の gradient）＋題箋。記録に欄を足さず、名前から引く。
+     6つの棚は棚の色と決まった柄、ほかは名前から。冊の無いノートは無地。 */
+  const PATTERNS = ["asa", "shima", "nami", "ichi", "ten"];
+  const SHELF_PT = { thinking: "asa", reading: "nami", teaching: "shima", learning: "ichi", living: "ten", archive: "shima" };
+  const cover = (nb) => (!nb ? html`data-pt="none"`
+    : SHELF[nb] ? html`data-shelf="${nb}" data-pt="${SHELF_PT[nb]}"`
+      : html`style="--cat:${colorOf("nb", nb)}" data-pt="${PATTERNS[(hashOf(nb) >>> 3) % PATTERNS.length]}"`);
 
   function mount(el) {
     root = el;
@@ -155,7 +163,7 @@
         },
       });
     }
-    /* ホームの中身は木の有無で変わる（deskHome）。組み直せば木も塗る。 */
+    /* ホームの中身は幅で変わる（電話は一列・広い幅は二段）。組み直せば木も塗る。 */
     window.matchMedia(WIDE).addEventListener("change", () => { seatMarks(); renderBody(); });
     /* 右の段の印は器の幅で（窓の幅・左の列を畳むで変わる）。 */
     if (window.ResizeObserver) new ResizeObserver(seatMarks).observe(root);
@@ -277,6 +285,7 @@
     box.classList.remove("nt-home-two");
     if (query || p.k === "list") listBody(box, t, keepX);
     else if (p.k === "ask") askBody(box);
+    else if (p.k === "nb") bookBody(box, t, p.v);
     else homeBody(box, t);
   }
 
@@ -301,44 +310,89 @@
 
   const secTitle = (text) => node(html`<div class="notes-sec"><div class="section-title">${text}</div></div>`);
 
-  /** ホーム：「すべてのノート」「問い」・★・最近直した（行）・ノートブックの木。数は出しません。
-      ノートブックを足すのは設定、新しいノートは右下の＋（docs/notes.md「6つの棚」）。 */
+  /** ホーム（R7、docs/redesign.md 6節）：さがす → 札（すべて・★・問い）→ 最近（表紙のカードを横へ送る）→ 本棚 → タグ。
+      広い幅は二段：本棚とタグ｜札と最近直したの一覧。数は出しません（冊数も）。ノートブックの木は本棚の一冊の中
+      （{ k: "nb" } の面）と、広い幅の左の列。ノートブックを足すのは設定、新しいノートは右下の＋（docs/notes.md「6つの棚」）。 */
   function homeBody(box, t) {
     const all = N().list();
-    /* 左の列に木がある幅では、ホームは最近直したノートの札（木と同じものを二度出さない。docs/desk.md 段7・P2）。 */
-    if (deskHome()) { box.append(recentCards(recentOf(all, 12))); return; }
-    /* 広い幅で列を畳んだ（横にした電話はいつも）ときは、入口・★・最近直したを左の段、木を右の段に
-       （一列のまま窓の幅に伸ばさない。docs/desk.md「電話を横に」）。 */
     const two = window.matchMedia(WIDE).matches;
-    const home = box;
-    if (two) { home.classList.add("nt-home-two"); box = node(html`<div class="nt-home-l"></div>`); home.append(box); }
     const gates = node(html`<div class="notes-books nt-gates" role="list"></div>`);
     const gate = (label, mark, to, cls) => {
       const b = node(html`<button type="button" class="nt-gate notes-book ${cls}" role="listitem">${mark}<span class="nt-name">${label}</span></button>`);
       b.addEventListener("click", () => { KN.motion.fire("select"); go(to); });
       gates.append(b);
     };
-    gate("すべてのノート", icon("notes"), { k: "list" }, "js-all");
+    gate("すべて", icon("notes"), { k: "list" }, "js-all");
+    gate("★", icon("star"), { k: "list", pick: { k: "fav" } }, "js-favs");
     gate("問い", icon("thought"), { k: "ask" }, "js-asks");
-    box.append(gates);
-    const favs = all.filter((n) => n.fav);
-    if (favs.length) { box.append(secTitle("★")); box.append(flatRows(favs)); }
+    const books = shelfBooks(t);
+    const shelf = books.childElementCount ? [secTitle("本棚"), books] : [];
+    const tags = N().tagNames();
+    if (tags.length) {
+      const row = node(html`<div class="chip-row nt-tags" role="list"></div>`);
+      tags.forEach((v) => {
+        const c = node(html`<button type="button" class="chip" role="listitem">${dot(v)}<span>${v}</span></button>`);
+        c.addEventListener("click", () => { KN.motion.fire("select"); go({ k: "list", pick: { k: "tag", v } }); });
+        row.append(c);
+      });
+      shelf.push(secTitle("タグ"), row);
+    }
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
-    const recent = recentOf(all, two ? 6 : 3);
-    if (recent.length) { box.append(secTitle("最近直した")); box.append(flatRows(recent)); }
-    /* 6つの棚があれば、棚ごとに色のカード。 */
-    const shelves = N().notebooks().some((nb) => SHELF[nb]);
-    const tree = node(html`<div class="notes-books ${shelves ? "has-shelves" : ""}" role="tree" aria-label="ノートブック"></div>`);
+    const recent = recentOf(all, two ? 12 : 8);
+    if (!two) {
+      const find = node(html`<button type="button" class="nt-find">${icon("search")}<span>ノートをさがす</span></button>`);
+      find.addEventListener("click", () => els.searchBtn.click());
+      box.append(find, gates);
+      if (recent.length) box.append(secTitle("最近"), coverCards(recent));
+      box.append(...shelf);
+      return;
+    }
+    box.classList.add("nt-home-two");
+    const l = node(html`<div class="nt-home-l"></div>`), r = node(html`<div class="nt-home-r"></div>`);
+    l.append(...shelf);
+    r.append(gates);
+    if (recent.length) r.append(secTitle("最近直した"), cards(recent, t));
+    box.append(l, r);
+  }
+
+  /** 本棚：ノートブックを本の形で（6つの棚が先、冊の無いノートがあれば終わりに無地の一冊）。押すと、頭のある冊は
+      頭の紙、無ければその冊の面（中は木）。 */
+  function shelfBooks(t) {
+    const box = node(html`<div class="nt-bks" role="list" aria-label="本棚"></div>`);
+    const all = N().notebooks();
+    const order = all.filter((nb) => SHELF[nb]).concat(all.filter((nb) => !SHELF[nb]));
+    if (t.tops("").length) order.push("");
+    order.forEach((nb) => {
+      const h = nb ? t.head(nb) : null;
+      const b = node(html`
+        <button type="button" class="nt-bk" role="listitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""}>
+          <span class="nt-cv is-book" ${cover(nb)}><span class="nt-lb">${nb || "なし"}</span></span>
+        </button>`);
+      b.addEventListener("click", () => {
+        KN.motion.fire("select");
+        if (h) openNote(h.id, b, { back: ".nt-bks .nt-bk" });
+        else go({ k: "nb", v: nb });
+      });
+      box.append(b);
+    });
+    return box;
+  }
+
+  /** 本棚の一冊の面：その冊の木（ホームの木と同じ行・運ぶ・前のもの。冊の行は頭に一つ、閉じない）。 */
+  function bookBody(box, t, nb) {
+    const tree = node(html`<div class="notes-books ${SHELF[nb] ? "has-shelves" : ""}" role="tree" aria-label="${nb || "なし"}"></div>`);
     const c = homeCur ? N().get(homeCur) : null;
-    bookRows(tree, t, {
-      open: treeOpen, stick: true, shelves,
+    const o = {
+      open: treeOpen, stick: true, only: nb,
       cur: c && !t.isHead(c.id) ? c.id : null,
-      curNb: homeNb != null ? homeNb : c && t.isHead(c.id) ? c.notebook : null,
+      curNb: homeNb,
       onNote: (n, el) => openNote(n.id, el, { tree: true, back: TREE_ROW }),
       redraw: () => renderBody(),
-    });
-    home.append(tree);
-    carry(tree, { scope: "books", open: treeOpen, scroller: () => KN.app.scrollerOf(root),
+    };
+    if (nb) bookRows(tree, t, o);
+    else treeRows(tree, t.tops(""), 0, { ...o, kids: (n) => t.branch(n.id) });
+    box.append(tree);
+    carry(tree, { scope: "books", one: !!nb, open: treeOpen, scroller: () => KN.app.scrollerOf(root),
       root: () => root && root.querySelector(TREE_ROW.replace(" .nt-row", "")) });
   }
 
@@ -356,9 +410,6 @@
   const isAnswer = (n) => { const a = KN.noteFormat && KN.noteFormat.asks(n.body)[0]; return !!a && a.line === 0; };
   const recentOf = (all, k) => all.filter((n) => (!n.src || !n.src.batch || String(n.updatedAt) > String(n.src.batch)) && !isAnswer(n)).slice(0, k || 3);
 
-  /* 左の列に木が出ている（広い幅で、列を畳んでいない）。木の出し入れは css の「左の木」と同じ条件。 */
-  const deskHome = () => window.matchMedia(WIDE).matches && !document.documentElement.classList.contains("rail-fold");
-
   /** 札の日付＝直した日。今年なら月日だけ、今日なら時刻。 */
   function editedOf(n) {
     const d = new Date(n.updatedAt);
@@ -368,33 +419,19 @@
     return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
   }
 
-  /** 最近直したノートの札（desk のホーム）：題・頭の数行・日付。押すと右の段（notes-dock）。 */
-  function recentCards(list) {
-    const box = node(html`<div class="nt-cards" role="list" aria-label="最近直した"></div>`);
+  /** 最近（電話のホーム）：表紙つきのカードを横へ送る。題・冊・直した日。押すと紙（閉じるとこのカードへ縮んで戻る）。 */
+  function coverCards(list) {
+    const box = node(html`<div class="nt-covers" role="list" aria-label="最近"></div>`);
     list.forEach((n) => {
       const c = node(html`
-        <button type="button" class="nt-card" role="listitem" data-id="${n.id}">
-          <span class="nt-card-title">${headOf(n) || "ノート"}</span>
-          <span class="nt-card-lead">${leadOf(n)}</span>
-          <span class="nt-card-when">${n.notebook ? book(n.notebook) : ""}${editedOf(n)}</span>
+        <button type="button" class="nt-cover" role="listitem" data-id="${n.id}">
+          <span class="nt-cv" ${cover(n.notebook)}></span>
+          <span class="nt-cover-t">${headOf(n) || "ノート"}</span>
+          <span class="nt-cover-d">${[n.notebook, editedOf(n)].filter(Boolean).join("・")}</span>
         </button>`);
-      c.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, c, { back: ".nt-cards .nt-card" }); });
+      c.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, c, { back: ".nt-covers .nt-cover" }); });
       KN.ui.rowMenu(c, () => rowMenuOf(n.id));
       box.append(c);
-    });
-    return box;
-  }
-
-  /** 行だけの短い並び（★・最近直した）：ノートブックの小さな絵と題。押すと紙（閉じるとこの行へ縮んで戻る）。 */
-  function flatRows(list) {
-    const box = node(html`<div class="notes-books notes-flat" role="list"></div>`);
-    list.forEach((n) => {
-      const r = node(html`
-        <button type="button" class="nt-row is-flat" role="listitem" data-id="${n.id}">
-          ${n.notebook ? book(n.notebook) : html`<span class="nb-ico is-blank">${icon("book")}</span>`}<span class="nt-name">${headOf(n) || "ノート"}</span>
-        </button>`);
-      r.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, r, { back: ".notes-flat .nt-row" }); });
-      box.append(r);
     });
     return box;
   }
@@ -493,34 +530,30 @@
 
   /** ノートブックの行と、その中の木（表の行は並べない）。名前は、頭のある冊なら頭の紙、無ければその場で開く。
       ＋でその冊に書く（頭のある冊は頭の中に）。終わりにノートブックの無いノートの木。
-      o … treeRows と同じ（kids は要らない）＋ curNb（印を付けるノートブック）。 */
+      o … treeRows と同じ（kids は要らない）＋ curNb（印を付けるノートブック）＋ only（本棚の一冊の面：その冊だけ、
+      開いたまま。冊の行は頭の見出しで、閉じない）。 */
   function bookRows(box, t, o) {
     const sub = { ...o, kids: (n) => t.branch(n.id) };
-    /* 棚のカード（o.shelves。ホームだけ）：6つの棚が先に、ほかの冊とノートブックの無いノートは白いカードに。
-       棚の見出しは ▸ を右端に、＋は持たない（新しいノートは右下の＋。10月16日、利用者）。 */
-    const rest = o.shelves ? node(html`<div class="nt-plain" role="none"></div>`) : box;
-    const all = N().notebooks();
-    const order = o.shelves ? all.filter((nb) => SHELF[nb]).concat(all.filter((nb) => !SHELF[nb])) : all;
-    order.forEach((nb) => {
+    const one = o.only != null;
+    /* 本棚の一冊の面では、6つの棚は棚の色のごく薄いカード（docs/notes.md「6つの棚」）。 */
+    (one ? [o.only] : N().notebooks()).forEach((nb) => {
       const key = `nb:${nb}`;
-      const shelf = o.shelves ? SHELF[nb] : null;
-      if (shelf) seedShelf(nb, key, o.open);
+      const shelf = one ? SHELF[nb] : null;
       const tops = t.tops(nb);
       const h = t.head(nb);
-      const open = tops.length > 0 && o.open.has(key);
+      const open = tops.length > 0 && (one || o.open.has(key));
       const look = rowLook(0, open, o.stick);
       const g = node(html`<div class="nt-grp ${shelf ? "nt-shelf" : ""}" role="none" ${shelf ? html`data-shelf="${nb}"` : ""}></div>`);
       const r = node(html`
         <button type="button" class="nt-row is-book js-book ${look.cls}" role="treeitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""} data-d="0" style="${look.style}"
-                ${o.curNb === nb ? html`aria-current="true"` : ""} ${tops.length ? html`aria-expanded="${String(open)}"` : ""}>
-          ${shelf ? html`<span class="nt-shelf-ico">${shelfIcon(shelf.ico)}</span><span class="nt-name">${nb}</span>${twistOf(tops.length, open)}`
-    : html`${twistOf(tops.length, open)}${book(nb)}<span class="nt-name">${nb}</span><span class="nt-add" role="button" aria-label="${nb} に書く">${icon("plus")}</span>`}
+                ${o.curNb === nb ? html`aria-current="true"` : ""} ${tops.length && !one ? html`aria-expanded="${String(open)}"` : ""}>
+          ${one ? "" : twistOf(tops.length, open)}${book(nb)}<span class="nt-name">${nb}</span><span class="nt-add" role="button" aria-label="${nb} に書く">${icon("plus")}</span>
         </button>`);
       r.addEventListener("click", (e) => {
         KN.motion.fire("select");
         if (e.target.closest(".nt-add")) { openNote(null, r, { ...(h ? { parent: h.id } : { nb }), tree: true, back: TREE_ROW }); return; }
         if (h && !e.target.closest(".nt-twist")) { o.onNote(h, r); return; }
-        if (tops.length) slide(r, () => { flip(o.open, key); if (!(shelf && keepShelf(nb, o.open.has(key)))) o.redraw(); });
+        if (tops.length && !one) slide(r, () => { flip(o.open, key); o.redraw(); });
       });
       g.append(r);
       /* thinking の問いの答え（★でも枝のあるものでもない）は棚に並べない。入口は上の「問い」（まだの問いも答えも
@@ -532,10 +565,9 @@
       const tail = () => { if (fold && fold.old.length) foldRows(g, nb, fold.old, o); };
       if (open) { treeRows(g, shown, 1, sub); tail(); }
       else if (tops.length) springs.set(r, () => { o.open.add(key); opened(r); treeRows(g, shown, 1, sub); tail(); });
-      (shelf ? box : rest).append(g);
+      box.append(g);
     });
-    treeRows(rest, t.tops(""), 0, sub);
-    if (rest !== box && rest.childElementCount) box.append(rest);
+    if (!one) treeRows(box, t.tops(""), 0, sub);
   }
 
   /* 前のもの（docs/notes-structure.md の段1）：棚の一段目で、★でも束でもなく、決めた日数触っていないノートを、
@@ -604,8 +636,8 @@
     return g;
   }
 
-  /* 6つの棚（docs/notes.md「6つの棚」）。開け閉めは設定 notesShelfOpen に（無ければ archive だけ閉じる）。
-     ほかの冊の開け閉めは今までどおり記憶だけ。 */
+  /* 6つの棚（docs/notes.md「6つの棚」）：本棚の先頭・棚の絵と色・決まった柄。設定 notesShelfOpen（前の木の開け閉め）は
+     読まなくなった（R7。値は消さない）。 */
   const SHELF = {
     thinking: { ico: "bulb" },
     reading: { ico: "study" },
@@ -617,19 +649,6 @@
   /* 考えたことの置き場（docs/thinking.md）。daily の「思考」の札・答える紙・＋問いをつくるの新しいノートはここへ。 */
   const THINK = "thinking";
   const shelfIcon =(k) => { const s = KN.iconsTodo && KN.iconsTodo.byKey(`do-${k}`); return s ? U.raw(s) : icon(k); };
-  const seeded = new Set();
-  function seedShelf(nb, key, open) {
-    if (seeded.has(nb)) return;
-    seeded.add(nb);
-    const m = (KN.store.get().settings || {}).notesShelfOpen || {};
-    if (nb in m ? !!m[nb] : nb !== "archive") open.add(key); else open.delete(key);
-  }
-  /** 開け閉めを覚える。ノートの面が出ていれば store の subscribe が組み直すので true（自分では組まない）。 */
-  function keepShelf(nb, on) {
-    KN.store.update((s) => { s.settings.notesShelfOpen = { ...(s.settings.notesShelfOpen || {}), [nb]: on }; });
-    return KN.app.activeScreen() === "notes";
-  }
-
   /** 木から開いた紙を閉じたら、ホームの木のその行に印（枝を開く。表の行なら表のノート、頭なら冊の行）。 */
   function reveal(id) {
     const t = N().tree();
@@ -885,7 +904,7 @@
     const sc = root ? KN.app.scrollerOf(root) : null;
     page().y = sc ? sc.scrollTop : 0;
     pages.push(p);
-    pick = null;
+    pick = p.pick || null;
     renderBody(0);
     faceIn(1);
   }
@@ -909,7 +928,8 @@
   function paintTitle() {
     if (!KN.head.notesTitle) return;
     const p = page();
-    KN.head.notesTitle(p.k === "list" ? html`<span>すべてのノート</span>` : p.k === "ask" ? html`<span>問い</span>` : "",
+    KN.head.notesTitle(p.k === "list" ? html`<span>すべてのノート</span>` : p.k === "ask" ? html`<span>問い</span>`
+      : p.k === "nb" ? html`<span>${p.v || "なし"}</span>` : "",
       pages.length > 1 ? back : null, again);
     paintMid();
   }
@@ -1024,6 +1044,7 @@
         </button>
         <button class="fav ${n.fav ? "is-on" : ""}" aria-pressed="${String(n.fav)}"
                 aria-label="${head || "ノート"} に★を付ける">${icon("star")}</button>
+        <span class="nt-cv is-mini" ${cover(n.notebook)} aria-hidden="true"></span>
       </div>
     `);
     el.querySelector(".js-open").addEventListener("click", () => (o && o.open ? o.open(n, el) : openNote(n.id, el)));
@@ -1941,9 +1962,13 @@
       if (fresh && stored && blank()) N().drop(note.id);
       N().flush();
       N().end(note.id);
-      /* 木から開いた紙を全部閉じたら、ホームの木のその行に印を付けて見せる（③）。 */
-      const mark = !!o.tree && !papers.length && page().k === "home" && !query;
-      if (mark) reveal(note.id);
+      /* 木から開いた紙を全部閉じたら、一冊の面の木のその行に印を付けて見せる（③。ほかの冊へ移していたら、その冊の面へ）。 */
+      const mark = !!o.tree && !papers.length && page().k === "nb" && !query;
+      if (mark) {
+        reveal(note.id);
+        const n = N().get(note.id);
+        if (n && !n.deletedAt && (n.notebook || "") !== page().v) pages[pages.length - 1] = { k: "nb", v: n.notebook || "" };
+      }
       renderBody();
       if (mark) showCur();
       if (o.after) o.after();
@@ -2426,16 +2451,14 @@
   }
 
   /** 道すじのノートブックへ：頭のある冊は頭の紙へ（重ねた紙にあればそこまで戻る）。無ければ紙を全部閉じて
-      ホームへ戻り、木のその冊を開いて印を付ける。 */
+      その冊の面（本棚の一冊）へ移り、冊の行に印を付ける。 */
   function toBook(nb) {
     const h = N().tree().head(nb);
     if (h) { toNote(h.id); return; }
     closePapers();
-    treeOpen.add(`nb:${nb}`);
     homeCur = null;
     homeNb = nb;
-    if (pages.length > 1) pages = [pages[0]];
-    renderBody();
+    if (!(page().k === "nb" && page().v === nb)) { pages = [pages[0]]; go({ k: "nb", v: nb }); } else renderBody();
     showCur();
   }
 

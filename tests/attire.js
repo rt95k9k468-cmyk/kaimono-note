@@ -1,6 +1,6 @@
 /* 装いと基調色（設定 → 外観。base.css の「モダン」「基調色」・docs/redesign.md 4節）。2026年11月10日に五つから二つへ。
    - 装いは二つ：手帳（既定・札なし）とモダン（data-attire="modern"）。替わるのは札の組だけ——
-     `[data-attire]` の規則はカスタムプロパティしか書かない（形を変える規則を装いごとに作らない）
+     `[data-attire]` の規則はカスタムプロパティしか書かない（形を変える規則を装いごとに作らない。表紙 .nt-cv・.nt-lb だけは別。redesign.md 4節）
    - 手帳は生成りの地・墨の字・朱の一色（字も塗りも同じ値）・見出しは明朝。モダンは墨の主色・赤の「いま」・見出しはゴシック
    - 押したその場で変わる・読み直しても残る・知らない値は手帳へ（reconcile）。モダンのあいだ基調色と見出しの書体は出さない
    - 前の値（washi-shu・washi-enji・season・polish）は消さずに読み替える（朱・臙脂・季節は手帳の基調色へ、磨きは既定へ）
@@ -20,7 +20,7 @@ const { open, checker } = require("./lib");
     for (const f of ["base.css", "components.css", "screens.css"]) {
       const css = fs.readFileSync(path.join(__dirname, "..", "css", f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
       for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-        if (!/\[data-attire/.test(m[1])) continue;
+        if (!/\[data-attire/.test(m[1]) || /\.nt-(cv|lb)\b/.test(m[1])) continue;
         const loose = m[2].split(";").map((d) => d.trim()).filter((d) => d && !d.startsWith("--") && !/^color-scheme\s*:/.test(d));
         if (loose.length) bad.push(`${f} ${m[1].trim().replace(/\s+/g, " ").slice(0, 60)} { ${loose[0]} }`);
       }
