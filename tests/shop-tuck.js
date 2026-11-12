@@ -3,6 +3,7 @@
      （途中で一度も見えなくならない・束の中で動いている瞬間がある）
    - 束が閉じているとき：行が束の頭へ縮んで入り、数が一つ増える
    - 動きを減らす設定：その場で組み直す（買った印は付く）
+   - S2（11月12日）：店で絞っているあいだ、丸を押した行に値段の欄が一拍だけ。打てば その店・今日の値段
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/shop-tuck.js */
 const { open, checker } = require("./lib.js");
 
@@ -90,6 +91,43 @@ const { open, checker } = require("./lib.js");
   t.check("動きを減らす：束の中にある", await page.evaluate((i) =>
     !!document.querySelector(`#screen-list .day-bought .item-wrap[data-flip="${i}"]`), c));
   await page.emulateMedia({ reducedMotion: "no-preference" });
+
+  /* ---- S2 済ませたその場で値段（docs/shopping.md「S1〜S4」）：店で絞っているあいだ、丸を押した行に値段の欄が一拍だけ ---- */
+  const shopId = await page.evaluate(() => {
+    ["値段の無い品1", "値段の無い品2"].forEach((n) => KN.store.addItem(KN.store.addProduct({ name: n }).id));
+    return KN.store.addStore("試しの店S2").id;
+  });
+  await page.waitForTimeout(400);
+  await page.locator("#screen-list .shop-stores .chip", { hasText: "試しの店S2" }).click();
+  await page.waitForTimeout(500);
+  const prices = (i) => page.evaluate(([i, st]) => {
+    const it = KN.store.get().items.find((x) => x.id === i);
+    return KN.store.getProduct(it.productId).prices.filter((p) => p.storeId === st).map((p) => p.price);
+  }, [i, shopId]);
+  const d = await firstId();
+  await tapCheck(d);
+  const ask = await page.waitForSelector(`#screen-list .item-wrap[data-flip="${d}"] .item-price-in`, { timeout: 2000 }).then(() => true).catch(() => false);
+  t.check("S2：絞っているあいだ、丸を押した行に値段の欄が出る", ask);
+  await page.waitForTimeout(3200);
+  t.check("S2：打たなければ欄は消え、買った印だけ（値段は増えない）", await checked(d) && (await prices(d)).length === 0
+    && !(await page.$("#screen-list .item-price-in")));
+  const e = await firstId();
+  await tapCheck(e);
+  await page.waitForSelector(`#screen-list .item-wrap[data-flip="${e}"] .item-price-in`, { timeout: 2000 });
+  await page.click(`#screen-list .item-wrap[data-flip="${e}"] .item-price-in`);
+  await page.waitForTimeout(500);
+  for (const k of ["2", "9", "8"]) await page.locator(".keypad .js-grid .key", { hasText: new RegExp(`^${k}$`) }).click();
+  await page.waitForTimeout(3000);
+  t.check("S2：鍵盤を開いているあいだは待つ", !(await checked(e)));
+  await page.click(".keypad .js-ok");
+  await page.waitForTimeout(1500);
+  const day = await page.evaluate(([i, st]) => {
+    const it = KN.store.get().items.find((x) => x.id === i);
+    const pr = KN.store.getProduct(it.productId).prices.find((p) => p.storeId === st);
+    return pr ? KN.util.dayKey(new Date(pr.date)) === KN.util.todayKey() : false;
+  }, [e, shopId]);
+  t.check("S2：確定でその店・今日の値段になり、買った印も付く", await checked(e) && JSON.stringify(await prices(e)) === "[298]" && day,
+    JSON.stringify(await prices(e)));
 
   t.check("エラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

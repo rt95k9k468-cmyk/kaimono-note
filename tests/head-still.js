@@ -105,10 +105,9 @@ const { open, checker } = require("./lib");
   await go("todo");
 
   /* ---- タブを移っても、帯と暦は 1px も動かない（週・月） ---- */
-  const hops = [["todo", "archive"], ["archive", "diet"], ["diet", "todo"],
-                ["todo", "diet"], ["diet", "archive"], ["archive", "todo"],
-                ["todo", "list"], ["list", "diet"], ["diet", "list"],
-                ["list", "archive"], ["archive", "list"], ["list", "todo"]];
+  /* daily は暦を持たない（ノートと同じ。2026年11月12日）ので、暦のある四席で回る。 */
+  const hops = [["todo", "diet"], ["diet", "todo"],
+                ["todo", "list"], ["list", "diet"], ["diet", "list"], ["list", "todo"]];
   for (const open of [false, true]) {
     await page.evaluate((o) => KN.store.setCalPref(null, { shown: true, open: o }), open);
     await page.waitForTimeout(500);
@@ -151,13 +150,13 @@ const { open, checker } = require("./lib");
     return Math.abs(sheet.top - head.bottom);
   });
   c.check("紙の上端が帯（盆）の下端に来る（±1px）", seam <= 1, `${seam}px`);
-  // 月のまま daily へ：帯は動かない（月の暦の厚みがタブで違わない）。
+  // 月のまま health へ：帯は動かない（月の暦の厚みがタブで違わない）。
   await startRec();
   await page.waitForTimeout(60);
-  await tapSel('.tab[data-tab="archive"]');
+  await tapSel('.tab[data-tab="diet"]');
   await page.waitForTimeout(650);
   const md = drift(await stopRec());
-  c.check("月に開いたまま daily へ移っても帯と暦が動かない", md.worst === 0, `${md.worst}px ${md.what}`);
+  c.check("月に開いたまま health へ移っても帯と暦が動かない", md.worst === 0, `${md.worst}px ${md.what}`);
   await page.evaluate(() => KN.store.setCalPref(null, { shown: true, open: false }));
   await go("todo");
   await page.waitForTimeout(300);

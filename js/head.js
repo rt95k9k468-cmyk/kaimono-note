@@ -186,6 +186,8 @@
     snap = null;
     /* 暦を持たない席（ノート）。出ていく暦はすぐには外さず、show() の終わりの
        moveCal に任せます（流れに乗せて上へしまうか、その場で外すか）。 */
+    /* 暦の無い席（ノート・daily）は盆を透かし、下の画面が盆の丈ぶん上がる（base.css の is-bare）。 */
+    root.classList.toggle("is-bare", !cal);
     if (!cal) {
       if (els.cal.firstChild && !els.cal.classList.contains("is-cal-out")) want("out");
       return;
@@ -234,10 +236,6 @@
     queueMicrotask(() => { if (calMove) moveCal(false); });
   }
 
-  /** 盆だけの背（暦も取っ手も無いとき。CSS の min-height）。一度だけ読む。 */
-  let lap = 0;
-  const lapH = () => lap || (lap = parseFloat(getComputedStyle(els.tray).minHeight) || 26);
-
   /** show() の終わりに呼ばれます（app.js）。`slide` は、横に流れる移り方か。 */
   function moveCal(slide) {
     const m = calMove;
@@ -246,8 +244,8 @@
     fromH = null;
     if (!root) return;
     if (!m) { if (from && slide && !KN.motion.still()) resizeCal(from); return; }
-    /* 動く丈は、盆の背から盆だけの背を引いたぶん（暦が出ていくと取っ手も消え、盆は min-height に戻る）。 */
-    const h = slide && !KN.motion.still() ? els.tray.offsetHeight - lapH() : 0;
+    /* 動く丈は盆の背まるごと（暦の無い席では、下の画面が盆の丈ぶん上がって盆に重なる。is-bare）。 */
+    const h = slide && !KN.motion.still() ? els.tray.offsetHeight : 0;
     if (!(h > 0)) { if (m === "out") els.cal.replaceChildren(); return; }
     els.cal.classList.add(m === "out" ? "is-cal-out" : "is-cal-in");
     slidePanes(m === "out" ? h : -h, els.cal);

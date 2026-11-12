@@ -2041,10 +2041,8 @@
     els.searchClear.hidden = !els.search.value;
     els.body.innerHTML = "";
 
-    /* 暦は帯（画面の外、全タブで一つ）に置きます。印（粒）はこの画面のもの
-       ——daily に他のタブの印を出さないこと（tests/daily-rules.js）。 */
-    KN.head.putCal("archive", els.cal);
-    fillCalendar(els.cal);
+    /* daily は暦を持たない（ノートと同じ。2026年11月12日、利用者）。日は題の小窓と横に払う手で選ぶ。 */
+    KN.head.putCal("archive", null);
 
     /* 暦から下は、**白い紙**の上に乗ります（やることと同じ組み）。角の丸い
        一枚と上の掴み手が「ここから下は別の層」と言っていて、線を一本も

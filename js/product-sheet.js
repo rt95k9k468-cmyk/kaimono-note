@@ -198,9 +198,13 @@
     const prices = store.currentPrices(p);
     const best = prices[0] || null;
 
+    /* これまでの最安（S4）。記録が二つ以上あるときだけ（一つなら下の行と同じことを言う）。 */
+    const low = p.prices.length > 1 ? store.lowestEver(p) : null;
+    const lowAt = low && store.getStore(low.storeId);
     const section = node(html`
       <div class="stack js-prices gap-2">
         <span class="field-label">お店ごとの値段</span>
+        ${low && lowAt ? html`<p class="pd-low">これまでの最安 <b>${yen(low.price)}</b>（${lowAt.name}・${formatDate(low.date)}）</p>` : ""}
       </div>
     `);
 
@@ -323,6 +327,7 @@
     const priceEl = body.querySelector(".js-price");
     KN.ui.whenFields(body);
     const dateEl  = body.querySelector(".js-date");
+    priceEl.dataset.rate = String(store.taxRate(p));
     KN.keypad.bind(priceEl);
 
     const handle = KN.ui.sheet({
@@ -335,12 +340,13 @@
     handle.el.querySelector(".js-done").addEventListener("click", () => handle.close());
 
     function save() {
-      const price = KN.util.calc(priceEl.value);
+      const price = KN.keypad.price(priceEl);
+      store.setTaxRate(productId, parseFloat(priceEl.dataset.rate));
       store.update((s) => {
         const prod = s.products.find((x) => x.id === productId);
         const rec = prod && prod.prices.find((x) => x.id === priceId);
         if (!rec) return;
-        if (isFinite(price) && price >= 0) rec.price = price;
+        if (price != null && isFinite(price) && price >= 0) rec.price = price;
         const day = dateEl.value;
         if (day) rec.date = dayToIso(day, rec.date);
       });
@@ -478,25 +484,21 @@
   /* The price field takes a sum, not just a number, and the pad supplies the
      operators the system keypad does not have. This is the readout for it:
      what the sum comes to, live, right above the pad. */
-  function wireCalculator(form) {
+  function wireCalculator(form, before) {
     const strip = form.querySelector(".js-calc");
     const out = form.querySelector(".js-calc-out");
     const fields = [form.querySelector(".js-price")].filter(Boolean);
     let last = fields[0];
 
+    /* 式の答え・税抜なら税込・前回との差（S3・S4）。何も打っていなければ空。 */
     function paint() {
       const v = last && last.value;
-      const n = KN.util.calc(v);
-      if (KN.util.isExpression(v) && n != null) {
-        out.textContent = `= ${yen(n)}`;
-        out.classList.remove("is-idle");
-      } else if (KN.util.isExpression(v)) {
-        out.textContent = "…";
-        out.classList.add("is-idle");
-      } else {
-        out.textContent = "＋ − × ÷ と「税」「割引」で計算できます";
-        out.classList.add("is-idle");
-      }
+      const n = last ? KN.keypad.price(last) : null;
+      const net = !!last && last.dataset.net === "1";
+      const said = n == null ? (KN.util.isExpression(v) ? "…" : "")
+        : [KN.util.isExpression(v) || net ? `${net ? "税込" : "="} ${yen(n)}` : "", vsLast(before(), n)].filter(Boolean).join("　");
+      out.textContent = said;
+      out.classList.toggle("is-idle", n == null);
     }
 
     /* The readout sits under the field, which is exactly where the sheet's
@@ -520,6 +522,14 @@
     });
 
     paint();
+    return paint;
+  }
+
+  /** 入れた値段が前回より上か下か（S4）。前回が無ければ空。 */
+  function vsLast(prev, n) {
+    if (!prev || n == null) return "";
+    const d = Math.round((n - prev.price) * 100) / 100;
+    return d === 0 ? "前回と同じ" : `前回より ${yen(Math.abs(d))} ${d > 0 ? "高い" : "安い"}`;
   }
 
   /* 枠の箱と「値段を追加」の見出し・説明の一行は外した。お店の札は一列で横に送る
@@ -593,20 +603,21 @@
       });
     });
 
+    let repaint = () => {};
     KN.ui.storePicker(form.querySelector(".js-stores"), {
       selectedId: selectedStore,
       autoPick: false,
-      onSelect: (id) => { selectedStore = id; paintStore(); },
+      onSelect: (id) => { selectedStore = id; paintStore(); repaint(); },
     });
 
-    wireCalculator(form);
+    const priceEl = form.querySelector(".js-price");
+    priceEl.dataset.rate = String(store.taxRate(p));
+    repaint = wireCalculator(form, () => store.lastPrice(store.getProduct(productId), selectedStore));
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const priceEl = form.querySelector(".js-price");
-      // 「198+250」 is stored as 448. calc() returns null for a plain number,
-      // so a straight price still goes through parseNum as before.
-      const price = KN.util.calc(priceEl.value);
+      // 「198+250」 is stored as 448, and a 税抜 price as the price with tax (KN.keypad.price).
+      const price = KN.keypad.price(priceEl);
 
       if (!hasStores && !selectedStore) {
         KN.ui.toast("先に「＋ お店を追加」でお店を登録してください");
@@ -631,14 +642,16 @@
       priceEl.blur();
       const st = store.getStore(selectedStore);
       const had = store.currentPrices(p).find((x) => x.storeId === selectedStore);
+      const vs = vsLast(store.lastPrice(store.getProduct(productId), selectedStore), price);
+      store.setTaxRate(productId, parseFloat(priceEl.dataset.rate));
       store.addPrice(productId, { storeId: selectedStore, price });
       haptic(12);
       priceEl.value = "";
       // Which shop it went to, out loud. A price is only ever meaningful with
       // a shop attached, and this is the moment the wrong one would be caught.
-      KN.ui.toast(had
+      KN.ui.toast((had
         ? `${st ? st.name : "この店"}を ${yen(had.price)} → ${yen(price)} にしました`
-        : `${st ? st.name : "この店"}に ${yen(price)} を記録しました`);
+        : `${st ? st.name : "この店"}に ${yen(price)} を記録しました`) + (vs && !had ? `　${vs}` : ""));
       onAdded();
     });
 

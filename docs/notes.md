@@ -11,7 +11,8 @@ Notion・Evernote からの一元化（同期・階層・取り込み・見た�
 - 帯は daily / notes / tasks / shopping / health の五席（`app.js` の `TABS`・`SLIDE`）。裏の仕組み
   （`PAIRS` の daily/ノート・`holds`/`names`・`is-notes-lift`・`--face-lift`）から外した。daily の
   掴み手はほかのタブと同じく暦のもの。下の「置き場所：daily の裏」「ノートでは暦をしまう」は昔の話。
-- **暦なし**（`putCal("notes", null)`）。上の帯は題「Notes」・さがす・設定だけ（`.head.is-notes`）。
+- **暦なし**（`putCal("notes", null)`。daily も 11月12日から同じ）。上の帯は題「Notes」・さがす・設定だけ（`.head.is-notes`）。暦の無い席は
+  `.head.is-bare`：盆を透かし、下の画面（`#panes`）が盆の丈ぶん上がって角を持つ（季節の絵が角まで。前は盆だけ無地で色が違った）。
 - **暦の出入りは横の流れと同じ一拍**（`head.js` の `moveCal`、`--m-nav`・`--ease-out`）。並びは最初の
   一拍で行き着く先にし（出ていく暦は `position: absolute`）、見かけだけを `translate`・`opacity`・
   `clip-path` の CSS アニメーションで戻す——**毎フレーム並べ直さない**。丈（`--cal-move`）は show() の

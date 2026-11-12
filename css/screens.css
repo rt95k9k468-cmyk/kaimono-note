@@ -1340,15 +1340,7 @@
   padding: 1px 7px;
 }
 
-.item-price {
-  flex: none;
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  padding-left: var(--sp-1);
-}
+.item-price { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; padding-left: var(--sp-1); }
 
 /* 値段は墨の 17px 太（丸い字）。下に「最安」の王冠を比べたときだけ（docs/redesign.md R5）。 */
 .item-price-amount {
@@ -1451,24 +1443,9 @@
 
 .archive { margin: var(--sp-5) var(--sp-4) 0; }
 
-.archive-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: var(--sp-2) 0;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-bold);
-  color: var(--c-text-3);
-}
-/* The chevron points right when the drawer is shut and down when it is
-   open — the icon is drawn pointing right, so shut is its resting angle. */
-.archive-head svg {
-  width: var(--ico-sm); height: var(--ico-sm);
-  stroke-width: 2.6;
-  flex: none;
-  transition: transform var(--m-state) var(--ease);
-}
+.archive-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: var(--sp-2) 0; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-3); }
+/* 閉じて右・開いて下（絵は右向きに描いてある）。 */
+.archive-head svg { width: var(--ico-sm); height: var(--ico-sm); stroke-width: 2.6; flex: none; transition: transform var(--m-state) var(--ease); }
 .archive.is-open .archive-head svg { transform: rotate(90deg); }
 .archive-body { padding-top: var(--sp-2); }
 /* Already put away — said the same way the shopping list says 「買った」:
@@ -2349,29 +2326,8 @@
 
 /* What the sum comes to, live, while the number pad is up. The operators are
    on the pad itself (keypad.js); this is only the answer. */
-.calc-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-height: 22px;
-}
-
-.calc-out {
-  flex: 1;
-  min-width: 0;
-  text-align: right;
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  color: var(--c-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.calc-out.is-idle {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-  color: var(--c-text-3);
-}
+.calc-row { display: flex; align-items: center; gap: var(--sp-2); min-height: 22px; }
+.calc-out { flex: 1; min-width: 0; text-align: right; font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* =========================================================
    ダイエット
@@ -5689,7 +5645,7 @@ button.note-when:active { opacity: var(--press-fade); }
   display: flex;
   flex-direction: column;
   gap: var(--sp-8);
-  padding-bottom: var(--sp-6);
+  padding: var(--sp-4) 0 var(--sp-6);   /* 頭は暦なしの紙の縁から一息（head.js の is-bare） */
 }
 /* 2.0（V21、V5 の画像で選んだ形）：紙の下の端は帯の下に 16px 残るので、
    下の角も丸くして、途中で切れた紙ではなく一枚として終わらせます。
@@ -7581,6 +7537,11 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .item-fav .ico-solid { display: block; }
 #screen-list .item-meta, #screen-prices .product-meta { min-height: 0; font-size: calc(13px * var(--fs-k)); color: var(--c-text-2); }
 #screen-list .item-price, #screen-prices .item-price { min-width: 3.5em; padding-left: 0; }
+/* docs/shopping.md「S1〜S4」：店の札・買った一拍の値段の欄・これまでの最安。 */
+.shop-stores .chip-row { padding-block: 0 var(--sp-2); }
+.item-price-in { width: 5.4em; height: 36px; padding: 0 var(--sp-2); text-align: right; font: var(--fw-bold) calc(17px * var(--fs-k)) var(--font-num); animation: fade-in var(--m-state) var(--ease-out); }
+.pd-low { margin: 0; font-size: var(--fs-md); color: var(--c-text-2); }
+.pd-low b { font-family: var(--font-num); color: var(--c-text); }
 #screen-list .item-wrap .item.is-checked { opacity: .55; }
 /* 価格：二つ以上の店の棒は行の下に、品名の頭から（台 46＋空き 12）。 */
 #screen-prices .product { flex-wrap: wrap; row-gap: 6px; }
@@ -7629,7 +7590,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
     #screen-list .tl-sheet > .js-body { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); align-items: start; padding-inline: max(var(--sp-2), calc((100% - var(--desk-wide)) / 2)); }
     #screen-list .js-body > :not(.sh-main, .sh-side) { grid-column: 1 / -1; }
     #screen-list .sh-cmp { display: block; }
-    #screen-list .face-seg { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
+    #screen-list :is(.face-seg, .shop-stores .chip-row) { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
   }
 }
 @media (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {

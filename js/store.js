@@ -790,6 +790,9 @@
     out.settings.inboxPost = out.settings.inboxPost === true;
     out.settings.v2 = out.settings.v2 === true;
     out.settings.railFolded = out.settings.railFolded === true;   // 左の列を畳む（広い幅。docs/desk.md）
+    { const t = out.settings.taxRates, m = {};   // 品ごとに直した税の率（taxRate）。8 と 10 だけ持つ
+      if (t && typeof t === "object" && !Array.isArray(t)) Object.keys(t).forEach((k) => { if (t[k] === 8 || t[k] === 10) m[k] = t[k]; });
+      out.settings.taxRates = m; }
     /* 写しの端末の受け箱から取りこんだ依頼の id と時刻（js/desk-inbox.js。二度当てない）。持つ記録だけ。 */
     if (s.inboxSeen != null) {
       const seen = {};
@@ -1959,6 +1962,38 @@
   /** Price of `product` at `storeId` right now, or null. */
   function priceAt(product, storeId) {
     return currentPrices(product).find((pr) => pr.storeId === storeId) || null;
+  }
+
+  /* 税抜で打つときの率（docs/shopping.md「S1〜S4」）。食べもの（野菜・肉魚・食品・冷蔵・飲みもの）は 8%、ほかは 10%。
+     品ごとに直した率は settings.taxRates（品の id → 8 か 10。既定と違うときだけ）。記録の値段は今までどおり税込の一つの数。 */
+  const FOOD_CATS = new Set(["c-veg", "c-meat", "c-food", "c-cold", "c-drink"]);
+  const catRate = (p) => (p && FOOD_CATS.has(p.categoryId) ? 8 : 10);
+  function taxRate(product) {
+    const own = product ? (state.settings.taxRates || {})[product.id] : null;
+    return (own === 8 || own === 10 ? own : catRate(product)) / 100;
+  }
+  function setTaxRate(productId, rate) {
+    const p = getProduct(productId);
+    const pct = Math.round(rate * 100);
+    if (!p || Math.round(taxRate(p) * 100) === pct) return;
+    update((s) => {
+      const m = { ...(s.settings.taxRates || {}) };
+      delete m[productId];
+      if (pct !== catRate(p)) m[productId] = pct;
+      s.settings.taxRates = m;
+    });
+  }
+  /** これまでの最安（記録のぜんぶから・今ある店だけ。同じ値なら新しいほう）。S4。 */
+  function lowestEver(product) {
+    return (product ? product.prices : []).filter((pr) => getStore(pr.storeId))
+      .reduce((a, b) => (!a || b.price < a.price || (b.price === a.price && new Date(b.date) > new Date(a.date)) ? b : a), null);
+  }
+  /** 前回の値段：その店の最後の記録、無ければどの店でも最後の記録。S4。 */
+  function lastPrice(product, storeId) {
+    const list = (product ? product.prices : []).filter((pr) => getStore(pr.storeId))
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const here = list.filter((pr) => pr.storeId === storeId);
+    return (here.length ? here : list).pop() || null;
   }
 
   /* ---------------- mutations ---------------- */
@@ -5298,7 +5333,7 @@
     findProductByName, findStoreByName, guessCategory,
     learnCategory, forgetCategory, forgetAllCategories, learnedList,
     productMark, autoMark, productColor, catInk, productInk: (p) => catInk(productColor(p)),
-    currentPrices, bestPrice, priceAt,
+    currentPrices, bestPrice, priceAt, taxRate, setTaxRate, lowestEver, lastPrice,
     addStore, addProduct, addItem, addPrice, setArchived,
     reorderProducts, sortProductsInCategory,
     addTodo, buildTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,

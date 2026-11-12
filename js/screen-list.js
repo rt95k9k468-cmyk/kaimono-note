@@ -11,6 +11,8 @@
   let root = null;
   let els = {};
   let query = "";              // folded, from the search bar
+  /* 店で絞る（S1。docs/shopping.md「S1〜S4」）：選んだ店の id、null＝すべて。覚えない（開き直せば すべて）。 */
+  let shopAt = null;
   /* 「買った」の三段（光る → 落ちる → 組み直す）を走っている最中の id。
      途中でもう一度押されても、二度目は無視します——押した回数ぶん
      チェックが行き来すると、落ちきったころには元に戻っています。 */
@@ -75,6 +77,7 @@
     const seg = KN.app.faceSeg("list");
     els.count = seg.appendChild(node(html`<span class="face-n"></span>`));
     chrome.querySelector(".js-sheet").prepend(seg);
+    els.stores = seg.parentNode.insertBefore(node(html`<div class="shop-stores"></div>`), els.body);
     KN.head.shopPeek({
       root,
       // 探している最中だけ引きません（ほかのタブと同じ）。
@@ -93,7 +96,7 @@
       viewport: sheet,
       surface: sheet,
       track: els.body,
-      ignore: ".face-seg",
+      ignore: ".face-seg, .shop-stores",
       day: () => KN.head.shopDay(),
       step: (d, dir) => KN.util.shiftDay(d, dir),
       commit: (key) => KN.head.shopGo(key),
@@ -512,11 +515,34 @@
 
     /* Searching narrows the rows, not the header: the counts above still
        describe the whole trip, because a search is a way of looking at the
-       list rather than a change to it. */
-    renderBody(query ? items.filter(matchesQuery) : items);
+       list rather than a change to it. 店で絞るのも同じ（数は旅ぜんぶ）。 */
+    const today = KN.head.shopDay() === KN.util.todayKey();
+    paintStores(today && !query && items.some((i) => !i.checked));
+    const at = today && shopAt;
+    renderBody((query ? items.filter(matchesQuery) : items).filter((i) => !at || i.checked || atShop(i, at)));
     const n = items.filter((i) => !i.checked).length;
     els.count.textContent = n ? `${n} 品` : "";
     awake.recheck();
+  }
+
+  /* ---------------- 店で絞る（S1） ----------------
+     紙の頭に すべて｜店… の札。店を押すと「その店が最安の品＋値段の無い品」だけ。もう一度押すか すべて で戻る。 */
+  function atShop(item, storeId) {
+    const best = store.bestPrice(store.getProduct(item.productId));
+    return !best || best.storeId === storeId;
+  }
+  function paintStores(show) {
+    const stores = show ? store.sortedStores() : [];
+    if (shopAt && !stores.some((x) => x.id === shopAt)) shopAt = null;
+    if (!stores.length) { els.stores.replaceChildren(); return; }
+    KN.ui.chipRow(els.stores, [{ id: "", label: "すべて" }].concat(stores.map((x) => ({ id: x.id, label: x.name, color: x.color }))), {
+      activeId: shopAt || "",
+      onPick: (id) => {
+        shopAt = id && id !== shopAt ? id : null;
+        KN.motion.fire("select");
+        render();
+      },
+    });
   }
 
   /** Name, memo, or category — whichever the query happens to be. */
@@ -563,7 +589,7 @@
       // An empty search is not an empty list, and offering 「サンプルを入れて
       // 試す」 to someone who just typed a name would be answering the wrong
       // question entirely.
-      els.body.append(query
+      els.body.append(query || shopAt
         ? node(html`
             <p class="empty is-quiet">
               見つかりませんでした
@@ -897,12 +923,16 @@
 
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
-      const commit = () => store.update((s) => {
+      /* 店で絞っているあいだ（今日の紙）は、買った一拍に値段を訊く（S2・askPrice）。値段は買った印と同じ一回で書く。 */
+      const at = !wasChecked && shopAt && KN.head.shopDay() === KN.util.todayKey() ? shopAt : null;
+      const commit = (price) => store.update((s) => {
         const rec = s.items.find((i) => i.id === item.id);
         if (rec) {
           rec.checked = !rec.checked;
           rec.checkedAt = rec.checked ? KN.util.today() : null;
         }
+        const p = price != null && s.products.find((x) => x.id === product.id);
+        if (p) p.prices.push({ id: KN.util.uid("pr"), storeId: at, price, amount: null, date: KN.util.today() });
       });
 
       // チェックを外すときは、いつもの軽いハプティックですぐ戻します
@@ -935,17 +965,18 @@
       row.classList.add("is-striking", "is-flash");
       if (mark) mark.classList.add("is-pop");
 
-      setTimeout(() => {
+      const go = (price, rate) => {
         /* 下の帯のカートが受け止める。 */
         KN.app.pokeTab("list");
         tuck(wrap, () => {
           finishing.delete(item.id);
-          commit();
+          commit(price);
+          if (price != null) store.setTaxRate(product.id, rate);
           /* 押し間違いは、その場で戻せること。行は「買ったもの」へ落ちて
              視界から消えるので、戻す道が見えていないと、下まで探しに行く
              ことになります。やること側と同じ約束です。 */
           const name = (store.getProduct(item.productId) || {}).name || "";
-          KN.ui.toast(name ? `「${name}」を買いました` : "買いました", {
+          KN.ui.toast((name ? `「${name}」を買いました` : "買いました") + (price != null ? `　${yen(price)}` : ""), {
             action: {
               label: "元に戻す",
               onClick: () => store.update((s) => {
@@ -955,7 +986,8 @@
             },
           });
         });
-      }, draw);
+      };
+      setTimeout(() => (at ? askPrice(row, product, at, go) : go(null)), draw);
     });
 
     row.querySelector(".item-body").addEventListener("click", () => {
@@ -986,6 +1018,30 @@
     });
 
     return wrap;
+  }
+
+  /* ---------------- 済ませたその場で値段（S2） ----------------
+     値段の所に欄が一拍だけ出る。押せば鍵盤（税抜も効く）、確定か外を押せばその店・今日の値段に。打たなければ消えて、
+     いつもどおり束へしまう。鍵盤を開いているあいだは待つ。 */
+  const ASK_MS = 2400;
+  function askPrice(row, product, at, go) {
+    const box = row.querySelector(".item-price");
+    const st = store.getStore(at);
+    if (!box || !st) { go(null); return; }
+    const input = node(html`<input class="input item-price-in" type="text" placeholder="¥" aria-label="${st.name}での値段">`);
+    input.dataset.rate = String(store.taxRate(product));
+    box.replaceChildren(input);
+    let over = false;
+    const end = () => {
+      if (over) return;
+      over = true;
+      clearTimeout(t);
+      const n = KN.keypad.price(input);
+      go(n != null && isFinite(n) && n >= 0 ? n : null, parseFloat(input.dataset.rate));
+    };
+    const t = setTimeout(end, ASK_MS);
+    KN.keypad.bind(input, { onOpen: () => clearTimeout(t), onCommit: end });
+    input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input) end(); }, 150));
   }
 
   /* ---------------- ★ ---------------- */

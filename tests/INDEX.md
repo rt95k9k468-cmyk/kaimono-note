@@ -81,7 +81,7 @@
 | `shop-day.js` | 買うもの：その日に買ったもの・価格から戻る紙（2026年9月28日、docs/shopping.md）。 |
 | `shop-sheet-v2.js` | 買うものの足す紙と直す紙をやることの紙と同じ形に（V23・V26）：★は名前の右・名前からカテゴリと絵を推す・カテゴリ… |
 | `shop-add-v27.js` | 買うものの＋の紙（V27、docs/shopping.md）：＋の一拍で名前の欄・打つ前はよく買う物の札（押せば足して… |
-| `shop-tuck.js` | 買うもの：買った行を「今日買ったもの」の束へしまう（V17、docs/shopping.md）。 |
+| `shop-tuck.js` | 買った行を「今日買ったもの」の束へしまう（V17）・済ませたその場で値段（F5 の S2）。 |
 | `capture.js` | 行き先の札（R4）・Siri の「なんでも」（R5）・daily の＋（2026年9月28日）。 |
 | `upcoming.js` | これからの二週間（R7）。前半は数え方：fallsOn が立つ日にだけ・曜日の毎週2回・済ませてから◯日は次の一回・毎… |
 | `search-all.js` | ぜんぶをさがす（R8）。前半は表：過去の日付の言葉（9月28日に止める。 |
@@ -155,7 +155,7 @@
 | `fold.js` | 使っていない面を畳む（3.1 の S4、2026年10月10日、docs/settings.md の「畳んだ面」）。 |
 | `ime-enter.js` | 変換を決める改行（2026年10月10日、roadmap-seamless の N5）。**門に入る。 |
 | `shun.js` | 旬の印（3.1 の K4、2026年10月10日、docs/shopping.md の「旬の印」）。 |
-| `crown.js` | 最安の王冠は比べたときだけ（design-review の Y8、2026年10月21日）。 |
+| `crown.js` | 最安の王冠は比べたときだけ（Y8）・店で絞る・税抜の鍵盤・底値（F5 の S1・S3・S4）。 |
 | `legibility.js` | 読みやすさ（2026年10月10日、roadmap-seamless の N15、docs/look.md の「暗い面… |
 | `draft-keep.js` | 書きかけを守る（2026年10月10日、roadmap-seamless の N8・X15、docs/sheet-sc… |
 | `entries-note.js` | 積み上げを一冊のノートへ（2026年10月12日、docs/thinking.md の「積み上げをやめた」）。 |

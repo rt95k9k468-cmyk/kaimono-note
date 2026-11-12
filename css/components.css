@@ -1689,33 +1689,19 @@ button.hero-node:active { scale: var(--press-dot); }
 }
 .keypad.is-open { transform: translate(-50%, 0); }
 
-.keypad-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-2);
-}
+.keypad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
 
 .keypad-actions {
   display: grid;
-  /* 税8% · 税10% · 確定 · ⌫ — the two rates are narrow because they are read
-     rather than aimed at from a distance, and 確定 keeps the width because it
-     is the one pressed without looking. */
+  /* 税抜 · 率 · 確定 · ⌫ — 確定 keeps the width because it is the one pressed without looking. */
   grid-template-columns: 1fr 1fr 2fr 1.1fr;
   gap: var(--sp-2);
   margin-top: var(--sp-2);
 }
 
 .key {
-  position: relative;
-  height: 52px;
-  border-radius: var(--r-md);
-  background: var(--c-surface-2);
-  color: var(--c-text);
-  font-size: calc(22px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  display: grid;
-  place-items: center;
-  line-height: 1;
+  position: relative; height: 52px; border-radius: var(--r-md); background: var(--c-surface-2); color: var(--c-text);
+  font-size: calc(22px * var(--fs-k)); font-weight: var(--fw-bold); display: grid; place-items: center; line-height: 1;
   transition: background var(--m-press) var(--ease), transform var(--m-press), scale var(--m-press);
 }
 
@@ -1730,42 +1716,26 @@ button.hero-node:active { scale: var(--press-dot); }
 }
 .key:active { background: var(--c-surface-3); scale: var(--press-wide); }
 
-.key-op { color: var(--c-primary); font-weight: var(--fw-bold); }
+.key-op { color: var(--c-primary); }
 
-/* Each 税 key carries its own rate. A button that silently multiplies by
-   something is a button you have to remember the meaning of, and with two of
-   them side by side the number is the whole point. */
-.key-tax {
-  color: var(--c-accent-ink);
-  background: var(--c-accent-soft);
-  gap: 0;
-  line-height: 1.05;
-}
-.key-tax-cap  { font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); opacity: .75; }
-.key-tax-rate { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+/* 税抜と率（keypad.js）。税抜で打っているあいだは塗りで言う。率の無い欄（内容量）は二つとも出さない。 */
+.key-tax { color: var(--c-accent-ink); background: var(--c-accent-soft); font-size: var(--fs-lg); }
+.key-tax[aria-pressed="true"] { background: var(--c-accent); color: var(--c-text-on); }
+.keypad.no-tax .key-tax { display: none; }
+.keypad.no-tax .keypad-actions { grid-template-columns: 2fr 1.1fr; }
 
 /* 割引: the shelf tag's 「−20%」. Built like the 税 keys because it does the
    same kind of job — a rate applied to what is already typed — but cool
    rather than warm, since this one takes money off. */
-.key-off {
-  color: var(--c-cool-ink);
-  background: var(--c-cool-soft);
-  gap: 0;
-  line-height: 1.05;
-}
-.key-off-cap  { font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); opacity: .75; }
-.key-off-main { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.key-off { color: var(--c-cool-ink); background: var(--c-cool-soft); gap: 0; line-height: 1.05; }
+.key-off-cap { font-size: calc(10px * var(--fs-k)); opacity: .75; }
+.key-off-main { font-size: var(--fs-lg); }
 
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same
    colour and same place, because it is the same "big green key" throughout —
    only the glyph changes, and it changes the moment an operator is typed. */
-.key-ok {
-  background: var(--c-primary);
-  color: var(--c-text-on);
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-}
-.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); font-weight: var(--fw-bold); }
+.key-ok { background: var(--c-primary); color: var(--c-text-on); font-size: var(--fs-lg); }
+.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); }
 .key-ok:active { background: var(--c-primary-2); }
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */

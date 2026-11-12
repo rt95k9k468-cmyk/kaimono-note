@@ -5,7 +5,7 @@
    - 払いの途中で選びはじめたら、紙は元の位置へ戻り、日は動かない
    - カーソルを持った打つ欄の上から払っても日は動かない
    - 選択を解けば、ふだんどおり払える
-   - 暦（週）も同じ：選んだまま払っても週は動かず、解けば動く */
+   - 暦（週。health）も同じ：選んだまま払っても週は動かず、解けば動く */
 const { open, checker } = require("./lib");
 
 (async () => {
@@ -103,8 +103,10 @@ const { open, checker } = require("./lib");
   await swipe(p, 200);                     // 吹き出しのある日へ戻る
   c.check("前の日へ戻れる", (await title()) === day0, await title());
 
-  /* ---- 暦（週） ---- */
-  const week = () => page.evaluate(() => [...document.querySelectorAll("#head .cal-day, #screen-archive .cal-day")]
+  /* ---- 暦（週）：daily は暦を持たない（2026年11月12日）ので health の暦で。選ぶのは帯の題の字 ---- */
+  await page.evaluate(() => KN.app.showScreen("diet"));
+  await page.waitForTimeout(900);
+  const week = () => page.evaluate(() => [...document.querySelectorAll("#head .cal-day")]
     .filter((d) => d.offsetParent).map((d) => d.dataset.date || d.textContent.trim()).join(","));
   const calAt = await page.evaluate(() => {
     const g = [...document.querySelectorAll(".cal-grid, .cal-week")].find((x) => x.offsetParent);
@@ -115,7 +117,7 @@ const { open, checker } = require("./lib");
   c.check("週の暦が出ている", !!calAt);
   if (calAt) {
     const w0 = await week();
-    c.check("暦：吹き出しの字を選べる", await selectIn(BUBBLE));
+    c.check("暦：題の字を選べる", await selectIn("#head .js-day-title"));
     await swipe(calAt, -220);
     c.check("暦：選んだまま払っても週は動かない", (await week()) === w0);
     await unselect();

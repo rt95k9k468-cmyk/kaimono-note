@@ -109,9 +109,10 @@ const { open, checker } = require("./lib");
   });
   const calGone = () => page.waitForFunction(() => !document.querySelector(".is-cal-out, .is-cal-in"), null, { timeout: 3000 });
   await calGone();
+  await page.waitForTimeout(500);
   const inNotes = await headLook();
-  /* ノートの帯は盆だけ（写真へかぶさる 26px。暦も取っ手も載せない。docs/redesign.md 5節）。 */
-  t.check("ノートに暦は無く、盆だけ（26px）のすぐ下から中身", !inNotes.cal && !inNotes.grip && Math.abs(inNotes.gap - 26) <= 2, JSON.stringify(inNotes));
+  /* ノートの帯は盆だけ。盆は透かし、中身の面が盆の丈ぶん上がって角を持つ（暦も取っ手も載せない。base.css の is-bare）。 */
+  t.check("ノートに暦は無く、中身は題の段のすぐ下から（盆に重なる）", !inNotes.cal && !inNotes.grip && Math.abs(inNotes.gap) <= 2, JSON.stringify(inNotes));
   t.check("ノートの帯は題 Notes・さがす・設定だけ",
     inNotes.name && !inNotes.date && !inNotes.upcoming && inNotes.search && inNotes.gear, JSON.stringify(inNotes));
   await page.click("#head .js-settings");
@@ -128,7 +129,7 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(700);
   const fromSet = await headLook();
   t.check("設定から戻っても、暦は無く題は Notes", (await active()) === "notes" && !fromSet.cal && fromSet.name && !fromSet.date
-    && Math.abs(fromSet.gap - 26) <= 2, JSON.stringify(fromSet));
+    && Math.abs(fromSet.gap) <= 2, JSON.stringify(fromSet));
 
   /* 暦の出入りは横の流れと同じ一拍で（毎フレーム並べ直さない。js/head.js の moveCal） */
   await tab("todo");

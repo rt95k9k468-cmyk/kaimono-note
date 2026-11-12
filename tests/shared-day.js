@@ -101,7 +101,8 @@ const { open, checker } = require("./lib");
   await page.$eval("#head .js-day-title", (e) => e.click());
   await page.waitForTimeout(600);
   await go("archive");
-  c.check("daily の暦も週", await page.$eval("#head .cal", (e) => e.classList.contains("is-week")));
+  /* daily は暦を持たない（2026年11月12日、利用者）。 */
+  c.check("daily に暦は無い", await page.$$eval("#head .cal", (x) => x.length === 0));
   c.check("daily の題は 10日", (await title("archive")).includes("9月10日"), await title("archive"));
 
   // 今日へ戻る → 他のタブも今日。

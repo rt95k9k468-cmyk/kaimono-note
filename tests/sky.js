@@ -378,7 +378,8 @@ function rgbOf(s) {
   });
   for (const month of [false, true]) {
     await page.evaluate((o) => KN.store.setCalPref(null, { open: o }), month);
-    for (const id of month ? ["todo"] : ["archive", "todo", "list"]) {
+    /* daily は暦を持たず、季節の絵が盆の下まで続く（ノートと同じ。2026年11月12日）ので外す。 */
+    for (const id of month ? ["todo"] : ["todo", "list"]) {
       await page.evaluate((i) => KN.app.showScreen(i), id);
       await wait(300);
       const hb = await page.evaluate((i) => {

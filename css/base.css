@@ -767,7 +767,10 @@ a { color: var(--c-primary); }
 }
 .cal-grip:active > i { background: var(--c-text-3); }
 .cal-grip:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -4px; border-radius: var(--r-sm); }
-.head.is-notes .cal-grip { display: none; }
+/* 暦の無い席（ノート・daily）：盆は透かし、下の画面が盆に重なって角を持つ（季節の絵が角まで）。 */
+.head.is-bare .cal-grip { display: none; }
+.head.is-bare > .head-tray { background: none; }
+.head.is-bare ~ .panes { margin-top: calc(-1 * var(--tray-lap)); border-radius: 24px 24px 0 0; overflow: clip; }
 
 /* ---- 暦の出入り（ノートの席は暦を持たない。js/head.js の moveCal） ----
    暦のある席 ⇄ ノートを横に流すあいだ、暦は盆の中を上がって（下りて）薄れ、下の画面（#panes）は同じだけ上がり
