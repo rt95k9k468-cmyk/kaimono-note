@@ -1995,6 +1995,15 @@
     if (season) el.append(season);
     el.append(main);
     if (then) el.append(then);
+    /* 偶然の一日（F6 の D1）：あの日の並びの端。押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。 */
+    if (day <= U.todayKey() && S().showThen !== false && !diaryShut() && store.archiveAny(day)) {
+      const any = node(html`<button type="button" class="btn btn-soft btn-sm arc-any">${icon("shuffle")}どこかの一日</button>`);
+      any.addEventListener("click", () => {
+        KN.motion.fire("select");
+        goToDay(store.archiveAny(focusDay()));
+      });
+      el.append(any);
+    }
     /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */

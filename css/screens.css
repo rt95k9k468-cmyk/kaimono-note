@@ -2990,20 +2990,14 @@ a.btn { text-decoration: none; }
 .arc-year-y small { margin-left: var(--sp-1); font-size: var(--fs-xs); font-weight: var(--fw-regular); }
 .arc-year-text { -webkit-line-clamp: 2; }
 .arc-year-text.is-blank { color: var(--c-text-3); }
+.arc-any { align-self: flex-start; justify-self: start; }   /* 偶然の一日（D1） */
 
 /* 「◯月の積み上がり」（.arc-rollup / .arc-count）はここにありました。
    数を絞り込みの札のほうへ入れて、行ごと畳みました——五つの種類を、
    数えるほうと押すほうで二度並べていたので。screen-archive.js に経緯。 */
 
 /* ---- ③ Daily Log ----
-   縦幅は広めに——一、二行の文が、一行ぶんの窮屈な帯に収まらないように。
-
-   **字は一段ずつ大きくしてあります**（本文 12.5 → 14px、見出し 14 → 16px、
-   日の数字 14 → 19px）。小さい字はそれ自体が「静かな画面」の作りかたです
-   が、毎日読むものとしては小さすぎました。**そのぶん余白を広く取ります**
-   ——静けさは字の小ささではなく、空きの多さのほうで持たせます。 */
-/* 右の余白を左より広く取ります。本文が右端まで詰まると、両端揃えの
-   最後の一行が画面の縁に触れて、読み終わりが窮屈になります。 */
+   字は大きく、静けさは空きの多さで持たせる（docs/daily.md）。 */
 .arc-log { display: flex; flex-direction: column; gap: var(--sp-2); }
 .arc-log-head { display: flex; align-items: center; gap: var(--sp-2); padding-left: var(--sp-1); }
 .arc-log-head h2 { font: var(--fw-bold) var(--fs-xl)/1.3 var(--font-display); color: var(--c-text); flex: 1; min-width: 0; letter-spacing: .02em; }
@@ -7020,13 +7014,13 @@ button.note-when:active { opacity: var(--press-fade); }
   #screen-archive { container: seat / inline-size; }
   @container seat (min-width: 768px) {
     .tl-sheet.is-daily .day-slide {
-      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); grid-template-rows: auto 1fr;
+      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); grid-template-rows: auto auto 1fr;
       column-gap: var(--sp-5); align-items: start; align-content: start;
       padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide, 1180px)) / 2));
     }
     .day-slide > .arc-season { grid-column: 2; grid-row: 1; }
-    .day-slide > .day-main { grid-column: 1; grid-row: 1 / span 2; }
-    .day-slide > .arc-then { grid-column: 2; }
+    .day-slide > .day-main { grid-column: 1; grid-row: 1 / -1; }
+    .day-slide > .arc-then, .day-slide > .arc-any { grid-column: 2; }
   }
   @container seat (min-width: 1100px) {
     .arc-season-art { width: 128px; }

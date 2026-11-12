@@ -10,6 +10,7 @@
    - 年の行を押すとその日へ。その日の log の紙で「出さない」にすると、年々からも
      「あの日」からも消える。記録そのものは残る。読み直しても印は残る。戻せる。
    - 一年ぶんしか残らなければ、いつもの一枚。
+   - D1 偶然の一日（F6）：あの日の並びの端の「どこかの一日」。押すたびに書いてある過ぎた日へ（いまの日は除く）。
    日記の本文は試験用の無難な字だけ。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/then-years.js */
@@ -117,10 +118,11 @@ const FORBIDDEN = [
     const root = document.getElementById("screen-archive");
     const r = (q) => { const e = root.querySelector(q); return e ? e.getBoundingClientRect() : null; };
     const log = r(".arc-log"), then = r(".arc-then"), kou = r(".arc-season"), write = r(".think-cards");
-    return { log, then, kou, write, slide: r(".day-slide") };
+    return { log, then, kou, write, slide: r(".day-slide"), any: r(".arc-any") };
   });
   let at = await place();
   t.check("電話：あの日は Daily Log の下・同じ列", at.then && at.then.top > at.log.bottom && Math.abs(at.then.left - at.log.left) < 2, JSON.stringify(at));
+  t.check("D1：あの日の並びの端に「どこかの一日」", at.any && at.any.top >= at.then.bottom && Math.abs(at.any.left - at.then.left) < 2, JSON.stringify(at.any));
   for (const [w, h] of [[820, 1180], [1440, 900]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(400);
@@ -128,15 +130,35 @@ const FORBIDDEN = [
     t.check(`${w}px：二段（右に候の札とあの日、左に書く口と Daily Log）`, at.kou && at.then && at.kou.left > at.log.right
       && at.then.left > at.log.right && at.write.left === at.log.left && Math.abs(at.kou.top - at.write.top) < 2
       && at.then.top - at.kou.bottom < 20, JSON.stringify(at));
+    t.check(`${w}px：どこかの一日はあの日のすぐ下（右の段）`, at.any && Math.abs(at.any.left - at.then.left) < 2
+      && at.any.top - at.then.bottom < 20 && at.any.top > at.then.bottom, JSON.stringify(at.any));
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(300);
+
+  /* D1 偶然の一日：押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。数を言わない。行った先にも同じ札。 */
+  const anyText = await page.evaluate(() => document.querySelector("#screen-archive .arc-any").innerText);
+  t.check("D1：札は「どこかの一日」だけ（数・禁止語なし）", anyText.trim() === "どこかの一日"
+    && !FORBIDDEN.some((w) => anyText.includes(w)), anyText);
+  const shown = () => page.evaluate(() => document.querySelector("#screen-archive .day-slide").dataset.day
+    || (document.querySelector("#screen-archive .arc-log-row") || {}).dataset.day);
+  await page.click("#screen-archive .arc-any");
+  await page.waitForTimeout(500);
+  const first = await shown();
+  t.check("D1：押すと書いてある過ぎた日へ", ["2024-09-29", "2025-09-29"].includes(first), first);
+  await page.click("#screen-archive .arc-any");
+  await page.waitForTimeout(500);
+  const second = await shown();
+  t.check("D1：行った先でもう一度押すと、別の書いてある日へ", ["2024-09-29", "2025-09-29"].includes(second) && second !== first, `${first} → ${second}`);
+  await page.evaluate(() => { KN.util.dayShare.set(KN.util.todayKey()); KN.app.showScreen("archive"); });
+  await page.waitForTimeout(400);
 
   /* 設定で「あの日」を切ると、年々も出ない。 */
   await page.evaluate(() => { KN.store.update((s) => { s.settings.showThen = false; }); });
   await page.waitForTimeout(400);
   c = await card();
   t.check("「あの日」を切ると、年々も出ない", !c.years && !c.single);
+  t.check("「あの日」を切ると、どこかの一日も出ない", await page.evaluate(() => !document.querySelector("#screen-archive .arc-any")));
 
   t.check("ページのエラーが無い", !errors.length, errors.join("\n"));
   await browser.close();

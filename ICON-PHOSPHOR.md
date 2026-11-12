@@ -94,6 +94,13 @@
 | `palette` | `palette` | A | ✓ | 絵の具皿 |
 | `bell` | `bell` | A | ✓ | 鈴 |
 | `drink` | `beer-stein` | A | ✓ | 持ち手のあるジョッキ |
+| `shuffle` | `shuffle` | A | ✓ | 交わる矢（どこかの一日） |
+| `cloud-sun` | `cloud-sun` | A | ✓ | 雲と日 |
+| `cloud` | `cloud` | A | ✓ | 雲 |
+| `cloud-fog` | `cloud-fog` | A | ✓ | 霧 |
+| `cloud-rain` | `cloud-rain` | A | ✓ | 雨 |
+| `cloud-snow` | `cloud-snow` | A | ✓ | 雪 |
+| `cloud-lightning` | `cloud-lightning` | A | ✓ | 雷 |
 
 ### C — 体重計（`scale`）だけは置き換えていない
 

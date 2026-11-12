@@ -5028,6 +5028,14 @@
     return years.length >= 2 ? years : null;
   }
 
+  /** 偶然の一日（F6 の D1）：書いてある過ぎた日のどれか（except は除く）。無ければ null。数えない。 */
+  function archiveAny(except) {
+    const today = todayKey();
+    const past = [...new Set(archive().days.filter((d) => String(d.memo || "").trim() || memoOut(d)).map((d) => d.date))]
+      .filter((d) => d && d < today && d !== except);
+    return past.length ? past[Math.floor(Math.random() * past.length)] : null;
+  }
+
   /**
    * 月ぶんを、まるごと一つの形にして返します。
    *
@@ -5361,7 +5369,7 @@
     keepGone, goneList, putBackGone, markGone, takeGoneUp,
     actTitle, actName, actEntry, entryTodo,
     stateOf, reviewOn, reviewDue, reviewDays, reviewFrom, setShelf, keepShelf, planOn, pickWeek, pickSomeday, stopTodo, movePrev, applyRefit, applyFill, importUnfold, slipFacts,
-    dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, isQuietDay, setQuietDay,
+    dayLog, memoOut, swapMemos, setDayLog, ensureDayLog, importDiary, daysOfMonth, exportMonth, exportRange, archiveThen, archiveYears, archiveAny, isQuietDay, setQuietDay,
     setAsks,
     exportJSON, importJSON, importBackup, inspectBackup, countsOf, reset, loadSample,
   };
