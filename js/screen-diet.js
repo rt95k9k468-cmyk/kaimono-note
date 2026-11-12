@@ -3572,6 +3572,9 @@
     sleep:         "moon",
     weekend:       "sun",
     weekday:       "calendar",
+    "walk-sleep":  "steps",
+    "busy-urge":   "calendar",
+    "dinner-time": "clock",
     pfc:           "meal",
     balance:       "flame",
     expenditure:   "flame",
@@ -3590,7 +3593,8 @@
   /* ---------------- 気づいたこと ---------------- */
 
   function renderInsight(host) {
-    const found = D.analyze(analysisWindow);
+    /* 席をまたぐ気づき（H3）は insights.js から、からだの項目のあとに。 */
+    const found = D.analyze(analysisWindow).concat(KN.insights.across(analysisWindow));
     const cov = D.coverage(analysisWindow);
 
     const sec = node(html`

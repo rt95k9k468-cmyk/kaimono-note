@@ -255,5 +255,96 @@
     return [...bestOfKind.values()].sort((a, b) => b.weight - a.weight).slice(0, limit);
   }
 
-  KN.insights = { forItems, runningLow, oftenBought, STALE_DAYS };
+  /* ---------------- 席をまたぐ気づき（F4 H3。docs/health.md「席をまたぐ気づき」） ----------------
+
+     からだの「気づいたこと」の下に並ぶ（diet.js の analyze と同じ形 { id, title, text, tone, n }）。
+     出すのは「◯日のうち」とそろった日数・二つの組の日数と平均だけ。助言・原因・採点の言葉は書かない
+     （tone は info だけ）。片側が3日（MIN）に満たなければ出さない。記録は読むだけ。
+     飲んだ翌朝の体重は analyze の「飲んだ翌日の体重」がすでに言う。 */
+  const MIN = 3;
+  const BUSY_MIN = 2;           // 予定がこれだけある日を「予定の多い日」
+  const LATE_DINNER = "21:00";  // 夕食がこの時刻から
+  const STEPS_DEFAULT = 5000;   // 歩数の目標が空のとき（screen-diet.js の STEPS_DEFAULT と同じ）
+  const avg = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const hm = (m) => `${Math.floor(Math.round(m) / 60)}時間${Math.round(m) % 60}分`;
+  const kg = (v) => `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v).toFixed(1)}kg`;
+
+  function across(windowDays) {
+    const U = KN.util, D = KN.diet;
+    const win = windowDays || 30;
+    const today = U.todayKey();
+    const from = U.shiftDay(today, -(win - 1));
+    const days = D.daysBetween(from, today);
+    const out = [];
+
+    /* 歩いた日の夜の睡眠：d の歩数と、d の晩に寝て d+1 に起きた睡眠（睡眠は起きた日に付く）。 */
+    const goal = store.get().diet.goal;
+    const thr = goal.stepsTarget || STEPS_DEFAULT;
+    const walk = [], rest = [];
+    days.forEach((d) => {
+      const w = U.shiftDay(d, 1);
+      if (w > today) return;
+      const log = store.dayLog(w);
+      if (w === today && log && log.sleepStages && log.sleepStages.provisional) return;
+      const st = store.healthValue(d, "steps"), sl = store.healthValue(w, "sleep");
+      if (st == null || !(sl > 0)) return;
+      (st >= thr ? walk : rest).push(sl);
+    });
+    if (walk.length >= MIN && rest.length >= MIN) {
+      out.push({
+        id: "walk-sleep", title: "歩いた日の夜の睡眠", tone: "info", n: walk.length + rest.length,
+        text: `${win}日のうち、歩数とその夜の睡眠がそろった日は ${walk.length + rest.length}日。`
+          + `${thr.toLocaleString()}歩以上の日（${walk.length}日）の夜は平均 ${hm(avg(walk))}、`
+          + `そうでない日（${rest.length}日）の夜は ${hm(avg(rest))}。`,
+      });
+    }
+
+    /* 予定の多い日と飲みたくなった：飲みたくなったを初めて書いた日から、昨日まで（今日はまだ途中）。
+       予定は やること の kind:"event"（くり返しは store.fallsOn）。 */
+    const urgeDays = (store.get().diet.urges || []).map((u) => u.day).filter(Boolean).sort();
+    if (urgeDays.length) {
+      const events = (store.get().todos || []).filter((t) => t.kind === "event" && !t.archived && !t.endDay);
+      const busy = [], calm = [];
+      days.forEach((d) => {
+        if (d < urgeDays[0] || d >= today) return;
+        const n = events.filter((t) => store.fallsOn(t, d)).length;
+        (n >= BUSY_MIN ? busy : calm).push(store.urgesOfDay(d).length > 0);
+      });
+      if (busy.length >= MIN && calm.length >= MIN) {
+        const yes = (xs) => xs.filter(Boolean).length;
+        out.push({
+          id: "busy-urge", title: "予定の多い日と飲みたくなった", tone: "info", n: busy.length + calm.length,
+          text: `${win}日のうち、予定と飲みたくなったの記録がそろった日は ${busy.length + calm.length}日。`
+            + `予定が${BUSY_MIN}件以上の日（${busy.length}日）のうち飲みたくなった日は ${yes(busy)}日、`
+            + `そうでない日（${calm.length}日）では ${yes(calm)}日。`,
+        });
+      }
+    }
+
+    /* 夕食の時刻と翌朝の体重：翌朝の体重の、7日平均からのずれ（analyze の「飲んだ翌日の体重」と同じ物差し）。
+       夕食の時刻はその日の夜の枠のいちばん早い時刻。 */
+    const pts = D.weightPoints(U.shiftDay(from, -6), today);
+    const ma = new Map(D.movingAverage(pts, 7).filter((m) => m.value != null).map((m) => [m.day, m.value]));
+    const morning = new Map();
+    pts.forEach((p) => { if (!morning.has(p.day)) morning.set(p.day, p.kg); });
+    const late = [], early = [];
+    days.forEach((d) => {
+      const next = U.shiftDay(d, 1);
+      if (next > today || !morning.has(next) || !ma.has(next)) return;
+      const t = store.mealsOfDay(d).filter((m) => m.slot === "dinner" && U.isTime(m.time)).map((m) => m.time).sort()[0];
+      if (!t) return;
+      (t >= LATE_DINNER ? late : early).push(morning.get(next) - ma.get(next));
+    });
+    if (late.length >= MIN && early.length >= MIN) {
+      out.push({
+        id: "dinner-time", title: "夕食の時刻と翌朝の体重", tone: "info", n: late.length + early.length,
+        text: `${win}日のうち、夕食の時刻と翌朝の体重がそろった日は ${late.length + early.length}日。`
+          + `${LATE_DINNER.replace(/^0/, "").replace(":00", "時")}からの夕食（${late.length}日）の翌朝は 7日平均から平均 ${kg(avg(late))}、`
+          + `それより前（${early.length}日）は ${kg(avg(early))}。`,
+      });
+    }
+    return out;
+  }
+
+  KN.insights = { forItems, runningLow, oftenBought, across, STALE_DAYS };
 })();

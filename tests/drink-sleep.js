@@ -3,6 +3,7 @@
    時計を 2026年9月29日に止め、30日の窓（8月31日〜）で。前半と後半の境は 9月15日。
    睡眠は起きた日に付くので、d の日に飲んだ晩は d+1 の睡眠と組む。
    基本の形：日付が 3 の倍数の日に飲む（窓の中の飲んだ晩は 10回、そうでない晩は 20回）。
+   H3（11月12日）：席をまたぐ気づき三つ（歩いた日の夜の睡眠・予定の多い日と飲みたくなった・夕食の時刻と翌朝の体重）。
    後半は画面：絵は bed・絵文字なし・警告の色なし。記録は変えない（読むだけ）。 */
 const { open, checker } = require("./lib");
 
@@ -142,6 +143,50 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("絵は bed", ui && ui.ico === "bed", ui && ui.ico);
   t.check("警告の色なし", ui && !ui.warn);
   t.check("絵文字なし", ui && !EMOJI.test(ui.text));
+
+  /* ---- H3 席をまたぐ気づき（insights.js の across。docs/health.md「席をまたぐ気づき」） ----
+     8月24日〜9月29日。偶数の日は 9000歩（その夜 7時間）・奇数は 3000歩（6時間30分）。
+     偶数の日は予定2件・奇数は1件、飲みたくなったは偶数の日だけ。3の倍数の日の夕食は 21:30（翌朝 +0.3kg）、ほかは 19:00。 */
+  const h3 = await page.evaluate(() => {
+    const U = KN.util, S = KN.store;
+    S.update((s) => {
+      s.diet.weights = []; s.diet.meals = []; s.diet.drinks = []; s.diet.health = []; s.diet.urges = [];
+      s.archive.days = []; s.todos = []; s.diet.goal.stepsTarget = null;
+    });
+    const even = (d) => Number(d.slice(8)) % 2 === 0, third = (d) => Number(d.slice(8)) % 3 === 0;
+    for (let d = "2026-08-24"; d <= "2026-09-29"; d = U.shiftDay(d, 1)) {
+      const prev = U.shiftDay(d, -1);
+      S.setHealth(d, "steps", even(d) ? 9000 : 3000);
+      S.setHealth(d, "sleep", even(prev) ? 420 : 390);
+      for (let i = 0; i < (even(d) ? 2 : 1); i++) S.addTodo({ title: `予定${i}`, due: d, time: "10:00", kind: "event" });
+      if (even(d) && d < "2026-09-29") S.addUrge({ day: d, time: "21:00", before: 3 });
+      S.addMeal({ day: d, slot: "dinner", time: third(d) ? "21:30" : "19:00", memo: "x" });
+      S.addWeight({ day: d, time: "07:00", kg: third(prev) ? 70.3 : 70 });
+    }
+    const before = JSON.stringify(S.get());
+    const f = KN.insights.across(30);
+    return { f, same: before === JSON.stringify(S.get()) };
+  });
+  const by = (id) => h3.f.find((x) => x.id === id) || {};
+  t.check("歩いた日の夜の睡眠：そろった日数と二つの平均だけ",
+    by("walk-sleep").text === "30日のうち、歩数とその夜の睡眠がそろった日は 29日。5,000歩以上の日（14日）の夜は平均 7時間0分、そうでない日（15日）の夜は 6時間30分。",
+    by("walk-sleep").text);
+  t.check("予定の多い日と飲みたくなった：日数だけ",
+    by("busy-urge").text === "30日のうち、予定と飲みたくなったの記録がそろった日は 29日。予定が2件以上の日（14日）のうち飲みたくなった日は 14日、そうでない日（15日）では 0日。",
+    by("busy-urge").text);
+  t.check("夕食の時刻と翌朝の体重：7日平均からのずれ",
+    /^30日のうち、夕食の時刻と翌朝の体重がそろった日は 29日。21時からの夕食（\d+日）の翌朝は 7日平均から平均 \+0\.\dkg、それより前（\d+日）は −0\.\dkg。$/.test(by("dinner-time").text || ""),
+    by("dinner-time").text);
+  t.check("助言・原因・採点の言葉が無い（tone は info）", h3.f.length === 3 && h3.f.every((x) => x.tone === "info"
+    && !/しましょう|おすすめ|原因|良い|悪い|べき|控え/.test(x.text)), JSON.stringify(h3.f.map((x) => x.text)));
+  t.check("H3 も記録を変えない（読むだけ）", h3.same);
+  await page.evaluate(() => { KN.app.showScreen("tasks"); KN.app.showScreen("diet"); });
+  await page.waitForTimeout(400);
+  const h3ui = await page.evaluate(() => [...document.querySelectorAll(".diet-finding")]
+    .filter((el) => /歩いた日の夜|予定の多い日|夕食の時刻/.test((el.querySelector("b") || {}).textContent))
+    .map((el) => ({ ico: (el.querySelector("[data-ico]") || {}).dataset.ico, warn: !el.classList.contains("is-info") })));
+  t.check("画面の気づいたことに三つ（steps・calendar・clock、色なし）",
+    h3ui.map((x) => x.ico).join() === "steps,calendar,clock" && h3ui.every((x) => !x.warn), JSON.stringify(h3ui));
   t.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
 
   await browser.close();
