@@ -258,16 +258,22 @@ const { open, checker, ASKS } = require("./lib");
       && (await page.evaluate(() => Object.keys(KN.store.get().settings.askNo || {}).length)) === 0);
 
     /* ---- 問いの答えは thinking に並べず（入口は上の「問い」）、最近直したにも出さない（見せ方だけ） ---- */
-    const home = await page.evaluate(async () => {
+    /* 最近（ホームの表紙のカード）と thinking の一冊の面（R7）。 */
+    const recent = await page.evaluate(async () => {
       KN.screens.notes.again();
       await new Promise((r) => setTimeout(r, 400));
+      return [...document.querySelectorAll("#screen-notes .nt-covers .nt-cover-t")].map((x) => x.textContent.trim());
+    });
+    await page.click('#screen-notes .nt-bk[data-nb="thinking"]');
+    await page.waitForSelector('#screen-notes .nt-shelf[data-shelf="thinking"]', { timeout: 4000 });
+    const home = await page.evaluate((recent) => {
       const s = document.querySelector('#screen-notes .nt-shelf[data-shelf="thinking"]');
       const names = s ? [...s.querySelectorAll(".nt-row .nt-name")].map((x) => x.textContent.trim()) : [];
-      const recent = [...document.querySelectorAll("#screen-notes .notes-flat .nt-name")].map((x) => x.textContent.trim());
       const ans = KN.notes.list().filter((n) => n.notebook === "thinking" && /^？/.test(n.body)).length;
-      return { names, recent, ans };
-    });
-    t.check("thinking：答えのノートも「問いの答え」の行も並べない", home.ans > 0 && !home.names.includes("問いの答え") && !home.names.some((x) => /^？/.test(x)), JSON.stringify(home));
+      return { names, recent, ans, face: !!s };
+    }, recent);
+    await page.evaluate(() => KN.screens.notes.again());
+    t.check("thinking：答えのノートも「問いの答え」の行も並べない", home.face && home.ans > 0 && !home.names.includes("問いの答え") && !home.names.some((x) => /^？/.test(x)), JSON.stringify(home));
     t.check("最近直したに問いの答えは出ない", !home.recent.some((x) => /^？/.test(x)), JSON.stringify(home.recent));
     await page.click("#screen-notes .js-asks");
     await page.waitForSelector("#screen-notes .notes-asks.is-go", { timeout: 4000 });

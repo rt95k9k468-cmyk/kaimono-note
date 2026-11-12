@@ -65,7 +65,7 @@ const { open, checker } = require("./lib");
     if (w >= 840) {
       await page.click(".tab-notes");
       await page.waitForTimeout(400);
-      await page.locator(".nt-card").first().click();
+      await page.locator("#screen-notes .note-row .js-open").first().click();
       await page.waitForTimeout(500);
       await page.keyboard.press("3");
       await page.waitForTimeout(500);

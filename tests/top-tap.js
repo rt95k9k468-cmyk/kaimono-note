@@ -120,6 +120,7 @@ const { open, checker } = require("./lib");
   const listY = await page.evaluate(() => {
     for (let i = 0; i < 40; i++) KN.notes.put({ ...KN.notes.draft(), id: `n-tt${i}`, title: `送り${i}`, body: "本文" });
     KN.screens.notes.render();
+    document.querySelector("#screen-notes .js-all").click();   // 長い一覧は「すべて」の面（R7 のホームは短い）
     const el = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
     el.scrollTop = 800;
     return el.scrollTop;

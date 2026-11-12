@@ -5134,9 +5134,9 @@ textarea.note-title-in {
   display: block;
   resize: none;
   overflow: hidden;
-  font-family: inherit;
+  font-family: var(--font-display);
 }
-.sheet.is-note .note-title-in { font-size: var(--fs-2xl); line-height: var(--lh-tight); }
+.sheet.is-note .note-title-in { font-size: var(--fs-2xl); line-height: 1.35; }   /* 明朝の字の背が行に収まる（1.2 では欄からはみ出した） */
 .note-body-in,
 .note-view {
   min-height: 38vh;
