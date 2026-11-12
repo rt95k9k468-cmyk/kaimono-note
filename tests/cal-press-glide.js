@@ -1,8 +1,9 @@
-/* 押して暦を開く・畳むときも、指で引いたときと同じく滑る（2026年10月25日、利用者「パッとカレンダーが月表示になる」）。
+/* 押して暦を開く・畳むときも滑る（2026年10月25日、利用者「パッとカレンダーが月表示になる」）。
    docs/calendar-swipe.md の「押しても滑る」、docs/todo-items.md の「月の面と暦の名前」。
 
-   - 今日｜週｜月 の「月」・「週」・題を押す：暦の背が一コマで跳ばず、途中の背を何コマも通る。最初の一コマは元の背のまま
-     （重い組み直しの一拍のうちに滑りを始めると、最初の一コマで半分近く開いていた）。
+   - 今日｜週｜月 の「月」・「週」・題を押す：**盆の背は押した一拍で行き着く先**（毎コマ並べ直さない。docs/redesign.md 7節の 1）。
+     下の画面と暦の升は見かけ（translate）で、一コマで跳ばず途中を何コマも通る。最初の一コマは元の所のまま
+     （重い組み直しの一拍のうちに滑りを始めると、最初の一コマで半分近く開いていた）。滑り終えたら何も残さない。
    - 月の面を開くと、紙は今日の行が「今日｜週｜月」の帯のすぐ下（過ぎた日は上へ隠れる）。題と輪は今日のまま（滑るあいだに
      送りが縮んで、題が過ぎた日へ跳ばない）。
    - 月の面は全タブの暦の札を書かない：買うものへ移っても暦は週。移るあいだ暦の置き場の背も滑る。
@@ -30,7 +31,8 @@ const { open, checker } = require("./lib");
   });
   await page.waitForTimeout(400);
 
-  /* 押してから 600ms のあいだ、毎コマ：暦の置き場の背・題・紙の送り。 */
+  /* 押してから 600ms のあいだ、毎コマ：暦の置き場の背・題・紙の送り・下の画面の上のきわ（p）・今日の升の上のきわ（c）。
+     p と c は見かけ（translate こみ）。 */
   const watch = () => page.evaluate(() => {
     window.__w = [];
     const t0 = performance.now();
@@ -39,7 +41,8 @@ const { open, checker } = require("./lib");
       const sc = KN.app.scrollerOf(document.querySelector("#screen-todo"));
       window.__w.push({ ms: performance.now(), h: Math.round(hc.getBoundingClientRect().height), t: (document.querySelector("#head .js-day-title") || {}).textContent || "",
         peek: !!document.querySelector("#head .cal.is-peek"), top: Math.round(sc.scrollTop),
-        p: Math.round(document.getElementById("panes").getBoundingClientRect().top) });
+        p: Math.round(document.getElementById("panes").getBoundingClientRect().top),
+        c: Math.round((document.querySelector('#head .cal-day[data-day="2026-10-21"]') || hc).getBoundingClientRect().top) });
       if (performance.now() - t0 < 600) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -53,6 +56,24 @@ const { open, checker } = require("./lib");
   /** 一コマで動いた背のいちばん大きいもの。**一コマ（16.7ms）あたりに直して**測る——滑りは時刻で進むので、
       混んだ CI でコマが落ちると次のコマにまとめて動く（6本ずつ並べた回に 229px で落ちた。2026年11月8日）。 */
   const leap = (w) => Math.max(0, ...w.slice(1).map((f, i) => Math.abs(f.h - w[i].h) * 16.7 / Math.max(16.7, f.ms - w[i].ms)));
+  /** 下の画面の上のきわ（p）・今日の升の上のきわ（c）を、between / leap に掛ける形へ。 */
+  const of = (w, k) => w.map((f) => ({ ms: f.ms, h: f[k] }));
+  /** 盆は先に行き着く背を取る：置き場の背は「前」と「あと」の二つだけ（途中の背を通らない）。 */
+  const snaps = (w) => new Set(w.map((f) => f.h)).size <= 2;
+  /** 滑り終えたら、書いたものを残さない（暦の印・窓の背・ずらし・下の画面の translate・延ばした画面・送りしろ）。 */
+  const clean = () => page.evaluate(() => {
+    const cal = document.querySelector("#head .cal"), scr = document.querySelector("#screen-todo"), sc = KN.app.scrollerOf(scr);
+    const left = [];
+    if (/is-peek|is-settling|is-rows/.test(cal.className)) left.push("cal:" + cal.className);
+    if (/--cal-(ms|ease|o0|o1)/.test(cal.style.cssText)) left.push("cal.style:" + cal.style.cssText);   // --cal-row は画面のもの（fitTall）
+    if (cal.querySelector(".cal-clip").style.cssText) left.push("clip:" + cal.querySelector(".cal-clip").style.cssText);
+    if (cal.querySelector(".cal-slide").style.cssText) left.push("slide:" + cal.querySelector(".cal-slide").style.cssText);
+    if (document.getElementById("panes").style.translate) left.push("panes");
+    if (scr.style.bottom) left.push("bottom:" + scr.style.bottom);
+    if (sc.style.paddingBottom) left.push("pad:" + sc.style.paddingBottom);
+    if (document.getAnimations().some((a) => a.effect && a.effect.target && (a.effect.target.id === "panes" || a.effect.target.closest(".cal")))) left.push("anim");
+    return left;
+  });
 
   // 週の面：頭から（今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初）、時刻の列と点の列がそろう、今日の日付は塗り、「仕事だけ」に青い点が無い
   await page.click('#screen-todo .wk-faces [data-face="week"]');
@@ -83,9 +104,16 @@ const { open, checker } = require("./lib");
   await page.click('#screen-todo .wk-faces [data-face="month"]');
   let w = await seen();
   const first = w.find((f) => f.peek);
-  c.check("「月」で暦が滑って開く（一コマで跳ばない）", between(w) >= 4 && leap(w) < 200, JSON.stringify(w.map((f) => f.h)));
-  c.check("滑りの最初の一コマは週の背のまま", !!first && Math.abs(first.h - w[0].h) <= 2, JSON.stringify([w[0].h, first && first.h]));
+  c.check("「月」で下の画面が滑って下りる（一コマで跳ばない）", between(of(w, "p")) >= 4 && leap(of(w, "p")) < 200, JSON.stringify(w.map((f) => f.p)));
+  c.check("盆は押した一拍で月の背を取る（毎コマ並べ直さない）", snaps(w) && w[w.length - 1].h - w[0].h > 300, JSON.stringify(w.map((f) => f.h)));
+  c.check("滑りの最初の一コマは元の所のまま（下の画面・今日の升）", !!first && Math.abs(first.p - w[0].p) <= 2 && Math.abs(first.c - w[0].c) <= 2,
+    JSON.stringify([w[0].p, first && first.p, w[0].c, first && first.c]));
+  c.check("今日の升は跳ばずに月の中の段へ下りる", between(of(w, "c")) >= 4 && leap(of(w, "c")) < 120, JSON.stringify(w.map((f) => f.c)));
   c.check("滑るあいだ題は今日のまま", w.every((f) => /21日/.test(f.t)), JSON.stringify([...new Set(w.map((f) => f.t))]));
+  c.check("滑るあいだ紙の送りは書いた所のまま（削られない）", w.filter((f) => f.peek).every((f) => f.top === w[w.length - 1].top) && w[w.length - 1].top > 0,
+    JSON.stringify(w.map((f) => f.top)));
+  let left = await clean();
+  c.check("滑り終えたら何も残さない（月）", !left.length, left.join(" / "));
   const mo = await page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
     const bar = scr.querySelector(".wk-faces").getBoundingClientRect().bottom;
@@ -111,7 +139,15 @@ const { open, checker } = require("./lib");
   await watch();
   await page.click('#screen-todo .wk-faces [data-face="week"]');
   w = await seen();
-  c.check("「週」で暦が滑って畳む", between(w) >= 4 && leap(w) < 200, JSON.stringify(w.map((f) => f.h)));
+  c.check("「週」で下の画面が滑って上がる", between(of(w, "p")) >= 4 && leap(of(w, "p")) < 200 && snaps(w), JSON.stringify([w.map((f) => f.p), w.map((f) => f.h)]));
+  c.check("今日の升は跳ばずに週の一段へ上がる", between(of(w, "c")) >= 4 && leap(of(w, "c")) < 120, JSON.stringify(w.map((f) => f.c)));
+  left = await clean();
+  c.check("滑り終えたら何も残さない（週）", !left.length, left.join(" / "));
+  const ring = await page.evaluate(() => {
+    const r = document.querySelector("#head .cal-ring").getBoundingClientRect(), n = document.querySelector("#head .cal-day.is-here .cal-n").getBoundingClientRect();
+    return { dx: Math.round(r.left - n.left), dy: Math.round(r.top - n.top), on: document.querySelector("#head .cal-ring").classList.contains("is-on") };
+  });
+  c.check("畳んだあと輪は見ている日の上", ring.on && Math.abs(ring.dx) <= 2 && Math.abs(ring.dy) <= 2, JSON.stringify(ring));
 
   // 今日の面で題を押す：週 → 月（ふつうの月）も滑る
   await page.click('#screen-todo .wk-faces [data-face="today"]');
@@ -120,11 +156,12 @@ const { open, checker } = require("./lib");
   await page.click("#head .js-day-title");
   w = await seen();
   const opened = await page.evaluate(() => KN.store.calPrefs("todo").open);
-  c.check("題を押すと暦が滑って開く（札は月）", opened && between(w) >= 3 && leap(w) < 200, JSON.stringify([opened, w.map((f) => f.h)]));
+  c.check("題を押すと下の画面が滑って下りる（札は月・盆は先に月の背）", opened && between(of(w, "p")) >= 3 && leap(of(w, "p")) < 200 && snaps(w),
+    JSON.stringify([opened, w.map((f) => f.p), w.map((f) => f.h)]));
   await watch();
   await page.click("#head .js-day-title");
   w = await seen();
-  c.check("もう一度押すと滑って畳む", between(w) >= 3 && leap(w) < 200, JSON.stringify(w.map((f) => f.h)));
+  c.check("もう一度押すと滑って畳む", between(of(w, "p")) >= 3 && leap(of(w, "p")) < 200 && snaps(w), JSON.stringify([w.map((f) => f.p), w.map((f) => f.h)]));
 
   // 続けて押す（滑っている途中で「週」）：古い行き先を札に書かず、週の面・週の暦で止まる
   await page.click('#screen-todo .wk-faces [data-face="week"]');

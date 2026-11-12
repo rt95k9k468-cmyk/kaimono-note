@@ -125,7 +125,7 @@ async function once() {
     await trace(p.x - 120, p.y, line(260, 0));
     await page.waitForTimeout(900);
   }
-  /* 暦を伸ばす（題を押して週 → 月。cal-peek の glide が暦の背を毎フレーム書く。RM で測った） */
+  /* 暦を伸ばす（題を押して週 → 月。cal-peek の glide。並びは押した一拍で行き先、滑るのは見かけだけ） */
   out[name = "暦を伸ばす"] = await measure(() => tap("#head .js-day-title"), 900);
   out[name = "暦を畳む"] = await measure(() => tap("#head .js-day-title"), 900);
   await page.evaluate(() => KN.app.showScreen("list"));

@@ -160,7 +160,7 @@
     els.dayTitle.addEventListener("click", () => {
       if (!mine()) return;               // 帯は一つ。応えるのは持ち主だけ
       haptic();
-      /* 指で引いたときと同じ滑りで（cal-peek の glide）。月の面で押せば、暦を畳んで週の面へ。 */
+      /* 滑らせる（cal-peek の glide）。月の面で押せば、暦を畳んで週の面へ。 */
       KN.calPeek.glide(peekOpts, () => {
         if (!monthFace()) { store.setCalPref("todo", KN.head.nextStep(calShown(), calOpen())); return; }
         face = "week";
@@ -192,10 +192,7 @@
     fitCalH = () => {
       /* 暦は帯（画面の外）に居るので、根っこから探さずに持っている一枚を。 */
       const c = els.cal;
-      /* **引いているあいだは測りません。** 紙を引くと暦は月ぜんぶの姿で
-         留められる（cal-peek の begin）ので、そのまま測ると床が月の高さに
-         なり、掴み手だけが暦の中へ食い込みます。床は始めた段のままでよく、
-         紙の transform が一緒に運んでくれます。 */
+      /* 暦が滑っているあいだは測りません（cal-peek の glide。背は押した一拍で行き着いた先なので、測り直すものが無い）。 */
       if (c && (c.classList.contains("is-peek") || c.classList.contains("is-settling"))) return;
       /* 帯から外れた暦（ほかの席へ移った）は測りません。外れた暦は 0 を返し、出ていく画面の床（--cal-h）が
          流れの途中で 0 へ跳ねて、その画面の様式を組み直していた（2026年10月24日）。戻れば組み直しが測り直す。 */
@@ -274,7 +271,7 @@
     followFrame = requestAnimationFrame(() => {
       followFrame = 0;
       if (!root || !els.cal || (KN.app.isGliding && KN.app.isGliding())) return;
-      // 暦が滑っているあいだの送り（cal-peek が紙を留め直している）は、人が送ったのではない。
+      // 暦が滑っているあいだの送り（押した一拍に画面が書いたもの）は、人が送ったのではない。
       if (els.cal.classList.contains("is-peek")) return;
       const sc = KN.app.scrollerOf(root);
       if (sc.scrollTop < 4) return;
@@ -4368,7 +4365,8 @@
   }
 
   /** 月の面は暦を画面の65%まで背高に（2026年10月20日、利用者）。マス＝残りを行の数で割る。入りきらない名前は
-      最後の段を「+n」に。引いているあいだは触らない（指の下のマスの高さは cal-peek が `data-row-lo` から出す）。 */
+      最後の段を「+n」に。暦が滑っているあいだは触らない（升の上のきわを見かけで測るので、ずれた所を拾う。
+      組み直しがそのあいだに来たら、滑り終えた cal-peek が `commit` で頼み直す）。 */
   const TALL = 0.65;
   function fitTall(sec) {
     if (!sec || !sec.isConnected || sec.classList.contains("is-peek") || sec.classList.contains("is-settling")) return;
@@ -4387,7 +4385,6 @@
     const row = Math.floor((lim - top - padB - (rows - 1)) / rows);
     if (row <= lo) return;
     sec.style.setProperty("--cal-row", row + "px");
-    sec.dataset.rowLo = lo;
     sec.classList.add("is-tall");
     // 輪は px で置いてあるので、マスの背が変わったら置き直す。
     const here = grid.querySelector(":scope > .cal-day.is-here");
@@ -5151,17 +5148,17 @@
     fitCalH();
   }
 
-  /** 押して段を替えるとき（題・今日｜週｜月・月の段の日）に cal-peek の glide へ渡すもの。紙と根は組み直すと
-      替わるので、取り出す口にしておく。背の高い月かは、書いたあとの面で答える（留めているあいだ印は前のまま）。 */
+  /** 押して段を替えるとき（題・今日｜週｜月・月の段の日）に cal-peek の glide へ渡すもの。根は取り出す口にしておく。
+      `ring`＝滑り終えたら輪を置き直す（px で置くので、段を隠した・刻みが変わったあとはずれている）。
+      `commit`＝滑るあいだに組み直しが黙っていたぶんを置き直す。 */
   const peekOpts = {
-    get sheet() { return els.body ? els.body.querySelector(".tl-sheet") : null; },
     get root() { return root; },
     cal: () => els.cal,
     isOpen: () => calOpen(),
     isShown: () => calShown(),
     here: () => hereDay || todayKey(),
     tagOffWeek: (sec, here) => tagOffWeek(sec, here),
-    tall: () => monthFace(),
+    ring: () => paintHere(true),
     commit: (st) => calCommit(st),
   };
 

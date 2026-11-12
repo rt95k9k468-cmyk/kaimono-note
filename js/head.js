@@ -138,6 +138,7 @@
   /** 席を移る直前（app.js の show の頭）に、出ていく暦の印を写しておく。暦の置き場の背と、背の高い月の
       写真の敷き方も（席を移るときに背が違えば滑らせる——resizeCal）。 */
   function snapFor(id) {
+    KN.calPeek.stop();      // 暦が滑っている途中なら、ここで止める（並びはもう行き着いた先。下の画面の translate を取り合わない）
     pre = null;
     fromH = null;
     if (!root || id === "settings" || !TABS.includes(id) || id === owner) return;

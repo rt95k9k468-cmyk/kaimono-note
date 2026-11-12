@@ -477,12 +477,9 @@
   grid-template-columns: repeat(7, 1fr);
 }
 
-/* 伸び縮みする窓と、その中のずらし。ふだんは何もしません（高さは中身の
-   まま、ずれは0）——JSが指の下で高さとずれを書いているあいだだけ効きます。
+/* 窓と、その中のずらし。ふだんは何もしません（高さは中身のまま、ずれは0）。
    月をめくるときの横ずれは中の .cal-grid が持つので、縦と横で層が別です。 */
 .cal-clip { overflow: hidden; }
-.cal.is-settling .cal-clip { transition: height var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
-.cal.is-settling .cal-slide { transition: transform var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 
 /* ---- 週を横に払うあいだ、隣の週を先に見せる（js/cal-swipe.js）----
 
@@ -509,44 +506,37 @@
    `display: none` が伏せています（上）。払っているあいだも `.is-week` は
    付いたままなので、真ん中だけ一か月ぶんに伸びる、ということは起きません。
    左右の二枚は最初から七つしか持っていないので、伏せるものがありません。 */
-/* ---- 三段目：暦そのものを畳む ----
+/* ---- 押して暦の段を替える（js/cal-peek.js の glide）----
 
-   週からさらに上へ押すと、暦が消えます。畳むのは日のマスだけでは足りません
-   ——曜日の行と、暦の上下の余白も一緒に畳まないと、消したはずの場所に
-   「日 月 火…」と余白だけが残ります。寸法は指の下で JS が書くので、
-   ここは**畳めるようにしておく**（overflow）のと、離したあと滑らせる
-   （transition）だけです。 */
-.cal.is-peek .cal-wds { overflow: hidden; }
-.cal.is-settling .cal-wds {
-  transition: height var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
-              opacity var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out));
-}
-.cal.is-settling { transition: padding var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)),
-                   border-color var(--dur) var(--ease); }
-/* **暦は、紙より前に居たままにします**（z-index は動かしません）。紙の箱は
-   画面の上へはみ出しているので、紙を前に出すと、送った先では紙の地が暦を
-   丸ごと隠します——実測で、ダイエットで下まで送ってから引くと暦が一度も
-   見えませんでした。暦が前、紙はその下を流れる。この順が正です。 */
-
-/* しまってある暦も、引いているあいだは場所を取ります（測るために）。
-   ここが無いと、三段目から週へ戻す道が始められません。 */
-.cal.is-hidden.is-peek { display: block; }
-/* 引いているあいだは、隠していた週も場所を取ります（測るために）。
-   濃さは、開いているぶんだけ。 */
+   並びは押した一拍で行き着く先。滑らせるのは見かけだけ——`.cal-slide` と下の画面（#panes）の translate は JS が
+   Web Animations で（一回ごとに値が違う二つ）、升の濃さと段の寄りはここで。暦の背は毎コマ動かない
+   （docs/redesign.md 7節の 1）。`is-peek`＝滑らせる姿（最初の一コマは元の姿で留まる）、`is-settling`＝滑っている。
+   数（--cal-ms・--cal-ease・--cal-o0・--cal-o1・--cal-ds）は JS が暦へ一度だけ書く。 */
+/* 窓は上と左右だけ切る。週へ畳むあいだ、ほかの段は盆の下へはみ出して、上がってくる下の画面に覆われる。 */
+.cal.is-peek .cal-clip { overflow: visible; clip-path: inset(0 0 -100vh); }
+/* 滑らせるあいだは、隠していた週も場所を取ります。濃さは元の姿（--cal-o0）から行き先（--cal-o1）へ。
+   隣の月の日（ふだん .42）は、そのぶん薄いまま。 */
 .cal.is-peek.is-week .cal-day.is-off-week { display: flex; }
 .cal.is-peek.is-week .cal-pad.is-off-week { display: block; }
-.cal.is-peek .cal-day.is-off-week { opacity: var(--cal-p, 1); }
-/* 隣の月の日（ふだん .42）は、そのぶん薄いまま開く（剥がした一拍に .42 へ跳ばない）。 */
-.cal.is-peek .cal-day.is-off-week.is-out { opacity: calc(var(--cal-p, 1) * .42); }
-/* 収まるあいだ、隣の週は窓と同じ長さで薄れる（浮かぶ）。`--cal-p` は離した一拍で行き先の数になるので、
-   ここが無いと、押して畳んだとき月の四週が先に消え、空の窓だけが縮んでいた。 */
-.cal.is-settling .cal-day.is-off-week { transition: opacity var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)), background var(--m-state) var(--ease); }
-@media (prefers-reduced-motion: reduce) {
-  .cal.is-settling .cal-clip,
-  .cal.is-settling .cal-slide,
-  .cal.is-settling .cal-wds,
-  .cal.is-settling .cal-day.is-off-week,
-  .cal.is-settling { transition: none; }
+.cal.is-peek .cal-day.is-off-week { opacity: var(--cal-o0, 1); }
+.cal.is-peek .cal-day.is-off-week.is-out { opacity: calc(var(--cal-o0, 1) * .42); }
+.cal.is-settling .cal-day.is-off-week { animation: cal-off var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)) both; }
+.cal.is-settling .cal-day.is-off-week.is-out { animation-name: cal-off-out; }
+@keyframes cal-off { from { opacity: var(--cal-o0, 1); } to { opacity: var(--cal-o1, 1); } }
+@keyframes cal-off-out { from { opacity: calc(var(--cal-o0, 1) * .42); } to { opacity: calc(var(--cal-o1, 1) * .42); } }
+/* 段の刻みが変わるとき（背の高い月 ⇄ ふつうの背。`is-rows`）は、段ごとに元の所から寄る（--cal-ds＝一段ぶんの差）。
+   輪は px で置いてあるので伏せる（収まれば画面が置き直す）。段の番号は輪を数えない（`of`）。 */
+.cal.is-rows .cal-grid > :nth-child(n + 8 of .cal-day, .cal-pad) { --cal-r: 1; }
+.cal.is-rows .cal-grid > :nth-child(n + 15 of .cal-day, .cal-pad) { --cal-r: 2; }
+.cal.is-rows .cal-grid > :nth-child(n + 22 of .cal-day, .cal-pad) { --cal-r: 3; }
+.cal.is-rows .cal-grid > :nth-child(n + 29 of .cal-day, .cal-pad) { --cal-r: 4; }
+.cal.is-rows .cal-grid > :nth-child(n + 36 of .cal-day, .cal-pad) { --cal-r: 5; }
+.cal.is-rows .cal-grid > :is(.cal-day, .cal-pad) { translate: 0 calc(var(--cal-r, 0) * var(--cal-ds, 0px)); }
+.cal.is-rows.is-settling .cal-grid > :is(.cal-day, .cal-pad) { animation: cal-row var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)) both; }
+.cal.is-rows.is-settling .cal-grid > .cal-day.is-off-week { animation-name: cal-row, cal-off; }
+.cal.is-rows.is-settling .cal-grid > .cal-day.is-off-week.is-out { animation-name: cal-row, cal-off-out; }
+@keyframes cal-row { from { translate: 0 calc(var(--cal-r, 0) * var(--cal-ds, 0px)); } to { translate: 0 0; } }
+.cal.is-rows .cal-ring { opacity: 0; }
 }
 
 .cal-wd {
@@ -4180,10 +4170,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   /* 紙のふちは、地との差だけで見せます。影を足すと、この一枚が「浮いて
      いる」ように見えて、下までひと続きに流れる感じが切れます。 */
 }
-/* 暦を引いているあいだ、字を選ばせない。 */
-.is-cal-peek .tl-sheet,
-.is-cal-peek .cal,
+/* 暦が滑るあいだは、前に居るのをやめる（下の画面が暦を覆う。js/cal-peek.js）。字も選ばせない。 */
 .head .cal.is-peek {
+  z-index: auto;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -4363,15 +4352,11 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .cal-name.is-past { color: var(--c-text-3); background: var(--c-surface-2); }
 /* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。字は「…」で切らない（一字ぶん惜しい）。 */
 .cal.is-tall .cal-grid { grid-auto-rows: var(--cal-row); }
-/* 収まるあいだマスの背も滑らせる。JS が書くのは段ごとの背（grid-template-rows。grid-auto-rows は補間されない）。 */
-.cal.is-tall.is-settling .cal-grid { transition: grid-template-rows var(--cal-ms, var(--m-grow)) var(--cal-ease, var(--ease-out)); }
 .cal.is-tall .cal-dots { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; height: auto; flex: 1; min-height: 0; padding: 0 2px; }
 .cal.is-tall .cal-name { padding-right: 2px; }
 .cal.is-tall .cal-name ~ .cal-name { display: block; }
 .cal.is-tall .cal-name b { mask-image: none; }
 .cal.is-tall .cal-name.is-over { display: none; }
-/* 引いているあいだはマスの背が動くので、px で置いた輪は伏せる（収まれば組み直しが置き直す）。 */
-.cal.is-tall:is(.is-peek, .is-settling) .cal-ring { opacity: 0; }
 .cal-rest { display: none; }
 .cal.is-tall .cal-rest { display: block; flex: none; padding-left: 4px; text-align: left; font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 13px; color: var(--c-text-2); }
 /* 日と日のあいだの、薄い薄い罫線（右と下。右端の列は右を引かない）。 */
