@@ -127,6 +127,17 @@ const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "not
   }));
   t.check("繰り返しても、開けば根っこ一枚・入口は九つのまま", after.layers === 1 && after.entries === 9, JSON.stringify(after));
 
+  /* X4：連携・ヘルプにショートカットの作り方（Apple の端末だけ・畳んで三つ・中継所のURLは出さない）。 */
+  await page.evaluate(() => { KN.ics.apple = () => true; KN.app.showScreen("settings"); KN.screens.settings.goTo([{ id: "" }, { id: "help" }]); });
+  await page.waitForTimeout(500);
+  const rec = await page.evaluate(() => {
+    const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();
+    const m = [...L.querySelectorAll("details.set-more")];
+    return { sums: m.map((d) => d.querySelector("summary").textContent.trim()), open: m.some((d) => d.open), text: L.textContent };
+  });
+  t.check("ショートカットの作り方は畳んで三つ", rec.sums.join() === "店に着いたら買うもの,寝る前に日記,Apple Watch から足す" && !rec.open, rec.sums.join());
+  t.check("作り方に中継所のURLは出さない", !/workers\.dev|https?:\/\//.test(rec.text));
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();
