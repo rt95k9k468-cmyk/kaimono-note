@@ -2,6 +2,8 @@
    - 手順はその場の小窓に出る（2026年10月21日）。札は動かない・下の札も押し下げない。組み直しても小窓は残る。
    - 長押しで動かす：指の高さ → 時刻（5分きざみ）を y の逆で引く。
    - 時刻が変わって並びが動いた札は、もといた場所から滑る（flipRows の translate）。
+   - T1 長さを引く：札の下の端を長押しすると長さ（.is-sizing）。指の高さ → 終わりは L.minAt、5分きざみ。
+     ほかの札は動かない。縮めるのは札の背に比例。離すと書き、「元に戻す」で戻る。真ん中の長押しは今までどおり運ぶ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/tl-ops.js */
 const { open, checker } = require("./lib");
 
@@ -119,6 +121,49 @@ const DAY = "2026-10-20";
 
   const a3 = await box("朝のしたく");
   c.check("札は時間どおりの高さのまま（1時間＝72px）", Math.abs((a3.bottom - a3.top) - (a0.bottom - a0.top)) < 2, JSON.stringify([a0, a3]));
+
+  /* ---- T1 長さを引く：昼ごはん（12:00・30分）の下の端。前の置き直しの滑りが収まってから測る ---- */
+  await page.waitForTimeout(900);
+  const L0 = await page.evaluate(() => {
+    const list = document.querySelector("#screen-todo .tl-list");
+    return { y13: list.__tl.y(13 * 60) + parseFloat(getComputedStyle(list).paddingTop) };   // box() と同じ一覧の頭から
+  });
+  const lunch = await box("昼ごはん"), kaigi0 = await box("会議");
+  const gy = lunch.y + (lunch.bottom - lunch.top) - 6;
+  await page.mouse.move(lunch.left + 80, gy);
+  await page.mouse.down();
+  await page.waitForFunction(() => !!document.querySelector("#screen-todo .tl-row.is-sizing"), null, { timeout: 2000 }).catch(() => {});
+  await page.waitForTimeout(140);
+  c.check("T1：下の端の長押しは長さを引く（運ばない・影も出ない）", await page.evaluate(() =>
+    !!document.querySelector("#screen-todo .tl-row.is-sizing") && !document.querySelector(".tl-ghost, .tl-row.is-lifted")));
+  const dy = L0.y13 - (lunch.bottom - 0);   // 札の下端 → 13:00 の高さ
+  for (let k = 1; k <= 8; k++) { await page.mouse.move(lunch.left + 80, gy + dy * k / 8); await page.waitForTimeout(30); }
+  const sz = await page.evaluate(() => (document.querySelector(".tl-aim .tl-band-time") || {}).textContent || "");
+  const kaigi1 = await box("会議");
+  c.check("T1：札の字は長さ（終わり 13:00 → 1時間）", sz === "1時間", sz);
+  c.check("T1：引いているあいだ、ほかの札は動かない", Math.abs(kaigi1.top - kaigi0.top) < 0.5, JSON.stringify([kaigi0, kaigi1]));
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const lm = () => page.evaluate(() => KN.store.get().todos.find((x) => x.title === "昼ごはん"));
+  const l1 = await lm();
+  c.check("T1：離すと長さを書く（時刻はそのまま）", l1.minutes === 60 && l1.time === "12:00", JSON.stringify([l1.minutes, l1.time]));
+  await page.click(".toast button");
+  await page.waitForTimeout(300);
+  c.check("T1：元に戻すで 30分へ", (await lm()).minutes === 30);
+  // 縮める：下の端を札の頭近くまで上げると、背に比例して 5分（下限）
+  const lunch2 = await box("昼ごはん");
+  const gy2 = lunch2.y + (lunch2.bottom - lunch2.top) - 6;
+  await page.mouse.move(lunch2.left + 80, gy2);
+  await page.mouse.down();
+  await page.waitForFunction(() => !!document.querySelector("#screen-todo .tl-row.is-sizing"), null, { timeout: 2000 }).catch(() => {});
+  await page.waitForTimeout(140);
+  for (let k = 1; k <= 6; k++) { await page.mouse.move(lunch2.left + 80, gy2 - (lunch2.bottom - lunch2.top) * 0.75 * k / 6); await page.waitForTimeout(30); }
+  const sh = await page.evaluate(() => (document.querySelector(".tl-aim .tl-band-time") || {}).textContent || "");
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const l2 = await lm();
+  c.check("T1：縮めるのは札の背に比例・5分きざみ", /分$/.test(sh) && l2.minutes < 30 && l2.minutes % 5 === 0 && l2.minutes >= 5,
+    `${sh} ${l2.minutes}`);
 
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

@@ -5693,6 +5693,7 @@ button.note-when:active { opacity: var(--press-fade); }
   background: var(--press-sink);
   transition-delay: var(--m-press);
 }
+.tl-list > li.tl-row.is-sizing { z-index: 2; box-shadow: var(--shadow-2); border-radius: var(--r-md); }
 .tl-row.is-lifted {
   opacity: .5;
   transform: scale(.98);

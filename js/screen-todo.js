@@ -5713,6 +5713,8 @@
   /* これだけ押さえたら持ち上がる・その前にこれ以上動いたら、ただのスクロール（KN.gesture）。 */
   const { HOLD: DRAG_HOLD, HOLD_SLOP: DRAG_SLOP } = KN.gesture;
   const SLOT_MIN = 5;      // 指の高さ → 時刻は5分きざみ
+  /* 札の下の端。ここを長押しすると、運ぶかわりに長さを引く（T1。docs/todo-timeline.md「長さを引く」）。 */
+  const SIZE_EDGE = 16;
   /* 運んでいる最中に、画面の端で自動的に送る帯の厚みと、ひと呼吸あたりの
      送り幅。**端に近いほど速く**——深く入るほど急いでいる、と読みます。
      これが無いと、画面の外にあるもの（長期タスクの欄や、朝の時間帯）へは
@@ -5771,9 +5773,10 @@
 
       const id = row.dataset.todoId;
       const x0 = e.clientX, y0 = e.clientY, pid = e.pointerId;
+      const edge = !list.classList.contains("tl-someday") && y0 >= row.getBoundingClientRect().bottom - SIZE_EDGE;
       /* 持ち上がるのは長押しの途中。iPhone は触れる前の音を出さないので、音の口は今開ける。 */
       KN.motion.wakeSound();
-      let timer = setTimeout(() => { timer = null; lift(row, id, list, day, y0); }, DRAG_HOLD);
+      let timer = setTimeout(() => { timer = null; lift(row, id, list, day, y0, edge); }, DRAG_HOLD);
 
       /* **待っているあいだの見張りは document で。** 一覧に付けていました
          が、紙を横に払うと day-swipe.js が外枠でポインタを捕まえます
@@ -5798,11 +5801,12 @@
     });
   }
 
-  /** 持ち上げる。左の列が、一本の時間軸になります。 */
-  function lift(row, id, list, day, y0) {
+  /** 持ち上げる。左の列が、一本の時間軸になります。下の端から持ち上げたら、長さを引く（sizeLift）。 */
+  function lift(row, id, list, day, y0, edge) {
     const t = store.getTodo(id);
     if (!t) return;
     const len = KN.plan.minutesOf(t);
+    if (edge && sizeLift(row, t, list, day, y0, len)) return;
 
     /* 持ち上げた指の位置を控えます。**動かさずに離したら、何もしません**
        ——下の drop() を見ること。 */
@@ -5947,6 +5951,73 @@
     aim(row.getBoundingClientRect().left + 20, y0);
   }
 
+  /* ---------------- 長さを引く（T1） ----------------
+     時刻のある札の下の端を長押しすると、運ぶかわりに札の下の端が指についてくる。指の高さ → 終わりの時刻は
+     運ぶのと同じ `L.minAt`（y の逆）。札の下端より上（縮める）は、札の背に比例して割る——短い札は時間を持たない
+     継ぎ目（R3 の 60px）で伸びているので、そのまま minAt を引くと継ぎ目のぶん指が空回りする。5分きざみ・5分から。
+     ほかの札は動かさない。狙いの線は札の下端に乗り、札の字は長さ。 */
+  function sizeLift(row, t, list, day, y0, len) {
+    const axis = axisOf(list);
+    const top = parseFloat(row.style.getPropertyValue("--top"));
+    const h = parseFloat(row.style.getPropertyValue("--h"));
+    if (!axis || !t.time || !(h > 0) || !Number.isFinite(top)) return false;
+    const L = axis.L, start = L.minAt(top);
+    const box = list.getBoundingClientRect();
+    tlDrag = { id: t.id, row, list, dayList: list, someday: false, day, len, target: null, y0, moved: false, axis,
+               size: { top, bottom: top + h, start, end: start + len, grab: top + h - (y0 - box.top - axis.pad) } };
+    KN.motion.fire("lift");
+    row.classList.add("is-sizing");
+    list.classList.add("is-dragging");
+    try { const s = window.getSelection(); if (s) s.removeAllRanges(); } catch (_) { }
+    const eatClick = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    list.addEventListener("click", eatClick, { capture: true, once: true });
+    tlDrag.eatClick = eatClick;
+    const aimLayer = node(html`<div class="tl-aim" aria-hidden="true"><span class="tl-aim-line"><span class="tl-band-time"></span></span></div>`);
+    (list.closest(".tl") || list).append(aimLayer);
+    tlDrag.aimLayer = aimLayer;
+    tlDrag.scroller = KN.app.scrollerOf(list.closest(".screen")) || document.scrollingElement;
+    tlDrag.x = 0; tlDrag.y = y0;
+    tlDrag.raf = requestAnimationFrame(edgeScroll);
+    const move = (ev) => {
+      if (!tlDrag) return;
+      if (Math.abs(ev.clientY - tlDrag.y0) > DRAG_SLOP) tlDrag.moved = true;
+      tlDrag.y = ev.clientY;
+      sizeAim(tlDrag, ev.clientY);
+    };
+    const hold = (ev) => { if (tlDrag) ev.preventDefault(); };
+    const off = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("touchmove", hold);
+      document.removeEventListener("pointerup", done);
+      document.removeEventListener("pointercancel", give);
+    };
+    const done = () => { off(); drop(true); };
+    const give = () => { off(); drop(false); };
+    document.addEventListener("pointermove", move);
+    document.addEventListener("touchmove", hold, { passive: false });
+    document.addEventListener("pointerup", done);
+    document.addEventListener("pointercancel", give);
+    sizeAim(tlDrag, y0);
+    return true;
+  }
+
+  function sizeAim(d, y) {
+    const s = d.size, L = d.axis.L;
+    const box = d.dayList.getBoundingClientRect();
+    const p = Math.max(s.top + 1, Math.min(L.height + 600, y - box.top - d.axis.pad + s.grab));
+    const end = p >= s.bottom ? L.minAt(p) : s.start + (p - s.top) / (s.bottom - s.top) * (s.end - s.start);
+    const m = Math.max(SLOT_MIN, Math.min(24 * 60 - s.start, Math.round((end - s.start) / SLOT_MIN) * SLOT_MIN));
+    const line = d.aimLayer.querySelector(".tl-aim-line");
+    const lineY = box.top + d.axis.pad + p - d.aimLayer.getBoundingClientRect().top;   // 測るのは書く前に
+    KN.util.setVar(d.row, "--h", (p - s.top).toFixed(1));
+    line.style.top = lineY.toFixed(1) + "px";
+    line.style.width = box.width.toFixed(1) + "px";
+    line.classList.toggle("is-under", lineY < AIM_LABEL_GAP);
+    line.firstChild.textContent = KN.plan.humanSpan(m);
+    d.aimLayer.classList.add("is-on");
+    d.target = { kind: "size", minutes: m };
+  }
+
   /** 影を、指の高さへ。縦だけ動かします。 */
   function moveGhost() {
     const d = tlDrag;
@@ -6030,6 +6101,7 @@
   function aim(x, y) {
     const d = tlDrag;
     if (!d) return;
+    if (d.size) { sizeAim(d, y); return; }
     [d.list, d.dayList, root].forEach((L) => {
       if (!L) return;
       L.querySelectorAll(".is-aim").forEach((el) => el.classList.remove("is-aim"));
@@ -6129,7 +6201,7 @@
     if (!d) return;
     if (commit) KN.motion.fire("drop");
     if (d.raf) cancelAnimationFrame(d.raf);
-    d.row.classList.remove("is-lifted");
+    d.row.classList.remove("is-lifted", "is-sizing");
     d.list.classList.remove("is-dragging");
     d.dayList.classList.remove("is-dragging");
     [d.list, d.dayList, root].forEach((L) => {
@@ -6185,6 +6257,18 @@
       haptic(14);
       KN.ui.toast(`「${t.title}」を消しました`, {
         action: { label: "元に戻す", onClick: undo },
+      });
+      return;
+    }
+
+    if (d.target.kind === "size") {
+      const m = d.target.minutes;
+      if (m === t.minutes) { render(); return; }
+      const was = { minutes: t.minutes };
+      store.updateTodo(d.id, { minutes: m });
+      KN.motion.fire("save");
+      KN.ui.toast(`「${t.title}」を ${KN.plan.humanSpan(m)}に`, {
+        action: { label: "元に戻す", onClick: () => store.updateTodo(d.id, was) },
       });
       return;
     }
