@@ -12,6 +12,7 @@
    膨らみ、閉じると（‹・本物のタッチで払う）先頭へ移ったカードへ縮む／動きを減らす設定。
    リンク（notes-unify 段4の一部）：読む姿は字だけ・中のノートは紙を重ねる・外は新しい窓・見つからなければ開かない・
    押した字にカーソル・題と冒頭は字だけ・探すときは中のノートの id を拾わない。
+   F7：「[[」と帯の鎖で題から選ぶリンク・ここへのリンク／マーカー ==字==（読む姿・写し・印を外す）／⋯ の写して新しく。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-format.js */
 const { open, checker } = require("./lib");
@@ -196,7 +197,7 @@ const { open, checker } = require("./lib");
   });
   /* 11 個：取り消す・やり直す・太字（10月7日）・見出し・点・番号・チェック・引用・区切り・上げる・下げる。 */
   /* 12 は段5の画像の絵を足した数（docs/image-design.md）。 */
-  t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 12 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
+  t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 13 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
   t.check("道具の帯は底から少し浮く、丸い塗った一本（ぼかさない）", bar.gap === 8 && bar.side === 8 && bar.round && bar.solid && bar.over, JSON.stringify(bar));
   t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
     !document.documentElement.classList.contains("is-note-full")
@@ -272,7 +273,7 @@ const { open, checker } = require("./lib");
       sheets: document.querySelectorAll(".sheet.is-open").length,
       items: [...document.querySelectorAll(".note-pop-item")].map((x) => x.textContent.trim()).join(",") };
   });
-  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,中にノートを足す,移す,束ねる,消す,見たままで書く", JSON.stringify(pop));   // 見たままで書くは印で書く端末だけの戻り口（tests/lib.js は印で回す。js/note-live.js）。読んだところは外した（2026年11月7日）。道に置く（3.0 の A2）は既定で畳む（3.1 の S4）
+  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,中にノートを足す,移す,写して新しく,束ねる,消す,見たままで書く", JSON.stringify(pop));   // 見たままで書くは印で書く端末だけの戻り口（tests/lib.js は印で回す。js/note-live.js）。読んだところは外した（2026年11月7日）。道に置く（3.0 の A2）は既定で畳む（3.1 の S4）
   await page.click(".note-pop-item:first-child");
   await page.waitForFunction(() => !document.querySelector(".note-pop"), null, { timeout: 3000 }).catch(() => {});   // 縮んで帰ってから消える
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
@@ -348,11 +349,11 @@ const { open, checker } = require("./lib");
     return page.$$eval(".note-pop-item", (xs) => xs.map((x) => x.textContent.trim()));
   };
   const two = await headItems(`# 一\n${filler}\n## 二\n${filler}`);
-  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,中にノートを足す,移す,束ねる,消す,見たままで書く", two.join(","));
+  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,中にノートを足す,移す,写して新しく,束ねる,消す,見たままで書く", two.join(","));
   await page.keyboard.press("Escape");
   await closeSheet();
   const three = await headItems(`# 一\n${filler}\n## 二\n${filler}\n### 三\n${filler}`);
-  t.check("見出しが三つなら、小窓に見出しが並ぶ", three.slice(7).join(",") === "一,二,三", three.join(","));
+  t.check("見出しが三つなら、小窓に見出しが並ぶ", three.slice(8).join(",") === "一,二,三", three.join(","));
   await page.click(".note-pop-item:last-child");
   await page.waitForTimeout(300);
   const jumped = await page.evaluate(() => {
@@ -596,8 +597,12 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 2);
   t.check("リンク：中のノートは紙を重ねて開く（書く欄へは入らない）", (await page.$$eval(".sheet.is-note.is-open .js-title", (r) => r.map((e) => e.value))).join() === "リンクの元,リンクの先"
     && !(await page.evaluate(() => document.activeElement && document.activeElement.classList.contains("note-body-in"))));
+  /* N1：開いた先の足もとに「ここへのリンク」（本文から引く）。 */
+  const backs = await page.$$eval(".sheet.is-note.is-open", (r) => [...r.pop().querySelectorAll(".js-back .note-row .note-t")].map((e) => e.textContent));
+  t.check("ここへのリンク：先の紙の足もとに元のノート", backs.join() === "リンクの元", JSON.stringify(backs));
   await page.locator(".sheet.is-note.is-open .js-close").last().click();
   await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 1);
+  t.check("ここへのリンク：リンクの無いノートには出ない", await page.$eval(".sheet.is-note.is-open .js-back", (e) => !e.children.length));
   await page.click('.sheet.is-note.is-open .nv-link:has-text("消えた")');
   await page.waitForTimeout(300);
   t.check("リンク：見つからないノートは紙を開かない", (await page.$$eval(".sheet.is-note.is-open", (r) => r.length)) === 1);
@@ -620,7 +625,72 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.activeElement && document.activeElement.classList.contains("note-body-in"));
   const lf = await field();
   t.check("リンクのある行でも、押した字のところにカーソル", lf.s === lf.v.indexOf("目"), `${lf.s} / ${lf.v.indexOf("目")}`);
+  /* N1：印で書くときも「[[」で選ぶ紙（自分は並ばない）→ [題](note:id)、カーソルはその後ろで書く欄へ戻る。 */
+  const pickSel = '.sheet.is-open[aria-label="リンク"]';
+  await page.keyboard.type("[[");
+  await page.waitForSelector(`${pickSel} .note-ver`, { timeout: 3000 });
+  const listed = await page.$$eval(`${pickSel} .note-ver`, (r) => r.map((e) => e.dataset.id));
+  await page.click(`${pickSel} .note-ver[data-id="${target}"]`);
+  await page.waitForFunction(() => document.activeElement && document.activeElement.classList.contains("note-body-in"), null, { timeout: 3000 });
+  const lkf = await field();
+  const want = `後ろ[リンクの先](note:${target})`;   // カーソルは押した「目」の前
+  t.check("リンクを書く：「[[」→ 題で選ぶ → [題](note:id)・自分は並ばない", lkf.v.includes(want) && lkf.s === lkf.v.indexOf(want) + want.length && !listed.includes(src) && listed.includes(target),
+    JSON.stringify({ v: lkf.v.slice(0, 80), s: lkf.s, self: listed.includes(src) }));
+  /* 道具の帯の鎖：選んだ字はそのまま見せる字に。 */
+  await page.evaluate(() => { const e = document.querySelector(".sheet.is-note .js-text"); const i = e.value.indexOf("前の字"); e.setSelectionRange(i, i + 3); });
+  await tool("link");
+  await page.waitForSelector(`${pickSel} .note-ver`, { timeout: 3000 });
+  await page.click(`${pickSel} .note-ver[data-id="${target}"]`);
+  await page.waitForFunction(() => document.activeElement && document.activeElement.classList.contains("note-body-in"), null, { timeout: 3000 });
+  t.check("リンクを書く：道具の帯の鎖・選んだ字が見せる字", (await field()).v.startsWith(`[前の字](note:${target})[リンク先]`), (await field()).v.slice(0, 60));
   await closeSheet();
+
+  /* N3：マーカー「==字==」。読む姿は <mark>（山吹の淡い面）・書くときの写しも面だけ・題や冒頭は字だけ・往復しない形は拾わない。 */
+  const hl = await page.evaluate(() => {
+    const F = KN.noteFormat;
+    const box = document.createElement("div");
+    F.render("前==大事==後\n- ==点==\na == b ==\n======\n**==重ね==**", box);
+    const ink = document.createElement("div");
+    F.ink("x==印==y", ink);
+    return { marks: [...box.querySelectorAll("mark.nv-m")].map((e) => e.textContent).join(), plain: F.plain("前==大事==後"),
+      src: F.sourceAt("前==大事==後", 2), ink: [...ink.querySelectorAll(".nh-hl")].map((e) => e.textContent).join(), inkText: ink.textContent };
+  });
+  t.check("マーカー：==字== は <mark>・「a == b ==」「======」は字のまま・太字と重なれば太字", hl.marks === "大事,点", JSON.stringify(hl));
+  t.check("マーカー：印を外した字・押した字の位置・書くときの写しは字を足し引きしない", hl.plain === "前大事後" && hl.src === 4 && hl.ink === "印" && hl.inkText === "x==印==y", JSON.stringify(hl));
+  await page.evaluate((id) => KN.screens.notes.open(id), target);
+  await page.waitForSelector(".sheet.is-note.is-open");
+  await page.click(".sheet.is-note .nv-p");
+  await page.waitForFunction(() => document.activeElement && document.activeElement.classList.contains("note-body-in"));
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("と==黄色==");
+  await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-note .note-view").hidden);
+  const mkv = await page.$eval(".sheet.is-note .note-view", (v) => { const m = v.querySelector("mark.nv-m"); return m && { t: m.textContent, bg: getComputedStyle(m).backgroundColor, c: getComputedStyle(m).color === getComputedStyle(v).color }; });
+  t.check("マーカー：打って閉じると読む姿は山吹の面（字の色は変えない）", !!mkv && mkv.t === "黄色" && mkv.bg !== "rgba(0, 0, 0, 0)" && mkv.c, JSON.stringify(mkv));
+  await closeSheet();
+
+  /* N5：⋯ の「写して新しく」——題・本文・冊・タグを写した新しいノートを重ねて開く。★は写さない・元はそのまま。 */
+  {
+    const before = await page.evaluate(() => KN.notes.list().length);
+    const orig = await page.evaluate((id) => { const n = KN.notes.get(id); return JSON.stringify([n.title, n.body, n.updatedAt]); }, src);
+    await page.evaluate((id) => { KN.notes.setFav(id, true); KN.screens.notes.open(id); }, src);
+    await page.waitForSelector(".sheet.is-note.is-open");
+    await page.click(".sheet.is-note .js-note-more");
+    await page.waitForSelector(".note-pop.is-open");
+    await page.click('.note-pop-item:has-text("写して新しく")');
+    await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 2, null, { timeout: 3000 });
+    const cp = await page.evaluate((id) => {
+      const o = KN.notes.get(id);
+      const c = KN.notes.list().find((n) => n.id !== id && n.title === o.title);
+      return c && { same: c.body === o.body && c.notebook === o.notebook && c.tags.join() === o.tags.join(), fav: c.fav, n: KN.notes.list().length,
+        top: [...document.querySelectorAll(".sheet.is-note.is-open .js-title")].pop().value };
+    }, src);
+    t.check("写して新しく：同じ中身の新しいノートを重ねて開く・★は写さない", !!cp && cp.same && !cp.fav && cp.n === before + 1 && cp.top === "リンクの元", JSON.stringify(cp));
+    await page.locator(".sheet.is-note.is-open .js-close").last().click();
+    await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 1);
+    await closeSheet();
+    t.check("写して新しく：元の本文と更新日はそのまま", (await page.evaluate((id) => { const n = KN.notes.get(id); return JSON.stringify([n.title, n.body, n.updatedAt]); }, src)) === orig);
+  }
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));

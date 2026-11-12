@@ -1131,6 +1131,7 @@
           <div class="note-hl js-hl" aria-hidden="true"></div>
         </div>
         <section class="note-kids js-kids"></section>
+        <section class="note-kids js-back"></section>
       </div>
     `);
     /* 頭の行のまん中：ノートブック。下へ送って大きな題が隠れたら、その
@@ -1309,6 +1310,8 @@
     };
 
     const blank = () => !titleIn.value.trim() && !textIn.value.trim();
+    /* 一つ前の本文（「[[」を打った拍を見分ける。N1 の brackets）。 */
+    let prevV = textIn.value;
     const sync = () => {
       if (!stored) {
         if (blank()) return;          // 何か書くまでは置きません
@@ -1615,6 +1618,7 @@
     );
     /* 中身が変わったあとに、いつも通る道。 */
     const changed = () => {
+      prevV = val();
       if (writing && lv) { if (live.md() !== textIn.value) live.set(textIn.value); showCaret(); }
       else if (writing) { grow(); showCaret(); } else paintView();
       sync();
@@ -1644,6 +1648,7 @@
         showCaret();
         sync();
         paintTools();
+        brackets(live.composing());
       },
       undo: () => hist.undo(),
       redo: () => hist.redo(),
@@ -1699,7 +1704,39 @@
       paintHeadT();
       sync();
     });
-    textIn.addEventListener("input", () => { grow(); showCaret(); sync(); paintTools(); });
+    textIn.addEventListener("input", (e) => { grow(); showCaret(); sync(); paintTools(); brackets(e.isComposing); });
+    textIn.addEventListener("compositionend", () => setTimeout(() => { if (!closed) brackets(false); }, 0));
+
+    /* ---- ノートへのリンク（F7 の N1）。「[[」と打つか道具の帯の鎖から、題で選ぶ → `[題](note:id)`。
+       選んでいるあいだ紙は読む姿に戻るので、決めたら書く欄の字（textIn）へ当てて、選んだ指の流れで書く姿へ。
+       mode "br" は打った「[[」を置き換える、"sel" は選んでいた一行の字を見せる字にする。 ---- */
+    const linkAt = (s, e, mode) => {
+      const v0 = val();
+      const label0 = mode === "sel" && e > s && !v0.slice(s, e).includes("\n") ? v0.slice(s, e) : "";
+      if (mode !== "br" && !label0) s = e;
+      pickNote((id) => {
+        const to = id && N().get(id);
+        if (!to || closed) return;
+        const v = val();
+        /* 選んでいるあいだに字が変わっていたら、置き換えずに元の位置へ足す。 */
+        if (v !== v0) { s = Math.min(e, v.length); e = s; }
+        const label = (label0 || headOf(to) || "ノート").replace(/\[/g, "［").replace(/\]/g, "］").replace(/\s*\n\s*/g, " ");
+        const text = `[${label}](note:${to.id})`;
+        const c = s + text.length;
+        apply({ from: s, to: e, text, s: c, e: c }, "tool");
+        if (!writing) toWrite(c);
+      }, { title: "リンク", skip: note.id });
+    };
+    /** 打って「[[」（全角も）になったら選ぶ紙。変換のあいだは見ない（決まってから）。 */
+    const brackets = (composing) => {
+      if (composing) return;
+      const v = val();
+      const grew = v.length > prevV.length;
+      prevV = v;
+      const [s, c] = selNow();
+      if (!grew || !writing || s !== c || !/^(\[\[|［［)$/.test(v.slice(c - 2, c)) || /[[［]/.test(v[c - 3] || "")) return;
+      linkAt(c - 2, c, "br");
+    };
     /* 題で改行を押したら、本文へ。 */
     titleIn.addEventListener("keydown", (e) => {
       if (!KN.util.isEnter(e)) return;
@@ -1735,6 +1772,7 @@
       { k: "indent", ico: "indent", label: "下げる",
         run: () => apply(F.shift(val(), ...selNow(), 1), "tool") },
       { k: "image", ico: "image", label: "画像", run: () => pickImage() },
+      { k: "link", ico: "link", label: "リンク", run: () => linkAt(...selNow(), "sel") },
     ];
     const tools = node(html`
       <div class="note-tools" role="toolbar" aria-label="装飾">
@@ -1929,8 +1967,18 @@
       kidsEl.append(box);
       carry(box, { scope: note.id, open: kidsOpen, scroller: () => box.closest(".sheet-body"), root: () => kidsEl.querySelector(".nt-tree") });
     };
+    /* ここへのリンク（F7 の N1）：ほかのノートの本文に `](note:この id)` があれば、足もとに一覧で（本文から引く。欄は足さない）。 */
+    const backEl = body.querySelector(".js-back");
+    const paintBack = () => {
+      if (closed) return;
+      backEl.innerHTML = "";
+      const key = `](note:${note.id})`;
+      const from = stored ? N().list().filter((n) => n.id !== note.id && String(n.body || "").includes(key)) : [];
+      if (!from.length) return;
+      backEl.append(node(html`<div class="section-title">ここへのリンク</div>`), cards(from, N().tree(), { open: (n) => { sync(); toNote(n.id); } }));
+    };
     /* ★・消した・戻した・移したら（打つたびには来ません）。 */
-    const offKids = N().onChange(() => { if (!closed) { paintKids(); paintPath(); } });
+    const offKids = N().onChange(() => { if (!closed) { paintKids(); paintPath(); paintBack(); } });
     /* 中に足す・移すは、まだ置いていない新しいノートなら先に置きます（空なら閉じたときに消える）。 */
     const settle = () => {
       if (!stored) {
@@ -1942,6 +1990,7 @@
     };
     paintPath();
     paintKids();
+    paintBack();
 
     const finish = () => {
       closed = true;
@@ -2056,6 +2105,20 @@
         });
       } }]);
 
+    /* 写して新しく（F7 の N5。ひな形はこれで）：題・本文・冊・タグ・親を写した新しいノートを置いて、上に重ねて開く。★と日付は写さない。 */
+    const copyItem = () => (!stored || blank() ? [] : [{
+      icon: "copy", label: "写して新しく",
+      onPick: () => {
+        if (!settle()) return;
+        const c = N().draft();
+        Object.assign(c, { title: titleIn.value, body: val(), notebook: note.notebook || "", tags: note.tags.slice() });
+        if (note.parent) c.parent = note.parent;
+        if (!N().put(c)) return;
+        N().flush();
+        KN.ui.toast("写しました");
+        openNote(c.id, null, { within: kidsEl });
+      } }]);
+
     /* 見出しが三つ以上あるノートだけ、「⋯」の小窓に見出しの並びを足す（R32）。押すと整えた
        姿に戻し、送る器（紙の本体 .sheet-body）をその見出しまで送る。本文は読むだけ。 */
     /* 広い画面だけ：紙を画面いっぱいに（2026年10月21日、利用者「パソコンで最大化できない？」）。端末ごとに覚える。 */
@@ -2154,7 +2217,7 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(menu.slice(2, 4), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(menu.slice(2, 4), copyItem(), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);
@@ -2804,7 +2867,7 @@
   }
 
   /** つなぐ先を選ぶ紙。消していないノートを新しく直した順、上にさがす欄。押せば決まって閉じる。
-      o … { title, fresh: 頭に足す「新しいノート」の字（押すと onPick(null)）, topics: 冊の名（さがす前は、その冊の
+      o … { title, skip: 並べない id（リンクを書く紙の自分）, fresh: 頭に足す「新しいノート」の字（押すと onPick(null)）, topics: 冊の名（さがす前は、その冊の
       話題を先に。topicsOf）}（日記の一件をノートへ移す。
       docs/thinking.md）。鍵でノートを伏せているあいだは、題を並べない（新しいノートだけ）。 */
   function pickNote(onPick, o) {
@@ -2842,7 +2905,7 @@
       rows.innerHTML = "";
       if (hidden) return;
       const w = U.foldKana(q.value.trim());
-      const all = N().list().filter((n) => !w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w));
+      const all = N().list().filter((n) => n.id !== o.skip && (!w || U.foldKana(`${n.title}\n${KN.noteFormat.searchable(n.body)}`).includes(w)));
       const tops = o.topics && !w ? topicsOf(o.topics) : [];
       if (tops.length) {
         const mine = new Set(tops.map((x) => x.n.id));

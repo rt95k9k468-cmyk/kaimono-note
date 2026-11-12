@@ -4,7 +4,7 @@
    見出しの頭・⌫で印を外す・つなぐ・画像を消す・Delete）／読む姿と書く姿で行の高さが揃う（閉じても同じ姿）／
    打つ・行頭の「# 」「- 」「1. 」「[] 」「> 」「---」で形が変わる・「**…**」で太字、そのあとは細い／道具の帯・
    取り消す・貼り付け・四角／変換中は行の要素を作り直さない・確定の改行で行が増えない／往復しないノートと
-   「印で書く」端末は今の書く欄／パソコンの Tab・Ctrl+B。
+   「印で書く」端末は今の書く欄／パソコンの Tab・Ctrl+B／マーカー ==字== と「[[」のリンク（F7）。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-live.js */
 const { open, checker } = require("./lib");
@@ -39,7 +39,7 @@ const BODY = [
       "[](https://x.jp)", "![絵](https://x.jp/a.png)", "[字](note:abc)と**[太](https://x.jp)**", "<b>html</b>", "```\ncode\n```",
       "| a | b |\n| --- | --- |\n| 1 | 2 |", "*斜め*", "行\r\n次\r\n", "#### 四つ", " - 一つの空白", "- [ ]", "- [X] 大文字",
       ">", "> ", "1.", "10. 十", `${img}\n[a.jpg](file:${"a".repeat(64)}.jpg)`, `[書類](file:${"b".repeat(64)}.pdf)`,
-      "​ゼロ幅", "* * *", "- **太字の点**"];
+      "​ゼロ幅", "* * *", "- **太字の点**", "==印==と**太**", "a == b ==", "======", "**==重ね==**"];
     return S.filter((s) => !KN.noteLive.fits(s));
   }, [BODY, IMG]);
   t.check("並べて戻すと一字も違わない（表・コード・HTML・\\r・画像も）", !rt.length, JSON.stringify(rt));
@@ -394,6 +394,24 @@ const BODY = [
   t.check("Tab で段を下げ・Shift+Tab で上げる・Ctrl+B で太字", tab && untab && (await md()).includes("**おわりです**"), JSON.stringify((await md()).slice(0, 400)));
   await page.keyboard.press("Control+z");
   t.check("Ctrl+Z は自前の取り消す", (await md()).includes("\nおわりです"));
+  /* F7：マーカー「==…==」は見たままでも山吹の面（<mark>）・印は字に残す。「[[」で選ぶ紙 → [題](note:id)、決めたら書く姿へ戻る。 */
+  const other = await page.evaluate(() => { const n = KN.notes.draft(); n.title = "つなぐ先"; n.body = "先"; KN.notes.put(n); return n.id; });
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("==黄==の字");
+  await page.waitForTimeout(80);
+  const mk = await page.evaluate(() => {
+    const m = document.querySelector(".sheet.is-note .js-live mark.nv-m");
+    return m && { t: m.textContent, o: m.dataset.o, bg: getComputedStyle(m).backgroundColor };
+  });
+  t.check("マーカー：見たままで打つと山吹の面・本文は ==字== のまま", !!mk && mk.t === "黄" && mk.o === "==" && mk.bg !== "rgba(0, 0, 0, 0)"
+    && (await md()).includes("\n==黄==の字"), JSON.stringify(mk));
+  await page.keyboard.type("[[");
+  await page.waitForSelector('.sheet.is-open[aria-label="リンク"] .note-ver', { timeout: 3000 });
+  await page.fill('.sheet.is-open[aria-label="リンク"] .js-q', "つなぐ");
+  await page.click(`.sheet.is-open[aria-label="リンク"] .note-ver[data-id="${other}"]`);
+  await page.waitForFunction(() => { const a = document.activeElement; return a && a.closest(".js-live"); }, null, { timeout: 3000 });
+  t.check("「[[」で選ぶ → [題](note:id)・書く姿へ戻る", (await md()).includes(`==黄==の字[つなぐ先](note:${other})`), JSON.stringify((await md()).slice(-80)));
   /* 書くあいだの空の行は一行ぶん（読む姿は .7em。底で改行しても少しずつしか下がらなかった）。 */
   await page.keyboard.press("Control+End");
   await page.keyboard.press("Enter");

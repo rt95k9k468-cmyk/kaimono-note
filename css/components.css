@@ -1921,6 +1921,7 @@ button.hero-node:active { scale: var(--press-dot); }
   #notes-print .nv-img { aspect-ratio: auto; display: block; background: none; margin: 6pt 0; }
   #notes-print .nv-img img { width: auto; height: auto; max-width: 100%; max-height: 20cm; margin: 0 auto; }
   #notes-print .nv-img.is-gone { height: 3em; display: flex; background: #eee; }
+  #notes-print .nv-m { background: #f6ead0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 /* ---------------- daily・ノートの鍵（js/lock.js） ----------------

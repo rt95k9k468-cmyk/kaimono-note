@@ -36,13 +36,14 @@
 
   /* ---------------- 行を作る・写す ---------------- */
 
-  /** 一行の中身。太字は <strong>、リンクは <a>（印は data-o / data-c に。先は開かない——押すとカーソル）。 */
+  /** 一行の中身。太字は <strong>、マーカーは <mark>、リンクは <a>（印は data-o / data-c に。先は開かない——押すとカーソル）。 */
+  const TAG = { bold: ["strong", "nv-b"], mark: ["mark", "nv-m"], link: ["a", "nv-link"] };
   function fill(el, text) {
     let at = 0;
     F().marksOf(text).forEach((x) => {
       if (x.a > at) el.append(text.slice(at, x.a));
-      const m = document.createElement(x.kind === "bold" ? "strong" : "a");
-      m.className = x.kind === "bold" ? "nv-b" : "nv-link";
+      const m = document.createElement(TAG[x.kind][0]);
+      m.className = TAG[x.kind][1];
       m.dataset.o = text.slice(x.a, x.s);
       m.dataset.c = text.slice(x.e, x.b);
       if (x.kind === "link") m.dataset.href = x.href;

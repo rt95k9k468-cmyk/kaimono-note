@@ -3,7 +3,7 @@
 
    本文は素の文字のまま持ちます（docs/notes.md の「本文は素の文字」）。
    装飾は行頭の印「# 」「- 」「1. 」「- [ ] 」「- [x] 」「> 」「---」と、行の中の
-   太字「**…**」（2026年10月7日、利用者「太字がないのも困る」）。
+   太字「**…**」（2026年10月7日、利用者「太字がないのも困る」）とマーカー「==…==」（F7）。
    ここにあるのは、その印を**読むときに整える**ことと、**書くときに印を
    打つ**手伝い（道具の帯・改行の続き・やり直し）だけで、保存の形には
    何も足しません。
@@ -49,7 +49,10 @@
   /* リンク（`[字](先)`。先は note:・http(s)://・mailto: だけ。画像の `![` は字のまま。先の中のかっこは一段だけ）。
      読む姿では字だけを見せ、押すと開く（中のノートは紙を重ねる・外は新しい窓。fetch しない）。notes-unify.md 段4。 */
   const LINK = /(!?)\[([^\[\]\n]*)\]\(((?:note:|https?:\/\/|mailto:)(?:[^()\s]|\([^()\s]*\))+)\)/g;
-  /** 行の中の飾り（太字・リンク）の並び。a〜b は印込み、s〜e は見せる字。重ならない（リンクと重なる太字は字のまま）。 */
+  /* マーカー（`==字==`。F7 の N3）。「==」のすぐ内側は空白でも「=」でもない（「a == b」「======」を拾わない）。行をまたがない。 */
+  const MARK = /==([^\s=](?:[^\n]*?[^\s=])?)==/g;
+  /** 行の中の飾り（太字・リンク・マーカー）の並び。a〜b は印込み、s〜e は見せる字。重ならない（リンクが先、
+      太字、マーカーの順。重なるほうは字のまま）。 */
   function marksOf(t) {
     const out = [];
     let m;
@@ -61,6 +64,12 @@
     boldSpans(t).forEach(({ a, b }) => {
       if (!out.some((x) => x.kind === "link" && a < x.b && b > x.a)) out.push({ a, b, s: a + 2, e: b - 2, kind: "bold" });
     });
+    MARK.lastIndex = 0;
+    while ((m = MARK.exec(t))) {
+      const a = m.index;
+      const b = a + m[0].length;
+      if (!out.some((x) => a < x.b && b > x.a)) out.push({ a, b, s: a + 2, e: b - 2, kind: "mark" });
+    }
     return out.sort((x, y) => x.a - y.a);
   }
   /** 太字とリンクの印を外した字。 */
@@ -372,11 +381,14 @@
     };
     const inline = (t, cls) => {
       let at = 0;
-      boldSpans(t).forEach(({ a, b }) => {
+      /* 太字は前のまま（リンクと重なっても太らせる）。マーカーは面を敷くだけ（字の幅は変わらない）。 */
+      const bs = boldSpans(t).map((x) => ({ ...x, o: "**", k: "nh-b" }));
+      const ms = marksOf(t).filter((x) => x.kind === "mark" && !bs.some((y) => x.a < y.b && x.b > y.a)).map((x) => ({ ...x, o: "==", k: "nh-hl" }));
+      bs.concat(ms).sort((x, y) => x.a - y.a).forEach(({ a, b, o, k }) => {
         put(cls, t.slice(at, a));
-        put("nh-mark", "**");
-        put(`nh-b${cls ? ` ${cls}` : ""}`, t.slice(a + 2, b - 2));
-        put("nh-mark", "**");
+        put("nh-mark", o);
+        put(`${k}${cls ? ` ${cls}` : ""}`, t.slice(a + 2, b - 2));
+        put("nh-mark", o);
         at = b;
       });
       put(cls, t.slice(at));
@@ -424,6 +436,9 @@
       if (x.kind === "bold") {
         m = document.createElement("strong");
         m.className = "nv-b";
+      } else if (x.kind === "mark") {
+        m = document.createElement("mark");
+        m.className = "nv-m";
       } else {
         m = document.createElement("a");
         m.className = "nv-link";
