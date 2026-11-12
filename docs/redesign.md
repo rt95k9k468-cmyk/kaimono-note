@@ -165,7 +165,7 @@ iPhone の 120Hz と指の感じは実機でしか見えない——段ごとに
 | R7 | **済み（11月12日）**。notes | screen-notes.js・note-*.js | notes-*・note-*・asks | 大 |
 | RS | **済み（11月12日）**：1回目 tasks・shopping、2回目 health・daily・notes の紙。**紙と記録の総点検**（下） | 紙を開く所ぜんぶ（screen-todo.js 23・screen-diet.js 16・screen-notes.js 10 ほか）・ui.js の鍵盤と車輪と暦の小窓 | 各席の紙の台本・when-fields・num-fields・draft-keep | 大×2 |
 | RM | **済み（11月12日）**。**動きの総仕上げ**（7節の表で総ざらい。細目は motion の「動きの総仕上げ」。暦の背は 11節） | motion.js・ui.js・base.css の `--m-*`・各席 | motion-dict・keyframes-one・smooth・still-js・feel-* | 大 |
-| RI | **絵・写真・挿絵の検討**（下。最後に） | season-art.js・sky.js・empty-art.js・絵の一族・表紙 | season-art・sky・attire | 中 |
+| RI | **済み（11月12日）**。**絵・写真・挿絵の検討**（下） | season-art.js・sky.js・empty-art.js・絵の一族・表紙 | season-art・sky・attire | 中 |
 | R8 | 設定・さがす・空の画面、暗い面・特大・「コントラストを上げる」・44px の的の総ざらい、動きの測り直し、docs へ移して見本を消す、いま／あと を残す | screen-settings.js・settings-*.js・search-all.js・empty-art.js・docs | settings*・search-all・legibility・smooth・全部 | 中 |
 
 - R1 で決めたこと（細目は docs/look.md「装いは二つ・基調色は九つ」）：基調色は id のまま 朱・藍・松葉・江戸紫・山吹・浅葱・柿・臙脂＋季節。
