@@ -992,10 +992,7 @@
    空の入れもの（読み・選んだ札・一覧）は間を作らない。 */
 .sheet .stack.diet-form { gap: var(--sp-4); }
 .sheet .stack.diet-form > :empty { display: none; }
-.time-row { display: flex; align-items: center; gap: var(--sp-2); }
 .time-label { flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
-.time-row .input { flex: none; width: auto; min-width: 116px; padding: 10px var(--sp-3); }
-.time-row .chip { flex: none; height: 30px; }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
 
@@ -2562,7 +2559,8 @@ button.section-note:active { opacity: var(--press-fade); }
 }
 .drink-fav-ico { line-height: 0; flex: none; }
 .drink-fav-ico svg { width: var(--ico); height: var(--ico); }
-.drink-fav-name { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.drink-fav-name, .drink-fav-sub { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1.15; }
+.drink-fav-sub { font-size: var(--fs-xs); font-weight: var(--fw-regular); }
 .drink-picks { display: flex; flex-direction: column; gap: var(--sp-2); }
 .drink-picks:empty { display: none; }
 .drink-pick { display: flex; align-items: center; gap: var(--sp-2); }
@@ -2588,20 +2586,13 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-form { display: flex; flex-direction: column; gap: 26px; }
 .urge-rest { display: flex; flex-direction: column; gap: 26px; }
 
-/* 日付と、経過した分数。紙の頭で「いつの、どの一件か」を言います。 */
-.urge-top {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: var(--sp-2); flex-wrap: wrap;
-}
-.urge-top-day { font-size: var(--fs-lg); color: var(--c-text); }
-/* 経過した分数。事実として置くだけなので、色も強調も付けません。 */
-.urge-since {
-  display: inline-flex; align-items: center; gap: var(--sp-1);
-  font-size: var(--fs-sm); color: var(--c-text-3); font-weight: var(--fw-regular);
-}
-.urge-since svg { width: var(--ico-sm); height: var(--ico-sm); }
-/* 時刻は入力欄ではなく地の文。字だけで、押すと車輪が出る。 */
-.urge-since .when-btn, .urge-sec-time .when-btn {
+/* 記録の紙の「いつ」（RS 2回目）：絵を添えた丸い札。押すと暦・車輪。 */
+.rec-when { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.rec-when-i { position: relative; display: inline-flex; color: var(--c-text-2); }
+.rec-when-i svg { position: absolute; left: 12px; top: 50%; translate: 0 -50%; width: var(--ico-sm); height: var(--ico-sm); pointer-events: none; }
+.rec-when .when-btn { width: auto; min-width: 0; height: 40px; padding: 0 var(--sp-4) 0 34px; border-radius: var(--r-full); color: var(--c-text); font-variant-numeric: tabular-nums; }
+.rec-hero .hero-title { border-bottom: 0; }
+.urge-sec-time .when-btn {
   flex: none; width: auto; min-width: 0; height: auto; padding: 4px 2px; margin: 0;
   background: none; border: 0; box-shadow: none; border-radius: 0;
   font: inherit; color: inherit; text-align: left;
@@ -2689,30 +2680,27 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-bar { display: flex; flex-direction: column; gap: var(--sp-2); }
 .hl-urge-btn { background: var(--c-yamabuki-soft); color: var(--c-yamabuki); }
 .urge-rows { display: flex; flex-direction: column; padding: 0 14px; }
+/* 一件の行（RS 2回目）：今日の食事の行と同じ形。 */
 .urge-row {
-  display: flex; align-items: center; gap: var(--sp-2);
-  width: 100%; min-height: var(--row-h-compact); padding: 9px 2px;
+  display: flex; align-items: center; gap: var(--sp-3);
+  width: 100%; min-height: var(--row-h-card); padding: 7px 0;
   background: none; border: 0; border-top: 1px solid var(--c-border);
   text-align: left; color: var(--c-text);
 }
 .urge-rows .urge-row:first-child { border-top: 0; }
 .urge-row:active { opacity: var(--press-fade); }
-.urge-row-time { font-size: var(--fs-sm); color: var(--c-text-3); flex: none; }
 /* 「4 → 2」。矢は書かれたことの記録で、良し悪しではないので色を変えません。 */
 .urge-row-lv {
-  font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-primary);
-  flex: none; display: inline-flex; align-items: center; gap: 3px;
+  flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+  width: 58px; height: 46px; border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-yamabuki-fill) 16%, var(--c-surface)); color: var(--c-yamabuki);
+  font-size: var(--fs-lg); font-weight: var(--fw-bold);
 }
-.urge-row-lv i { font-style: normal; color: var(--c-text-3); font-weight: var(--fw-regular); font-size: var(--fs-md); }
-.urge-row-text {
-  font-size: var(--fs-sm); color: var(--c-text-2);
-  flex: 1 1 auto; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* 結果がまだの一件。急かさない——警告色も太字も使わず、小さな題を一つ
-   置くだけ。題の色は「押せる字」の `--c-primary`（書けば消えます）。 */
-.urge-later { display: flex; flex-direction: column; }
-.urge-later-t { font-size: var(--fs-xs); color: var(--c-primary); padding: 2px 2px 0; }
+.urge-row-lv i { font-style: normal; font-weight: var(--fw-regular); font-size: var(--fs-sm); }
+.urge-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.urge-row-text { font-size: var(--fs-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* まだの一件の「あとで記入」も急かさない（警告色も太字も使わない）。 */
+.urge-row-time { font-size: var(--fs-sm); color: var(--c-text-3); }
 .urge-row-go { flex: none; line-height: 0; color: var(--c-text-3); opacity: .5; }
 .urge-row-go svg { width: var(--ico-sm); height: var(--ico-sm); }
 

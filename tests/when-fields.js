@@ -66,6 +66,17 @@ const { open, checker } = require("./lib");
   await closeSheet();
   w = JSON.parse(await weight());
   t.check("体重：時刻だけ変えて閉じる → 保存", (await sheets()) === 0 && w.time === "06:30" && w.day === "2026-10-05", JSON.stringify(w));
+  /* RS 2回目：記録の日は暦の上に 今日・昨日・おととい の札。頭の小さな字（いつ）が追う。 */
+  await openW();
+  await btnOf(".js-day").click(); await wait(250);
+  const wc = await page.evaluate(() => [...document.querySelectorAll(".note-pop.is-open .pop-cal-chips .chip")].map((c) => c.textContent.trim()).join());
+  t.check("体重：日付の小窓に 今日・昨日・おととい", wc === "今日,昨日,おととい", wc);
+  await page.locator(".note-pop.is-open .pop-cal-chips .chip", { hasText: "昨日" }).click(); await wait(500);
+  const cap = await page.locator(`${S} .js-hero-cap`).textContent();
+  t.check("体重：札で決めると頭の いつ が追う", /^昨日/.test(cap) && cap.includes("6:30"), cap);
+  await closeSheet();
+  w = JSON.parse(await weight());
+  t.check("体重：札（昨日）で決めて閉じる → 保存", w.day === "2026-10-06", JSON.stringify(w));
 
   /* ---- 食事 ---- */
   const mid = await page.evaluate(() => KN.store.addMeal({ day: "2026-10-07", time: "12:00", slot: "lunch", items: [{ name: "おにぎり", kcal: 180 }] }).id);

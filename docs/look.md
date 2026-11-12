@@ -375,7 +375,8 @@ CLAUDE.md の実測は「副題と左の時刻は #636363」なので、`--c-tex
 |---|---|
 | 64 二行 | 買うもの `.item`（71 から）・daily の記録 `.arc-row`（66 から）・Daily Log `.arc-log-row`・価格 `.price-row`（69 から） |
 | 52 ふつう | 設定 `.set-row`（スイッチの行も。56 から）・`.row`・`.manage-row`・詳細の紙 `.d-row`・⋯ `.act-row`・時刻の紙 `.tw-row`（56 から）・ノートのごみ箱 `.notes-trash-row`・価格の記録 `.log-row` |
-| 44 詰めた | 飲みたくなった `.urge-row`（42 から）・小窓の項目 `.note-pop-item`（48 から）・補充 `.low-row`・これから `.up-row`・探す `.sa-row` |
+| 60 カード | 買うもの・価格の行（R5）・飲みたくなった `.urge-row`（RS 2回目に 44 から） |
+| 44 詰めた | 小窓の項目 `.note-pop-item`（48 から）・補充 `.low-row`・これから `.up-row`・探す `.sa-row` |
 
 - **当てない行**：時間割の行（`.tl-row`・`.tl-free-row`。道の目盛りで、`screen-todo.js` の `TL_FREE_H` と組）・
   ノートのカード（中身で伸びる）・通知と繰り越しの行（`.due-row`・`.carry-row`。中に大きなボタン）・タイル。

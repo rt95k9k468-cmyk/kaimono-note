@@ -31,10 +31,11 @@ const minh = (r) => (r.body.match(/(?:^|[;\s])min-height\s*:\s*([^;]+)/) || [])[
 const TABLE = [
   ["二行", "--row-h-two", [".arc-row", ".arc-log-row", ".price-row"]],
   /* カードの行（R5・2026年11月11日）：絵の台 46px の 買うもの・価格 の行。前は二行の段 64。 */
-  ["カード", "--row-h-card", ["#screen-list .item-wrap .item:not(.todo), #screen-prices .product-wrap .product"]],
+  /* 飲みたくなったの一件（RS 2回目）も今日の食事と同じカードの行。前は詰めた段。 */
+  ["カード", "--row-h-card", ["#screen-list .item-wrap .item:not(.todo), #screen-prices .product-wrap .product", ".urge-row"]],
   ["ふつう", "--row-h", [".row", ".set-row", "#screen-settings .row", "#screen-settings .manage-row", ".manage-row",
     ".d-row", ".act-row", ".tw-row", ".notes-trash-row", ".log-row"]],
-  ["詰めた", "--row-h-compact", [".urge-row", ".note-pop-item", ".low-row", ".up-row", ".sa-row"]],
+  ["詰めた", "--row-h-compact", [".note-pop-item", ".low-row", ".up-row", ".sa-row"]],
 ];
 for (const [name, tok, sels] of TABLE) {
   for (const s of sels) {

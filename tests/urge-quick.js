@@ -97,6 +97,12 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     && JSON.stringify(c.tried) === '["別の飲み物","少し待つ"]' && c.memo === "試験のメモ", JSON.stringify(c));
   await openSheet();
   const c2 = await sheetInfo();
+  /* RS 2回目：その日の一件は画面の行にあるので紙には並べない。記録するが送らずに見える（393×852）。 */
+  const fit = await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop(), b = sh.querySelector(".js-save").getBoundingClientRect();
+    return { list: /この日の記録/.test(sh.innerText), hero: !!sh.querySelector(".rec-hero .hero-cap"), save: b.bottom <= innerHeight };
+  });
+  t.check("紙に その日の一件 を並べず、頭は記録の形・記録するが見える", !fit.list && fit.hero && fit.save, JSON.stringify(fit));
   t.check("次の紙でも札は増えない（6・7・8）", c2.want.length === 6 && c2.scene.length === 7 && c2.tried.length === 8
     && !c2.want.includes("退屈") && !c2.scene.includes("散歩の帰り"), [c2.want, c2.scene].join(" / "));
   /* 一度打った言葉は、「その他」を開くと候補に出る（打った頭で絞る）。札にはまだならない。 */
@@ -140,10 +146,14 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   await page.waitForSelector("#screen-diet .js-day-card");
 
   /* ---- D：あとで記入 ---- */
-  const later = () => page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-day-card .js-later .urge-row")].length);
-  const laterTitle = await page.evaluate(() => (document.querySelector("#screen-diet .urge-later-t") || {}).textContent);
+  const later = () => page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-day-card .urge-row.is-later")].length);
+  /* RS 2回目：見出しはやめ、一枚のカードの先頭に並び、時刻の横に「あとで記入」。 */
+  const laterTitle = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll("#screen-diet .js-day-card .urge-rows .urge-row")];
+    return rows.slice(0, 2).every((r) => r.classList.contains("is-later") && /あとで記入/.test(r.innerText)) ? "あとで記入" : rows.map((r) => r.innerText).join("|");
+  });
   t.check("結果がまだの二件が「あとで記入」に並ぶ", (await later()) === 2 && laterTitle === "あとで記入", `${await later()} ${laterTitle}`);
-  await page.click("#screen-diet .js-day-card .js-later .urge-row");
+  await page.click("#screen-diet .js-day-card .urge-row.is-later");
   await page.waitForSelector(".sheet.is-open .js-res");
   await page.click('.sheet.is-open .urge-lv[aria-label="2"]');
   await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .js-out .chip")].find((x) => x.textContent.trim() === "飲まなかった").click());
@@ -180,14 +190,14 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     .every((k) => JSON.stringify(x[k]) === JSON.stringify(OLD[k]));
   t.check("旧い形の記録を読み込める（言葉も結果も書き換えない）", keep(E), JSON.stringify(E));
   await page.waitForTimeout(300);
-  const row = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-later .urge-row")]
+  const row = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .urge-row.is-later")]
     .map((r) => r.innerText).find((s) => /20:10/.test(s)) || "");
   t.check("表示では新しい札に読みかえる（旧い「もう少し待つ」は試したことの「少し待つ」）",
     /その他（旧）/.test(row) && /ストレス・疲れをほぐしたい/.test(row) && /別の飲み物/.test(row) && /少し待つ/.test(row)
     && !/疲れた|水を飲む|もう少し待つ/.test(row), row);
 
   // 詳細の紙を開いて、触らずに保存しても旧い記録は変わらない
-  await page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-later .urge-row")].find((r) => /20:10/.test(r.innerText)).click());
+  await page.evaluate(() => [...document.querySelectorAll("#screen-diet .urge-row.is-later")].find((r) => /20:10/.test(r.innerText)).click());
   await page.waitForSelector(".sheet.is-open .js-full");
   await page.click(".sheet.is-open .js-full");
   await page.waitForFunction(() => document.querySelector(".sheet.is-open .js-memo-in"));
@@ -199,7 +209,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("触らずに保存しても旧い記録は書き換わらない", keep(E2), JSON.stringify(E2));
 
   // 編集：結果を選ぶと「待つ」は試したことへ移り、旧い言葉はそのまま
-  await page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-later .urge-row")].find((r) => /20:10/.test(r.innerText)).click());
+  await page.evaluate(() => [...document.querySelectorAll("#screen-diet .urge-row.is-later")].find((r) => /20:10/.test(r.innerText)).click());
   await page.waitForSelector(".sheet.is-open .js-res");
   await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .js-out .chip")].find((x) => x.textContent.trim() === "飲んだ").click());
   await page.click(".sheet.is-open .js-save");

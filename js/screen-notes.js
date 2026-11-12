@@ -2121,7 +2121,7 @@
 
     /* 束ねる（docs/notes-structure.md の段2）：同じ段のノートを選び、新しい話題の下へ。控えを取ってから・「元に戻す」で戻る。 */
     const bundleItem = () => (!stored || blank() ? [] : [{
-      icon: "folder", label: "束ねる",
+      icon: "rows", label: "束ねる",
       onPick: () => {
         if (!settle()) return;
         pickBundle(note, async (ids, title) => {
@@ -2157,7 +2157,7 @@
       if (!live) return [];
       const marks = marksPref();
       if (!KN.noteLive.fits(textIn.value)) return [];
-      return [{ label: marks ? "見たままで書く" : "印で書く",
+      return [{ icon: "edit", label: marks ? "見たままで書く" : "印で書く",
         onPick: () => {
           try { localStorage.setItem(MARKS, marks ? "" : "1"); } catch (_) {}
           if (!writing) return;
@@ -2167,7 +2167,7 @@
         } }];
     };
     const wideItem = () => (!matchMedia("(min-width: 640px)").matches ? [] : [{
-      label: () => (h.el.classList.contains("is-wide") ? "元の大きさ" : "画面いっぱい"),
+      icon: "tiles", label: () => (h.el.classList.contains("is-wide") ? "元の大きさ" : "画面いっぱい"),
       onPick: () => {
         const on = h.el.classList.toggle("is-wide");
         try { localStorage.setItem(FULL, on ? "1" : ""); } catch (_) {}

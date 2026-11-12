@@ -1991,9 +1991,13 @@
         const opts = { value: inp.value || null, label, onPick };
         const y = new Date().getFullYear();
         const vy = inp.value ? Number(inp.value.slice(0, 4)) : y;
+        /* data-chips="past" … 記録の日（体重）。暦の上に 今日・昨日・おととい（RS 2回目。用事の紙の札と同じ形）。 */
+        const T = KN.util.todayKey(), back = (n) => KN.util.shiftDay(T, -n);
+        const chips = inp.dataset.chips === "past"
+          ? [{ id: T, label: "今日" }, { id: back(1), label: "昨日" }, { id: back(2), label: "おととい" }] : null;
         const p = kind === "time" ? popTime(btn, opts)
           : kind === "far" ? popDate(btn, { ...opts, years: [Math.min(y - 1, vy), Math.max(y + 10, vy)] })
-          : popCalendar(btn, opts);
+          : popCalendar(btn, { ...opts, chips });
         if (inp.hasAttribute("data-clear") && inp.value) {
           const foot = p.el.querySelector(".when-foot");
           const none = node(html`<button type="button" class="btn ${foot ? "" : "btn-block "}btn-soft when-none">なし</button>`);
@@ -2006,6 +2010,16 @@
       paint();
     });
     return root;
+  }
+
+  /* 記録の紙の頭（RS 2回目、11月12日）：用事・品物の紙と同じ形——種類の色 13%・絵の台 60px・題 23px、
+     題の上の小さな字は「いつ」（紙の中の いつ を直すと追う）。ink は色の名（var(--c-kaki) など）。 */
+  function recHero({ ico, ink, title, cap = "" }) {
+    return node(html`
+      <div class="sheet-hero rec-hero" style="--cat:${ink}">
+        <span class="hero-mark"><span class="hero-node">${icon(ico)}</span></span>
+        <span class="hero-text"><span class="hero-cap js-hero-cap">${cap}</span><b class="hero-title">${title}</b></span>
+      </div>`);
   }
 
   /* ---------------- toast ---------------- */
@@ -2854,7 +2868,7 @@
   function setPageHost(host) { pageHost = host; }
 
   KN.ui = {
-    sheet, actionSheet, popOver, closePops, popMenu, rowMenu, openRowMenu, delMenu, popCalendar, popDate, popTime, whenFields, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
+    sheet, actionSheet, popOver, closePops, popMenu, rowMenu, openRowMenu, delMenu, popCalendar, popDate, popTime, whenFields, recHero, dateDrums, drum, toast, confirm, prompt, storePicker, categoryPicker, iconPicker, chipRow,
     setPageHost, makeGuard, reopen, sheetsOpen: () => openSheets.length, keepDraft, dropDraft, takeDraft, takeGone,
     swipeActions, wireSearch, focusNow,
     burst, flipRows, sendToDay, parkSearch, revealSearch,

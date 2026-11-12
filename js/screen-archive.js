@@ -1692,6 +1692,8 @@
     const at = item && item.mark ? ` ${item.date ? `${item.date} ` : ""}${item.at}` : "";
     h = KN.ui.sheet({
       title: `${dayLabel(day)}${at}`,
+      /* 開いた拍に日記の紙と分かるよう、書く口の「日記に書く」と同じ絵を題の前に（RS 2回目）。 */
+      titleMark: KN.util.raw('<img class="sheet-mark-art" src="img/think/diary.webp" alt="" decoding="async">'),
       content: body,
       menu,
       cls: "is-card",

@@ -60,6 +60,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
       emoji: /\p{Extended_Pictographic}/u.test(s.innerText) };
   });
   t.check("よかったことの一行が、いまのことの欄の上に（絵つき・字は「よかったこと」）", s1.g && s1.above && s1.ph === "よかったこと" && s1.icon, JSON.stringify(s1));
+  /* RS 2回目：題の前に書く口「日記に書く」と同じ絵。 */
+  t.check("日記の紙の題に書く口と同じ絵", await page.evaluate(() => /think\/diary\.webp$/.test((document.querySelector(".sheet.is-open .sheet-mark-art") || {}).src || "")));
   t.check("カーソルはよかったことの欄・絵文字なし", s1.focus && !s1.emoji, JSON.stringify(s1));
 
   /* よかったことだけ書く */

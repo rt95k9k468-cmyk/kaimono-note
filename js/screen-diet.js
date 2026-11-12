@@ -1494,18 +1494,15 @@
 
     const body = node(html`
       <div class="urge-form">
-        <div class="urge-top">
-          <b class="urge-top-day">${U.formatDay(editing ? editing.day : day)}</b>
-          ${/* 時刻は、既定では押した瞬間（addUrge が控える）。あとから思い出して書くときのために、
-                押すと車輪で選び直せる。直したときだけ time を渡す。まだの一件は経過分数も添える。 */""}
-          <span class="urge-since">${icon("clock")}${
-            editing && !outcome && elapsed != null ? urgeSpan(elapsed) + "たちました" : ""}
-            <input type="hidden" class="input js-urge-time" data-when="time" aria-label="飲みたくなった時刻"
-                   value="${editing ? urgeTime(editing) : U.nowTime()}">
-          </span>
-        </div>
+        ${/* RS 2回目：何（強さ・求めているもの）→ いつ → 詳細。日と経過した分数は頭の小さな字。 */""}
         <div class="js-now"></div>
         <div class="js-want"></div>
+        ${/* 時刻は、既定では押した瞬間（addUrge が控える）。あとから思い出して書くときのために、
+              押すと車輪で選び直せる。直したときだけ time を渡す。 */""}
+        <div class="rec-when">
+          <label class="rec-when-i">${icon("clock")}<input type="hidden" class="input js-urge-time" data-when="time" aria-label="飲みたくなった時刻"
+                 value="${editing ? urgeTime(editing) : U.nowTime()}"></label>
+        </div>
         <button type="button" class="urge-more js-more" aria-expanded="false">
           <span class="urge-more-t"></span>
           <span class="urge-more-c">${icon("chevron")}</span>
@@ -1516,18 +1513,23 @@
           <div class="js-memo"></div>
           ${editing ? html`<div class="js-after"></div><div class="js-outcome"></div><div class="js-link"></div>` : ""}
         </div>
-        <div class="js-list"></div>
       </div>
     `);
 
     KN.ui.whenFields(body);
     const timeIn = body.querySelector(".js-urge-time");
     let timeTouched = false;
-    timeIn.addEventListener("change", () => { timeTouched = true; });
+    const hero = KN.ui.recHero({ ico: "clock", ink: "var(--c-yamabuki-fill)", title: editing ? "飲みたくなったとき" : "飲みたくなった" });
+    const paintCap = () => {
+      hero.querySelector(".js-hero-cap").textContent = `${U.formatDay(editing ? editing.day : day)} ${timeIn.nextElementSibling.textContent}${
+        editing && !outcome && elapsed != null ? `・${urgeSpan(elapsed)}たちました` : ""}`;
+    };
+    timeIn.addEventListener("change", () => { timeTouched = true; paintCap(); });
+    paintCap();
 
     const foot = node(html`<button class="btn btn-primary btn-block js-save">${editing ? "保存" : "記録する"}</button>`);
     const h = KN.ui.sheet({
-      title: editing ? "飲みたくなったとき" : "飲みたくなった",
+      title: editing ? "飲みたくなったとき" : "飲みたくなった", hero,
       content: body, footer: foot, guard: true,
       menu: editing ? KN.ui.delMenu(() => store.removeUrge(editing.id), { sheet: () => h, after: render }) : null,
     });
@@ -1582,30 +1584,6 @@
     }
     more.addEventListener("click", () => { open = !open; paintMore(); KN.motion.fire("select"); });
     paintMore();
-
-    /* その日のぶん。ここから書き足しにいけます。 */
-    (function paintList() {
-      const list = body.querySelector(".js-list");
-      const mine = store.urgesOfDay(day).filter((u) => !editing || u.id !== editing.id);
-      if (!mine.length) return;
-      list.append(node(html`<div class="section-title">この日の記録</div>`));
-      const rows = node(html`<div class="rows"></div>`);
-      mine.forEach((u) => {
-        const row = node(html`
-          <button class="row">
-            <span class="row-main">
-              <span class="row-title">${urgeTime(u)}　飲みたい ${u.before}${
-                u.after != null ? " → " + u.after + (u.afterTime ? `（${u.afterTime}）` : "") : ""}</span>
-              <span class="row-sub">${urgeSummary(u) || "—"}</span>
-            </span>
-            <span class="row-chevron">${icon("edit")}</span>
-          </button>
-        `);
-        row.addEventListener("click", () => { h.close(); openUrgeSheet(day, u.id); });
-        rows.append(row);
-      });
-      list.append(rows);
-    })();
 
     function save(opts) {
       if (before == null) { KN.ui.toast("飲みたい強さを選んでください"); return; }
@@ -1699,10 +1677,6 @@
     let after = u.after, afterTime = u.afterTime || null, outcome = urgeOutcome(u);
     const body = node(html`
       <div class="urge-form">
-        <div class="urge-top">
-          <b class="urge-top-day">${U.formatDay(u.day)}</b>
-          <span class="urge-since">${icon("clock")}${urgeTime(u)}　飲みたい ${u.before}</span>
-        </div>
         <div class="js-res"></div>
         <button type="button" class="urge-more js-full">
           <span class="urge-more-t">詳細</span>
@@ -1711,7 +1685,9 @@
       </div>
     `);
     const foot = node(html`<button class="btn btn-primary btn-block js-save">保存</button>`);
-    const h = KN.ui.sheet({ title: "あとで記入", content: body, footer: foot, guard: true });
+    const hero = KN.ui.recHero({ ico: "clock", ink: "var(--c-yamabuki-fill)", title: "あとで記入",
+      cap: `${U.formatDay(u.day)} ${urgeTime(u)}・飲みたい ${u.before}` });
+    const h = KN.ui.sheet({ title: "あとで記入", hero, content: body, footer: foot, guard: true });
     const save = (then) => {
       const tried = u.tried.slice();
       store.updateUrge(u.id, { after, afterTime, ...waitPatch(u, outcome, tried, false) });
@@ -1762,38 +1738,41 @@
     const done = rows.filter((u) => !isLater(u));
     if (!canAdd && !rows.length) return;
 
-    /* R4：山吹の淡い塗りのボタン（52px）。あとで記入・書いた一件は、その下に行のカード。 */
+    /* R4：山吹の淡い塗りのボタン（52px）。書いた一件は、その下に一枚のカード（RS 2回目：今日の食事と同じ行——
+       46px の台に強さ・何を求めたか・時刻。あとで記入の一件が先で、時刻の横に「あとで記入」）。 */
     const sec = node(html`
       <div class="urge-bar">
         ${canAdd ? html`
           <button class="btn btn-block hl-urge-btn js-urge">${icon("clock")}飲みたくなった</button>` : ""}
-        ${later.length ? html`<div class="urge-later"><div class="urge-later-t">あとで記入</div>
-          <div class="card urge-rows js-later"></div></div>` : ""}
-        ${done.length ? html`<div class="card urge-rows js-done"></div>` : ""}
+        ${rows.length ? html`<div class="card urge-rows js-rows"></div>` : ""}
       </div>
     `);
 
     const add = sec.querySelector(".js-urge");
     if (add) add.addEventListener("click", () => { KN.motion.fire("select"); openUrgeSheet(card.day); });
 
-    const row = (u, onTap) => {
+    const row = (u, onTap, isLate) => {
+      const what = urgeSummary(u);
       const el = node(html`
-        <button class="urge-row" type="button">
-          <span class="urge-row-time mono-num">${urgeTime(u)}</span>
+        <button class="urge-row ${isLate ? "is-later" : ""}" type="button">
           ${/* 矢は絵なので raw で通します——`html` は補間した値を escape します。 */""}
           <span class="urge-row-lv mono-num">${u.before}${
             KN.util.raw(u.after != null ? `<i>→</i>${KN.util.escapeHtml(u.after)}` : "")}</span>
-          <span class="urge-row-text">${urgeSummary(u)}</span>
+          <span class="urge-row-main">
+            <span class="urge-row-text">${what || urgeTime(u)}</span>
+            <span class="urge-row-time mono-num">${[what ? urgeTime(u) : "", isLate ? "あとで記入" : ""].filter(Boolean).join("・")}</span>
+          </span>
           <span class="urge-row-go" aria-hidden="true">${icon("chevron")}</span>
         </button>
       `);
       el.addEventListener("click", () => { KN.motion.fire("select"); onTap(); });
       return el;
     };
-    const laterHost = sec.querySelector(".js-later");
-    if (laterHost) later.forEach((u) => laterHost.append(row(u, () => openUrgeLater(u))));
-    const doneHost = sec.querySelector(".js-done");
-    if (doneHost) done.forEach((u) => doneHost.append(row(u, () => openUrgeSheet(u.day, u.id))));
+    const rowsHost = sec.querySelector(".js-rows");
+    if (rowsHost) {
+      later.forEach((u) => rowsHost.append(row(u, () => openUrgeLater(u), true)));
+      done.forEach((u) => rowsHost.append(row(u, () => openUrgeSheet(u.day, u.id))));
+    }
 
     host.append(sec);
   }
@@ -2047,9 +2026,7 @@
 
     const body = node(html`
       <div class="stack diet-form">
-        <div class="diet-daynav">
-          <b>${U.formatDay(day)}</b>
-        </div>
+        ${/* RS 2回目：何（札・ほかのお酒）→ いつ（時刻の札）→ 詳細（気分）。日は頭の小さな字。 */""}
         ${editing ? "" : html`
           <div class="field">
             <span class="field-label">よく飲むもの</span>
@@ -2057,8 +2034,8 @@
           </div>
           <div class="drink-picks js-picks"></div>`}
         <label class="field">
-          <span class="field-label">${editing ? "飲んだもの" : "札に無いものは書いて"}</span>
-          <input class="input js-q" placeholder="ビール350ml 2本"
+          ${editing ? html`<span class="field-label">飲んだもの</span>` : ""}
+          <input class="input js-q" placeholder="${editing ? "" : "ほかのお酒"}" aria-label="飲んだもの"
                  autocomplete="off" autocapitalize="off" spellcheck="false"
                  value="${editing ? editing.raw || DR.describeItem(editing) : ""}">
         </label>
@@ -2067,19 +2044,22 @@
         ${/* 飲むたびに書き足すものなので、時刻を持たせます。あとで
               「いつ飲みはじめたか」「何時間かけたか」を見るために。
               既定はいま——たいてい、飲んだそのときに書くので。 */""}
-        <div class="time-row">
-          <span class="time-label">時刻</span>
-          <input class="input js-time" type="hidden" data-when="time" data-clear aria-label="時刻"
-                 value="${editing ? (editing.time || "") : U.nowTime()}">
+        <div class="rec-when">
+          <label class="rec-when-i">${icon("clock")}<input class="input js-time" type="hidden" data-when="time" data-clear aria-label="時刻"
+                 value="${editing ? (editing.time || "") : U.nowTime()}"></label>
         </div>
-
-        <label class="field">
-          <span class="field-label">そのときの気分（任意）</span>
-          <input class="input js-mood" placeholder="疲れた／付き合い／…"
-                 autocomplete="off" autocapitalize="off" spellcheck="false"
-                 value="${editing ? editing.mood || "" : ""}">
-        </label>
-        <div class="diet-chips js-moodtags"></div>
+        <button type="button" class="urge-more js-more" aria-expanded="false">
+          <span class="urge-more-t"></span><span class="urge-more-c">${icon("chevron")}</span>
+        </button>
+        <div class="stack js-rest" hidden>
+          <label class="field">
+            <span class="field-label">そのときの気分</span>
+            <input class="input js-mood"
+                   autocomplete="off" autocapitalize="off" spellcheck="false"
+                   value="${editing ? editing.mood || "" : ""}">
+          </label>
+          <div class="diet-chips js-moodtags"></div>
+        </div>
 
         <div class="js-list"></div>
       </div>
@@ -2093,8 +2073,25 @@
     KN.ui.whenFields(body);
     /* 背いっぱいの丸角カード（日記の書く紙と同じ .is-card。2026年10月11日、利用者）。高さが決まって
        いるので、札を押して行が増えても札が上へ逃げない（中身ぶんの紙だと上へ伸び、続けて押すと下の札に当たった）。 */
-    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", cls: "is-card", content: body, footer: foot, guard: true,
+    const hero = KN.ui.recHero({ ico: "drink", ink: "var(--c-yamabuki-fill)", title: editing ? "お酒を直す" : "お酒を記録" });
+    const h = KN.ui.sheet({ title: editing ? "お酒を直す" : "お酒を記録", hero, cls: "is-card", content: body, footer: foot, guard: true,
       menu: editing ? KN.ui.delMenu(() => store.removeDrink(editing.id), { sheet: () => h, after: render }) : null });
+    const paintCap = () => {
+      const t = body.querySelector(".js-time").value ? body.querySelector(".js-time + .when-btn").textContent : "";
+      hero.querySelector(".js-hero-cap").textContent = U.formatDay(day) + (t ? ` ${t}` : "");
+    };
+    body.addEventListener("change", paintCap);
+    paintCap();
+    let open = !!(editing && (editing.mood || (editing.moodTags || []).length));
+    const restEl = body.querySelector(".js-rest"), moreEl = body.querySelector(".js-more");
+    const paintMore = () => {
+      restEl.hidden = !open;
+      moreEl.setAttribute("aria-expanded", String(open));
+      moreEl.classList.toggle("is-open", open);
+      moreEl.querySelector(".urge-more-t").textContent = open ? "詳細をとじる" : "詳細";
+    };
+    moreEl.addEventListener("click", () => { open = !open; paintMore(); KN.motion.fire("select"); });
+    paintMore();
 
     const q = body.querySelector(".js-q");
     const readBox = body.querySelector(".js-read");
@@ -2123,7 +2120,8 @@
         const chip = node(html`<button type="button" class="chip ${on ? "is-on" : ""}"
           aria-pressed="${String(on)}" aria-label="${t.detail}">
           <span class="drink-fav-ico">${KN.util.raw(KN.productIcons.byKey(t.icon) || "")}</span>
-          <span class="drink-fav-name">${t.label}</span></button>`);
+          <span class="drink-fav-name">${t.label.split(" ")[0]}</span> ${
+            t.label.includes(" ") ? html`<small class="drink-fav-sub">${t.label.split(" ").slice(1).join(" ")}</small>` : ""}</button>`);
         chip.addEventListener("click", () => bump(t.key, 1));
         host.append(chip);
       });
@@ -3122,8 +3120,7 @@
 
     const body = node(html`
       <div class="stack">
-        <div class="diet-daynav"><b>${U.formatDay(day)}</b></div>
-        <div class="diet-slots js-slots"></div>
+        <div class="card diet-slots js-slots"></div>
         ${legacyText ? html`
           <div class="field">
             <span class="field-label">前に一日ぶんで書いたもの</span>
@@ -3136,7 +3133,8 @@
     const foot = node(html`
       <button class="btn btn-primary btn-block js-save">保存</button>
     `);
-    const h = KN.ui.sheet({ title: "食事を書く", content: body, footer: foot, guard: true,
+    const hero = KN.ui.recHero({ ico: "meal", ink: "var(--c-kaki-fill)", title: "食事を書く", cap: U.formatDay(day) });
+    const h = KN.ui.sheet({ title: "食事を書く", hero, content: body, footer: foot, guard: true,
       draft: existing ? null : { kind: "meal", id: day } });
 
     const built = buildSlotBoxes(body.querySelector(".js-slots"), day, D.slotTotals(day), { sheet: true });
@@ -3673,22 +3671,14 @@
     let meal = seed.meal || null;
     let clothed = seed.clothed == null ? null : seed.clothed;
 
+    /* RS 2回目：何（体重・体脂肪）→ いつ（日付と時刻の札）→ 詳細（量ったとき・服装・メモ。前回の条件が入っている）。 */
+    const last = w ? null : store.latestWeight();
     const body = node(html`
       <div class="stack diet-form">
         <div class="field-row">
           <label class="field grow">
-            <span class="field-label">日付</span>
-            <input type="hidden" data-when="day" class="input js-day" value="${w ? w.day : (dayHint || U.todayKey())}">
-          </label>
-          <label class="field grow">
-            <span class="field-label">時刻</span>
-            <input type="hidden" data-when="time" data-clear class="input js-time" value="${w && w.time ? w.time : U.nowTime()}">
-          </label>
-        </div>
-        <div class="field-row">
-          <label class="field grow">
             <span class="field-label">体重 (kg)</span>
-            <input class="input js-kg" inputmode="decimal" placeholder="例：68.4"
+            <input class="input js-kg" inputmode="decimal" placeholder="${last ? String(last.kg) : ""}"
                    value="${w ? String(w.kg) : ""}">
           </label>
           <label class="field grow">
@@ -3697,19 +3687,29 @@
                    value="${w && w.fat != null ? String(w.fat) : ""}">
           </label>
         </div>
-        <div class="field">
-          <span class="field-label">量ったとき</span>
-          <div class="js-meal"></div>
+        <div class="rec-when">
+          <label class="rec-when-i">${icon("calendar")}<input type="hidden" data-when="day" data-chips="past" class="input js-day"
+            aria-label="日付" value="${w ? w.day : (dayHint || U.todayKey())}"></label>
+          <label class="rec-when-i">${icon("clock")}<input type="hidden" data-when="time" data-clear class="input js-time"
+            aria-label="時刻" value="${w && w.time ? w.time : U.nowTime()}"></label>
         </div>
-        <div class="field">
-          <span class="field-label">服装</span>
-          <div class="js-wear"></div>
+        <button type="button" class="urge-more js-more" aria-expanded="false">
+          <span class="urge-more-t"></span><span class="urge-more-c">${icon("chevron")}</span>
+        </button>
+        <div class="stack js-rest" hidden>
+          <div class="field">
+            <span class="field-label">量ったとき</span>
+            <div class="js-meal"></div>
+          </div>
+          <div class="field">
+            <span class="field-label">服装</span>
+            <div class="js-wear"></div>
+          </div>
+          <label class="field">
+            <span class="field-label">メモ</span>
+            <input class="input js-memo" value="${w ? w.memo : ""}">
+          </label>
         </div>
-
-        <label class="field">
-          <span class="field-label">メモ</span>
-          <input class="input js-memo" placeholder="例：飲んだ翌日" value="${w ? w.memo : ""}">
-        </label>
         ${w && w.source === "health" ? html`
           <p class="diet-note">ヘルスケアから入った記録です。直すと手入力になります。</p>` : ""}
       </div>
@@ -3722,9 +3722,26 @@
     `);
 
     KN.ui.whenFields(body);
-    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", content: body, footer: foot, guard: true,
+    const hero = KN.ui.recHero({ ico: "scale", ink: "var(--c-ai)", title: w ? "体重を直す" : "体重を記録" });
+    const h = KN.ui.sheet({ title: w ? "体重を直す" : "体重を記録", hero, content: body, footer: foot, guard: true,
       draft: { kind: "weight", id: w ? w.id : null },
       menu: w ? KN.ui.delMenu(() => store.removeWeight(w.id), { sheet: () => h, after: render }) : null });
+    const paintCap = () => {
+      const t = body.querySelector(".js-time").value ? body.querySelector(".js-time + .when-btn").textContent : "";
+      hero.querySelector(".js-hero-cap").textContent = U.formatDay(body.querySelector(".js-day").value) + (t ? ` ${t}` : "");
+    };
+    body.addEventListener("change", paintCap);
+    paintCap();
+    let open = !!(w && w.memo);
+    const restEl = body.querySelector(".js-rest"), moreEl = body.querySelector(".js-more");
+    const paintMore = () => {
+      restEl.hidden = !open;
+      moreEl.setAttribute("aria-expanded", String(open));
+      moreEl.classList.toggle("is-open", open);
+      const said = [mealLabel(meal), clothed == null ? "" : clothed ? "着衣あり" : "着衣なし"].filter(Boolean).join("・");
+      moreEl.querySelector(".urge-more-t").textContent = open ? "詳細をとじる" : said ? `詳細　${said}` : "詳細";
+    };
+    moreEl.addEventListener("click", () => { open = !open; paintMore(); KN.motion.fire("select"); });
     const kgEl = body.querySelector(".js-kg");
     const fatEl = body.querySelector(".js-fat");
     // 体重を打ち終えたら、そのまま体脂肪へ。
@@ -3733,14 +3750,15 @@
 
     const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
       activeId: meal || "",
-      onPick: (id) => { meal = id || null; paintMeal(); },
+      onPick: (id) => { meal = id || null; paintMeal(); paintMore(); },
     });
     const paintWear = () => KN.ui.chipRow(body.querySelector(".js-wear"), WEAR_CHIPS, {
       activeId: clothed == null ? "" : (clothed ? "yes" : "no"),
-      onPick: (id) => { clothed = id === "yes" ? true : (id === "no" ? false : null); paintWear(); },
+      onPick: (id) => { clothed = id === "yes" ? true : (id === "no" ? false : null); paintWear(); paintMore(); },
     });
     paintMeal();
     paintWear();
+    paintMore();
 
     foot.querySelector(".js-save").addEventListener("click", () => {
       const val = parseFloat(String(kgEl.value).replace(/[^\d.]/g, ""));

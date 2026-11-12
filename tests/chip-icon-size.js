@@ -22,7 +22,7 @@ const prop = (r, p) => ((r.body.match(new RegExp(`(?:^|[;\\s])${p}\\s*:\\s*([^;]
 
 /* 一・二 */
 const CHIPS = [[".chip", "height", "36px"], [".btn-sm", "height", "36px"], [".seg-btn", "min-height", "36px"],
-  [".dest-chip", "min-height", "36px"], [".time-row .chip", "height", "30px"], [".note-labels .chip", "height", "30px"],
+  [".dest-chip", "min-height", "36px"], [".note-labels .chip", "height", "30px"],
   [".sa-link", "min-height", "30px"]];
 for (const [s, p, v] of CHIPS) {
   const r = rules.find((x) => x.sel === s && prop(x, p));

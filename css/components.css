@@ -939,7 +939,7 @@ button, [role="tab"] {
   box-shadow: 0 8px 16px -8px var(--cat, var(--c-primary));
 }
 .hero-node .todo-mark,
-.hero-node .todo-mark svg { width: 30px; height: 30px; }  /* 入れもの：紙の頭の丸 */
+.hero-node svg { width: 30px; height: 30px; }  /* 入れもの：紙の頭の丸 */
 /* 行の丸薬から頭の丸薬へ伸びていく影武者（ui.js の morphPill）。箱の
    位置・大きさ・丸み・輪は、JS が測った数で動かします。 */
 .sheet-morph {
@@ -1350,6 +1350,7 @@ button.hero-node:active { scale: var(--press-dot); }
   align-items: center;
   vertical-align: middle;
 }
+.sheet-mark-art { width: 34px; height: 34px; border-radius: var(--r-sm); object-fit: cover; }
 
 /* ---------------- reorder (long press to lift) ---------------- */
 

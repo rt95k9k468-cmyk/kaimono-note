@@ -68,6 +68,13 @@ const { open, checker } = require("./lib");
     && at("ビール").y === at("焼酎").y && at("焼酎").y === at("ワイン").y, JSON.stringify(f));
   c.check("どの札にも絵がある", f.every((x) => x.ico), JSON.stringify(f));
   c.check("札の的は44px以上・はみ出さない", f.every((x) => x.h >= 44 && !x.out), JSON.stringify(f));
+  /* RS 2回目：札の字は切れない（ビール／4% は二段）。気分は詳細に畳む。時刻は頭の いつ にも。 */
+  const rs = await page.evaluate(() => {
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    return { cut: [...sh.querySelectorAll(".drink-fav-name, .drink-fav-sub")].filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent),
+      mood: !sh.querySelector(".js-mood").offsetParent, cap: sh.querySelector(".js-hero-cap").textContent, when: sh.querySelector(".js-time + .when-btn").textContent };
+  });
+  c.check("札の字が切れない・気分は畳む・頭に いつ", !rs.cut.length && rs.mood && rs.cap.endsWith(rs.when) && /^今日/.test(rs.cap), JSON.stringify(rs));
 
   c.check("背いっぱいの丸角カード", await page.evaluate(() =>
     [...document.querySelectorAll(".sheet.is-open")].pop().classList.contains("is-card")));

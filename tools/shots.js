@@ -6,7 +6,8 @@
      --theme light,dark       明暗（既定 light）
      --size std,xl            字の大きさ（既定 std。xl＝特大）
      --clock 21:30            その時刻から時計を進めて開く（既定は今）
-     --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）・weight・meal（health）
+     --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）・weight・meal・drink・urge・urges（行）
+                              （health）・diary（daily の日記）・note・note-menu（ノートと「⋯」）
      --scroll 400             送る器を下へ（px）
      --attire modern 装い（base.css の「モダン」）を列に足す。「今」はいつも撮る
      --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。「今」（差し替えなし）はいつも撮る
@@ -74,6 +75,8 @@ async function seed() {
     S.setSlotMemo(day(0), slot, memo);
     S.addMeal({ day: day(0), time: "12:00", slot, items: [{ name: memo, kcal, slot }] });
   });
+  S.addUrge({ day: day(0), time: "19:40", before: 4, trigger: ["暇・手持ちぶさた"] });
+  S.addUrge({ day: day(0), time: "16:10", before: 3, after: 1, outcome: "none", tried: ["少し待つ"] });
   S.addTodo({ title: "病院の予約", due: day(0), time: "10:00", minutes: 30 });
   S.addTodo({ title: "資料をまとめる", due: day(0), time: "14:00", minutes: 60 });
   S.addTodo({ title: "買い物へ行く", due: day(0), time: "17:00", minutes: 30 });
@@ -106,6 +109,20 @@ async function openSheet(which) {
     await wait(400);
     const D = KN.screens.diet, today = KN.util.todayKey();
     if (which === "weight") D.openWeightSheet(KN.store.weightOfDay(today), today); else D.openMealMemoSheet(today);
+  } else if (which === "drink" || which === "urge" || which === "urges") {
+    KN.app.showScreen("diet");
+    await wait(400);
+    const sc = () => document.querySelector("#screen-diet .js-urge");
+    if (which === "drink") KN.screens.diet.openDrinkSheet(KN.util.todayKey());
+    else if (which === "urge") sc().click();
+    else sc().scrollIntoView({ block: "start" });
+  } else if (which === "diary") {
+    KN.app.showScreen("archive");
+    await wait(400);
+    document.querySelector("#screen-archive .js-think-write").click();
+  } else if (which === "note" || which === "note-menu") {
+    KN.screens.notes.open("n-shot0");
+    if (which === "note-menu") { await wait(900); (document.querySelector(".sheet.is-note .js-note-more, .sheet.is-note .js-menu, .sheet.is-note [aria-label*='操作']") || document.body).click(); }
   } else if (which === "cal") {
     const at = document.querySelector(".screen.is-active button") || document.body;
     KN.ui.popCalendar(at, { value: KN.util.todayKey(), onPick() {} });

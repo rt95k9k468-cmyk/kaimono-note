@@ -43,6 +43,9 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.screens.notes.open("b-b"));
   await page.waitForSelector(".sheet.is-note.is-open .js-note-more");
   await page.click(".sheet.is-note.is-open .js-note-more");
+  /* RS 2回目：「⋯」の行は どれも絵つき（同じ役目は同じ形）。 */
+  const bare = await page.evaluate(() => [...document.querySelectorAll(".note-pop.is-open .note-pop-item")].filter((b) => !b.querySelector("svg")).map((b) => b.textContent.trim()));
+  t.check("「⋯」の行は どれも絵つき", bare.length === 0, bare.join(","));
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "束ねる" }).click();
   await page.waitForSelector(".sheet.is-open .note-bundle-row");
   const rows = () => page.$$eval(".sheet.is-open .note-bundle-row", (xs) => xs.map((x) => `${x.dataset.id}${x.getAttribute("aria-pressed") === "true" ? "*" : ""}`).join());
