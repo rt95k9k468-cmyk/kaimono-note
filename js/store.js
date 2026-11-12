@@ -146,6 +146,7 @@
         /* 左の列を畳む（広い幅。docs/desk.md）。reconcile が足す鍵は、空から始めた記録にも置く——
            無いと読み直すたびに中身が変わり、Dropbox が同じ中身を送り直した。 */
         railFolded: false,
+        taxPct: {},          // 品ごとに直した税の率（taxRate。既定と違う品だけ）
       },
     };
   }
@@ -790,9 +791,10 @@
     out.settings.inboxPost = out.settings.inboxPost === true;
     out.settings.v2 = out.settings.v2 === true;
     out.settings.railFolded = out.settings.railFolded === true;   // 左の列を畳む（広い幅。docs/desk.md）
-    { const t = out.settings.taxRates, m = {};   // 品ごとに直した税の率（taxRate）。8 と 10 だけ持つ
+    /* 品ごとに直した税の率（taxRate）。8 と 10 だけ持つ。taxRates は 11月12日の一版だけの名前（消さずに引き継ぐ）。 */
+    { const t = out.settings.taxPct || out.settings.taxRates, m = {};
       if (t && typeof t === "object" && !Array.isArray(t)) Object.keys(t).forEach((k) => { if (t[k] === 8 || t[k] === 10) m[k] = t[k]; });
-      out.settings.taxRates = m; }
+      out.settings.taxPct = m; }
     /* 写しの端末の受け箱から取りこんだ依頼の id と時刻（js/desk-inbox.js。二度当てない）。持つ記録だけ。 */
     if (s.inboxSeen != null) {
       const seen = {};
@@ -1965,11 +1967,11 @@
   }
 
   /* 税抜で打つときの率（docs/shopping.md「S1〜S4」）。食べもの（野菜・肉魚・食品・冷蔵・飲みもの）は 8%、ほかは 10%。
-     品ごとに直した率は settings.taxRates（品の id → 8 か 10。既定と違うときだけ）。記録の値段は今までどおり税込の一つの数。 */
+     品ごとに直した率は settings.taxPct（品の id → 8 か 10。既定と違うときだけ）。記録の値段は今までどおり税込の一つの数。 */
   const FOOD_CATS = new Set(["c-veg", "c-meat", "c-food", "c-cold", "c-drink"]);
   const catRate = (p) => (p && FOOD_CATS.has(p.categoryId) ? 8 : 10);
   function taxRate(product) {
-    const own = product ? (state.settings.taxRates || {})[product.id] : null;
+    const own = product ? (state.settings.taxPct || {})[product.id] : null;
     return (own === 8 || own === 10 ? own : catRate(product)) / 100;
   }
   function setTaxRate(productId, rate) {
@@ -1977,10 +1979,10 @@
     const pct = Math.round(rate * 100);
     if (!p || Math.round(taxRate(p) * 100) === pct) return;
     update((s) => {
-      const m = { ...(s.settings.taxRates || {}) };
+      const m = { ...(s.settings.taxPct || {}) };
       delete m[productId];
       if (pct !== catRate(p)) m[productId] = pct;
-      s.settings.taxRates = m;
+      s.settings.taxPct = m;
     });
   }
   /** これまでの最安（記録のぜんぶから・今ある店だけ。同じ値なら新しいほう）。S4。 */

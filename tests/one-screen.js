@@ -64,7 +64,9 @@ const { open, checker } = require("./lib");
     const r = await read(id);
     t.check(`${id}：開いている`, r.active === `screen-${id}`, r.active);
     /* ③ 帯は中身にかぶらない */
-    t.check(`③ ${id}：中身は頭の帯の下から始まる`, r.first && r.first.top >= r.headBottom - 1 && r.scTop >= r.headBottom - 1, JSON.stringify(r));
+    /* daily は暦なし：中身の面は盆（26px）に重なって角を持つ（base.css の is-bare）ので、帯の下は盆の上端。 */
+    const under = r.headBottom - (id === "archive" ? 26 : 0) - 1;
+    t.check(`③ ${id}：中身は頭の帯の下から始まる`, r.first && r.first.top >= under && r.scTop >= under, JSON.stringify(r));
 
     /* ② 最初の一画面 */
     if (id === "archive") t.check("② daily：今日の行が最初の一画面に（下の帯より上）", r.today && r.today.top >= r.headBottom && r.today.bottom <= r.barTop, JSON.stringify(r.today));

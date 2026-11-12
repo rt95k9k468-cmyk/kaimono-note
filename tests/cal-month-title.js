@@ -26,7 +26,8 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(700);
   };
 
-  for (const id of ["todo", "archive", "diet", "list"]) {
+  /* daily は暦を持たない（2026年11月12日）。 */
+  for (const id of ["todo", "diet", "list"]) {
     await page.evaluate((i) => KN.app.showScreen(i), id);
     await page.waitForTimeout(700);
     await swipe(160);
