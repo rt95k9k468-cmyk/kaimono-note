@@ -1,4 +1,4 @@
-/* 打つときの予測：前に書いた題の札（やること）・変換前の平仮名で漢字の言葉を引く（js/yomi.js）・
+/* 打つときの予測：前に書いた題の札（やること。T3：手順・予定｜やること・仕事｜くらしも借り、手順は×で外せる）・変換前の平仮名で漢字の言葉を引く（js/yomi.js）・
    言い切った時刻は早く欄へ移す（screen-todo.js の liveWait）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/predict.js */
 const { open, checker } = require("./lib");
@@ -39,7 +39,9 @@ const { open, checker } = require("./lib");
     const d = (n) => KN.util.shiftDay(KN.util.todayKey(), -n);
     KN.store.update((s) => {
       s.todos = [];
-      [1, 3, 8].forEach((n, i) => s.todos.push({ id: "p" + i, title: "病院へ行く", due: d(n), done: true, minutes: 30, icon: null, repeat: null, subs: [] }));
+      [1, 3, 8].forEach((n, i) => s.todos.push({ id: "p" + i, title: "病院へ行く", due: d(n), done: true, minutes: 30, icon: null, repeat: null,
+        kind: i ? null : "event", side: i ? null : "work",
+        subs: i ? [] : [{ id: "a", title: "保険証", done: true }, { id: "b", title: "薬手帳", done: true }] }));
       s.todos.push({ id: "q1", title: "ゴミ袋を買う", due: d(40), done: true, repeat: null, subs: [] });
       s.todos.push({ id: "r1", title: "ゴミ出し", due: KN.util.todayKey(), done: false, repeat: "daily", subs: [] });
       s.todos.push({ id: "r2", title: "ゴミ出し", due: d(1), done: true, trace: true, repeat: null, subs: [] });
@@ -66,6 +68,30 @@ const { open, checker } = require("./lib");
   await page.keyboard.type("びょう");
   await page.click(".js-cands .chip");
   t.check("押すと題がその言葉に", await title.inputValue() === "病院へ行く", await title.inputValue());
+  const lentOut = await page.evaluate(() => ({
+    subs: [...document.querySelectorAll(".js-subs .js-sub")].map((x) => x.value),
+    on: [...document.querySelectorAll(".js-subs .js-sub-check")].some((b) => b.classList.contains("is-on")),
+    kind: document.querySelector('.js-kind [aria-pressed="true"]').dataset.v,
+    side: document.querySelector('.js-side [aria-pressed="true"]').dataset.v,
+  }));
+  t.check("T3：いちばん新しい回の手順（済みの印は借りない）・予定・仕事も付く",
+    lentOut.subs.join("|") === "保険証|薬手帳" && !lentOut.on && lentOut.kind === "event" && lentOut.side === "work", JSON.stringify(lentOut));
+  await page.click(".js-subs .sub-line:first-child .js-sub-del");
+  await page.click(".js-save");
+  await page.waitForTimeout(400);
+  const made = await page.evaluate(() => KN.store.get().todos.filter((x) => x.title === "病院へ行く" && !x.done)
+    .map((x) => ({ subs: (x.subs || []).map((y) => y.title + (y.done ? "+" : "")), side: x.side, kind: x.kind })));
+  t.check("T3：借りた手順は×で外せて、残りが入る", made.length === 1 && made[0].subs.join("|") === "薬手帳"
+    && made[0].side === "work" && made[0].kind === "event", JSON.stringify(made));
+  await page.evaluate(() => document.querySelector('button[aria-label="やることを追加"]').click());
+  await page.waitForSelector(".js-title");
+  await page.waitForTimeout(300);
+  await page.click('.js-side [data-v="life"]');
+  await title.click();
+  await page.keyboard.type("びょう");
+  await page.click(".js-cands .chip");
+  t.check("T3：自分で選んだ くらし は替えない", await page.evaluate(() =>
+    document.querySelector('.js-side [aria-pressed="true"]').dataset.v === "life"));
 
   /* 言い切った時刻は早く移る。「10時」は少し待つ。 */
   await page.fill(".js-title", "");

@@ -548,7 +548,7 @@
     let kind = editing && t.kind === "event" ? "event" : "task";
     let side = editing && t.side === "work" ? "work" : "life";
     /* 打った字に時刻があれば予定（決めごと3）。札を自分で押したら、もう替えない。 */
-    let kindHand = editing;
+    let kindHand = editing, sideHand = editing;
     let flagged = editing ? !!t.flagged : false;
     /* 新しい用事は1時間から（2026年10月21日、利用者。30分から変えた）。くり返しは長さに触らなければ null のまま
        保存する（いつもの長さ＝段4を殺さないため。`newMins`）。 */
@@ -1781,7 +1781,7 @@
     body.querySelector(".js-side").addEventListener("click", (e) => {
       const b = e.target.closest(".seg-btn");
       if (!b) return;
-      side = b.dataset.v; paintPlan(); haptic();
+      side = b.dataset.v; sideHand = true; paintPlan(); haptic();
     });
     paintPlan();
 
@@ -1924,8 +1924,11 @@
 
     /* 前に書いた題（store.todoTitles）。新しく足す紙だけ。打つ前はくり返し書くもの、
        打ちかけなら全部から——変換前の平仮名でも引く（KN.yomi）。押すと題がその言葉に
-       なり、絵と長さも前のものを借りる（自分で決めていなければ）。 */
+       なり、絵・長さ・予定｜やること・仕事｜くらし・手順も前のものを借りる（自分で決めていなければ。T3）。
+       借りた手順は紙の手順の欄に並ぶので、×で外せる。別の題へ選び直したら、触っていない借りた手順は入れ替わる。 */
     if (!editing) {
+      let lent = "";
+      const subsKey = () => subs.map((x) => x.title).join("\n");
       const candsEl = hero.querySelector(".js-cands");
       const past = store.todoTitles();
       const paintCands = () => {
@@ -1951,6 +1954,14 @@
             titleTouched = true;
             if (!iconKey && e.icon) { iconKey = e.icon; paintIcon(); }
             if (!minsPicked && e.minutes) { minutes = e.minutes; minsPicked = true; repaintWhen(); }
+            if (!kindHand && e.kind) kind = e.kind;
+            if (!sideHand && e.side) side = e.side;
+            paintPlan();
+            if (e.subs.length && subsKey() === lent) {
+              subs = e.subs.map((x, i) => ({ id: "s" + Date.now() + i, title: x, done: false }));
+              lent = subsKey();
+              paintSubs();
+            }
             haptic(10);
             titleEl.dispatchEvent(new Event("input"));
             titleEl.focus();

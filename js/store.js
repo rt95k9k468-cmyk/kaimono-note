@@ -3104,12 +3104,17 @@
       const age = d && today ? Math.max(0, Math.round((today - d) / 864e5)) : 365;
       const e = seen.get(k) || { title, icon: null, minutes: null, score: 0, day: "", days: new Set() };
       if (!e.days.has(day)) { e.days.add(day); e.score += Math.pow(0.5, age / 30); }
-      if (day >= e.day) { e.day = day; e.title = title; e.icon = t.icon || null; e.minutes = t.minutes || null; }
+      if (day >= e.day) {
+        e.day = day; e.title = title; e.icon = t.icon || null; e.minutes = t.minutes || null;
+        // 手順は題だけ（済みの印は借りない）・予定｜やること・仕事｜くらし（F3 の T3）
+        e.subs = (t.subs || []).map((x) => String(x.title || "").trim()).filter(Boolean);
+        e.kind = t.kind === "event" ? "event" : null; e.side = t.side === "work" ? "work" : null;
+      }
       seen.set(k, e);
     });
     return [...seen.values()]
       .sort((a, b) => (b.score - a.score) || b.day.localeCompare(a.day))
-      .map(({ title, icon, minutes, score }) => ({ title, icon, minutes, often: score >= 1.5 }));
+      .map(({ title, icon, minutes, subs, kind, side, score }) => ({ title, icon, minutes, subs, kind, side, often: score >= 1.5 }));
   }
 
   /**
