@@ -176,6 +176,12 @@ const { open, checker } = require("./lib");
   t.check("朱（washi-shu）は手帳の朱へ（選んであった基調色より先）", (await attr()) === null && (await attr("data-accent")) === null && (await v("--c-primary")) === "#bf4128");
   await wear("polish");
   t.check("磨き（polish）は手帳の既定へ（基調色は選んであったもの）", (await attr()) === null && (await attr("data-accent")) === "blue" && (await v("--c-primary")) === "#2b5a8c");
+  /* 印も装いと基調色に（RI）：手帳は基調色の印、モダンは墨に白の印。 */
+  const marks = () => page.evaluate(() => [document.querySelector('link[rel="icon"]').getAttribute("href"), document.querySelector('link[rel="apple-touch-icon"]').getAttribute("href")].join(" "));
+  t.check("手帳の印は基調色（藍）", (await marks()) === "icons/accent/blue.svg icons/accent/blue-180.png", await marks());
+  await wear("modern", "blue");
+  t.check("モダンの印は墨に白（基調色を選んであっても）", (await marks()) === "icons/accent/modern.svg icons/accent/modern-180.png", await marks());
+  await wear("polish");
   await reload();
   t.check("読み直しても前の値は残り、同じ読み替え", (await set()).attire === "polish" && (await attr("data-accent")) === "blue");
 

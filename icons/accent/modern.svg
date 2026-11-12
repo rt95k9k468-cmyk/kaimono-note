@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<!-- くらしノートの印（RI・2026年11月12日。水平線の日の出）。手帳は生成りの地に基調色の日、モダンは墨の地に白い日。
+     icons/accent/ に基調色ぶんとモダン、app.js の applyAccent がタブの絵とホーム画面用の絵を差し替える。PNG はこの絵を焼いたもの。 -->
+<defs><clipPath id="c"><rect width="512" height="512" rx="114"/></clipPath></defs><g clip-path="url(#c)">
+<rect width="512" height="512" fill="#1c1d21"/>
+<path d="M164 292a92 92 0 0 1 184 0z" fill="#ffffff"/>
+<rect x="96" y="290" width="320" height="10" rx="5" fill="#ffffff"/>
+<rect x="176" y="326" width="160" height="10" rx="5" fill="#ffffff" opacity=".55"/>
+<rect x="216" y="360" width="80" height="10" rx="5" fill="#ffffff" opacity=".3"/>
+</g></svg>

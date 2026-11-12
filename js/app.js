@@ -131,16 +131,16 @@
     if (s) root.setAttribute("data-sekki", String(Math.floor(s.k / 3)));
     else root.removeAttribute("data-sekki");
 
-    /* アイコンの地も基調色に合わせます（icons/accent/）。タブの絵はすぐ変わり、
-       ホーム画面の絵は「ホーム画面に追加」した時点の色で焼きつきます——
-       追加済みの絵を後から塗り替える手段は、ウェブアプリには無いからです。 */
-    const id = ok && accent !== "season" ? accent : "orange";
+    /* 印も装いと基調色に合わせます（icons/accent/。手帳は生成りに基調色の日、モダンは墨に白。RI）。タブの絵と左の列はすぐ変わり、
+       ホーム画面の絵は「ホーム画面に追加」した時点の絵で焼きつきます——追加済みの絵を後から塗り替える手段は、ウェブアプリには無い。 */
+    const id = root.getAttribute("data-attire") === "modern" ? "modern" : ok && accent !== "season" ? accent : "orange";
     const fav = document.querySelector('link[rel="icon"]');
     const touch = document.querySelector('link[rel="apple-touch-icon"]');
     /* 一枚にまとめた版（build-standalone.js）は絵を data: で抱えていて、
        icons/ が隣に無いので触りません。 */
     if (fav && fav.getAttribute("href").startsWith("data:")) return;
     if (fav) fav.href = id === "orange" ? "icons/icon.svg" : `icons/accent/${id}.svg`;
+    document.querySelectorAll(".rail-brand img").forEach((im) => { im.src = fav ? fav.href : im.src; });
     if (touch) touch.href = id === "orange" ? "icons/apple-touch-icon.png" : `icons/accent/${id}-180.png`;
   }
   KN.app.applyAccent = applyAccent;
@@ -333,7 +333,7 @@
        さがすは帯の虫めがねと同じ口（その席のさがす。⌘K・Ctrl+K も同じ）。 */
     const find = node(html`<button type="button" class="rail-find">${icon("search")}<span>さがす</span><kbd>${/Mac|iP(hone|ad|od)/.test(navigator.platform || "") ? "⌘K" : "Ctrl K"}</kbd></button>`);
     find.addEventListener("click", () => { const b = document.querySelector("#head .js-search-btn"); if (b) b.click(); });
-    bar.prepend(node(html`<div class="rail-brand" aria-hidden="true"><img src="icons/icon.svg" alt="" width="34" height="34"><b>くらしノート</b></div>`), find);
+    bar.prepend(node(html`<div class="rail-brand" aria-hidden="true"><img src="${(document.querySelector('link[rel="icon"]') || { href: "icons/icon.svg" }).href}" alt="" width="34" height="34"><b>くらしノート</b></div>`), find);
     const set = node(html`<button type="button" class="rail-set">${icon("gear")}<span>settings</span></button>`);
     set.addEventListener("click", () => { if (active !== "settings") KN.app.showScreen("settings"); });
     bar.append(railMini(), set);
