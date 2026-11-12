@@ -356,11 +356,13 @@ const { open, checker } = require("./lib");
   t.check("設定：電話の幅はまとめない（一列のまま）", await page.evaluate(() => !document.querySelector("#screen-settings .set-sec, #screen-settings .is-duo")));
   await page.setViewportSize({ width: 1440, height: 900 });
   await wait(500);
-  /* 根っこは入口だけの一枚（2026年11月5日）：広い幅でも一列（入口の順を崩さない）・読む幅の列。
-     二段に組むのは入口の先の、見出しのまとまりが二つ以上ある一枚（表示・操作など）。 */
+  /* 根っこも二段（R8、11月12日）：左に 表示・通知 と データ、右に タブごと。右の段の頭は左の段の頭に揃う。 */
   const rootLook = await page.evaluate(() => { const L = document.querySelector("#screen-settings .set-layer");
-    return { duo: L.classList.contains("is-duo"), w: Math.round(L.querySelector(".js-body").getBoundingClientRect().width) }; });
-  t.check("設定：根っこ（入口だけ）は 1280px〜でも一列・読む幅", !rootLook.duo && rootLook.w <= 760, JSON.stringify(rootLook));
+    const r = (s) => { const e = L.querySelector(s); return e && e.getBoundingClientRect(); };
+    const a = r(".set-sec:nth-child(1)"), b = r(".set-sec:nth-child(2)"), c = r(".set-sec:nth-child(3)");
+    return { duo: L.classList.contains("is-duo"), right: !!(a && b && c) && b.left > a.right - 1 && Math.abs(b.top - a.top) < 2 && Math.abs(c.left - a.left) < 2 && c.top > a.bottom - 1,
+      tabs: (L.querySelector(".set-sec:nth-child(2) .set-head") || {}).textContent }; });
+  t.check("設定：根っこは 1280px〜で二段（右にタブごと）", rootLook.duo && rootLook.right && /タブ/.test(rootLook.tabs), JSON.stringify(rootLook));
   await page.locator("#screen-settings .set-row", { hasText: "表示・操作" }).first().click();
   await wait(60);
   const mid = await page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();

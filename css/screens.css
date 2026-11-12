@@ -1737,8 +1737,7 @@
   flex: 1;
   min-width: 0;
   text-align: center;
-  font-size: var(--set-fs);
-  font-weight: var(--fw-bold);
+  font: var(--fw-bold) var(--set-fs) var(--font-display);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1754,10 +1753,7 @@
   margin: var(--sp-2) 0 var(--sp-4);
   padding: 0 calc(var(--set-gut) + 2px);
   position: relative;
-  font-size: calc(34px * var(--fs-k));
-  font-weight: var(--fw-bold);
-  letter-spacing: -.02em;
-  line-height: var(--lh-tight);
+  font: var(--fw-bold) calc(32px * var(--fs-k))/var(--lh-tight) var(--font-display);
 }
 
 /* ---- 頭の挿絵（根っこは題の右、入口の先はまん中）----
@@ -1904,19 +1900,19 @@
   color: var(--c-primary);
 }
 .set-lead svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
-/* 根っこの入口（題の下に中身の名前がある行）は、絵をうすい丸に入れ、題を少し太く——入口だと一目で分かるように。
-   丸の色は絵の色から（知らせの行は知らせの色になる）。色は一色のまま。 */
-.set-row.has-lead.has-sub { --set-lead-d: 38px; }
+/* 根っこの入口（題の下に中身の名前がある行）は、絵を 40px の角丸の台に入れ、題を少し太く——入口だと一目で分かるように。
+   台の色は絵の色から（知らせの行は知らせの色になる）。色は一色のまま。 */
+.set-row.has-lead.has-sub { --set-lead-d: 40px; }
 .set-row.has-lead.has-sub .set-lead {
   width: var(--set-lead-d); height: var(--set-lead-d);
-  border-radius: var(--r-full);
+  border-radius: var(--r-sm);
   background: color-mix(in srgb, currentColor 13%, transparent);
 }
 .set-row.has-lead.has-sub .set-title { font-weight: var(--fw-bold); }
 .set-row.has-lead.has-sub .set-sub { font-weight: var(--fw-regular); }
 .set-row + .set-row.has-lead.has-sub::before,
 .set-row.has-lead.has-sub + .set-row::before {
-  left: calc(var(--set-pad) + var(--set-lead-d, 38px) + var(--set-gap));
+  left: calc(var(--set-pad) + var(--set-lead-d, 40px) + var(--set-gap));
 }
 /* 入口の題の下の一行（中身の名前）。題より一段小さく、薄くしすぎない。 */
 .set-sub {
@@ -2073,7 +2069,7 @@
   font-size: var(--set-fs-head);
 }
 .theme-shot {
-  --shot-bg: #f2f2f5; --shot-card: #fff;
+  --shot-bg: #f4efe5; --shot-card: #fffdf8;   /* 手帳の地と札（絵の一部。明暗で替えない） */
   position: relative;
   width: 62px; height: 100px;
   padding: 14px 7px 0;
@@ -2086,15 +2082,15 @@
   overflow: hidden;
   transition: scale var(--m-press) var(--ease), box-shadow var(--m-state) var(--ease);
 }
-.theme-shot.is-dark { --shot-bg: #1c1c1e; --shot-card: #2c2c2e; }
+.theme-shot.is-dark { --shot-bg: #1b1916; --shot-card: #262320; }
 .theme-shot.is-auto {
-  background: linear-gradient(90deg, #f2f2f5 50%, #1c1c1e 50%);
+  background: linear-gradient(90deg, #f4efe5 50%, #1b1916 50%);
 }
 .theme-shot i { display: block; border-radius: 4px; background: var(--shot-card); }
 .theme-shot i:first-child { height: 6px; width: 60%; border-radius: 3px; background: var(--c-primary-fill); }
 .theme-shot i:nth-child(2) { height: 26px; }
 .theme-shot i:nth-child(3) { height: 18px; }
-.theme-shot.is-auto i:not(:first-child) { background: linear-gradient(90deg, #fff 50%, #2c2c2e 50%); }
+.theme-shot.is-auto i:not(:first-child) { background: linear-gradient(90deg, #fffdf8 50%, #262320 50%); }
 .theme-pick:active .theme-shot { scale: var(--press-dot); }
 .theme-pick[aria-checked="true"] .theme-shot { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .1), 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-primary); }
 .theme-mark {
@@ -6546,12 +6542,16 @@ button.note-when:active { opacity: var(--press-fade); }
 .sa-link.is-here { background: var(--c-primary-soft); border-color: transparent; color: var(--c-primary-ink); }
 .sa-hint svg, .sa svg { width: var(--ico-sm); height: var(--ico-sm); }
 .sa-none { margin: 0; padding: var(--sp-1); color: var(--c-text-3); font-size: var(--fs-sm); }
-.sa { display: flex; flex-direction: column; gap: var(--sp-4); padding-bottom: var(--sp-4); }
-.sa-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); margin: 0 0 var(--sp-1); }
+.sa { display: flex; flex-direction: column; gap: var(--sp-3); padding-bottom: var(--sp-4); }
+/* 場所ごとに一枚のカード。頭に席の印（30px の台）と件数（R8、11月12日に利用者が選んだ）。 */
+.sa-group { padding: 0 var(--sp-4); border: 1px solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); box-shadow: var(--shadow-1); }
+.sa-head { gap: var(--sp-2); min-height: 52px; margin: 0; font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.sa-head svg { box-sizing: border-box; width: 30px; height: 30px; padding: 6px; border-radius: var(--r-sm); background: var(--c-primary-soft); color: var(--c-primary-ink); }  /* 入れもの：席の印の台（絵は中の 18px） */
+.sa-head b { margin-left: auto; font-size: var(--fs-sm); color: var(--c-text-2); }
 .sa-rows { display: flex; flex-direction: column; }
-.sa-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: var(--row-h-compact); padding: var(--sp-2) 0; border: none; border-top: 1px solid var(--c-border); background: none; text-align: left; color: var(--c-text); line-height: 1.5; }
-.sa-title { overflow-wrap: anywhere; }
-.sa-sub { font-size: var(--fs-xs); color: var(--c-text-2); }
+.sa-row { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; width: 100%; min-height: var(--row-h); padding: var(--sp-2) 0; border: none; border-top: 1px solid var(--c-border); background: none; text-align: left; color: var(--c-text); line-height: 1.5; }
+.sa-title { overflow-wrap: anywhere; font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.sa-sub { font-size: var(--fs-sm); color: var(--c-text-2); }
 .sa-jump { border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); }
 .sa-note { color: var(--c-text-2); font-size: var(--fs-md); margin: var(--sp-1) 0 0; }
 
@@ -6973,6 +6973,9 @@ button.note-when:active { opacity: var(--press-fade); }
     .set-sec:first-child { margin-top: 0; }
     .set-sec > .set-head:first-child { margin-top: 0; }
     .set-sec > .set-card:first-child, .set-sec > .settings-group:first-child { margin-top: var(--sp-2); }
+    /* 根っこ：左に一つ目と三つ目、右にタブごと（R8）。 */
+    .set-layer.is-duo.is-root .js-body { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+    .is-root .set-sec:nth-child(2) { grid-area: 1 / 2 / span 2; margin-top: 0; }
   }
   /* からだの紙は地を持たない（`.is-bare`。中のカードの束が地）。広い幅ではカードが段に並んで束が短くなり、束の下で
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */

@@ -350,8 +350,10 @@
   const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px), (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
   function duo(L) {
     const groups = [];
-    /* 根っこ（入口だけの一枚）は一列のまま——入口を二段に割ると、並びの順（表示 → タブ → データ）が崩れる。 */
-    if (DUO && DUO.matches && L !== stack[0]) {
+    /* 根っこ（入口だけの一枚）も二段（R8、11月12日に利用者が選んだ）：左に 知らせ・表示・データ、右に タブごと
+       （`.is-root`。置き場は screens.css。順は 上 → 左 → 右）。 */
+    L.el.classList.toggle("is-root", L === stack[0]);
+    if (DUO && DUO.matches) {
       for (const n of [...L.body.children]) {
         if (!groups.length || n.matches(".set-head, .settings-group")) groups.push([]);
         groups[groups.length - 1].push(n);

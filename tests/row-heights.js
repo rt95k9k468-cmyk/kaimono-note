@@ -34,8 +34,8 @@ const TABLE = [
   /* 飲みたくなったの一件（RS 2回目）も今日の食事と同じカードの行。前は詰めた段。 */
   ["カード", "--row-h-card", ["#screen-list .item-wrap .item:not(.todo), #screen-prices .product-wrap .product", ".urge-row"]],
   ["ふつう", "--row-h", [".row", ".set-row", "#screen-settings .row", "#screen-settings .manage-row", ".manage-row",
-    ".d-row", ".act-row", ".tw-row", ".notes-trash-row", ".log-row"]],
-  ["詰めた", "--row-h-compact", [".note-pop-item", ".low-row", ".up-row", ".sa-row"]],
+    ".d-row", ".act-row", ".tw-row", ".notes-trash-row", ".log-row", ".sa-row"]],
+  ["詰めた", "--row-h-compact", [".note-pop-item", ".low-row", ".up-row"]],
 ];
 for (const [name, tok, sels] of TABLE) {
   for (const s of sels) {
