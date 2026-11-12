@@ -11,6 +11,9 @@
      ,           設定
      ⌘\          左の列を畳む・ひらく
      ?           近道の一覧（段11）
+     ↑ ↓         行を移る（X2。広い幅だけ。やること・買うもの・価格の行、ノート、daily とからだの押せる行）
+     Space       カーソルのある行を済ませる・買った（丸のある行だけ）
+     Enter       開く（行のボタン・押せる行がそのまま受ける）
    ⌘・Ctrl・Alt 付き（⌘K のほか）、変換中、覆いのある紙・小窓が開いているあいだは何もしません（右の段に据えたノートは覆いが無いので効く）。
    一文字の近道（矢印も）は 外観 → キーボード で切れる（WCAG 2.1.4。この端末だけ・記録の外）。⌘K・⌘\ は切らない。
 
@@ -36,9 +39,11 @@
     if (!KN.ui || !KN.ui.sheet) return false;
     const { html, node } = KN.util;
     const mod = MAC ? "⌘" : "Ctrl";
+    /* 並びは使う順（X2）。畳まず、短く。 */
     const rows = [
-      [["1〜5"], "席"], [["←", "→"], "前・次の日"], [["Shift", "←", "→"], "前・次の週"], [["t"], "今日"],
-      [["/"], "さがす"], [[mod, "K"], "さがす"], [["n"], "足す"], [[","], "設定"], [[mod, "\\"], "左の列を畳む"], [["?"], "この一覧"],
+      [["1〜5"], "席"], [["n"], "足す"], [["↑", "↓"], "行"], [["Space"], "済ませる"], [["Enter"], "開く"],
+      [["/"], "さがす"], [[mod, "K"], "さがす"], [["←", "→"], "前・次の日"], [["Shift", "←", "→"], "前・次の週"], [["t"], "今日"],
+      [[","], "設定"], [[mod, "\\"], "左の列を畳む"], [["?"], "この一覧"],
     ];
     const body = node(html`<dl class="keys-list">${rows.map(([ks, what]) =>
       html`<div class="keys-row"><dt>${ks.map((k) => html`<kbd>${k}</kbd>`)}</dt><dd>${what}</dd></div>`)}</dl>`);
@@ -68,6 +73,34 @@
     const head = document.getElementById("head");
     return !!(head && !head.hidden && KN.calSwipe && KN.calSwipe.flipIn(head, dir));
   }
+  /* ---- 行（X2）：↑↓ で移り、Space で済ませる。開くのは行のボタン・押せる行の Enter がそのまま ---- */
+  const ROWS = ".item-body, .tl-open, .note-open, [role=button][tabindex='0']";
+  const rowsHere = () => {
+    const scr = activeScreen();
+    return scr ? [...scr.querySelectorAll(ROWS)].filter(shown) : [];
+  };
+  /** いまカーソルのある行（丸や星にあっても、その行）。 */
+  const rowAt = (list, a) => {
+    if (!a || !a.closest) return -1;
+    const it = a.closest(".item");
+    return list.findIndex((el) => el === a || el.contains(a) || (it && it.contains(el)));
+  };
+  function step(dir) {
+    const list = rowsHere();
+    if (!list.length) return false;
+    const i = rowAt(list, document.activeElement);
+    const to = list[i < 0 ? (dir > 0 ? 0 : list.length - 1) : Math.max(0, Math.min(list.length - 1, i + dir))];
+    to.focus({ preventScroll: true });
+    to.scrollIntoView({ block: "nearest" });
+    return true;
+  }
+  function tick() {
+    const a = document.activeElement;
+    const it = a && a.closest && a.closest(".item");
+    const scr = activeScreen();
+    return !!(it && scr && scr.contains(it) && press(it.querySelector(".check")));
+  }
+
   const press = (el) => { if (shown(el) && !el.disabled) { el.click(); return true; } return false; };
   /** 席にカーソルを置いたのがマウス・指か（下の ←→ の分かれ目）。Tab キーで動けば偽に戻る。 */
   let seatByPointer = false;
@@ -139,6 +172,10 @@
     } else if (k === "ArrowLeft" || k === "ArrowRight") {
       const dir = k === "ArrowLeft" ? -1 : 1;
       done = e.shiftKey ? cal(dir) : (day(dir) || cal(dir));
+    } else if ((k === "ArrowDown" || k === "ArrowUp") && !e.shiftKey && WIDE.matches) {
+      done = step(k === "ArrowDown" ? 1 : -1);
+    } else if (k === " " && !e.shiftKey && WIDE.matches) {
+      done = tick();
     } else if (k === "?") {
       done = help();
     } else if (e.shiftKey) {

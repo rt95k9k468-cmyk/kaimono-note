@@ -17,6 +17,7 @@ const { open, checker, ROOT } = require("./lib");
   for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".js"))) {
     fs.readFileSync(path.join(dir, f), "utf8").split("\n").forEach((line, i) => {
       if (!/["'`]Enter["'`]/.test(line)) return;
+      if (/\[\["Enter"\]/.test(line)) return;   // 近道の一覧の札の字（keys.js。比べていない）
       if (f === "util.js" && /function isEnter\(/.test(line)) return;
       stray.push(`${f}:${i + 1}`);
     });

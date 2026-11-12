@@ -396,6 +396,32 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("Control+Backslash");
   await wait(400);
 
+  /* X2：↑↓ で行・Space で済ませる・Enter で開く（広い幅）。 */
+  const kx = await page.evaluate(() => {
+    const U = KN.util;
+    return [KN.store.addTodo({ title: "鍵盤の一", due: U.todayKey() }).id, KN.store.addTodo({ title: "鍵盤の二", due: U.todayKey() }).id];
+  });
+  await page.click(".tab-todo");
+  await wait(600);
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  const at = () => page.evaluate(() => { const a = document.activeElement; const n = a && a.closest(".item"); return n ? n.textContent.replace(/\s+/g, "") : ""; });
+  await page.keyboard.press("ArrowDown");
+  const r1 = await at();
+  await page.keyboard.press("ArrowDown");
+  const r2 = await at();
+  t.check("↓ で行へ、もう一度で次の行へ", !!r1 && !!r2 && r1 !== r2, `${r1} / ${r2}`);
+  const which = r2.includes("鍵盤の二") ? kx[1] : r2.includes("鍵盤の一") ? kx[0] : null;
+  await page.keyboard.press("Space");
+  await wait(500);
+  t.check("Space でその行を済ませる", !!which && await page.evaluate((id) => !!KN.store.get().todos.find((x) => x.id === id).done, which), r2);
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Enter");
+  await page.waitForSelector(".sheet.is-open", { timeout: 3000 }).catch(() => {});
+  t.check("Enter で行の紙が開く", !!(await page.$(".sheet.is-open")));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+  await wait(300);
+
   /* 段11：? で近道の一覧。一文字の近道は切れる（切っても ⌘K・⌘\\ は効く）。 */
   await page.click(".tab-todo");
   await wait(500);
