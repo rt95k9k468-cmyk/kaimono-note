@@ -4224,6 +4224,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   .wk-faces::after { animation: edge-in linear both; animation-timeline: scroll(nearest block); animation-range: 0 var(--sp-6); }
 }
 .wk-work { flex: none; }
+.wk-marks { margin-left: auto; }
 .wk-faces .seg { width: 186px; }
 .wk-faces .seg-btn { min-height: 36px; padding: 0 var(--sp-2); }   /* 札の背丈（look.md。34 だった。design-review の Y2） */
 /* 選んでいる面は `.seg` の白い持ち上げのまま（見方の切り替えは一つの形。2026年10月21日、総点検 Y2 の B。
