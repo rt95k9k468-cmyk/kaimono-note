@@ -7247,7 +7247,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .day-strip.is-open { margin: 0; padding-top: var(--sp-2); background: none; border: 0; box-shadow: none; border-radius: 0; }
 /* 道がひらく・畳む拍（RM） */
 .day-strip.is-m-arrive.is-open::after { content: ""; position: absolute; inset: 0; background: var(--c-sheet); transform-origin: 50% 100%; scale: 1 0; animation: wipe-off var(--m-draw) var(--ease-out) both; pointer-events: none; }
-.day-strip.is-m-arrive:not(.is-open) > * { animation: m-add var(--m-add) var(--ease-out) backwards; }
+.day-strip.is-m-arrive:not(.is-open) > .strip-open { animation: m-add var(--m-add) var(--ease-out) backwards; }
 .strip-fold {
   position: absolute; top: var(--sp-1); right: var(--sp-1); z-index: 2;
   display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%;

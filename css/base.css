@@ -775,6 +775,8 @@ a { color: var(--c-primary); }
 .head-cal.is-cal-in { animation: cal-in var(--m-nav) var(--ease-out); }
 .panes.is-cal-out { animation: panes-rise var(--m-nav) var(--ease-out); }
 .panes.is-cal-in  { animation: panes-drop var(--m-nav) var(--ease-out); }
+/* 受け継がない名前に（#panes へ書くたびに、下の画面ぜんぶが様式を計算し直していた。docs/traps.md）。 */
+@property --cal-move { syntax: "<length>"; inherits: false; initial-value: 0px; }
 @keyframes cal-out { to { translate: 0 calc(-1 * var(--cal-move, 0px)); opacity: 0; } }
 @keyframes cal-in { from { translate: 0 calc(-1 * var(--cal-move, 0px)); opacity: 0; } }
 @keyframes panes-rise { from { translate: 0 var(--cal-move, 0px); } }

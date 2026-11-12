@@ -548,6 +548,9 @@
   function arrive(root, { restart = true } = {}) {
     if (!root || still()) return;
     clearTimeout(arriveT.get(root));
+    /* 入り（.m-in）の子へ札を配る。CSS が `.is-m-arrive .m-in > *` と書くと、`*` は絞れないので、札の付け外しが
+       根の下ぜんぶの様式の計算し直しになる（docs/motion.md「札の下に `*` を書かない」）。 */
+    root.querySelectorAll(".m-in > :not(.m-in-i)").forEach((c) => c.classList.add("m-in-i"));
     /* もう付いていたら、外して読んでから付け直す（頭からやり直す）。
        restart: false … やり直さなくてよい相手（上の帯。帯で動くのは「今日はじめて」の脈だけで、
        それは `is-day-first` が付いた瞬間に始まる——札を付け直さなくても）。読むのは、組み直した

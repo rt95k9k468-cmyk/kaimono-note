@@ -671,8 +671,8 @@ button, [role="tab"] {
   transform-origin: 50% 90%;
 }
 @keyframes empty-bloom { from { opacity: 0; scale: .72; } }
-/* 入り（RM）：.m-in の子が上から順に浮かぶ（docs/motion.md）。 */
-.is-m-arrive .m-in > * { animation: m-add var(--m-add) var(--ease-out) backwards; animation-delay: calc(var(--in-i, 0) * var(--m-stagger)); }
+/* 入り（RM）：.m-in の子が上から順に浮かぶ（docs/motion.md）。子の札 .m-in-i は motion.js の arrive が配る（`> *` と書かない）。 */
+:is(.is-m-arrive .m-in, .m-in.is-m-arrive) > .m-in-i { animation: m-add var(--m-add) var(--ease-out) backwards; animation-delay: calc(var(--in-i, 0) * var(--m-stagger)); }
 .m-in > :nth-child(2) { --in-i: 1; } .m-in > :nth-child(3) { --in-i: 2; } .m-in > :nth-child(4) { --in-i: 3; } .m-in > :nth-child(n+5) { --in-i: 4; }
 
 .empty-title { font: var(--fw-bold) var(--fs-xl)/var(--lh-tight) var(--font-display); color: var(--c-text); text-wrap: balance; }

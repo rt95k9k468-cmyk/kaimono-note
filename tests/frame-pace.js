@@ -26,17 +26,21 @@ async function once() {
     before: async (cx, pg) => {
       /* 時計は止めない（page.clock は rAF も作り物の 16ms 刻みにして、測れなくなる）。 */
       await pg.addInitScript(() => {
-        /* 間隔を集める。start() で始め、stop() で返す。 */
-        let on = false, last = 0, gaps = [];
-        const tick = (ts) => {
-          if (!on) return;
-          if (last) gaps.push(ts - last);
-          last = ts;
+        /* 間隔を集める。start() で始め、stop() で返す。輪は回ごとに一本（止めた直後に始めると、前の輪の
+           最後の一コマが生き残って二本回り、コマが倍に数えられた——「暦を出す」の 153）。 */
+        let run = 0, last = 0, gaps = [];
+        const loop = (id) => {
+          const tick = (ts) => {
+            if (id !== run) return;
+            if (last) gaps.push(ts - last);
+            last = ts;
+            requestAnimationFrame(tick);
+          };
           requestAnimationFrame(tick);
         };
         window.__pace = {
-          start() { on = true; last = 0; gaps = []; requestAnimationFrame(tick); },
-          stop() { on = false; return gaps; },
+          start() { last = 0; gaps = []; loop(++run); },
+          stop() { run++; return gaps; },
         };
       });
       if (EXTRA) {

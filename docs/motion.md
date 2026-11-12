@@ -634,7 +634,8 @@ Enough?」CHI 2013／Apple WWDC 2018「Designing Fluid Interfaces」／WebKit Bu
 ### 動きの総仕上げ（RM・2026年11月12日、docs/redesign.md 7節）
 
 - **入りは `.m-in`**：開いた一拍（`is-m-arrive`）に子が上から順に浮かぶ（`m-add`・`--m-stagger`・5つめから一緒）。`backwards` で、
-  終われば押す縮み（`scale:`）を奪わない。順の数は受け継がない名前 `--in-i`（`--i` は他で使う）。置き場：daily の `.day-slide`・
+  終われば押す縮み（`scale:`）を奪わない。順の数は受け継がない名前 `--in-i`（`--i` は他で使う）。**札の下に `*` で終わる選択子を書かない**
+  （絞れず、札の付け外しが根の下ぜんぶの様式の計算し直しになる。子の札 `.m-in-i` は `arrive` が配る。`smooth` が見張る）。置き場：daily の `.day-slide`・
   ノートの最近と本棚・買うものの右の段（品替えは `KN.motion.arrive(段)`）。
 - **からだの棒は左の札から順に**（札 `--t`・棒 `--i`）。**日が替わったら日の一枚に `arrive`**（`laidDay`。保存の組み直しでは動かない）。
 - **影武者（`morphPill`/`morphBack`）は transform だけ**：箱は頭の丸薬の場所・大きさに置き、行の箱へ `translate`＋`scale` で寄せる。

@@ -35,6 +35,39 @@ const t = checker("smooth");
   t.check("曲線に linear() が無い（Safari では合成に乗らない）", bad.length === 0, bad.join(" "));
 }
 
+/* ---- 開いた札（is-m-arrive）の下に `*` で終わる選択子を書かない（画面を開かない） ----
+   最後の塊に class も要素名も無いと絞れず、札の付け外しが根の下ぜんぶの様式の計算し直しになる
+   （着いた拍と、約1.5秒後の外す拍に。CPU 4倍で 936 要素・21〜34ms。docs/motion.md）。 */
+{
+  const bad = [];
+  for (const f of fs.readdirSync(path.join(ROOT, "css")).filter((x) => x.endsWith(".css"))) {
+    const src = fs.readFileSync(path.join(ROOT, "css", f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const m of src.matchAll(/([^{}]*)\{/g)) {
+      const list = m[1].trim();
+      if (!/\.is-m-arrive\b/.test(list) || list.startsWith("@")) continue;
+      /* 一番外のカンマで分け、一番外の組み合わせ子（空白・>・+・~）のあとを最後の塊として見る。 */
+      let depth = 0, from = 0;
+      const sels = [];
+      for (let i = 0; i <= list.length; i++) {
+        const c = list[i];
+        if (c === "(") depth++; else if (c === ")") depth--;
+        else if ((c === "," && !depth) || i === list.length) { sels.push(list.slice(from, i).trim()); from = i + 1; }
+      }
+      for (const sel of sels) {
+        if (!/\.is-m-arrive\b/.test(sel)) continue;
+        let cut = 0; depth = 0;
+        for (let i = 0; i < sel.length; i++) {
+          const c = sel[i];
+          if (c === "(") depth++; else if (c === ")") depth--;
+          else if (!depth && /[\s>+~]/.test(c)) cut = i + 1;
+        }
+        if (!/^[a-zA-Z]|^[^:(]*[.#[]/.test(sel.slice(cut))) bad.push(`${f}: ${sel}`);
+      }
+    }
+  }
+  t.check("開いた札（is-m-arrive）の下に、絞れない選択子（`*`）が無い", bad.length === 0, bad.join(" ／ "));
+}
+
 (async () => {
   /* 頁の時計は今日の昼（12:34）から流す。途中で日付が変わると「今日の行」の数えと買うものの紙が崩れる
      （2026年10月27日、KN_CLOCK=23:59:56 で落ちた）。コマを数えるので止めずに流す（tests/README.md の試験の罠）。 */
@@ -292,6 +325,14 @@ const t = checker("smooth");
   });
   t.check("からだの推移の期間を押すと、紙は一度だけ組む", ranged.found && ranged.n === 1 && ranged.range === 90, JSON.stringify(ranged));
 
+  /* 暦の出入りの丈（--cal-move）は #panes に書く。受け継ぐ名前だと、書くたび・消すたびに下の画面ぜんぶが様式を計算し直す。 */
+  t.check("暦の出入りの丈（--cal-move）は子へ受け継がれない", await page.evaluate(() => {
+    const p = document.getElementById("panes"), kid = p.querySelector(".screen.is-active");
+    p.style.setProperty("--cal-move", "5px");
+    const got = [getComputedStyle(p).getPropertyValue("--cal-move").trim(), getComputedStyle(kid).getPropertyValue("--cal-move").trim()];
+    p.style.removeProperty("--cal-move");
+    return got[0] === "5px" && got[1] === "0px";
+  }));
   t.check("エラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();
   t.done();
