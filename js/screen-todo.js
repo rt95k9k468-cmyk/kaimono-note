@@ -1050,6 +1050,8 @@
         chips: DUE_CHIPS(), onPick: (day) => setDue(day || null), onClose: () => { pickHandle = null; } });
     });
     body.querySelector(".js-row-time").addEventListener("click", (e) => {
+      /* 車輪はここで組む（paintPart は組まない）。小窓を置く前に——置き場は背で決まる。 */
+      if (!wheels.h) buildWheels();
       openPick("時刻", pickTime, e.currentTarget);
       /* 車輪は紙が組まれてから合わせる（組む前は高さが無い）。 */
       syncWheels(); requestAnimationFrame(syncWheels);
@@ -1364,7 +1366,8 @@
       body.pick(".js-time-v").textContent = time ? tlClock(time) : "なし";
       timeClear.hidden = !time;
       wheelBox.classList.toggle("is-off", !time);
-      if (!fromWheel) syncWheels();
+      /* 車輪は時刻の小窓を開くまで組まない（紙を開く拍に、見えない 36 行を組んでいた）。開く click が組んで合わせる。 */
+      if (!fromWheel && wheels.h) syncWheels();
     }
     timeClear.addEventListener("click", () => {
       time = null;
