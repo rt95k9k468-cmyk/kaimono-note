@@ -360,7 +360,7 @@
   /** 本棚：ノートブックを本の形で（6つの棚が先、冊の無いノートがあれば終わりに無地の一冊）。押すと、頭のある冊は
       頭の紙、無ければその冊の面（中は木）。 */
   function shelfBooks(t) {
-    const box = node(html`<div class="nt-bks" role="list" aria-label="本棚"></div>`);
+    const box = node(html`<div class="nt-bks m-in" role="list" aria-label="本棚"></div>`);
     const all = N().notebooks();
     const order = all.filter((nb) => SHELF[nb]).concat(all.filter((nb) => !SHELF[nb]));
     if (t.tops("").length) order.push("");
@@ -450,7 +450,7 @@
 
   /** 最近（電話のホーム）：表紙つきのカードを横へ送る。題・冊・直した日。押すと紙（閉じるとこのカードへ縮んで戻る）。 */
   function coverCards(list) {
-    const box = node(html`<div class="nt-covers" role="list" aria-label="最近"></div>`);
+    const box = node(html`<div class="nt-covers m-in" role="list" aria-label="最近"></div>`);
     list.forEach((n) => {
       const c = node(html`
         <button type="button" class="nt-cover" role="listitem" data-id="${n.id}">

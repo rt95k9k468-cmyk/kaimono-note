@@ -657,7 +657,7 @@
     return ps.find((x) => store.currentPrices(x).length > 1) || ps.find((x) => store.currentPrices(x).length) || null;
   }
   function sideCol(main) {
-    const side = node(html`<aside class="sh-side"></aside>`);
+    const side = node(html`<aside class="sh-side m-in"></aside>`);
     const p = query ? null : pickedProduct(main);
     if (p && store.currentPrices(p).length) {
       const sec = node(html`
@@ -679,7 +679,8 @@
     if (picked === id) return;
     picked = id;
     const old = els.body.querySelector(":scope > .sh-side"), main = els.body.querySelector(":scope > .sh-main");
-    if (old && main) old.replaceWith(sideCol(main));
+    /* 入れ替わった中身は上から順に浮かぶ（.m-in。RM） */
+    if (old && main) { const nu = sideCol(main); old.replaceWith(nu); KN.motion.arrive(nu); }
   }
 
   /* 「このリストを送る」は、2026年9月29日に外しました（利用者：「リストを

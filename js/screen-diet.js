@@ -427,6 +427,7 @@
     els.body.append(list);
   }
 
+  let laidDay = null;
   function render() {
     // 食事の四枠を保存した直後は、組み直しません（上の saving を参照）。
     if (saving) return;
@@ -496,6 +497,9 @@
        見ている日は全タブで一つなので、やることで来週を見たまま移って
        くると、ここにその日が来ます（docs/shared-header.md）。 */
     track.append(buildDaySlide(day, { peek: day > U.todayKey(), card, sum, chartEl: chart() }));
+    /* 日が替わったら、棒・帯・線を描き直す（払った・暦で選んだ。保存の組み直しでは動かない。RM） */
+    if (laidDay && laidDay !== day) KN.motion.arrive(track.firstElementChild);
+    laidDay = day;
 
     /* 「気づいたこと」は、出すと決めた人にだけ出します（設定 → ダイエット）。
        出さないなら、この紙自体を置きません（中身が無い枠が浮くので）。 */
@@ -1886,7 +1890,7 @@
       steps: isManual(card.day, "steps"), sleep: isManual(card.day, "sleep"),
       burned: isManual(card.day, "activeEnergy") || isManual(card.day, "restingEnergy"),
     };
-    const html1 = METS.map((m) => {
+    const html1 = METS.map((m, t) => {
       const vals = days.map(of[m.type]);
       const v = vals[6];
       const top = Math.max(goals[m.type] || 0, ...vals.filter((x) => x != null)) || 1;
@@ -1895,9 +1899,9 @@
         : m.type === "drink" ? `${dt && dt.estimated ? "約" : ""}${v}` : n0(v);
       const over = m.type === "drink" && v != null && v > goals.drink;
       const bars = vals.map((x, i) => (x == null ? "<i class=\"is-none\"></i>"
-        : `<i class="${i === 6 ? "is-now" : ""}" style="--h:${Math.max(0.06, x / top).toFixed(3)}"></i>`)).join("");
+        : `<i class="${i === 6 ? "is-now" : ""}" style="--h:${Math.max(0.06, x / top).toFixed(3)};--i:${i}"></i>`)).join("");
       return `<button type="button" class="card hl-met js-cell${m.type === "drink" ? " js-drink" : ""}${v == null ? " is-blank" : ""}"`
-        + ` data-type="${m.type}" style="--mc:var(${m.mc})">`
+        + ` data-type="${m.type}" style="--mc:var(${m.mc});--t:${t}">`
         + `<span class="hl-met-h">${icon(m.ico).value}${m.label}${manual[m.type] ? '<i class="diet-hand" title="手入力">' + icon("edit").value + "</i>" : ""}</span>`
         + `<span class="hl-met-v mono-num${over ? " is-over" : ""}">${KN.util.escapeHtml(shown)}${v != null && m.unit ? `<small>${m.unit}</small>` : ""}</span>`
         + `<span class="hl-bars" aria-hidden="true" style="--g:${Math.min(1, (goals[m.type] || 0) / top).toFixed(3)}">${bars}<b></b></span></button>`;

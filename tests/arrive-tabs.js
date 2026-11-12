@@ -130,6 +130,42 @@ const away = async (page, tab) => {
     await browser.close();
   }
 
+  /* ---- RM：棒は左の札から順に・日を替えたら描き直す・入りは上から順に（docs/motion.md「入りと順送り」） ---- */
+  {
+    const { browser, page, errors } = await open({ before: async (cx, p) => { await p.clock.setFixedTime(AT); } });
+    await page.evaluate(() => {
+      const S = KN.store, d = KN.util.todayKey();
+      for (let i = 0; i < 7; i++) S.setHealth(KN.util.shiftDay(d, -i), "steps", 3000 + i * 400);
+      S.addWeight({ day: KN.util.shiftDay(d, -1), kg: 63 });
+    });
+    await page.click('.tab[data-tab="diet"]');
+    await page.waitForTimeout(80);
+    const delay = (sel) => page.evaluate((s) => { const e = document.querySelector(s); return e ? parseFloat(getComputedStyle(e).animationDelay) : null; }, sel);
+    const a = await delay("#screen-diet .hl-met:nth-child(1) .hl-bars i:nth-child(1)");
+    const b = await delay("#screen-diet .hl-met:nth-child(1) .hl-bars i:nth-child(7)");
+    const c = await delay("#screen-diet .hl-met:nth-child(2) .hl-bars i:nth-child(1)");
+    t.check("棒：同じ札は左から順に", a === 0 && b > a, `${a} ${b}`);
+    t.check("棒：次の札は遅れて始まる", c > a, `${a} ${c}`);
+    await page.waitForTimeout(2600);
+    const y = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -1));
+    await page.click(`#head .cal-day[data-day="${y}"]`);
+    await page.waitForTimeout(60);
+    t.check("日を替えたら棒が描き直される", await page.evaluate(() => {
+      const s = document.querySelector("#screen-diet .js-track > .is-m-arrive");
+      return !!s && document.getAnimations().some((x) => x.animationName === "bar-grow");
+    }));
+    await page.waitForTimeout(2600);
+    await page.evaluate(() => KN.store.addWeight({ day: KN.util.shiftDay(KN.util.todayKey(), -1), kg: 62.5 }));
+    await page.waitForTimeout(60);
+    t.check("保存の組み直しでは描き直さない", await page.evaluate(() => !document.querySelector("#screen-diet .js-track > .is-m-arrive")));
+    await page.click('.tab[data-tab="archive"]');
+    await page.waitForTimeout(60);
+    const d2 = await delay("#screen-archive .day-slide.m-in > :nth-child(2)");
+    t.check("daily の入り：二つめは遅れて浮かぶ", d2 > 0, String(d2));
+    t.check("RM：エラーなし", errors.length === 0, errors.join(" | "));
+    await browser.close();
+  }
+
   /* ---- 動きを減らす設定 ---- */
   {
     const { browser, page, errors } = await open({

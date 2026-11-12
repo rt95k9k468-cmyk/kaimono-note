@@ -1963,7 +1963,7 @@
 
   function daySlide(day) {
     const ym = day.slice(0, 7);
-    const el = node(html`<div class="day-slide"></div>`);
+    const el = node(html`<div class="day-slide m-in"></div>`);
     /* 二段の器（R6）：電話は一列（候の札 → 書く口 → Daily Log → あの日）、中身 768px からは左に書く口と Daily Log、
        右に候の札とあの日（CSS の grid。紙を払う幅は変えない）。まとめは Daily Log の隣のまま（daily-rules）。 */
     const main = node(html`<div class="day-main"></div>`);

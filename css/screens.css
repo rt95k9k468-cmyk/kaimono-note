@@ -7524,7 +7524,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .hl-goal { margin-left: auto; display: inline-flex; align-items: center; min-height: 44px; font-weight: var(--fw-bold); color: var(--c-ai); }
 .diet-legend { align-items: center; }
 .is-m-arrive :is(.diet-plot-chart, .hl-spark) .hl-wipe { animation: wipe-off var(--m-draw) var(--ease-out) both; }
-.is-m-arrive .hl-bars i { animation: bar-grow var(--m-fill) var(--ease-out) both; }
+.is-m-arrive .hl-bars i { animation: bar-grow var(--m-fill) var(--ease-out) both; animation-delay: calc((var(--t, 0) + var(--i, 0) / 2) * var(--m-stagger)); }
 .is-m-arrive .hl-stack-fill { animation: stack-grow var(--m-fill) var(--ease-out) both; }
 .is-m-arrive .diet-dot.is-now { transform-box: fill-box; transform-origin: 50% 50%; animation: arrive-pop var(--m-poke) var(--spring) both; animation-delay: calc(var(--m-draw) * .8); }
 @keyframes wipe-off { from { scale: 1 1; } }
