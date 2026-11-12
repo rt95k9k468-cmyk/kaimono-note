@@ -6848,7 +6848,7 @@ button.note-when:active { opacity: var(--press-fade); }
   transition: scale var(--m-press) var(--ease);
 }
 .road-tool svg { width: var(--ico-sm); height: var(--ico-sm); }
-.road-tool::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; }
+.road-tool::after { content: ""; position: absolute; inset: -10px; border-radius: 50%; }   /* 当たり 44px（R8） */
 /* 運んでいるあいだの、置かれる丸薬の下書き（種類の色を薄く、長さぶん）。 */
 .road-draft {
   fill: none; stroke: color-mix(in srgb, var(--act-c) 35%, transparent);
@@ -7363,7 +7363,8 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   border-radius: var(--r-md); background: color-mix(in srgb, var(--cat, var(--c-text-3)) 13%, var(--c-surface)); color: var(--cat, var(--c-text-2));
 }
 #screen-list .item-wrap .item-emoji .p-icon, #screen-prices .product-emoji .p-icon { width: 26px; height: 26px; color: var(--cat); }  /* 入れもの：46の台 */
-#screen-list .item-wrap .item-body { align-self: center; gap: 1px; padding-block: 0; }
+/* 品名のボタンは行の背いっぱい（字の 22px だけだと行の上下を押しても開かない。R8 の的の総ざらい）。 */
+#screen-list .item-wrap .item-body, #screen-prices .product-wrap .product-main { align-self: stretch; justify-content: center; gap: 1px; margin-block: calc(-1 * var(--sp-2)); padding-block: var(--sp-2); }
 #screen-list .item-wrap .item-name, #screen-prices .product-name { font-size: var(--fs-lg); line-height: 1.35; }
 .item-fav { flex: none; display: inline-flex; align-self: center; color: var(--c-yamabuki-fill); }
 .item-fav .ui-ico { width: 14px; height: 14px; }  /* 入れもの：名前の横の小さな印 */

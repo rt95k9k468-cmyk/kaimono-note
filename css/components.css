@@ -38,10 +38,10 @@
    やることの行の題と、食事の四枠は、中心から 44px ではなく空きに合わせて
    広げます（screens.css の `.tl-open` と `.diet-slot-view`）。 */
 .topbar-day,
-.chip,
+.chip, .btn-sm, .seg-btn, .tl-fill, .tw-sw,   /* 36〜38px の押すもの（R8 の的の総ざらい） */
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji { position: relative; }
 .topbar-day::after,
-.chip::after,
+.chip::after, .btn-sm::after, .seg-btn::after, .tl-fill::after, .tw-sw::after,
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji::after {
   content: "";
   position: absolute;
