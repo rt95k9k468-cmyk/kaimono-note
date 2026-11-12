@@ -3151,6 +3151,41 @@
     });
   }
 
+  /* ---------------- しるし帳（F3 の T4・docs/todo-items.md「しるし帳」） ----------------
+     くり返しの済みの写し（trace）から引く。欄は足さない。元と写しは題と区分でそろえる（undoTrace・usualKey と同じ）。 */
+  /** from〜to に済ませた日。Map(usualKey → Set(日)) */
+  function traceDays(from, to) {
+    const m = new Map();
+    get().todos.forEach((t) => {
+      if (!t.trace || !t.done || !t.due || t.due < from || t.due > to) return;
+      const k = usualKey(t);
+      if (!m.has(k)) m.set(k, new Set());
+      m.get(k).add(t.due);
+    });
+    return m;
+  }
+  /** くり返しの元 id の、その日の済み・戻し。今日に立っている回は済ませる道（toggleTodo）そのもの。ほかの日は写しを
+      一件足す・外すだけ（元は動かさない）。今日の写しを外して、元がその写しで次へ進んでいたなら、元を今日へ戻す。
+      先の日は書かない。返りは元に戻す手。 */
+  function toggleMark(id, day) {
+    const o = getTodo(id);
+    if (!o || !o.repeat || o.trace || !day || day > KN.util.todayKey()) return null;
+    const k = usualKey(o);
+    const tr = get().todos.find((t) => t.trace && t.done && t.due === day && usualKey(t) === k);
+    if (tr) {
+      const today = KN.util.todayKey();
+      if (day === today && o.due > today && nextDue({ ...o, due: today }) === o.due) return undoTrace(tr.id);
+      update((s) => { s.todos = s.todos.filter((t) => t.id !== tr.id); });
+      return () => update((s) => { s.todos.push({ ...tr }); });
+    }
+    if (o.due === day && !o.done) return toggleTodo(id).undo;
+    const rec = { ...o, id: uid("t"), due: day, repeat: null, repeatDays: [], repeatNth: null, repeatEvery: null,
+      notifiedFor: null, done: true, doneAt: today(), archived: false, archivedAt: null, trace: true,
+      subs: (o.subs || []).map((x) => ({ ...x, done: false, skipped: false })), subState: {} };
+    update((s) => { s.todos.push(rec); });
+    return () => update((s) => { s.todos = s.todos.filter((t) => t.id !== rec.id); });
+  }
+
   /* Overdue first, then by day, then by hand-order. Undated ones come last:
      they are things to do, not things due, and a list that mixed them in
      would bury the ones with a day on them. */
@@ -5383,7 +5418,7 @@
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
     calPrefs, setCalPref, dietRange, setDietRange, fallsOn,
-    archiveTodo, openTodos, todoClosedAt, todoPart,
+    archiveTodo, openTodos, todoClosedAt, todoPart, traceDays, toggleMark, usualKeyOf: (t) => usualKey(t),
     todosToAnnounce, markAnnounced,
     HEALTH_TYPES, MEAL_SLOTS,
     addWeight, updateWeight, removeWeight, weightOfDay, latestWeight,

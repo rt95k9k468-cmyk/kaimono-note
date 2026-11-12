@@ -2733,7 +2733,7 @@
   function sheetDigest(day) {
     const st = store.get();
     return JSON.stringify([
-      day, todayKey(), face, weekMore, workOnly, laterOpen, pastOpen, roadOpen, TWO_COL.matches,
+      day, todayKey(), face, weekMore, workOnly, marksOn, laterOpen, pastOpen, roadOpen, TWO_COL.matches,
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? planNow() : "",
       st.settings,
@@ -2960,6 +2960,7 @@
      どちらを見ているかは保存しない。試験の台本は sessionStorage の kn-todo-face=today で今日から、席の二度押しでも
      何もしない（台本の多くは開いたままの tasks の席を押して入るので。tests/lib.js）。 */
   const faceFixed = (() => { try { return sessionStorage.getItem("kn-todo-face") === "today"; } catch (_) { return false; } })();
+  let marksOn = false, mkLeft = null;   // しるし帳（marksBook）
   let face = (() => { try { return sessionStorage.getItem("kn-todo-face") === "week" ? "week" : "today"; } catch (_) { return "today"; } })();
   let weekMore = false;   // 今週の「ほか n」を開いているか
   let laterOpen = false;  // 週の面の「これから」を開いているか（保存しない）
@@ -3121,10 +3122,12 @@
           <button type="button" class="seg-btn" data-face="month" aria-pressed="${String(face === "month")}">月</button>
         </div>
         ${/* 仕事の青（予定の点と同じ青）は、点にも押したときの地にも使わない——「青＝仕事」と読めてしまう（2026年10月25日） */""}
+        ${face === "month" ? html`<button type="button" class="chip wk-work wk-marks" aria-pressed="${String(marksOn)}">しるし</button>` : ""}
         <button type="button" class="chip wk-work" aria-pressed="${String(workOnly)}">仕事だけ</button>
       </div>
     `);
     el.addEventListener("click", (e) => {
+      if (e.target.closest(".wk-marks")) { haptic(); marksOn = !marksOn; mkLeft = null; render(); return; }
       if (e.target.closest(".wk-work")) {
         haptic();
         workOnly = !workOnly;
@@ -3512,6 +3515,7 @@
     const d0 = U.dayDate(day), y = d0.getFullYear(), m = d0.getMonth();
     const from = U.dayKey(new Date(y, m, 1)), to = U.dayKey(new Date(y, m + 1, 0));
     const mine = (t) => !workOnly || t.side === "work";
+    if (marksOn) return marksBook(from, to, mine, m);
     const open = openAll.filter(mine);
     const all = store.get().todos.filter(mine);
     const el = node(html`<div class="day-slide wk mo" data-mo="${from}"></div>`);
@@ -3551,6 +3555,49 @@
       if (nx) { haptic(); goDay(nx.dataset.day, 1); return; }
       const d = e.target.closest(".js-day, .mo-evs");
       if (d) setFace("today", d.dataset.day);
+    });
+    return el;
+  }
+
+  /* ---------------- しるし帳（F3 の T4・docs/todo-items.md「しるし帳」） ----------------
+     月の面の「しるし」の札。行＝いまのくり返し、列＝その月の日、済んだ日に朱の丸（写し trace から引く）。押すとその日の
+     済み・戻し（store.toggleMark）。先の日は押せない。連続の数・割合・警告の色は出さない（評価しない）。
+     組み直しても横の送りは残す（mkLeft。宣言は face の隣——起動の道で読むので）。初めは今日が見える所へ。 */
+  function marksBook(from, to, mine, m) {
+    const U = KN.util, today = todayKey();
+    const rows = store.get().todos.filter((t) => t.repeat && !t.trace && !t.archived && mine(t))
+      .sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || a.title.localeCompare(b.title, "ja"));
+    const done = store.traceDays(from, to);
+    const days = [];
+    for (let k = from; k <= to; k = U.shiftDay(k, 1)) days.push(k);
+    const el = node(html`<div class="day-slide wk mo" data-mo="${from}">
+      <h2 class="wk-h">${m + 1}月のしるし<button type="button" class="wk-next" data-day="${monthStep(from, 1)}" aria-label="次の月">${icon("chevron")}</button></h2>
+      ${rows.length ? html`<div class="mo-list mk"><div class="mk-scroll"><table class="mk-t">
+        <thead><tr><th class="mk-name"></th>${days.map((k) => html`<th class="${k === today ? "is-today" : ""}">${+k.slice(8)}</th>`)}</tr></thead>
+        <tbody>${rows.map((t) => {
+          const on = done.get(store.usualKeyOf(t)) || new Set();
+          return html`<tr><th class="mk-name">${t.title}</th>${days.map((k) => html`<td><button type="button" class="mk-c ${on.has(k) ? "is-on" : ""}"
+            data-id="${t.id}" data-day="${k}" aria-pressed="${String(on.has(k))}" aria-label="${mdJa(k)} ${t.title}"
+            ${k > today ? KN.util.raw("disabled") : ""}></button></td>`)}</tr>`;
+        })}</tbody></table></div></div>` : html`<p class="empty is-quiet">くり返しの用事はありません</p>`}
+    </div>`);
+    const sc = el.querySelector(".mk-scroll");
+    if (sc) {
+      // 外された器も一度 0 で送りを知らせてくる。居るあいだだけ控える。
+      sc.addEventListener("scroll", () => { if (sc.isConnected) mkLeft = sc.scrollLeft; }, { passive: true });
+      requestAnimationFrame(() => {
+        if (mkLeft != null) { sc.scrollLeft = mkLeft; return; }
+        const c = sc.querySelector("th.is-today");
+        if (c) sc.scrollLeft = c.offsetLeft - sc.clientWidth / 2;
+      });
+    }
+    el.addEventListener("click", (e) => {
+      const nx = e.target.closest(".wk-next");
+      if (nx) { haptic(); mkLeft = null; goDay(nx.dataset.day, 1); return; }
+      const c = e.target.closest(".mk-c");
+      if (!c || c.disabled) return;
+      haptic();
+      store.toggleMark(c.dataset.id, c.dataset.day);   // 組み直しは subscribe が
     });
     return el;
   }

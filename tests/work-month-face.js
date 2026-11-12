@@ -6,6 +6,10 @@
    暦の印は名前（代表は予定 → やること → 締切）。月の面は暦を画面の65%まで背高に、名前は入るだけ・あふれは「+n」。
    月の面の暦は全タブの暦の札に書かない（ほかのタブへ移っても暦は週。2026年10月25日）。一行は週の面と同じ（終わりは名前のあと）。
 
+   T4 しるし帳：「しるし」の札は月の面だけ。行＝くり返し、列＝日、済んだ日に朱の丸（写し trace から引く）。今日に立つ回を押すと
+   済ませる道（元は次へ）、過ぎた日は写しを足す・外すだけ（元は動かない）、先の日は押せない。今日の写しを外すと元が今日へ戻る。
+   数・割合・％は出さない。押しても横の送りは残り、初めは今日が見える。
+
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/work-month-face.js */
 const { open, checker } = require("./lib");
 
@@ -140,6 +144,47 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(700);
   a = await look();
   c.check("札が月でも、月の面は背の高い月・出れば週へ畳む", opened.tall && !opened.week && a.face === "今日" && !a.open && a.week, JSON.stringify([opened, a.face, a.open, a.week]));
+
+  /* ---- T4 しるし帳 ---- */
+  c.check("T4：今日の面に「しるし」の札は無い", !(await page.$("#screen-todo .wk-marks")));
+  await page.click('#screen-todo .wk-faces [data-face="month"]');
+  await page.waitForTimeout(700);
+  await page.click("#screen-todo .wk-marks");
+  await page.waitForTimeout(500);
+  const book = () => page.evaluate(() => {
+    const t = document.querySelector("#screen-todo .mk-t");
+    const rows = [...t.querySelectorAll("tbody tr")].map((r) => r.querySelector(".mk-name").textContent);
+    const on = [...t.querySelectorAll(".mk-c.is-on")].map((b) => b.dataset.day + ":" + b.closest("tr").querySelector(".mk-name").textContent);
+    const sc = t.closest(".mk-scroll"), td = t.querySelector("th.is-today").getBoundingClientRect(), sb = sc.getBoundingClientRect();
+    return { rows, on, cols: t.querySelectorAll("thead th").length - 1, left: sc.scrollLeft, wide: sc.scrollWidth > sc.clientWidth,
+      todayIn: td.left >= sb.left && td.right <= sb.right, future: t.querySelector('.mk-c[data-day="2026-10-25"]').disabled,
+      text: t.closest(".mo").textContent };
+  });
+  let b = await book();
+  c.check("T4：行はくり返し・列は月の日（31）・今日が見える", b.rows.join("|") === "定例|朝の体操" && b.cols === 31 && b.todayIn && b.future,
+    JSON.stringify(b));
+  c.check("T4：数・割合・連続は出さない", !/[%％]|連続|割|回/.test(b.text.replace(/[0-9]+/g, "")) && !/\d+\s*日連続/.test(b.text), b.text.slice(0, 80));
+  const origin = () => page.evaluate(() => KN.store.get().todos.find((t) => t.title === "朝の体操" && !t.trace).due);
+  const cell = (day) => `#screen-todo .mk-t tr:has(.mk-name:text-is("朝の体操")) .mk-c[data-day="${day}"]`;
+  const press = (day) => page.$eval(cell(day), (x) => x.click());   // page.click は升を見える所へ送ってから押す（送りを見る試験にならない）
+  await press("2026-10-21");
+  await page.waitForTimeout(400);
+  b = await book();
+  c.check("T4：今日に立つ回を押すと済み（朱の丸・元は次の日へ）", b.on.includes("2026-10-21:朝の体操") && (await origin()) === "2026-10-22", JSON.stringify(b.on));
+  const left0 = b.left;
+  await press("2026-10-15");
+  await page.waitForTimeout(400);
+  b = await book();
+  c.check("T4：過ぎた日は写しを足すだけ（元は動かない）・横の送りは残る", b.on.includes("2026-10-15:朝の体操")
+    && (await origin()) === "2026-10-22" && Math.abs(b.left - left0) < 2, JSON.stringify([b.on, b.left, left0]));
+  await press("2026-10-15");
+  await page.waitForTimeout(400);
+  await press("2026-10-21");
+  await page.waitForTimeout(400);
+  b = await book();
+  c.check("T4：押し直すと戻す（今日の写しを外すと元は今日へ）", !b.on.length && (await origin()) === "2026-10-21", JSON.stringify(b.on));
+  c.check("T4：先の日は押しても書かない", await page.evaluate(() => KN.store.toggleMark(
+    KN.store.get().todos.find((t) => t.title === "朝の体操" && !t.trace).id, "2026-10-25") === null));
 
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();

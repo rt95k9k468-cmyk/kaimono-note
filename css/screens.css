@@ -4341,6 +4341,16 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-ev.is-due .wk-n, .wk-ev.is-due .wk-t { color: color-mix(in srgb, var(--kind-due), var(--c-text) 30%); }
 /* 月の面（2026年10月19日、利用者）。予定のある日だけ、日付の列と行（時刻 → 名前）。 */
 .mo-list { margin: var(--sp-1) var(--sp-4) 0; }
+/* しるし帳（T4）：行＝くり返し、列＝日。済んだ日は朱の丸、まだの日は小さな点、先の日は空き。 */
+.mk-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.mk-t { border-collapse: collapse; font-size: var(--fs-xs); color: var(--c-text-3); }
+.mk-t th { font-weight: var(--fw-regular); padding: var(--sp-2) 0 0; }
+.mk-t th.is-today { color: var(--c-primary); font-weight: var(--fw-bold); }
+.mk-t .mk-name { position: sticky; left: 0; z-index: 1; max-width: 9em; padding: 0 var(--sp-2) 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: var(--fs-sm); color: var(--c-text); background: var(--c-surface); }
+.mk-c { display: grid; place-items: center; width: 28px; height: 40px; }
+.mk-c::after { content: ""; width: 4px; height: 4px; border-radius: var(--r-full); background: var(--c-border-2); }
+.mk-c.is-on::after { width: 18px; height: 18px; background: var(--c-primary); }
+.mk-c:disabled::after { visibility: hidden; }
 .mo-day { display: grid; grid-template-columns: 48px minmax(0, 1fr); border-top: 1px solid var(--c-border); }
 .mo-day:last-child { border-bottom: 1px solid var(--c-border); }
 .mo-date {   /* 週の行の日付と同じ（数字と曜日を横に一行・行の頭に） */
