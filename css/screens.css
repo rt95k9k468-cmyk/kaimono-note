@@ -4742,6 +4742,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   font-weight: var(--fw-bold); line-height: 1.4; overflow: hidden; overflow-wrap: anywhere; }
 .nt-cover-d { padding: var(--sp-1) 12px 12px; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nt-bks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4) var(--sp-3); margin: var(--sp-2) var(--sp-4) 0; }
+/* 冊を運ぶ（note-drag の shelf）：寄る冊は transform で滑り、持ち上げた冊は指につく（滑らない）。 */
+.nt-bks.is-carrying > .nt-bk { transition: transform var(--m-reorder) var(--ease); }
+.nt-bks.is-carrying > .nt-bk.is-lifted { position: relative; z-index: 2; transition: scale var(--m-press) var(--ease); scale: 1.06; }
+.nt-bks.is-carrying > .nt-bk.is-landing { position: relative; z-index: 2; }
 /* 表紙：冊の色を深くした面（棚は --shelf、ほかは名前の色 --cat）＋白い線の和柄を薄く＋題箋。 */
 .nt-cv { --cv: color-mix(in srgb, var(--shelf, var(--cat, var(--c-text-3))) 80%, #000); display: block; position: relative; overflow: hidden; background: var(--cv); }
 .nt-cv[data-pt="none"] { --cv: var(--c-surface-3); }

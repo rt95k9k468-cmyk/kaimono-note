@@ -380,7 +380,7 @@
     order.forEach((nb) => {
       const h = nb ? t.head(nb) : null;
       const b = node(html`
-        <button type="button" class="nt-bk" role="listitem" data-nb="${nb}" ${h ? html`data-id="${h.id}"` : ""}>
+        <button type="button" class="nt-bk" role="listitem" data-nb="${nb}" data-grp="${SHELF[nb] ? "s" : "b"}" ${h ? html`data-id="${h.id}"` : ""}>
           <span class="nt-cv is-book" ${cover(nb)}><span class="nt-lb">${nb || "なし"}</span></span>
         </button>`);
       b.addEventListener("click", () => {
@@ -390,6 +390,8 @@
       });
       box.append(b);
     });
+    /* 長押しで冊を運ぶ（電話にも並べ替えの口。左の木・設定と同じ並び）。 */
+    if (KN.noteDrag) KN.noteDrag.shelf(box);
     return box;
   }
 

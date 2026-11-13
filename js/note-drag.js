@@ -423,5 +423,128 @@
     landed(undo);
   }
 
-  KN.noteDrag = { attach, isActive };
+  /* ---------------- 本棚（格子）：冊をつまんで、指の下の席へ（docs/notes.md「R7 の形」） ----------------
+     指は長押し・マウスは押して動かす。動けるのは同じ組の中だけ（6つの棚は先・ほかの冊はあと——並べ方がそう決まっている）。
+     はかるのは持ち上げた一回だけ。あとは席の矩形どうしの引き算で、ほかの冊を translate で寄せる。 */
+  let shelfD = null;
+  function shelf(box) {
+    box.addEventListener("pointerdown", (e) => {
+      if (drag || shelfD || (e.pointerType === "mouse" && e.button !== 0)) return;
+      const el = e.target.closest(".nt-bk");
+      if (!el || el.parentElement !== box || !el.dataset.nb) return;
+      const mouse = e.pointerType === "mouse", pid = e.pointerId, x0 = e.clientX, y0 = e.clientY;
+      let timer = 0;
+      const off = () => {
+        clearTimeout(timer);
+        document.removeEventListener("pointermove", mv, true);
+        document.removeEventListener("pointerup", off, true);
+        document.removeEventListener("pointercancel", off, true);
+      };
+      const mv = (ev) => {
+        if (ev.pointerId !== pid || Math.hypot(ev.clientX - x0, ev.clientY - y0) <= HOLD_SLOP) return;
+        off();
+        if (mouse) liftBook(box, el, pid, x0, y0, ev);
+      };
+      document.addEventListener("pointermove", mv, true);
+      document.addEventListener("pointerup", off, true);
+      document.addEventListener("pointercancel", off, true);
+      if (!mouse) timer = setTimeout(() => { off(); liftBook(box, el, pid, x0, y0); }, HOLD);
+    });
+  }
+
+  function liftBook(box, el, pid, x0, y0, ev) {
+    const grp = Array.prototype.filter.call(box.children, (k) => k.dataset.nb && k.dataset.grp === el.dataset.grp);
+    if (grp.length < 2) return;
+    const sc = KN.app.scrollerOf(box);
+    const d = shelfD = { box, el, grp, pid, x0, y0, cx: ev ? ev.clientX : x0, cy: ev ? ev.clientY : y0,
+      rects: grp.map((k) => k.getBoundingClientRect()), from: grp.indexOf(el), to: grp.indexOf(el), sc, s0: sc ? sc.scrollTop : 0, raf: 0 };
+    KN.reorder.hold(true);
+    N().hold(true);
+    box.classList.add("is-carrying");
+    el.classList.add("is-lifted");
+    try { el.setPointerCapture(pid); } catch (_) { /* 試験の指など */ }
+    document.addEventListener("pointermove", bookMove, true);
+    document.addEventListener("pointerup", bookEnd, true);
+    document.addEventListener("pointercancel", bookEnd, true);
+    document.addEventListener("touchmove", swallowBook, { passive: false, capture: true });
+    KN.motion.fire("lift");
+    const tick = () => {
+      if (shelfD !== d) return;
+      if (d.sc) {
+        const r = d.sc.getBoundingClientRect();
+        if (d.cy < r.top + EDGE) d.sc.scrollTop -= SPEED * Math.min(1, (r.top + EDGE - d.cy) / EDGE);
+        else if (d.cy > r.bottom - EDGE) d.sc.scrollTop += SPEED * Math.min(1, (d.cy - (r.bottom - EDGE)) / EDGE);
+      }
+      paintShelf(d);
+      d.raf = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  const swallowBook = (e) => { if (shelfD && e.cancelable) e.preventDefault(); };
+  const bookMove = (e) => { if (shelfD && e.pointerId === shelfD.pid) { shelfD.cx = e.clientX; shelfD.cy = e.clientY; } };
+  const bookEnd = (e) => { if (shelfD && e.pointerId === shelfD.pid) dropBook(shelfD, e.type === "pointerup"); };
+
+  /* 指にいちばん近い席が行き先。ほかの冊は、その並びでの席へ寄る（送った分 sh は矩形から引く）。 */
+  function paintShelf(d) {
+    const sh = d.sc ? d.sc.scrollTop - d.s0 : 0;
+    let best = Infinity;
+    d.rects.forEach((r, i) => {
+      const q = (d.cx - r.left - r.width / 2) ** 2 + (d.cy + sh - r.top - r.height / 2) ** 2;
+      if (q < best) { best = q; d.to = i; }
+    });
+    const order = d.grp.filter((k) => k !== d.el);
+    order.splice(d.to, 0, d.el);
+    order.forEach((k, i) => {
+      if (k === d.el) return;
+      const a = d.rects[d.grp.indexOf(k)], b = d.rects[i];
+      k.style.transform = a.left === b.left && a.top === b.top ? "" : `translate(${b.left - a.left}px, ${b.top - a.top}px)`;
+    });
+    d.el.style.transform = `translate(${d.cx - d.x0}px, ${d.cy - d.y0 + sh}px)`;
+  }
+
+  /* 離したら行き先の席へ滑ってから並びを書く（書くと面が組み直される）。戻すときは元の席へ。 */
+  function dropBook(d, commit) {
+    shelfD = null;
+    cancelAnimationFrame(d.raf);
+    document.removeEventListener("pointermove", bookMove, true);
+    document.removeEventListener("pointerup", bookEnd, true);
+    document.removeEventListener("pointercancel", bookEnd, true);
+    document.removeEventListener("touchmove", swallowBook, { capture: true });
+    KN.reorder.hold(false);
+    const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+    const fed = () => { document.removeEventListener("click", eat, true); document.removeEventListener("pointerdown", fed, true); };
+    document.addEventListener("click", eat, true);
+    document.addEventListener("pointerdown", fed, true);
+    setTimeout(fed, 350);
+    const to = commit ? d.to : d.from;
+    const a = d.rects[d.from], b = d.rects[to];
+    d.el.classList.remove("is-lifted");
+    d.el.classList.add("is-landing");
+    d.el.style.transform = a === b ? "" : `translate(${b.left - a.left}px, ${b.top - a.top}px)`;
+    if (!commit) d.grp.forEach((k) => { if (k !== d.el) k.style.transform = ""; });
+    const names = d.grp.map((k) => k.dataset.nb);
+    const fin = () => {
+      let undo = null;
+      try {
+        if (to !== d.from) {
+          const mine = names.slice();
+          mine.splice(to, 0, mine.splice(d.from, 1)[0]);
+          const was = N().notebooks(), set = new Set(names);
+          let i = 0;
+          if (N().setBooks(was.map((nb) => (set.has(nb) ? mine[i++] : nb)))) undo = () => N().setBooks(was);
+        }
+      } finally {
+        d.box.classList.remove("is-carrying");
+        d.el.classList.remove("is-landing");
+        d.grp.forEach((k) => { k.style.transform = ""; });
+        N().hold(false);
+      }
+      if (undo) landed(undo);
+    };
+    if (KN.motion.still()) fin();
+    else setTimeout(fin, KN.motion.ms("--m-reorder"));
+  }
+
+  KN.noteDrag = { attach, isActive: () => !!drag || !!shelfD, shelf };
 })();

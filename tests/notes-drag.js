@@ -9,7 +9,7 @@
    画面（マウス・幅のある画面）：押すだけなら開く／行のあいだへ・行の上で中へ・右へずらして段を下げる／元に戻す／
    閉じた枝の上で待つと開く／ノートブックの行の並べ替え（左の木。本棚の一冊の面の冊の行は運ばない）／左の木でも運べる／＋で空のノートブック／
    Tab・Shift+Tab・Alt+↑↓・↑↓／「⋯」のリンク先を中へ（目次の行だけ・行の順・子孫ごと・控え・元に戻す）。
-   画面（指・電話の幅）：長押しで持ち上げて運ぶ／運んでいるあいだ器は送らない／紙の中のノートを右へずらしても紙は戻らない。
+   画面（指・電話の幅）：長押しで持ち上げて運ぶ／本棚の冊も長押しで運ぶ（元に戻す・動かさなければ開かない）／運んでいるあいだ器は送らない／紙の中のノートを右へずらしても紙は戻らない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-drag.js */
 const { open, checker } = require("./lib");
@@ -387,6 +387,29 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   /* 動かさずに離す＝何も変わらず、開きもしない */
   await hold(fr("n-f2"), async (x, y) => [x, y]);
   t.check("長押しして動かさずに離すと、何も変わらず開かない", (await fingers()) === "指1,指4,指2,指3" && !(await P.$(".sheet.is-note")));
+
+  /* 本棚（電話のホーム）：長押しで冊をつまんで、指の下の席へ。動かさずに離せば開かない */
+  await P.evaluate(() => { KN.notes.addBook("乙"); KN.notes.addBook("丙"); });
+  await P.tap("#head .js-notes-home");
+  await P.waitForSelector('#screen-notes .nt-bks .nt-bk[data-nb="丙"]');
+  await P.waitForTimeout(400);
+  const bk = (nb) => `#screen-notes .nt-bks .nt-bk[data-nb="${nb}"]`;
+  const books = () => P.evaluate(() => KN.notes.notebooks().join());
+  const b0 = await books();
+  await hold(bk("丙"), async (x, y) => [x, y]);
+  await P.waitForTimeout(400);
+  t.check("本棚：長押しして動かさずに離すと、何も変わらず開かない", (await books()) === b0 && !(await P.$(".sheet.is-note"))
+    && await P.evaluate(() => !document.querySelector(".nt-bks.is-carrying")), await books());
+  await hold(bk("丙"), async () => { const A = await fbox(bk("指")); return [A.x + A.width / 2, A.y + A.height / 2]; });
+  await P.waitForTimeout(400);   // 行き先へ滑ってから書く（--m-reorder）
+  t.check("本棚：長押しで冊を運ぶ（指の下の席へ）", (await books()) === "丙,指,乙", await books());
+  t.check("本棚：面の並びも同じ・寄せた跡は残らない", await P.evaluate(() => [...document.querySelectorAll("#screen-notes .nt-bks .nt-bk")]
+    .map((b) => b.dataset.nb + (b.style.transform ? "!" : "")).join()) === "丙,指,乙");
+  await P.click(".toast .toast-action");
+  t.check("本棚：元に戻す", (await books()) === b0, await books());
+  await P.tap(bk("指"));
+  await P.waitForSelector('#screen-notes .js-tree-note[data-id="n-f4"]');
+  await P.waitForTimeout(400);
 
   /* 紙の中の「中のノート」：右へずらして段を下げても紙は戻らない */
   await P.tap(`${fr("n-f1")} .nt-name`);
