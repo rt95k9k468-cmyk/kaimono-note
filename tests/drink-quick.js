@@ -158,6 +158,19 @@ const { open, checker } = require("./lib");
   });
   c.check("直す紙には札が無く、欄に raw", edit.fav === 0 && edit.q === s0.raw, JSON.stringify(edit));
 
+  /* 直す紙の本数（−／＋）：押すと字の欄と合計が変わり、保存でその一件の量が変わる */
+  const n0 = s0.count || 1;
+  await page.click(".sheet.is-open .js-step .js-plus");
+  await page.waitForTimeout(200);
+  const stepped = await page.evaluate(() => ({ q: document.querySelector(".sheet.is-open .js-q").value, n: document.querySelector(".sheet.is-open .js-step .js-n").textContent }));
+  await page.click(".sheet.is-open .js-save");
+  await page.waitForTimeout(500);
+  const stepSaved = await page.evaluate((id) => KN.store.get().diet.drinks.find((d) => d.id === id), s0.id);
+  c.check("直す紙の＋で本数が増え、保存でその一件の量が変わる（件数は増えない）",
+    stepSaved && stepSaved.count === n0 + 1 && stepSaved.volumeMl === Math.round(s0.volumeMl / n0 * (n0 + 1) * 10) / 10, JSON.stringify([stepped, stepSaved && [stepSaved.count, stepSaved.volumeMl], n0, s0.volumeMl]));
+  await page.evaluate(() => { KN.app.showScreen("tasks"); KN.app.showScreen("diet"); });
+  await page.waitForTimeout(300);
+
   /* 「今週 純アルコール…・350ml 缶で◯本ぶん」の一行は画面から外した（11月13日。隙間のもと）。 */
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);

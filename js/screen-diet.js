@@ -2063,6 +2063,14 @@
             <div class="drink-fav js-fav"></div>
           </div>
           <div class="drink-picks js-picks"></div>`}
+        ${editing ? html`<div class="drink-pick js-step" hidden>
+            <span class="drink-pick-name">本数</span>
+            <div class="stepper">
+              <button type="button" class="stepper-btn js-minus" aria-label="一つ減らす">${icon("minus")}</button>
+              <span class="stepper-value mono-num js-n"></span>
+              <button type="button" class="stepper-btn js-plus" aria-label="一つ増やす">${icon("plus")}</button>
+            </div>
+          </div>` : ""}
         <label class="field">
           ${editing ? html`<span class="field-label">飲んだもの</span>` : ""}
           <input class="input js-q" placeholder="${editing ? "" : "ほかのお酒"}" aria-label="飲んだもの"
@@ -2177,11 +2185,35 @@
       });
     }
 
+    /* 直す紙の本数（−／＋）。一種類のときだけ。字の欄を書き換えて読み直す——合計・保存は字から決まるので。 */
+    const stepEl = body.querySelector(".js-step");
+    function paintStep() {
+      if (!stepEl) return;
+      const one = items.length === 1 ? items[0] : null;
+      stepEl.hidden = !one;
+      if (one) stepEl.querySelector(".js-n").innerHTML = `${KN.util.escapeHtml(String(Math.round(one.count * 10) / 10))}<small>${KN.util.escapeHtml(one.unit)}</small>`;
+    }
+    if (stepEl) {
+      const bumpN = (by) => {
+        const b = items[0];
+        if (!b) return;
+        const n = Math.max(0.5, Math.round((b.count + by) * 10) / 10);
+        const it = DR.fromFavorite({ kind: b.kind, kindLabel: b.kindLabel, name: b.name, ml: b.ml || (b.volumeMl / (b.count || 1)),
+          abv: b.abv, unit: b.unit, estimated: false }, n);
+        q.value = it.raw;
+        KN.motion.fire("select");
+        paint();
+      };
+      stepEl.querySelector(".js-minus").addEventListener("click", () => bumpN(-1));
+      stepEl.querySelector(".js-plus").addEventListener("click", () => bumpN(1));
+    }
+
     function paint() {
       const res = DR.parse(q.value);
       typed = res.items;
       const picked = favs.filter((t) => picks.has(t.key)).map((t) => DR.fromFavorite(t, picks.get(t.key)));
       items = picked.concat(typed);
+      paintStep();
       readBox.innerHTML = "";
       if (!q.value.trim() && !picked.length) return;
 
