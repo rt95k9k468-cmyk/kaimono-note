@@ -360,7 +360,9 @@
     const g = store.get().diet.goal;
     if (g.kcalTarget == null) return null;
     const t = dayTotals(day);
-    return { kcal: Math.round(g.kcalTarget - (t ? t.kcal : 0)), target: g.kcalTarget, eaten: t ? t.kcal : 0 };
+    const dt = store.drinkTotals(day);   // お酒のぶんも一日の摂取に入れる
+    const eaten = (t ? t.kcal : 0) + (dt ? dt.kcal : 0);
+    return { kcal: Math.round(g.kcalTarget - eaten), target: g.kcalTarget, eaten };
   }
 
   /** PFCの熱量比（%）。合計が0なら null。 */

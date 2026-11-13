@@ -54,7 +54,7 @@ const { open, checker } = require("./lib");
     if (id === "diet") {
       /* R4：四つの札と体重のカード、「今日の食事」の小見出し。 */
       out.body = [...scr.querySelectorAll(".js-day-card .hl-met, .js-day-card .hl-hero.is-kg")].map(box);
-      out.meal = exact("今日の食事").map(box);
+      out.meal = [...scr.querySelectorAll(".js-day-card .hl-meals .hl-list")].map(box);   // 見出しは外した（隙間）
     }
     return out;
   }, id);

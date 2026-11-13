@@ -7507,6 +7507,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* 今日の食事：明朝の小見出しと「AI推計」、四つの枠のカード、底に AI のひと言と二つのボタン。 */
 .hl-meals-in { display: flex; flex-direction: column; gap: var(--sp-2); }
 .hl-sec { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-1); }
+.diet-memo-h { display: flex; justify-content: flex-end; }
 .hl-sec-a { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; min-height: 44px; font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-primary); }
 .hl-sec-a > svg { width: 16px; height: 16px; }  /* 入れもの：小見出しの右 */
 .hl-sec-a:active, .hl-goal:active { opacity: var(--press-fade); }

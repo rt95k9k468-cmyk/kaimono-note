@@ -906,10 +906,13 @@
     const names = SLOTS.filter((sl) => store.slotMemo(card.day, sl.id) || (st && st[sl.id])).map((sl) => sl.short)
       .concat(card.drinkTotals && card.drinkTotals.kcal > 0 ? ["お酒"] : []);
     const fill = sp ? Math.min(100, sp.parts.reduce((a, x) => a + x.pct, 0)) : 0;
+    /* 総消費と比べる数なので、お酒のぶんも入れた一日の摂取（帯の飲酒の色と同じ）。 */
+    const drinkK = card.drinkTotals ? card.drinkTotals.kcal : 0;
+    const intakeK = t ? t.kcal + drinkK : (drinkK > 0 ? drinkK : null);
     const sec = node(html`
       <span class="hl-hero-in">
         <span class="hl-hero-h">${icon("meal")}${dayName(card.day) === "今日" ? "" : dayName(card.day) + "の"}食事</span>
-        <span class="hl-hero-v">${t && (t.estimated || t.low != null) ? html`<small class="is-about">約</small>` : ""}<b class="mono-num">${t ? t.kcal.toLocaleString() : "—"}</b><small>kcal</small></span>
+        <span class="hl-hero-v">${t && (t.estimated || t.low != null) ? html`<small class="is-about">約</small>` : ""}<b class="mono-num">${intakeK != null ? Math.round(intakeK).toLocaleString() : "—"}</b><small>kcal</small></span>
         <span class="hl-hero-s">${names.join("・")}</span>
         ${rem ? html`<span class="hl-hero-s is-rem ${rem.kcal < 0 ? "is-over" : ""}">${rem.kcal >= 0
           ? `残り ${rem.kcal.toLocaleString()}` : `${Math.abs(rem.kcal).toLocaleString()} 超過`}</span>` : ""}
@@ -1953,7 +1956,7 @@
         + `<span class="hl-met-v mono-num${over ? " is-over" : ""}">${KN.util.escapeHtml(shown)}${v != null && m.unit ? `<small>${m.unit}</small>` : ""}</span>`
         + `<span class="hl-bars" aria-hidden="true" style="--g:${Math.min(1, (goals[m.type] || 0) / top).toFixed(3)}">${bars}<b></b></span></button>`;
     }).join("");
-    const fresh = freshNoteHtml(card.day);
+    const fresh = freshNoteHtml(card.day, true);
     const sec = node(html`
       <div class="hl-body-in">
         <div class="hl-mets">${KN.util.raw(html1)}</div>
@@ -1993,9 +1996,11 @@
 
   const BODY_TYPES = ["steps", "distance", "activeEnergy", "restingEnergy", "sleep"];
 
-  function freshNoteHtml(day) {
+  function freshNoteHtml(day, onlyMissing) {
     if (day !== U.todayKey()) return "";
     const at = store.healthSeenAt(day, BODY_TYPES);
+    /* タイルの下に行を足すと隙間になるので、届いているあいだ（「何時時点」）は出さない。 */
+    if (onlyMissing && at) return "";
     const here = KN.healthRelay.configured();
     /* 中継所を設定していない人に「まだ届いていません」とは言いません
        ——届く先がそもそも無いので、直しようのないことを言うことになります。
@@ -2475,13 +2480,10 @@
 
     const sec = node(html`
       <div class="hl-meals-in">
-        <div class="hl-sec">
-          <h2 class="tk-h">${dayName(card.day)}の食事</h2>
-          <button type="button" class="hl-sec-a js-ai-open">${icon("sparkles")}AI推計</button>
-        </div>
         <div class="card hl-list">
           <div class="diet-slots js-slots"></div>
           <div class="diet-memo ${ai && ai.ai ? "" : "is-blank"}">
+            <div class="diet-memo-h"><button type="button" class="hl-sec-a js-ai-open">${icon("sparkles")}AI推計</button></div>
             ${/* AIの評価の文も、この枠の中に（10月5日）。お酒を足した合計・PFC の数は出さない
                   （細かい数と根拠はAIの返事の原文に残っている）。 */""}
             ${ai && ai.ai ? html`
