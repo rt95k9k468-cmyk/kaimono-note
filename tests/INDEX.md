@@ -155,7 +155,7 @@
 | `fold.js` | 使っていない面を畳む（3.1 の S4、2026年10月10日、docs/settings.md の「畳んだ面」）。 |
 | `ime-enter.js` | 変換を決める改行（2026年10月10日、roadmap-seamless の N5）。**門に入る。 |
 | `shun.js` | 旬の印（3.1 の K4、2026年10月10日、docs/shopping.md の「旬の印」）。 |
-| `crown.js` | 最安の王冠は比べたときだけ（Y8）・店で絞る・税抜の鍵盤・底値（F5 の S1・S3・S4）。 |
+| `crown.js` | 最安の王冠（Y8）・店で絞る・税抜の鍵盤・底値（F5）・広い幅も紙は鍵盤の上（案A）。 |
 | `legibility.js` | 読みやすさ（2026年10月10日、roadmap-seamless の N15、docs/look.md の「暗い面… |
 | `draft-keep.js` | 書きかけを守る（2026年10月10日、roadmap-seamless の N8・X15、docs/sheet-sc… |
 | `entries-note.js` | 積み上げを一冊のノートへ（2026年10月12日、docs/thinking.md の「積み上げをやめた」）。 |

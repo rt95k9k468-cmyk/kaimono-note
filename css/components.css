@@ -854,11 +854,12 @@ button, [role="tab"] {
 @media (min-width: 640px) {
   .sheet {
     bottom: auto;
-    top: 50%;
+    /* 鍵盤（--pad）が出たら、その上の空きの真ん中へ（redesign 11節の案A）。欄と読みは product-sheet.js が送って見せる。 */
+    top: calc((var(--vvh, 100dvh) - var(--pad, 0px)) / 2);
     transform: translate(-50%, -46%) scale(.96);
     opacity: 0;
     border-radius: var(--r-xl);
-    max-height: min(86dvh, 760px, var(--vvh, 100dvh));
+    max-height: min(86dvh, 760px, calc(var(--vvh, 100dvh) - var(--pad, 0px) - 24px));
     width: min(100% - 32px, 560px);
     /* 広い画面では真ん中の一枚になりますが、開く／閉じるの分け方は同じです。 */
     transition: transform var(--m-sheet-close) var(--ease-in), opacity var(--m-state) var(--ease);
@@ -1204,7 +1205,7 @@ button.hero-node:active { scale: var(--press-dot); }
 .pd-hero .pd-fav { color: var(--c-text-3); }
 .pd-hero .pd-fav.is-on { background: var(--c-surface); color: var(--c-warn); }
 /* 値段を足す欄（product-sheet.js の addPriceForm）。枠の箱は無し、お店の札は一列で横に送る。 */
-.price-add { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); }
+.price-add { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); scroll-margin-bottom: var(--sp-4); }
 .price-add .chip-wrap {
   flex-wrap: nowrap;
   overflow-x: auto;

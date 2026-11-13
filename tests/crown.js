@@ -124,5 +124,28 @@ const { open, checker } = require("./lib");
     && (await page.$eval("#screen-list .shop-stores .chip[aria-pressed=true]", (e) => e.textContent.trim())) === "すべて");
   t.check("頁のエラーなし", !errors.length, errors.join(" | "));
   await browser.close();
+
+  /* redesign 11節の案A（11月13日）：広い幅でも、鍵盤が出たら紙は鍵盤の上の空きへ、欄と読みは鍵盤より上。店六つで。 */
+  for (const [w, h] of [[1440, 900], [820, 1180]]) {
+    const o = await open({ viewport: { width: w, height: h } });
+    const pid = await o.page.evaluate(() => {
+      const S = KN.store, p = S.addProduct({ name: "試しの牛乳" });
+      for (let i = 0; i < 6; i++) S.addPrice(p.id, { storeId: S.addStore("試しの店" + i).id, price: 150 + i * 7 });
+      KN.app.showScreen("list");
+      return p.id;
+    });
+    await o.page.waitForTimeout(500);
+    await o.page.evaluate((id) => KN.productSheet.open(id), pid);
+    await o.page.waitForTimeout(700);
+    await o.page.click(".sheet.is-open .price-add .js-price");
+    await o.page.locator(".keypad .js-grid .key", { hasText: /^1$/ }).click();
+    await o.page.waitForTimeout(1000);
+    const m = await o.page.evaluate(() => {
+      const s = [...document.querySelectorAll(".sheet.is-open")].pop(), b = (e) => e.getBoundingClientRect();
+      return { sheet: b(s).bottom, calc: b(s.querySelector(".js-calc")).bottom, field: b(s.querySelector(".js-price")).top, pad: b(document.querySelector(".keypad")).top };
+    });
+    t.check(`${w}px：鍵盤が出たら紙・欄・読みは鍵盤の上（案A）`, m.sheet <= m.pad + 1 && m.calc <= m.pad && m.field >= 0, JSON.stringify(m));
+    await o.browser.close();
+  }
   t.done();
 })();

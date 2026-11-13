@@ -506,8 +506,9 @@
        product left the running total below the fold, so the sum was being
        worked out somewhere the user could not see. Bring it up as the pad
        arrives, and again once the sheet has finished resizing around it. */
+    /* 送るのは欄と読みの一組（.price-add）。広い幅では紙が鍵盤の上へ縮むので、欄ごと見せる（redesign 11節の案A）。 */
     const revealStrip = () => [180, 400, 680].forEach((ms) => setTimeout(() => {
-      if (!strip.hidden) strip.scrollIntoView({ block: "nearest", behavior: KN.motion.smooth() });
+      if (!strip.hidden) form.scrollIntoView({ block: "nearest", behavior: KN.motion.smooth() });
     }, ms));
 
     /* 鍵盤の確定がそのまま「追加」（すでに値段のある店なら「更新」）。欄の横のボタンは鍵盤が出ているあいだ隠す——
