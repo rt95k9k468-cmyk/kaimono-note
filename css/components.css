@@ -1173,7 +1173,8 @@ button.hero-node:active { scale: var(--press-dot); }
 /* 買うものの紙（2.0、roadmap-2.0 の V23・product-sheet.js の frame）。やることの紙の頭と
    札をそのまま使い、名前の右に小さな★（今回買う）。絵は行の絵と同じ淡い地に。 */
 .pd-name { display: flex; align-items: center; gap: var(--sp-2); }
-.pd-name .hero-title { flex: 1; min-width: 0; }
+/* 名前の欄の当たりは 44px（redesign 11節）。上へ 5px 広げ、同じだけ引き上げる——字と下線の位置は変わらない。 */
+.pd-name .hero-title { flex: 1; min-width: 0; padding-top: 7px; margin-top: -5px; }
 .pd-fav {
   display: grid; place-items: center; flex: none;
   width: 36px; height: 36px;

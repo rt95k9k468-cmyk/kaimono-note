@@ -2569,8 +2569,9 @@ button.section-note:active { opacity: var(--press-fade); }
 
 /* 記録の紙の「いつ」（RS 2回目）：絵を添えた丸い札。押すと暦・車輪。 */
 .rec-when { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.rec-when-i { position: relative; display: inline-flex; color: var(--c-text-2); }
-.rec-when-i svg { position: absolute; left: 12px; top: 50%; translate: 0 -50%; width: var(--ico-sm); height: var(--ico-sm); pointer-events: none; }
+.rec-when-i { position: relative; isolation: isolate; display: inline-flex; color: var(--c-text-2); }
+/* 欄（.when-btn）も当たりのために position を持つので、絵は欄の上へ（札の中だけの重なり）。 */
+.rec-when-i svg { position: absolute; z-index: 1; left: 12px; top: 50%; translate: 0 -50%; width: var(--ico-sm); height: var(--ico-sm); pointer-events: none; }
 .rec-when .when-btn { width: auto; min-width: 0; height: 40px; padding: 0 var(--sp-4) 0 34px; border-radius: var(--r-full); color: var(--c-text); font-variant-numeric: tabular-nums; }
 .rec-hero .hero-title { border-bottom: 0; }
 .urge-sec-time .when-btn {
@@ -2816,10 +2817,13 @@ a.btn { text-decoration: none; }
 .date-cell .input { width: 100%; }
 /* 日付・時刻の欄（U8・ui.js の whenFields）。欄の形をしたボタンで、押すと暦・ドラム・車輪の小窓。
    空は「--/--/--」「--:--」を薄く（端末の欄は iOS で空のとき何も描かなかった）。 */
+/* 当たりは 44px（背 40px の札と字だけの欄。redesign 11節）。字の「…」は中の span で切る——欄に overflow を置くと当たりも切れる。 */
 .when-btn {
-  display: block; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: relative; display: block; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap;
   transition: border-color var(--m-state) var(--ease), box-shadow var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
+.when-btn > span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.when-btn::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: max(100%, 44px); translate: 0 -50%; }
 .when-btn.is-empty { color: var(--c-text-3); }
 .when-btn:active { scale: var(--press-wide); }
 .note-wheels.is-time { grid-template-columns: 1fr 1fr; }
@@ -6734,7 +6738,7 @@ button.note-when:active { opacity: var(--press-fade); }
 
 /* 札の層は図の上に一枚かぶさるので、押せるのは中の button だけ（でないと、
    下の透明な線に指が届きません）。 */
-.road-marks { position: absolute; inset: 0; pointer-events: none; }
+.road-marks { position: absolute; inset: 0; pointer-events: none; isolation: isolate; }
 .road-marks button { pointer-events: auto; }
 .road-label, .road-now, .road-edge {
   position: absolute; white-space: nowrap; line-height: var(--lh-tight);
@@ -6744,12 +6748,15 @@ button.note-when:active { opacity: var(--press-fade); }
    並びを返す）。上下の余白は指の的で、見た目は字の一行ぶん。 */
 .road-label {
   display: flex; align-items: baseline; gap: var(--sp-1);
-  transform: translateY(-50%);
-  margin: 0; padding: 6px 0; border: 0; background: none;
+  /* 縦の真ん中寄せは transform でなく margin で（transform は札ごとに重なりの層を作り、次の札の当たりが前の札の字を覆う）。 */
+  margin: calc(-6px - .5lh) 0 0; padding: 6px 0; border: 0; background: none;
   font: inherit; font-size: var(--fs-xs); color: var(--c-text);
-  text-align: left; cursor: pointer; overflow: hidden;
+  text-align: left; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+/* 当たりは 44px（見た目は字の一行のまま。redesign 11節）。切るのは中の題（span）だけ——札に overflow を置くと当たりも切れる。 */
+.road-label::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; translate: 0 -50%; }
+.road-label > * { position: relative; z-index: 1; }   /* 字はどの札の当たりよりも上（隣の札の字を押せば、その札） */
 .road-label.is-rev { flex-direction: row-reverse; }
 .road-label:active { opacity: var(--press-fade); }
 .road-label b { flex: none; font-weight: var(--fw-bold); }

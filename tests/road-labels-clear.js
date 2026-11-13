@@ -59,6 +59,15 @@ for (const k of [1, 1.12, 1.25, 1.3]) {
       box.forEach((p, i) => box.slice(i + 1).forEach((q) => {
         if (p.l < q.r - 1 && q.l < p.r - 1 && p.u < q.d - 1 && q.u < p.d - 1) hit.push(`${p.t} × ${q.t}`);
       }));
+      /* 当たりは 44px（redesign 11節）。広げた当たりが隣の札の字を覆わない——字の真ん中を押せば、その札。 */
+      road.querySelectorAll(".road-label").forEach((e) => {
+        if (getComputedStyle(e, "::after").height !== "44px") hit.push(`${e.textContent.trim()} の当たり`);
+        [...e.children].forEach((x) => {
+          const q = x.getBoundingClientRect(); if (!q.width) return;
+          const at = document.elementFromPoint((q.left + q.right) / 2, (q.top + q.bottom) / 2);
+          if (at && at.closest(".road-marks") && at.closest(".road-label") !== e) hit.push(`${x.textContent} を ${at.closest(".road-label").textContent.trim()} が覆う`);
+        });
+      });
       return hit;
     }, { day: DAY, a, la, b, lb, k });
     if (r.length) bad.push(`×${k} ${a}+${la} / ${b}+${lb}: ${r.join(", ")}`);

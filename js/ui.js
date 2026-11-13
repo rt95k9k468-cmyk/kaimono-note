@@ -2079,7 +2079,9 @@
       const btn = node(html`<button type="button" class="input when-btn" aria-label="${label}"></button>`);
       const paint = () => {
         const v = own.get.call(inp);
-        btn.textContent = whenText(kind, v);
+        const say = document.createElement("span");   // 「…」は中の span で切る（欄の当たりを 44px へ外に出すため。screens.css の .when-btn）
+        say.textContent = whenText(kind, v);
+        btn.replaceChildren(say);
         btn.classList.toggle("is-empty", !v);
       };
       /* 呼ぶ側が `.value = …` と書いても（札で「明日」を選んだ、×で外した）、見える字が追う。 */

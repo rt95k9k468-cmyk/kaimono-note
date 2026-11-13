@@ -227,6 +227,13 @@ const { open, checker } = require("./lib");
   w = JSON.parse(await weight());
   t.check("体重：OK で決めた時刻が保存", w.time === "08:45", JSON.stringify(w));
 
+  /* 当たりは 44px、字は欄の中の span（redesign 11節。欄に overflow を置くと当たりも切れる）。 */
+  await page.evaluate(() => KN.screens.diet.openDrinkSheet(KN.util.todayKey()));
+  await page.waitForTimeout(700);
+  const hb = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .when-btn")].map((b) => ({
+    hit: parseFloat(getComputedStyle(b, "::after").height), clip: getComputedStyle(b).overflow, span: !!b.querySelector(":scope > span") })));
+  t.check("欄の当たりは 44px 以上・字は中の span", hb.length && hb.every((x) => x.hit >= 44 && x.clip === "visible" && x.span), JSON.stringify(hb));
+
   t.check("エラーが出ない", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();
