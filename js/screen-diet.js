@@ -353,7 +353,6 @@
         <button type="button" class="card hl-hero is-kg js-weight"></button>
         <button type="button" class="card hl-hero is-kcal js-kcal"></button>
         <div class="hl-meals js-meals"></div>
-        <div class="hl-urge js-urges"></div>
         <div class="card hl-chart js-trend-card"></div>
       </section>
     `);
@@ -361,7 +360,6 @@
     renderToday(slide.querySelector(".js-weight"), card, sum);
     renderKcal(slide.querySelector(".js-kcal"), card);
     renderMeals(slide.querySelector(".js-meals"), card, { peek });
-    renderUrges(slide.querySelector(".js-urges"), card);
     renderGraph(slide.querySelector(".js-trend-card"), opts && opts.chartEl, sum);
     if (peek) slide.inert = true;
     return slide;
@@ -667,29 +665,6 @@
     }
     const pct = Math.round((t.alcoholG / alcoholGuide()) * 100);
     return { kind: pct > 100 ? "over" : "ok", pct: Math.max(6, Math.min(100, pct)), g: t.alcoholG };
-  }
-
-  /* H2 お酒の週（docs/health.md「お酒の週」）：週の頭（月曜）からその日までの純アルコール・350ml 缶の本数・
-     飲まなかった日を一行の事実で。飲まなかった日は暦の帯と同じ決め（drinkBar の dry）。色は付けない。折れるのは「・」で。 */
-  const CAN_G = 14; // ビール 350ml・5%：350 × 0.05 × 0.8
-  function drinkWeek(day) {
-    const wk = U.weekOf(day);
-    let g = 0, about = false, dry = 0;
-    for (let d = wk.from; d <= day; d = U.shiftDay(d, 1)) {
-      const t = store.drinkTotals(d);
-      if (t) { g += t.alcoholG || 0; about = about || !!t.estimated; continue; }
-      const b = drinkBar(d);
-      if (b && b.kind === "dry") dry++;
-    }
-    if (!g && !dry) return null;
-    const cans = Math.round(g / CAN_G * 2) / 2;
-    const parts = [
-      g ? `純アルコール ${about ? "約" : ""}${Math.round(g)}g` : "",
-      cans >= 0.5 ? `350ml 缶で${cans}本ぶん` : "",
-      dry ? `飲まなかった日 ${dry}日` : "",
-    ].filter(Boolean);
-    parts[0] = `${wk.from <= U.todayKey() && U.todayKey() <= wk.to ? "今週" : "この週"} ${parts[0]}`;
-    return parts;
   }
 
   function monthCalendar() {
@@ -1779,7 +1754,8 @@
      ません**——警告色を使わず、書けば消えるだけ。書かないままでもかまいません。
      日の紙に出すのは回数だけ：「うち◯回は飲まなかった」は並べた瞬間に
      達成率になります。 */
-  function renderUrges(host, card) {
+  function renderUrges(host, card, close) {
+    const go = (f) => { if (close) close(); f(); };
     const rows = card.urges || [];
     const today = U.todayKey();
     const canAdd = card.day <= today;
@@ -1792,10 +1768,8 @@
 
     /* R4：山吹の淡い塗りのボタン（52px）。書いた一件は、その下に一枚のカード（RS 2回目：今日の食事と同じ行——
        46px の台に強さ・何を求めたか・時刻。あとで記入の一件が先で、時刻の横に「あとで記入」）。 */
-    const wk = drinkWeek(card.day);
     const sec = node(html`
       <div class="urge-bar">
-        ${wk ? html`<p class="hl-drink-week">${KN.util.raw(wk.map((x) => `<span>${KN.util.escapeHtml(x)}</span>`).join("・"))}</p>` : ""}
         ${canAdd ? html`
           <button class="btn btn-block hl-urge-btn js-urge">${icon("clock")}飲みたくなった</button>` : ""}
         ${rows.length ? html`<div class="card urge-rows js-rows"></div>` : ""}
@@ -1803,7 +1777,7 @@
     `);
 
     const add = sec.querySelector(".js-urge");
-    if (add) add.addEventListener("click", () => { KN.motion.fire("select"); openUrgeSheet(card.day); });
+    if (add) add.addEventListener("click", () => { KN.motion.fire("select"); go(() => openUrgeSheet(card.day)); });
 
     const row = (u, onTap, isLate) => {
       const what = urgeSummary(u);
@@ -1824,8 +1798,8 @@
     };
     const rowsHost = sec.querySelector(".js-rows");
     if (rowsHost) {
-      later.forEach((u) => rowsHost.append(row(u, () => openUrgeLater(u), true)));
-      done.forEach((u) => rowsHost.append(row(u, () => openUrgeSheet(u.day, u.id))));
+      later.forEach((u) => rowsHost.append(row(u, () => go(() => openUrgeLater(u)), true)));
+      done.forEach((u) => rowsHost.append(row(u, () => go(() => openUrgeSheet(u.day, u.id)))));
     }
 
     host.append(sec);
@@ -2118,8 +2092,11 @@
         </div>
 
         <div class="js-list"></div>
+        <div class="js-urges"></div>
       </div>
     `);
+    /* 飲みたくなったは、お酒の紙の中に（画面には置かない＝隙間のもと）。 */
+    if (!editing) renderUrges(body.querySelector(".js-urges"), { day, urges: store.urgesOfDay(day) }, () => h.close());
 
     const foot = node(html`
       <div class="btn-row">

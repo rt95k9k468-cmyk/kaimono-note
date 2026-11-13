@@ -28,9 +28,21 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   });
   await page.waitForTimeout(500);
 
+  const waitClosed = () => page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 5000 });
+  /* 飲みたくなったは画面に置かず、お酒の紙の中（.urge-bar）。 */
+  const openDrink = async () => {
+    await page.click("#screen-diet .js-day-card .js-drink");
+    await page.waitForSelector(".sheet.is-open .urge-bar");
+  };
+  const closeDrink = async () => { await page.click(".sheet.is-open .js-close"); await waitClosed(); };
   const openSheet = async () => {
-    await page.click("#screen-diet .js-day-card .js-urge");
+    await openDrink();
+    await page.click(".sheet.is-open .js-urge");
     await page.waitForSelector(".sheet.is-open .urge-form");
+  };
+  const clickRow = async (re) => {
+    await openDrink();
+    await page.evaluate((src) => [...document.querySelectorAll(".sheet.is-open .urge-row.is-later")].find((r) => new RegExp(src).test(r.innerText)).click(), re);
   };
   const sheetInfo = () => page.evaluate(() => {
     const sh = document.querySelector(".sheet.is-open");
@@ -53,7 +65,6 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     const s = [...sh.querySelectorAll(".urge-sec")].find((x) => x.querySelector(".urge-sec-title").textContent === title);
     [...s.querySelectorAll(".chip")].find((c) => c.textContent.trim() === label).click();
   }, [title, label]);
-  const waitClosed = () => page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 5000 });
 
   /* ---- A：はじめの紙 ---- */
   await openSheet();
@@ -146,14 +157,22 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   await page.waitForSelector("#screen-diet .js-day-card");
 
   /* ---- D：あとで記入 ---- */
-  const later = () => page.evaluate(() => [...document.querySelectorAll("#screen-diet .js-day-card .urge-row.is-later")].length);
+  const later = async () => {
+    await openDrink();
+    const n = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .urge-row.is-later")].length);
+    await closeDrink();
+    return n;
+  };
   /* RS 2回目：見出しはやめ、一枚のカードの先頭に並び、時刻の横に「あとで記入」。 */
+  await openDrink();
   const laterTitle = await page.evaluate(() => {
-    const rows = [...document.querySelectorAll("#screen-diet .js-day-card .urge-rows .urge-row")];
+    const rows = [...document.querySelectorAll(".sheet.is-open .urge-rows .urge-row")];
     return rows.slice(0, 2).every((r) => r.classList.contains("is-later") && /あとで記入/.test(r.innerText)) ? "あとで記入" : rows.map((r) => r.innerText).join("|");
   });
+  await closeDrink();
   t.check("結果がまだの二件が「あとで記入」に並ぶ", (await later()) === 2 && laterTitle === "あとで記入", `${await later()} ${laterTitle}`);
-  await page.click("#screen-diet .js-day-card .urge-row.is-later");
+  await openDrink();
+  await page.click(".sheet.is-open .urge-row.is-later");
   await page.waitForSelector(".sheet.is-open .js-res");
   await page.click('.sheet.is-open .urge-lv[aria-label="2"]');
   await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .js-out .chip")].find((x) => x.textContent.trim() === "飲まなかった").click());
@@ -171,10 +190,12 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   });
   await page.waitForTimeout(300);
   t.check("あとの強さだけ書いた一件は「あとで記入」に残らない", (await later()) === 0, String(await later()));
+  await openDrink();
   const warn = await page.evaluate(() => {
-    const el = document.querySelector("#screen-diet .urge-bar");
+    const el = document.querySelector(".sheet.is-open .urge-bar");
     return /成功|失敗|連続|達成/.test(el.innerText) || !!el.querySelector(".is-warn, .is-bad, .is-good");
   });
+  await closeDrink();
   t.check("評価・警告色・連続日数を出さない", !warn);
 
   /* ---- E：旧い記録（戻したファイルから） ---- */
@@ -190,14 +211,16 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     .every((k) => JSON.stringify(x[k]) === JSON.stringify(OLD[k]));
   t.check("旧い形の記録を読み込める（言葉も結果も書き換えない）", keep(E), JSON.stringify(E));
   await page.waitForTimeout(300);
-  const row = await page.evaluate(() => [...document.querySelectorAll("#screen-diet .urge-row.is-later")]
+  await openDrink();
+  const row = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .urge-row.is-later")]
     .map((r) => r.innerText).find((s) => /20:10/.test(s)) || "");
+  await closeDrink();
   t.check("表示では新しい札に読みかえる（旧い「もう少し待つ」は試したことの「少し待つ」）",
     /その他（旧）/.test(row) && /ストレス・疲れをほぐしたい/.test(row) && /別の飲み物/.test(row) && /少し待つ/.test(row)
     && !/疲れた|水を飲む|もう少し待つ/.test(row), row);
 
   // 詳細の紙を開いて、触らずに保存しても旧い記録は変わらない
-  await page.evaluate(() => [...document.querySelectorAll("#screen-diet .urge-row.is-later")].find((r) => /20:10/.test(r.innerText)).click());
+  await clickRow("20:10");
   await page.waitForSelector(".sheet.is-open .js-full");
   await page.click(".sheet.is-open .js-full");
   await page.waitForFunction(() => document.querySelector(".sheet.is-open .js-memo-in"));
@@ -209,7 +232,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("触らずに保存しても旧い記録は書き換わらない", keep(E2), JSON.stringify(E2));
 
   // 編集：結果を選ぶと「待つ」は試したことへ移り、旧い言葉はそのまま
-  await page.evaluate(() => [...document.querySelectorAll("#screen-diet .urge-row.is-later")].find((r) => /20:10/.test(r.innerText)).click());
+  await clickRow("20:10");
   await page.waitForSelector(".sheet.is-open .js-res");
   await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .js-out .chip")].find((x) => x.textContent.trim() === "飲んだ").click());
   await page.click(".sheet.is-open .js-save");

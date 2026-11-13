@@ -1,15 +1,15 @@
 /* からだの形（R4・2026年11月11日。docs/redesign.md 6節）。
 
-   - 区画の帯（.seg）は無い。上から 四つの札 → 体重と食事（横に二つ）→ 今日の食事 → 飲みたくなった → 体重の推移
+   - 区画の帯（.seg）は無い。上から 四つの札 → 体重と食事（横に二つ）→ 今日の食事 → 体重の推移
    - どれもカード（角が丸く、地が紙と違う）。輪は無い
    - 四つの札：歩数・総消費・睡眠・飲酒。名前は四つの別の色、値は太い丸い字で札からはみ出さない、下に7日ぶんの棒
      （その日だけ濃く、前の六日は薄い）
    - 体重は 36px の数と「7日平均・傾き」、食事は合計と入れた枠の色の帯。押すとそれぞれの紙
    - 今日の食事の行は 60px（--row-h-card）で、左に 46px の枠の色の台。AI推計のひと言と二つのボタンはカードの底
-   - 「飲みたくなった」は山吹の淡い塗り。目標は藍の点線
+   - 「飲みたくなった」・週の一行は画面に無い（お酒の紙の中）。目標は藍の点線
    - 「お酒を足すと」・PFC の数・熱量比は出さない。絵文字なし
-   - iPad 縦（820px）は二段：左に体重・食事と今日の食事、右に推移と飲みたくなった。体重の下は詰まる（隣の推移に引っぱられない）
-   - 広い幅（1440px＝中身 1184px）は札の下に三段：体重・食事・飲みたくなった｜今日の食事｜推移
+   - iPad 縦（820px）は二段：左に体重・食事と今日の食事、右に推移。体重の下は詰まる（隣の推移に引っぱられない）
+   - 広い幅（1440px＝中身 1184px）は札の下に三段：体重・食事｜今日の食事｜推移
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diet-panes.js */
 const { open, checker } = require("./lib");
@@ -90,8 +90,8 @@ const { open, checker } = require("./lib");
   const r = await read();
   t.check("区画の帯も輪も無い", !r.seg && !r.ring);
   t.check("上から 札 → 体重と食事 → 今日の食事 → 飲みたくなった → 推移",
-    r.body.b <= r.kg.t && r.kg.t === r.kcal.t && r.kg.r < r.kcal.l && r.kg.b <= r.meals.t && r.meals.b <= r.urge.t && r.urge.b <= r.chart.t,
-    JSON.stringify([r.body, r.kg, r.kcal, r.meals, r.urge, r.chart].map((x) => x && [x.l, x.t, x.r, x.b])));
+    r.body.b <= r.kg.t && r.kg.t === r.kcal.t && r.kg.r < r.kcal.l && r.kg.b <= r.meals.t && r.meals.b <= r.chart.t,
+    JSON.stringify([r.body, r.kg, r.kcal, r.meals, r.chart].map((x) => x && [x.l, x.t, x.r, x.b])));
   t.check("どれも丸角のカードで、地は紙と違う", [r.kg, r.kcal, r.list, r.chart].every((x) => x.radius >= 12 && x.bg !== r.sheetBg),
     r.sheetBg + " " + JSON.stringify([r.kg, r.list, r.chart].map((x) => [x.radius, x.bg])));
   t.check("四つの札：歩数・総消費・睡眠・飲酒、名前は四つの別の色", r.mets.map((m) => m.type).join() === "steps,burned,sleep,drink"
@@ -103,8 +103,7 @@ const { open, checker } = require("./lib");
   t.check("体重は 36px の数と「7日平均・傾き」", r.kgFs >= 35 && /7日平均 \d+\.\d・[+−-]?\d+\.\d \/週/.test(r.kgText), `${r.kgFs} ${r.kgText}`);
   t.check("食事のカードに入れた枠の色の帯", r.stack.length >= 1 && r.stack.every((c) => /is-(breakfast|lunch|dinner|snack|other|drink)/.test(c)), JSON.stringify(r.stack));
   t.check("今日の食事の行は 60px・左に 46px の台", r.rows.length === 4 && r.rows.every((x) => x.h >= 60 && x.tile === 46), JSON.stringify(r.rows));
-  t.check("「飲みたくなった」は山吹の淡い塗り（明るく、赤・緑が青より強い）",
-    r.urgeBg && r.urgeBg.b > 190 && r.urgeBg.r > r.urgeBg.b && r.urgeBg.g > r.urgeBg.b, JSON.stringify(r.urgeBg));
+  t.check("画面に「飲みたくなった」・週の一行は無い（お酒の紙の中）", r.urgeBg === null && !r.urge && !r.wk, JSON.stringify([r.urge, r.wk]));
   t.check("目標は藍の点線（下の札も藍）", r.goalDash && r.goalDash !== "none" && r.goalInk === r.aiInk, `${r.goalDash} ${r.goalInk} ${r.aiInk}`);
   t.check("グラフはカードの幅いっぱい", r.chartW > r.chartInner - 40, `${r.chartW} / ${r.chartInner}`);
   t.check("AI推計のひと言と二つのボタンはカードの底、小見出しの右に AI推計", r.noteIn && r.aiOpen);
@@ -119,7 +118,6 @@ const { open, checker } = require("./lib");
     && m.meals.l === m.kg.l && m.meals.r === m.kcal.r && m.meals.r < m.chart.l, JSON.stringify([m.kg, m.kcal, m.meals, m.chart].map((x) => [x.l, x.t, x.r, x.b])));
   t.check("iPad 縦：体重の下はすぐ今日の食事（推移の背に引っぱられない）", m.meals.t - m.kg.b <= 24 && m.chart.b > m.kg.b + 30,
     `${m.kg.b} → ${m.meals.t}（推移 ${m.chart.b}）`);
-  t.check("iPad 縦：飲みたくなったは推移のすぐ下", m.urge.l >= m.chart.l && m.urge.t - m.chart.b <= 24, `${m.chart.b} → ${m.urge.t}・週の一行 ${JSON.stringify(m.wk)}`);
   t.check("iPad 縦：札は一段（四つ横に）", new Set(m.mets.map((x) => x.type)).size === 4 && m.mets.every((x) => x.over <= 1));
 
   /* ---- 広い幅（1440px）：札の下に三段 ---- */
@@ -129,7 +127,6 @@ const { open, checker } = require("./lib");
   t.check("広い幅：体重と食事は左に縦、今日の食事は真ん中、推移は右", w.kg.l === w.kcal.l && w.kcal.t > w.kg.b - 1
     && w.kg.r < w.meals.l && w.meals.r < w.chart.l && Math.abs(w.meals.t - w.kg.t) <= 2 && Math.abs(w.chart.t - w.kg.t) <= 2,
     JSON.stringify([w.kg, w.kcal, w.meals, w.chart].map((x) => [x.l, x.t, x.r, x.b])));
-  t.check("広い幅：飲みたくなったは食事のすぐ下（左の段）", w.urge.l === w.kg.l && w.urge.t - w.kcal.b <= 24, `${w.kcal.b} → ${w.urge.t}`);
 
   t.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
