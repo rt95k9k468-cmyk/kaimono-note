@@ -2411,6 +2411,7 @@
     wrap.append(row);
 
     row.querySelector(".check").addEventListener("click", (e) => tick(t.id, e.currentTarget));
+    holdSkip(row.querySelector(".check"), t.id);
     row.querySelector(".fav").addEventListener("click", () => {
       store.updateTodo(t.id, { flagged: !t.flagged });
       haptic(12);
@@ -2436,8 +2437,39 @@
   /* いま動いている行。二度押しで二重に走らせないための札。 */
   const finishing = new Set();
 
+  /* 完了ボタンの長押し＝「できなかった」（−）で終わらせる（手順の長押しと同じ 500ms）。確定したあとの同じ指の
+     click は、描き直しで新しいボタンに届くので、todo の id で見張って tick の頭で弾く（新しい pointerdown で消す）。 */
+  const todoHoldAt = new Map();
+  function holdSkip(btn, id) {
+    let timer = 0;
+    const clear = () => { clearTimeout(timer); timer = 0; };
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      todoHoldAt.delete(id);
+      clear();
+      timer = setTimeout(() => {
+        timer = 0;
+        const t = store.getTodo(id);
+        if (!t || t.done || finishing.has(id)) return;
+        todoHoldAt.set(id, Date.now());
+        KN.motion.fire("warn", btn);
+        const res = store.skipTodo(id);
+        if (!res) return;
+        const acts = [{ label: "元に戻す", onClick: res.undo }];
+        KN.ui.toast(`「${t.title}」${res.repeated ? `は次は ${formatDay(res.due)}` : "を、できなかったことに"}`, { actions: acts,
+          say: `「${t.title}」を、できなかったことにしました` });
+      }, 500);
+    });
+    btn.addEventListener("pointerup", clear);
+    btn.addEventListener("pointercancel", clear);
+    btn.addEventListener("pointerleave", clear);
+    btn.addEventListener("touchmove", clear, { passive: true });   // 指が動いたら（送り・滑らせ）長押しではない
+  }
+
   function tick(id, checkEl) {
     if (finishing.has(id)) return;
+    const heldAt = todoHoldAt.get(id);
+    if (heldAt && Date.now() - heldAt < 2000) return;   // 長押しを決めた同じ指の click
     const t = store.getTodo(id);
     const wasDone = t.done;
     const row = checkEl && checkEl.closest(".item");
@@ -3139,6 +3171,7 @@
         </div>
       `);
       r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
+      holdSkip(r.querySelector(".check"), t.id);
       KN.ui.rowMenu(r, () => rowMenuOf(t.id, r));
       return r;
     };
@@ -3336,6 +3369,7 @@
         </div>
       `);
       r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); tick(t.id, e.currentTarget); });
+      holdSkip(r.querySelector(".check"), t.id);
       KN.ui.rowMenu(r, () => rowMenuOf(t.id, r));
       return r;
     };
@@ -6538,9 +6572,9 @@
           : html`<span class="tl-doneat">${it.at ? tlClock(it.at) : ""}</span>`}
         ${t.trace
           ? html`<button class="check is-trace" role="checkbox" aria-checked="true"
-                  aria-label="${t.title} を、済ませていないことにする">${icon("check")}</button>`
+                  aria-label="${t.title} を、済ませていないことにする">${icon(t.skipped ? "minus" : "check")}</button>`
           : html`<button class="check" role="checkbox" aria-checked="${String(!!t.done)}"
-                  aria-label="${t.title} を終わりにする">${icon("check")}</button>`}
+                  aria-label="${t.title} を終わりにする">${icon(t.done && t.skipped ? "minus" : "check")}</button>`}
         <button class="tl-open" type="button"><span class="item-name">${t.title}</span></button>
       </li>
     `);
@@ -6553,6 +6587,7 @@
       if (t.trace) { untrace(t); return; }
       tick(t.id, e.currentTarget);
     });
+    if (!t.trace && !t.done) holdSkip(li.querySelector("button.check"), t.id);
     return li;
   }
 
@@ -6661,13 +6696,13 @@
                 押すと記録を消して、元を今日へ戻します。 */""}
           ${t.trace
             ? html`<button class="check is-trace" role="checkbox" aria-checked="true"
-                    aria-label="${t.title} を、済ませていないことにする">${icon("check")}</button>`
+                    aria-label="${t.title} を、済ませていないことにする">${icon(t.skipped ? "minus" : "check")}</button>`
             : html`<button class="check ${t.repeat ? "is-repeat" : ""}" role="checkbox"
                     aria-checked="${String(!!t.done)}"
                     aria-label="${t.title} を終わりにする">
                 ${t.repeat
                   ? html`${icon("check")}<span class="check-repeat">${icon("repeat")}</span>`
-                  : icon("check")}
+                  : icon(t.done && t.skipped ? "minus" : "check")}
               </button>`}
         </div>
       </li>
@@ -6692,6 +6727,7 @@
       editDoneAt(t.id, at);
     });
     const box = li.querySelector("button.check");
+    if (box && !t.trace && !t.done) holdSkip(box, t.id);
     if (box) {
       box.addEventListener("click", (e) => {
         e.stopPropagation();

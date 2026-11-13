@@ -208,6 +208,28 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   await page.waitForTimeout(1500);
   c.check("指先の震え（4px）なら押したことになる", (await doneCount()) === n0 + 1);
 
+  /* やること本体の丸の長押し＝「できなかった」（−）で終わる（記録に skipped で残る・すぐ押し直し＝済み）。 */
+  await page.evaluate(() => KN.app.showScreen("diet")); await page.evaluate(() => KN.app.showScreen("todo"));
+  await page.waitForTimeout(600);
+  const boxOf = (title) => page.evaluate((title) => {
+    const r = [...document.querySelectorAll("#screen-todo .tl-row")].find((x) => x.querySelector(".item-name") && x.querySelector(".item-name").textContent === title);
+    if (!r) return null;
+    const b = r.querySelector("button.check");
+    b.scrollIntoView({ block: "center" });
+    const q = b.getBoundingClientRect();
+    return { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+  }, title);
+  const stOf = (title) => page.evaluate((title) => { const t = KN.store.get().todos.find((x) => x.title === title); return t && { done: t.done, skipped: !!t.skipped }; }, title);
+  await page.waitForTimeout(400);
+  let bx = await boxOf("用事3");
+  await tap(bx.x, bx.y, 750);
+  await page.waitForTimeout(500);
+  c.check("やることの丸：長押しは −（できなかった）で終わる", JSON.stringify(await stOf("用事3")) === '{"done":true,"skipped":true}', JSON.stringify(await stOf("用事3")));
+  bx = await boxOf("用事4");
+  await tap(bx.x, bx.y, 60);
+  await page.waitForTimeout(1200);
+  c.check("やることの丸：短く押せば済み（−ではない）", JSON.stringify(await stOf("用事4")) === '{"done":true,"skipped":false}', JSON.stringify(await stOf("用事4")));
+
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
   c.done();

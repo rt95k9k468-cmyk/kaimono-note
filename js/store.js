@@ -1020,6 +1020,8 @@
       subState: cleanSubState(t.subState),
       /* 「この回だけ」直したとき、くり返しの側が立たなくなる日。持っていない古い記録は []。 */
       skipDays: cleanSkipDays(t.skipDays),
+      /* 長押しで「できなかった」として終わらせた印（−）。done と一緒に立つ。持たない古い記録は false。 */
+      skipped: !!t.skipped,
       /* 自分で選んだ絵。決めていなければ null——その場合は題から絵を
          推す（KN.productIcons.find）のを、時間割の側がやります。買うもの
          の商品アイコンと同じ選び方で、「迷ったときは丸のまま」ではなく、
@@ -2965,6 +2967,7 @@
       } else {
         t.done = !t.done;
         t.doneAt = t.done ? today() : null;
+        if (!t.done) t.skipped = false;
         // Un-ticking is 「まだだった」, which also means it is back on the list.
         if (!t.done) { t.archived = false; t.archivedAt = null; }
       }
@@ -2986,6 +2989,17 @@
         if (traceId) s.todos = s.todos.filter((x) => x.id !== traceId);
       }),
     };
+  }
+
+  /** 長押し＝「できなかった」（−）として終わらせる。済ませたときと同じく一覧から消え、記録に − で残る。
+      くり返しは、その日の一回だけ（写しに印）。toggleTodo の戻り値と同じ形を返す（undo が印も外す）。 */
+  function skipTodo(id) {
+    const before = getTodo(id);
+    if (!before || before.done) return null;
+    const res = toggleTodo(id);
+    const target = res.repeated ? res.doneId : id;
+    if (target) update((s) => { const t = s.todos.find((x) => x.id === target); if (t) t.skipped = true; });
+    return { ...res, skipped: true, undo: () => { res.undo(); update((s) => { const t = s.todos.find((x) => x.id === id); if (t) t.skipped = false; }); } };
   }
 
   /* ---------------- 活動（3.0 の A1。docs/roadmap-3.0.md） ----------------
@@ -5413,7 +5427,7 @@
     currentPrices, bestPrice, priceAt, taxRate, setTaxRate, lowestEver, lastPrice,
     addStore, addProduct, addItem, addPrice, setArchived,
     reorderProducts, sortProductsInCategory,
-    addTodo, buildTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
+    addTodo, buildTodo, importGoogle, unimportGoogle, pastCutoff, pastDay, isPastTodo, todoOut, bringTodos, googleIds, googleBatches, getTodo, updateTodo, editRepeating, removeTodo, toggleTodo, skipTodo, setDoneTime, undoTrace, usualMinutes, todoTitles, sortedTodos, todosDue, rescheduleOverdue, inWeek, carriedToday, carryWeek, settleCarried, passedToday, settlePassed, nextDue, snapToRule,
     tripCount, tripTodo, planTrip, unplanTrip,
     setSubs, toggleSub, toggleSubSkip, subCount, subStatus,
     dayFeed, monthDigest,
