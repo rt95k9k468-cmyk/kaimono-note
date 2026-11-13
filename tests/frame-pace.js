@@ -10,7 +10,12 @@
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/frame-pace.js
    RUNS=<n> で n 回測って中央値（既定 3）。「並べ直し」は手つきのあいだのレイアウトの回数（CDP の
    LayoutCount）。動くあいだ毎フレーム並べ直していれば、フレームの数に近くなる。
-   CSS=<ファイル> を付けると、その CSS を差し込んで測る（V5 の見比べ。コードは変えずに案を測る）。 */
+   CSS=<ファイル> を付けると、その CSS を差し込んで測る（V5 の見比べ。コードは変えずに案を測る）。
+   TRACE=<手つき,…>（例 TRACE=帯を押す,紙を開く RUNS=1）：その手つきだけ Chromium の trace を録り、**どの拍が長いか**を出す。
+   拍＝rAF の呼び出しから次の呼び出しまでが 22ms 超の所（数える「長い」は ts の間隔で、長い拍の一つあとのコマに出る）。
+   拍ごとに、主の糸で走ったもの（1.5ms 以上。強いた様式・並べ直しは呼び元つき）・様式を無効にした書き込み（★＝根の下
+   ぜんぶ）・JS の関数（js/ だけ・含む時間）。録るあいだは 3〜5 割遅い（数は TRACE なしで）。指で送るあいだの長いコマは
+   主の糸が空いている（Chromium が rAF を間引く。アプリの重さではない）。 */
 const fs = require("fs");
 const { open, checker } = require("./lib");
 
@@ -18,6 +23,78 @@ const EXTRA = process.env.CSS ? fs.readFileSync(process.env.CSS, "utf8") : "";
 
 const RUNS = Math.max(1, Number(process.env.RUNS) || 3);
 const LONG = 20;
+const TRACE = (process.env.TRACE || "").split(",").filter(Boolean);
+const CATS = ["-*", "devtools.timeline", "disabled-by-default-devtools.timeline", "blink.user_timing", "disabled-by-default-v8.cpu_profiler",
+  "disabled-by-default-devtools.timeline.stack", "disabled-by-default-devtools.timeline.invalidationTracking"];
+
+/** TRACE：長い拍ごとに、主の糸で何が走ったか。evs は trace の出来事、cbs は rAF の呼び出しの時刻（performance.now）。 */
+function beats(name, evs, cbs) {
+  const m0 = evs.find((e) => e.name === "pace:0");
+  if (!m0 || cbs.length < 2) return;
+  const base = (u) => String(u || "").replace(/^.*\//, "");
+  const ms = (us) => (us / 1000).toFixed(1);
+  const T = (p) => p * 1000 + (m0.ts - cbs[0] * 1000);
+  const mine = evs.filter((e) => e.pid === m0.pid && e.tid === m0.tid).sort((a, b) => a.ts - b.ts || (b.dur || 0) - (a.dur || 0));
+  const press = mine.find((e) => e.name === "EventDispatch" && /^(pointerdown|touchstart)$/.test((e.args.data || {}).type));
+  const t0 = press ? press.ts : T(cbs[0]);
+  const rel = (ts) => ((ts - t0) / 1000).toFixed(0);
+  const who = (st) => (st && st.length ? ` ←${st.slice(0, 4).map((x) => `${x.functionName || "?"}@${base(x.url)}:${x.lineNumber}`).join(" < ")}` : "");
+  const gaps = cbs.slice(1).map((c, i) => c - cbs[i]);
+  console.log(`\n== ${name}：呼び出しの間隔 ${gaps.map((g) => (g > 22 ? `[${g.toFixed(0)}]` : g.toFixed(0))).join(" ")}`);
+  /* JS の標本（時刻・関数の鎖） */
+  const samples = [];
+  for (const p of mine.filter((e) => e.name === "Profile")) {
+    const nodes = new Map();
+    let t = p.args.data.startTime;
+    for (const c of evs.filter((e) => e.name === "ProfileChunk" && e.id === p.id).sort((a, b) => a.ts - b.ts)) {
+      const cp = c.args.data.cpuProfile || {};
+      (cp.nodes || []).forEach((n) => nodes.set(n.id, n));
+      (cp.samples || []).forEach((id, i) => { t += (c.args.data.timeDeltas || [])[i] || 0; samples.push([t, id, nodes]); });
+    }
+  }
+  samples.sort((a, b) => a[0] - b[0]);
+  gaps.forEach((g, i) => {
+    if (g <= 22) return;
+    const a = T(cbs[i]), b = T(cbs[i + 1]), a0 = T(cbs[Math.max(0, i - 1)]);
+    console.log(`  -- コマ ${i + 1}：押してから ${rel(a)}〜${rel(b)}ms（${g.toFixed(0)}ms）`);
+    const open = [];
+    const inv = new Map(), whole = new Set();
+    for (const e of mine) {
+      const d = (e.args && (e.args.data || e.args.beginData)) || {};
+      if (e.ts >= a0 && e.ts < b) {
+        /* 無効にした書き込みは一つ前の拍から（動きの終わりの出来事は前のコマの頭で配られる）。 */
+        if (e.name === "StyleInvalidatorInvalidationTracking" && /allDescendantsMightBeInvalid/.test(JSON.stringify(d.invalidationList || ""))) whole.add(d.nodeName);
+        if (e.name === "StyleRecalcInvalidationTracking" && d.stackTrace && d.stackTrace.length) {
+          const k = `${d.nodeName}｜${d.reason || ""}${who(d.stackTrace)}`;
+          inv.set(k, (inv.get(k) || 0) + 1);
+        }
+      }
+      if (e.ph !== "X" || e.ts + e.dur <= a || e.ts >= b || /RunTask|v8\.callFunction|GC_TIME/.test(e.name)) continue;
+      while (open.length && open[open.length - 1] <= e.ts) open.pop();
+      if (e.dur >= 1500) {
+        const txt = e.name === "EventDispatch" ? d.type : e.name === "FunctionCall" ? `${d.functionName || "(無名)"} ${base(d.url)}:${d.lineNumber}`
+          : e.name === "UpdateLayoutTree" ? `要素 ${e.args.elementCount}${who(d.stackTrace)}`
+          : e.name === "Layout" ? `${d.dirtyObjects}/${d.totalObjects}${who(d.stackTrace)}` : "";
+        console.log(`    ${rel(e.ts).padStart(5)} ${"· ".repeat(open.length)}${e.name} ${ms(e.dur)} ${txt || ""}`);
+      }
+      open.push(e.ts + e.dur);
+    }
+    [...inv.entries()].sort((x, y) => y[1] - x[1]).slice(0, 8).forEach(([k, n]) =>
+      console.log(`    無効 ×${n} ${whole.has(k.split("｜")[0]) ? "★" : ""}${k.slice(0, 300)}`));
+    if (g < 40) return;
+    const incl = new Map();
+    samples.forEach(([t, id, nodes], k) => {
+      if (t < a || t >= b || k + 1 >= samples.length) return;
+      const seen = new Set();
+      for (let n = nodes.get(id); n; n = n.parent != null ? nodes.get(n.parent) : null) {
+        const cf = n.callFrame || {};
+        const key = `${cf.functionName || "(無名)"} ${base(cf.url)}:${(cf.lineNumber || 0) + 1}`;
+        if (/\/js\//.test(cf.url || "") && !seen.has(key)) { seen.add(key); incl.set(key, (incl.get(key) || 0) + samples[k + 1][0] - t); }
+      }
+    });
+    console.log(`    JS: ${[...incl.entries()].sort((x, y) => y[1] - x[1]).slice(0, 14).map(([k, v]) => `${ms(v)} ${k}`).join("／")}`);
+  });
+}
 
 async function once() {
   let cdp;
@@ -28,10 +105,13 @@ async function once() {
       await pg.addInitScript(() => {
         /* 間隔を集める。start() で始め、stop() で返す。輪は回ごとに一本（止めた直後に始めると、前の輪の
            最後の一コマが生き残って二本回り、コマが倍に数えられた——「暦を出す」の 153）。 */
-        let run = 0, last = 0, gaps = [];
+        let run = 0, last = 0, gaps = [], cbs = [];
         const loop = (id) => {
           const tick = (ts) => {
             if (id !== run) return;
+            /* TRACE 用：呼び出しの時刻。最初の一コマに印を打ち、trace の時計と合わせる。 */
+            if (!cbs.length) performance.mark("pace:0");
+            cbs.push(performance.now());
             if (last) gaps.push(ts - last);
             last = ts;
             requestAnimationFrame(tick);
@@ -39,8 +119,9 @@ async function once() {
           requestAnimationFrame(tick);
         };
         window.__pace = {
-          start() { last = 0; gaps = []; loop(++run); },
+          start() { last = 0; gaps = []; cbs = []; loop(++run); },
           stop() { run++; return gaps; },
+          cbs: () => cbs,
         };
       });
       if (EXTRA) {
@@ -102,12 +183,15 @@ async function once() {
   const lay = {};
   let name = "";
   const measure = async (act, settle = 900) => {
+    const tr = TRACE.includes(name);
+    if (tr) await browser.startTracing(page, { categories: CATS });
     const l0 = await layouts();
     await page.evaluate(() => window.__pace.start());
     await act();
     await page.waitForTimeout(settle);
     const gaps = await page.evaluate(() => window.__pace.stop());
     lay[name] = (await layouts()) - l0;
+    if (tr) beats(name, JSON.parse((await browser.stopTracing()).toString("utf8")).traceEvents, await page.evaluate(() => window.__pace.cbs()));
     return gaps;
   };
 
