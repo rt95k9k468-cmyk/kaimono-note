@@ -604,6 +604,7 @@ daily には置かない。動きの足し方は上の二つ（`is-m-arrive` の
   組み替えは大きい。主の糸を空けておく（上の決めごと）ほうで受ける。
 - 自動の控え（`backup.js` の `maybeHourly`）は、開いて数秒後に一度、主の糸で 100ms 前後（1年ぶん・CPU 1倍）。
   backup.js は要るとき以外触らない約束なので、そのまま。
+- 押した拍を削る（実機 30ms 前後・縮む返事が先。11月13日）——`content-visibility` は FLIP と影に、先に組むは「中身 0」に触れる。
 
 出典：Deber, Jota, Forlines, Wigdor「How Much Faster is Fast Enough?」CHI 2015／Jota, Ng, Dietz, Wigdor「How Fast is Fast
 Enough?」CHI 2013／Apple WWDC 2018「Designing Fluid Interfaces」／WebKit Bugzilla 312407・312015（`linear()` と
