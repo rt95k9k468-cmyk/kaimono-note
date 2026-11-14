@@ -3098,6 +3098,20 @@ a.btn { text-decoration: none; }
 .think-card.is-main .think-card-art { width: 84px; height: 70px; }
 .think-card-t { position: relative; color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.35; word-break: keep-all; }
 .think-card.is-main .think-card-t { color: var(--c-text-on); }
+/* 電話の最初の一画面は記録へ（W1・docs/redesign.md 2節）：候の札は額 58px・名 22px の一段、書く口は 60px の帯。順は変えない（daily-rules）。 */
+@media (max-width: 639.98px) {
+  .arc-season { gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); }
+  .arc-season-art { width: 58px; }
+  .arc-season-main { gap: 0; }
+  .arc-season-row:nth-child(2) .arc-season-k { display: none; }
+  .arc-season-name { font-size: calc(22px * var(--fs-k)); }
+  .arc-season-row:nth-child(3) { margin-top: 0; padding-top: 0; border-top: 0; }
+  .arc-season-row:nth-child(n+3) { font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); }
+  .think-card { height: 60px; justify-content: center; }
+  .think-card-t { z-index: 1; }
+  .think-card-art, .think-card.is-main .think-card-art { top: 50%; right: -8px; translate: 0 -50%; width: 40px; height: 40px; }
+  .think-card.is-main .think-card-art { width: 46px; height: 46px; }
+}
 
 .think-today {
   position: relative; padding: var(--sp-3) var(--sp-4) var(--sp-4); border-radius: var(--r-lg); overflow: hidden;
