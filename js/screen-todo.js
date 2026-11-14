@@ -2442,11 +2442,19 @@
   const todoHoldAt = new Map();
   function holdSkip(btn, id) {
     let timer = 0;
-    const clear = () => { clearTimeout(timer); timer = 0; };
+    let x0 = 0, y0 = 0, pid = -1;
+    const clear = () => { clearTimeout(timer); timer = 0; document.removeEventListener("pointermove", moved); };
+    /* 指は押さえているあいだ必ず少し揺れる。touchmove で止めると実機では長押しが決まらない——許容（HOLD_SLOP）を超えたときだけ。 */
+    const moved = (ev) => {
+      if (ev.pointerId !== pid || !timer) return;
+      if (Math.abs(ev.clientX - x0) > KN.gesture.HOLD_SLOP || Math.abs(ev.clientY - y0) > KN.gesture.HOLD_SLOP) clear();
+    };
     btn.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       todoHoldAt.delete(id);
       clear();
+      x0 = e.clientX; y0 = e.clientY; pid = e.pointerId;
+      document.addEventListener("pointermove", moved);
       timer = setTimeout(() => {
         timer = 0;
         const t = store.getTodo(id);
@@ -2462,8 +2470,11 @@
     });
     btn.addEventListener("pointerup", clear);
     btn.addEventListener("pointercancel", clear);
-    btn.addEventListener("pointerleave", clear);
-    btn.addEventListener("touchmove", clear, { passive: true });   // 指が動いたら（送り・滑らせ）長押しではない
+    btn.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") clear(); });
+    btn.addEventListener("touchmove", (e) => {
+      const q = e.touches[0] || e.changedTouches[0];
+      if (q && (Math.abs(q.clientX - x0) > KN.gesture.HOLD_SLOP || Math.abs(q.clientY - y0) > KN.gesture.HOLD_SLOP)) clear();
+    }, { passive: true });   // 指は丸の外へ少しはみ出しても続ける
   }
 
   function tick(id, checkEl) {

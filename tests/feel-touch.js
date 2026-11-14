@@ -230,6 +230,16 @@ const UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/6
   await page.waitForTimeout(1200);
   c.check("やることの丸：短く押せば済み（−ではない）", JSON.stringify(await stOf("用事4")) === '{"done":true,"skipped":false}', JSON.stringify(await stOf("用事4")));
 
+  /* 実機の指は押さえるあいだ揺れる（touchmove が出る）。許容内の揺れなら長押しは決まる。 */
+  bx = await boxOf("用事5");
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: pts(bx.x, bx.y) });
+  await page.waitForTimeout(150);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: pts(bx.x + 3, bx.y + 2) });
+  await page.waitForTimeout(700);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(500);
+  c.check("やることの丸：指が少し揺れても長押しは −", JSON.stringify(await stOf("用事5")) === '{"done":true,"skipped":true}', JSON.stringify(await stOf("用事5")));
+
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
   c.done();

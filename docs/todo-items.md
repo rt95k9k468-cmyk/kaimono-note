@@ -163,7 +163,7 @@ click を通してしまうので。すぐ押し直した新しいタップは�
 - `skipDays` は欄を足しただけで移行なし（持たない古い記録は `[]`、`cleanSkipDays` は function 宣言）。
 
 ### やること本体の長押し＝「できなかった」（11月13日）
-- 完了の丸を 500ms 長押し → `store.skipTodo`：済ませたときと同じく一覧から消え、記録は `done:true, skipped:true`（− 印）。くり返しはその日の写しにだけ印。戻すと `skipped` も外れる。欄 `skipped` は足しただけ（無い記録は false）。確定後の同じ指の click は `todoHoldAt` で弾く。手順の長押しと同じ作り。
+- 完了の丸を 500ms 長押し → `store.skipTodo`：済ませたときと同じく一覧から消え、記録は `done:true, skipped:true`（− 印）。くり返しはその日の写しにだけ印。戻すと `skipped` も外れる。欄 `skipped` は足しただけ（無い記録は false）。確定後の同じ指の click は `todoHoldAt` で弾く。手順の長押しと同じ作り。指の揺れは `HOLD_SLOP`（8px）まで許す（touchmove で即止めると実機で決まらなかった・11月14日）。
 
 ### 済ませてから◯日（`repeat: "after"`・R6・2026年9月28日）
 
