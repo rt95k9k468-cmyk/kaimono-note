@@ -141,7 +141,7 @@ JS の動き（Web Animations・毎フレーム）にはその一括が効かな
 | 縮む | 小さい丸（✓・★・±・絵ボタン・暦の矢印・設定の戻る・欄の ✕） | `scale: var(--press-dot)` | .9 |
 | 沈む | 行・升（買うもの・用事・ノート・アーカイブ・設定・daily の行・暦の升） | `background: var(--press-sink)` | 文字色 8% を `--c-surface` へ |
 | 薄まる | 字だけの押すもの（題・「今日」・小見出し・並べ替え・⋯の行・飲みたくなった） | `opacity: var(--press-fade)` | .55 |
-| 押せない | `:disabled`・`[disabled]`・`[aria-disabled]` | `opacity: var(--press-off)` | .4 |
+| 押せない | `:disabled`・`[disabled]`・`[aria-disabled]` | `opacity: var(--press-off)` | .4（主のボタンは薄めず、沈んだ面に墨2） |
 
 - **縮むのは `scale:`**（`transform` に書かない。位置を `transform` に持つ物で位置が飛ぶ）。transition にも
   `scale` を足す。
