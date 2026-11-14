@@ -1545,7 +1545,7 @@
       due: null, deadline: null, repeat: null, repeatDays: [], repeatNth: null, part: null, time: null,
       minutes: null, lead: null, shelf: null, waitFor: null, review: null, slips: [], editedAt: null,
       notifiedFor: null, memo: "", flagged: false, done: false, doneAt: null, archived: false,
-      archivedAt: null, trace: false, shop: false, subs: [], subState: {}, skipDays: [], icon: null,
+      archivedAt: null, trace: false, shop: false, subs: [], subState: {}, skipDays: [], skipped: false, icon: null,
     };
   }
   function slimTodos(s) {
@@ -2089,6 +2089,7 @@
       subs: cleanSubs(subs),
       subState: {},
       skipDays: [],
+      skipped: false,
       icon: cleanIcon(icon),
       createdAt: today(),
       order: 0,
@@ -2672,7 +2673,7 @@
       const sub0 = (before.subs || []);
       const copy = {
         ...src, id: made, repeat: null, repeatDays: [], repeatNth: null, repeatEvery: null,
-        skipDays: [], subState: {}, notifiedFor: null, trace: false, done: false, doneAt: null,
+        skipDays: [], subState: {}, notifiedFor: null, trace: false, done: false, doneAt: null, skipped: false,
         archived: false, archivedAt: null,
         due: day,
         subs: sub0.map((x) => { const st = subStatus(before, x, day); return { ...x, done: st.done, skipped: st.skipped }; }),
