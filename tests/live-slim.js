@@ -17,7 +17,7 @@ const KEY = "kaimono-note-v2";
 const ALLOWED = [
   "due", "deadline", "repeat", "repeatDays", "repeatNth", "part", "time", "minutes", "lead", "shelf", "waitFor",
   "review", "slips", "editedAt", "notifiedFor", "memo", "flagged", "done", "doneAt", "archived", "archivedAt",
-  "trace", "shop", "subs", "subState", "skipDays", "icon",
+  "trace", "shop", "subs", "subState", "skipDays", "skipped", "icon",
 ];
 /* 前の版：詰める一行を抜いた store.js。 */
 const SLIM_LINE = `    try { s = slimTodos(s); } catch (err) { console.error("live slim", err); }\n`;
@@ -103,6 +103,7 @@ const SLIM_LINE = `    try { s = slimTodos(s); } catch (err) { console.error("li
       subs: [[], [{ id: "s1", title: "手順", done: true, skipped: false }], [{ title: "" }]],
       subState: [{}, { "2026-10-22": { s1: "done" } }, { bad: 1 }],
       skipDays: [[], ["2026-10-21"], ["x"]],
+      skipped: [false, true],
       icon: [null, icon, "no-such-icon"],
       createdAt: ["2026-10-01", undefined],
       order: [0, 5, undefined],
