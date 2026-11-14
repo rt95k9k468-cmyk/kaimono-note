@@ -537,7 +537,6 @@
 .cal.is-rows.is-settling .cal-grid > .cal-day.is-off-week.is-out { animation-name: cal-row, cal-off-out; }
 @keyframes cal-row { from { translate: 0 calc(var(--cal-r, 0) * var(--cal-ds, 0px)); } to { translate: 0 0; } }
 .cal.is-rows .cal-ring { opacity: 0; }
-}
 
 .cal-wd {
   text-align: center;
@@ -1707,7 +1706,7 @@
 /* 丸い戻る。参考画像3と同じで、面を持った円。 */
 .set-back {
   flex: none;
-  width: 34px; height: 34px;
+  width: 40px; height: 40px;   /* 丸いボタン（redesign 4節） */
   display: grid;
   place-items: center;
   border-radius: var(--r-full);
@@ -1715,15 +1714,15 @@
   color: var(--c-text);
   box-shadow: var(--shadow-1);
   position: relative;
+  transition: scale var(--m-press) var(--ease);
 }
 .set-back svg { width: var(--ico); height: var(--ico); transform: rotate(180deg); }
-/* 絵は34pxでも、**指の的は44px**（.icon-btn と同じ手）。上下は帯の端で半端に切れるので 1px 余分に。 */
+/* 絵は40pxでも、**指の的は44px**（.icon-btn と同じ手）。上下は帯の端で半端に切れるので 1px 余分に。 */
 .set-back::after {
   content: "";
   position: absolute;
-  inset: -6px -5px;
+  inset: -3px -2px;
 }
-.set-back { transition: scale var(--m-press) var(--ease); }
 .set-back:active { scale: var(--press-dot); }
 
 .set-nav-title {
@@ -1740,7 +1739,7 @@
   transition: opacity var(--m-state) var(--ease);
 }
 .set-nav.is-titled .set-nav-title { opacity: 1; }
-.set-nav-pad { flex: none; width: 34px; }   /* 題をまん中に置くための空き */
+.set-nav-pad { flex: none; width: 40px; }   /* 題をまん中に置くための空き */
 
 .set-hero {
   margin: var(--sp-2) 0 var(--sp-4);
@@ -1961,12 +1960,8 @@
 }
 .set-tile svg { width: 18px; height: 18px; stroke-width: 2.1; }  /* 入れもの：設定の色の升 */
 
-/* 外観の行は、字ではなく**いまの色そのもの**を出します（参考画面と同じ）。 */
-.set-dot {
-  display: block;
-  width: 15px; height: 15px;
-  border-radius: var(--r-full);
-}
+/* 外観の行は、字ではなく**いまの色そのもの**を出します。丸にしない——歯車の知らせの点（控え・同期）と紛れるので、角丸の色札。 */
+.set-dot { display: block; width: 24px; height: 16px; border-radius: 5px; }
 
 /* 戻せない操作。**四角ではなく、赤い絵と赤い字**（参考画面の「アプリを
    初期化」と同じ）——色の付いた四角は「行き先」の印なので、そのまま
@@ -7285,6 +7280,8 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   font-family: var(--font-num); font-size: calc(14px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2);
 }
 #screen-todo .tl-list > li.tl-row > .tl-time:not(.is-fixed) { font-weight: var(--fw-regular); }
+/* 目盛りの時刻も札の時刻と同じ右端に（2本の縦の線にしない）。 */
+#screen-todo .tl-list .tl-hour { width: calc(var(--tl-gut) - 10px); padding-right: 0; }
 #screen-todo .tl-list > li.tl-row > .tl-rail { width: 5px; z-index: 1; border-radius: var(--r-md) 0 0 var(--r-md); overflow: hidden; }
 /* 過ぎてもまだの線は帯と同じ幅で帯の上を通る（帯と同じ重なり 1・あとに置くので前。押せる）。 */
 #screen-todo .tl-list > .tl-late-line { left: calc(var(--tl-gut) + 2.5px); width: 5px; }
@@ -7484,6 +7481,8 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .hl-bars i { flex: 1; height: 100%; border-radius: 2px; background: var(--mc); opacity: .28; transform-origin: 50% 100%; scale: 1 var(--h, 0); }
 .hl-bars i.is-now { opacity: 1; }
 .hl-bars i.is-none { visibility: hidden; }
+/* 飲酒の「—」（夕方まえ）は、棒も目安の線も伏せて「—」一つに（背は残す）。 */
+.hl-met.is-blank.js-drink .hl-bars { visibility: hidden; }
 .hl-bars b { position: absolute; inset: auto 0 calc(var(--g, 0) * 100% - 1px); border-top: 1px dotted var(--mc); opacity: .6; }
 .hl-sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); padding: 0 var(--sp-1); }
 /* 体重と食事：名前・36px の数・ひと言、下の端に細い線（体重）と入れた枠の色の帯（食事）。 */

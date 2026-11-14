@@ -179,4 +179,17 @@ for (const f of JS) {
 }
 t.check("UTC の日の切り出し（toISOString().slice(0, 10) ほか）が無い（日の鍵は dayKey()・todayKey()）", hits.length === 0, hits.join(", "));
 
+/* 3. css の括弧が釣り合う。余った `}` は黙って次の規則を一つ捨てる（11月12日に @media の頭だけ消え、暦の曜日の規則が
+   二日効いていなかった）。注釈と文字列は数えない。 */
+const css = fs.readdirSync(path.join(ROOT, "css")).filter((f) => f.endsWith(".css"));
+const braces = [];
+for (const f of css) {
+  const src = fs.readFileSync(path.join(ROOT, "css", f), "utf8").replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, " "))
+    .replace(/"[^"\n]*"|'[^'\n]*'/g, '""');
+  let d = 0;
+  src.split("\n").forEach((l, i) => { for (const ch of l) { if (ch === "{") d++; else if (ch === "}" && --d < 0) { braces.push(`${f}:${i + 1}`); d = 0; } } });
+  if (d) braces.push(`${f}: 閉じていない { が ${d}`);
+}
+t.check("css の { と } が釣り合う（余った } は次の規則を捨てる）", css.length > 0 && braces.length === 0, braces.join(", "));
+
 t.done();
