@@ -1,7 +1,8 @@
 /* 季節の絵（3.0 の E1、docs/roadmap-3.0.md・docs/season-art.md。2026年10月6日）。
-   写真（Wikimedia Commons・img/season-photo/）と広重『名所江戸百景』（NDL・img/season/）、どちらも72候すべてに一枚ずつ。
+   写真（Wikimedia Commons・img/season-photo/）と広重『名所江戸百景』（NDL・img/season/）、どちらも72候すべてに一枚ずつ。広重は MORE の46枚と日替わり（11月14日）。
    daily は装いを問わず写真（11月14日）。ノートの地は装いで：手帳は広重、モダンは色だけ。見るのは：
-   - 72候のどれも絵と出どころ（題・作者・所蔵・URL・理由）を持ち、絵のファイルが揃っている
+   - 72候のどれも絵と出どころ（題・作者・所蔵・URL・理由）を持ち、絵のファイルが揃っている。MORE も同じ。
+     同じ候の中で日ごとに替わり、題・URL は118枚どれも重ならない
    - 72候のどれも色を持つ。隣の候と同じ色ではない（候ごとに変わる）
    - daily は候の札の額に、選んでいる日の候の色と写真（R6。紙の地には敷かない）。過去の日を開けばその日の候
    - ノートの地に、今日の候の色と広重が敷かれる。ノートの設定で外せる
@@ -10,7 +11,7 @@
    - 置くのは daily とノートだけ（ほかのタブには無い）
    - 設定で外せる（既定は入）
    - 字の濃さの比（ノートの地）：本文の字と、背景のいちばん濃い所で 4.5:1 以上（明るい面・暗い面）
-   - 大きさ：img/season/ は1枚25KB・合計2MB、img/season-photo/ は1枚120KB・合計9MBまで。img/ 全体は .webp だけ・
+   - 大きさ：img/season/ は1枚25KB・合計3MB、img/season-photo/ は1枚120KB・合計9MBまで。img/ 全体は .webp だけ・
      1枚180KB・合計12MBまで（門で見張る）
    - sw.js は絵を別の名前のキャッシュ（kaimono-note- で始めない）に覚え、activate で前の名前の置き場を消す
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/season-art.js */
@@ -24,16 +25,16 @@ const ROOT = path.resolve(__dirname, "..");
   const c = checker("season-art");
 
   /* ---- 大きさ（ファイルだけ。門） ---- */
-  const filesOf = (name, oneKB, allMB) => {
+  const filesOf = (name, oneKB, allMB, re = /^k([0-6]\d|7[01])\.webp$/) => {
     const dir = path.join(ROOT, "img", name);
     const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => /\.webp$/.test(f)) : [];
     const sizes = files.map((f) => fs.statSync(path.join(dir, f)).size);
     c.check(`${name}：1枚${oneKB}KBまで`, sizes.every((n) => n <= oneKB * 1024), JSON.stringify(files.filter((f, i) => sizes[i] > oneKB * 1024)));
     c.check(`${name}：合計${allMB}MBまで`, sizes.reduce((a, b) => a + b, 0) <= allMB * 1024 * 1024);
-    c.check(`${name}：名前は k00〜k71`, files.every((f) => /^k([0-6]\d|7[01])\.webp$/.test(f)), JSON.stringify(files));
+    c.check(`${name}：名前は k00〜k71`, files.every((f) => re.test(f)), JSON.stringify(files));
     return files;
   };
-  const files = filesOf("season", 25, 2);
+  const files = filesOf("season", 25, 3, /^k([0-6]\d|7[01])[bc]?\.webp$/);
   const photos = filesOf("season-photo", 120, 9);
   /* img/ 全体：新しい置き場を足しても、うっかり大きな PNG/JPG を置いても門で止まる（空は tests/sky.js も見る） */
   const all = [];
@@ -67,10 +68,24 @@ const ROOT = path.resolve(__dirname, "..");
              badPhoto: Object.entries(A.PHOTO).filter(([k, a]) => !(a.file === `img/season-photo/k${String(k).padStart(2, "0")}.webp`
                && a.title && a.author && a.why && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(a.url)
                && /^(CC0|Public domain|CC BY(-SA)? [\d.]+)$/.test(a.license))).map(([k]) => k),
-             src: A.SOURCE };
+             src: A.SOURCE,
+             more: Object.values(A.MORE).flat().length,
+             badMore: Object.entries(A.MORE).flatMap(([k, l]) => l.map((a, i) => [k, i, a])).filter(([k, i, a]) => !(
+               a.file === A.fileOf(Number(k)).replace(".webp", "bc"[i] + ".webp") && a.title && a.author && a.holder
+               && /^https:\/\/dl\.ndl\.go\.jp\/pid\/\d+$/.test(a.url) && a.why)).map(([k, i]) => `${k}-${i}`),
+             uniq: new Set([...Object.values(A.ART), ...Object.values(A.MORE).flat()].map((a) => a.url)).size,
+             /* 00 は三枚・02 は二枚・14 は一枚。続く日で回り、写真（daily）は回らない */
+             days: [0, 2, 14].map((k) => ["2026-03-20", "2026-03-21", "2026-03-22", "2026-03-23"].map((d) => A.pick(A.ART, k, d).file)),
+             photoDays: ["2026-03-20", "2026-03-21"].map((d) => A.pick(A.PHOTO, 0, d).file),
+             };
   });
+  c.check("MORE：46枚どれも絵と出どころ・名前は kNNb／kNNc", pal.more === 46 && pal.badMore.length === 0, JSON.stringify(pal.badMore));
+  c.check("広重118枚の URL が重ならない", pal.uniq === 118, String(pal.uniq));
+  c.check("同じ候で日替わり（三枚・二枚・一枚）・写真は一枚のまま", new Set(pal.days[0].slice(0, 3)).size === 3
+    && pal.days[0][0] === pal.days[0][3] && new Set(pal.days[1]).size === 2 && pal.days[1][0] === pal.days[1][2]
+    && new Set(pal.days[2]).size === 1 && pal.photoDays[0] === pal.photoDays[1], JSON.stringify(pal.days));
   c.check("72候すべてに絵と出どころ（題・作者・所蔵・URL・理由）", pal.art === 72 && pal.bad.length === 0, JSON.stringify(pal.bad));
-  c.check("絵のファイルが72枚そろう", files.length === 72, String(files.length));
+  c.check("絵のファイルが118枚そろう", files.length === 118, String(files.length));
   c.check("72候すべてに写真と出どころ（題・作者・ライセンス・Commons の URL・理由）", pal.photo === 72 && pal.badPhoto.length === 0, JSON.stringify(pal.badPhoto));
   c.check("写真のファイルが72枚そろう", photos.length === 72, String(photos.length));
   c.check("出典の頭に NDL の求める一行", /^出典：国立国会図書館「NDLイメージバンク」\(https:\/\/www\.ndl\.go\.jp\/imagebank\)$/.test(pal.src || ""), pal.src);

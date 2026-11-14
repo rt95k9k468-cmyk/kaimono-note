@@ -33,7 +33,7 @@ const OUT = path.join(ROOT, "img", SKY ? "sky" : PHOTO ? "season-photo" : "seaso
    質は 0.5 より下げず、収まらない細かい絵だけぼかしを足す（10/8：空 3枚が 0.9px、写真 29枚が 1px）。
    浮世絵（広重）は前のまま（透けたカードの後ろなので上げても見えない）。上限は tests/season-art.js・tests/sky.js と同じ値に */
 const MAX_ONE = (SKY ? 180 : PHOTO ? 120 : 25) * 1024;
-const MAX_ALL = (SKY ? 4 : PHOTO ? 9 : 2) * 1024 * 1024;
+const MAX_ALL = (SKY ? 4 : PHOTO ? 9 : 3) * 1024 * 1024;
 const SHORT = SKY ? 1170 : PHOTO ? 860 : 720;
 const BLUR = SKY ? 0.4 : PHOTO ? 0.5 : 1.2;
 const SATURATE = SKY ? 115 : 55;
@@ -42,7 +42,7 @@ const QMIN = PHOTO ? 0.5 : 0.2;  // 質の下限（空と写真。浮世絵は�
 const BLUR_MAX = PHOTO ? 2 : BLUR;
 /* 空：正方形に切るとき、左右のどこを中心に残すか（写真の札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
 const CROP = { "spring-day": 0.45, "spring-evening": 0.4, "spring-night": 0.55, "summer-dawn": 0.45, "summer-evening": 0.6, "autumn-dawn": 0.55 };
-const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2}))\.(jpe?g|png|webp|tiff?)$/i;
+const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2})[bc]?)\.(jpe?g|png|webp|tiff?)$/i;
 
 (async () => {
   const want = SKY ? "<札>.jpg" : "kNN.jpg";

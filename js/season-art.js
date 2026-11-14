@@ -9,7 +9,7 @@
       daily は装いを問わず写真（11月14日、利用者「daily は72候の写真に」。11月12日の「手帳は daily も広重」を戻した）。
       ノートの地は装いで替える：手帳は広重、モダンは敷かない（候の色だけ）。
 
-   どちらも72候すべてに一枚ずつ。出どころは `PHOTO`・`ART` と docs/season-art.md の二つの表。
+   どちらも72候すべてに一枚ずつ（広重は MORE で日替わりに二〜三枚）。出どころは `PHOTO`・`ART`・`MORE`。
    出どころの分からない絵は置かない。直リンクはしない（同じ配信元の img/ から）。
 
    色は二十四節気の淡い色（`SEKKI_C`）。絵の平均の色は使わない——浮世絵の平均はどれも紙のくすんだ灰色で季節の色に
@@ -44,7 +44,7 @@
   /* 出典の書き方は NDL イメージバンクの求めるとおり（設定の「絵の出典」の頭に一度）。 */
   const SOURCE = "出典：国立国会図書館「NDLイメージバンク」(https://www.ndl.go.jp/imagebank)";
 
-  /* 候の番号 → { file, title, author, holder, url, why }（docs/season-art.md の表と同じ中身）。
+  /* 候の番号 → { file, title, author, holder, url, why }（出どころの正本。docs/season-art.md は決まりだけ）。
      25（赤坂桐畑雨中夕けい、安政6年）は初代の没後に二代が描いた一枚（NDL の表記は「広重」）。 */
   const ART = {
     0: { file: "img/season/k00.webp", title: "名所江戸百景 日暮里寺院の林泉", author: "歌川広重", holder: "国立国会図書館", url: "https://dl.ndl.go.jp/pid/1312250", why: "春の部。寺の庭の桜" },
@@ -121,7 +121,60 @@
     71: { file: "img/season/k71.webp", title: "名所江戸百景 飛鳥山北の眺望", author: "歌川広重", holder: "国立国会図書館", url: "https://dl.ndl.go.jp/pid/1312253", why: "春の部。飛鳥山の眺め" },
   };
 
-  /* 候の番号 → { file, title, author, license, url, why }（docs/season-art.md の「写真の表」と同じ中身。Wikimedia Commons）。
+  /* 二枚目・三枚目（2026年11月14日、利用者）：『名所江戸百景』の残り46枚（余興2枚を含む・同じ NDL の PDM）。候の番号 → [絵, …]。
+     ART[k] と日替わりで敷く（pick）。春の部が多く冬の部が少ないので、00・01・69 は三枚、無い候は一枚のまま。
+     切り抜き：NDL のスキャンは色見本と物差しごとなので、絵の縁を測って IIIF の切り出し（pct:）で取った。 */
+  const NDL = { author: "歌川広重", holder: "国立国会図書館" };
+  const MORE = {
+    0: [{ ...NDL, file: "img/season/k00b.webp", title: "名所江戸百景 品川御殿やま", url: "https://dl.ndl.go.jp/pid/1312264", why: "御殿山の花見" },
+        { ...NDL, file: "img/season/k00c.webp", title: "名所江戸百景 市ケ谷八幡", url: "https://dl.ndl.go.jp/pid/1312276", why: "市ケ谷八幡の桜" }],
+    1: [{ ...NDL, file: "img/season/k01b.webp", title: "名所江戸百景 日暮里諏訪の台", url: "https://dl.ndl.go.jp/pid/1312251", why: "諏訪の台の桜" },
+        { ...NDL, file: "img/season/k01c.webp", title: "名所江戸百景 目黒元不二", url: "https://dl.ndl.go.jp/pid/1312261", why: "元不二の桜" }],
+    2: [{ ...NDL, file: "img/season/k02b.webp", title: "名所江戸百景 目黒千代か池", url: "https://dl.ndl.go.jp/pid/1312259", why: "池に落ちる滝の音" }],
+    3: [{ ...NDL, file: "img/season/k03b.webp", title: "名所江戸百景 隅田川水神の森真崎", url: "https://dl.ndl.go.jp/pid/1312271", why: "隅田川の八重桜" }],
+    4: [{ ...NDL, file: "img/season/k04b.webp", title: "名所江戸百景 上野山した", url: "https://dl.ndl.go.jp/pid/1312248", why: "空を渡る雁" }],
+    5: [{ ...NDL, file: "img/season/k05b.webp", title: "名所江戸百景 目黒新富士", url: "https://dl.ndl.go.jp/pid/1312260", why: "桜と新富士" }],
+    6: [{ ...NDL, file: "img/season/k06b.webp", title: "名所江戸百景 砂むら元八まん", url: "https://dl.ndl.go.jp/pid/1312265", why: "葦の水辺" }],
+    7: [{ ...NDL, file: "img/season/k07b.webp", title: "名所江戸百景 八景坂鎧掛松", url: "https://dl.ndl.go.jp/pid/1312262", why: "苗代の田と鎧掛松" }],
+    8: [{ ...NDL, file: "img/season/k08b.webp", title: "名所江戸百景 真乳山山谷堀夜景", url: "https://dl.ndl.go.jp/pid/1312270", why: "春の夜の山谷堀" }],
+    9: [{ ...NDL, file: "img/season/k09b.webp", title: "名所江戸百景 深川八まん山ひらき", url: "https://dl.ndl.go.jp/pid/1312304", why: "山開きのつつじ" }],
+    10: [{ ...NDL, file: "img/season/k10b.webp", title: "名所江戸百景 五百羅漢さゞゐ堂", url: "https://dl.ndl.go.jp/pid/1312302", why: "夏の部。さざえ堂から見る野" }],
+    11: [{ ...NDL, file: "img/season/k11b.webp", title: "名所江戸百景 みつまたわかれの淵", url: "https://dl.ndl.go.jp/pid/1312293", why: "夏の部。三つ又の葦と富士" }],
+    12: [{ ...NDL, file: "img/season/k12b.webp", title: "名所江戸百景 中川口", url: "https://dl.ndl.go.jp/pid/1312306", why: "夏の部。中川口の舟" }],
+    13: [{ ...NDL, file: "img/season/k13b.webp", title: "名所江戸百景 両国船中浅草遠景", url: "https://dl.ndl.go.jp/pid/1312296", why: "夏の部。両国の舟から浅草を" }],
+    15: [{ ...NDL, file: "img/season/k15b.webp", title: "名所江戸百景 逆井のわたし", url: "https://dl.ndl.go.jp/pid/1312303", why: "夏の部。白鷺の飛ぶ渡し" }],
+    16: [{ ...NDL, file: "img/season/k16b.webp", title: "名所江戸百景 利根川ばらばらまつ", url: "https://dl.ndl.go.jp/pid/1312307", why: "夏の部。利根川の網打ち" }],
+    18: [{ ...NDL, file: "img/season/k18b.webp", title: "名所江戸百景 深川三十三間堂", url: "https://dl.ndl.go.jp/pid/1312305", why: "夏の部。三十三間堂と海" }],
+    20: [{ ...NDL, file: "img/season/k20b.webp", title: "名所江戸百景 浅草川首尾の松御厩河岸", url: "https://dl.ndl.go.jp/pid/1312297", why: "夏の夜の首尾の松" }],
+    22: [{ ...NDL, file: "img/season/k22b.webp", title: "名所江戸百景 両国橋大川ばた", url: "https://dl.ndl.go.jp/pid/1312295", why: "夏の部。両国橋の夕涼み" }],
+    23: [{ ...NDL, file: "img/season/k23b.webp", title: "名所江戸百景 日本橋通一丁目略図", url: "https://dl.ndl.go.jp/pid/1312279", why: "夏の祭りの大傘" }],
+    26: [{ ...NDL, file: "img/season/k26b.webp", title: "名所江戸百景 はねたのわたし弁天の社", url: "https://dl.ndl.go.jp/pid/1312308", why: "夏の部。羽田の渡し" }],
+    27: [{ ...NDL, file: "img/season/k27b.webp", title: "名所江戸百景 両国花火", url: "https://dl.ndl.go.jp/pid/1312334", why: "両国の花火（秋の部）" }],
+    28: [{ ...NDL, file: "img/season/k28b.webp", title: "名所江戸百景 四ツ谷内藤新宿", url: "https://dl.ndl.go.jp/pid/1312322", why: "秋の部。内藤新宿の馬" }],
+    29: [{ ...NDL, file: "img/season/k29b.webp", title: "名所江戸百景 鉄炮洲稲荷橋湊神社", url: "https://dl.ndl.go.jp/pid/1312313", why: "秋の部。湊神社の帆柱" }],
+    30: [{ ...NDL, file: "img/season/k30b.webp", title: "名所江戸百景 大伝馬町こふく店", url: "https://dl.ndl.go.jp/pid/1312310", why: "秋の部。呉服の店の行列" }],
+    34: [{ ...NDL, file: "img/season/k34b.webp", title: "江戸百景余興 芝神明増上寺", url: "https://dl.ndl.go.jp/pid/1312315", why: "秋の部。芝神明の祭りの人" }],
+    35: [{ ...NDL, file: "img/season/k35b.webp", title: "名所江戸百景 深川万年橋", url: "https://dl.ndl.go.jp/pid/1312292", why: "放生会の亀（夏の部から借りる）" }],
+    36: [{ ...NDL, file: "img/season/k36b.webp", title: "名所江戸百景 京橋竹がし", url: "https://dl.ndl.go.jp/pid/1312312", why: "京橋竹がしの満月" }],
+    39: [{ ...NDL, file: "img/season/k39b.webp", title: "江戸百景余興 鉄炮洲築地門跡", url: "https://dl.ndl.go.jp/pid/1312314", why: "空を渡る雁" }],
+    45: [{ ...NDL, file: "img/season/k45b.webp", title: "名所江戸百景 高田の馬場", url: "https://dl.ndl.go.jp/pid/1312351", why: "冬の部。高田の馬場" }],
+    47: [{ ...NDL, file: "img/season/k47b.webp", title: "名所江戸百景 高田姿見のはし俤の橋砂利場", url: "https://dl.ndl.go.jp/pid/1312352", why: "冬の部。俤の橋" }],
+    52: [{ ...NDL, file: "img/season/k52b.webp", title: "名所江戸百景 湯しま天神坂上眺望", url: "https://dl.ndl.go.jp/pid/1312353", why: "雪の湯島天神" }],
+    56: [{ ...NDL, file: "img/season/k56b.webp", title: "名所江戸百景 芝愛宕山", url: "https://dl.ndl.go.jp/pid/1312257", why: "正月三日の愛宕山（春の部から借りる）" }],
+    57: [{ ...NDL, file: "img/season/k57b.webp", title: "名所江戸百景 山下町日比谷外さくら田", url: "https://dl.ndl.go.jp/pid/1312239", why: "正月の凧と羽子板（春の部から借りる）" }],
+    63: [{ ...NDL, file: "img/season/k63b.webp", title: "名所江戸百景 両ごく回向院元柳橋", url: "https://dl.ndl.go.jp/pid/1312241", why: "春の部。回向院の櫓と大川" }],
+    64: [{ ...NDL, file: "img/season/k64b.webp", title: "名所江戸百景 するかてふ", url: "https://dl.ndl.go.jp/pid/1312244", why: "春の部。駿河町の越後屋と富士" }],
+    65: [{ ...NDL, file: "img/season/k65b.webp", title: "名所江戸百景 川口のわたし善光寺", url: "https://dl.ndl.go.jp/pid/1312256", why: "春の部。川を下る筏" }],
+    66: [{ ...NDL, file: "img/season/k66b.webp", title: "名所江戸百景 王子稲荷の社", url: "https://dl.ndl.go.jp/pid/1312254", why: "春の部。王子稲荷の杜" }],
+    67: [{ ...NDL, file: "img/season/k67b.webp", title: "名所江戸百景 真崎辺より水神の森内川関屋の里を見る図", url: "https://dl.ndl.go.jp/pid/1312272", why: "丸窓から見る夕べの川" }],
+    68: [{ ...NDL, file: "img/season/k68b.webp", title: "名所江戸百景 広尾ふる川", url: "https://dl.ndl.go.jp/pid/1312258", why: "萌える野を流れる古川" }],
+    69: [{ ...NDL, file: "img/season/k69b.webp", title: "名所江戸百景 筋違内八ツ小路", url: "https://dl.ndl.go.jp/pid/1312245", why: "春の部。人の出る八ツ小路" },
+        { ...NDL, file: "img/season/k69c.webp", title: "名所江戸百景 下谷広小路", url: "https://dl.ndl.go.jp/pid/1312249", why: "春の部。下谷広小路の人の列" }],
+    70: [{ ...NDL, file: "img/season/k70b.webp", title: "名所江戸百景 吾嬬の森連理の梓", url: "https://dl.ndl.go.jp/pid/1312267", why: "花の咲く川べり" }],
+    71: [{ ...NDL, file: "img/season/k71b.webp", title: "名所江戸百景 大てんま町木綿店", url: "https://dl.ndl.go.jp/pid/1312243", why: "春の部。木綿店を行く女たち" }],
+  };
+
+  /* 候の番号 → { file, title, author, license, url, why }（出どころの正本。Wikimedia Commons）。
      CC BY／BY-SA は作者・ライセンス・URL の表示が要る（設定 → daily →「写真の出典」）。 */
   const PHOTO = {
     0: { file: "img/season-photo/k00.webp", title: "Passer montanus saturatus (flocks)", author: "Alpsdake", license: "CC0", url: "https://commons.wikimedia.org/wiki/File:Passer_montanus_saturatus_(flocks).jpg", why: "枝に群れるスズメ" },
@@ -209,6 +262,14 @@
   const placeOf = (where) => WHERE[where] || WHERE.daily;
   const on = (where) => KN.store.get().settings[placeOf(where).key] !== false;
   const kOf = (day) => { const s = KN.season && KN.season.of(day); return s ? s.k : null; };
+  /* その日に敷く一枚。広重は候のうち日替わりで ART[k] と MORE[k] を回す（日の番号の余り。day は "YYYY-MM-DD"）。 */
+  const listOf = (set, k) => (set === ART && MORE[k] ? [set[k], ...MORE[k]] : [set && set[k]]);
+  function pick(set, k, day) {
+    const all = listOf(set, k);
+    const [y, m, d] = String(day).split("-").map(Number);
+    const n = Math.round(Date.UTC(y, m - 1, d) / 864e5);
+    return all[((n % all.length) + all.length) % all.length] || all[0];
+  }
 
   /* 読めた絵（URL → 縦横の比 高さ/幅）。同じ絵を何度も読みに行かない。比は幕の閉じる高さに使う（css の --season-ar）。 */
   const loaded = new Map();
@@ -287,13 +348,13 @@
     const set = placeOf(where).set();
     el.setAttribute("data-season", String(k));
     fadeTo(el, where, colorOf(k));
-    const a = set && set[k];
+    const a = set && pick(set, k, day);
     if (!a || !a.file) { el.removeAttribute("data-season-img"); el.style.removeProperty("--season-img"); }
     else {
       /* まだ読めていない絵なら、前の候の絵を残さない（読めるまで色だけ。オフラインで持っていない日も） */
       if (!loaded.has(a.file)) { el.removeAttribute("data-season-img"); el.style.removeProperty("--season-img"); }
       preload(a, (url) => {
-        if (el.getAttribute("data-season") !== String(k)) return;   // 読んでいるあいだに日が移った
+        if (el.getAttribute("data-season") !== String(k) || last.get(where)[1] !== day) return;   // 読んでいるあいだに日が移った
         /* 絶対の URL で書く。カスタムプロパティの相対 URL は、var() を使う css/screens.css から解決され
            css/img/season/… を探して 404 になる（10/6 まで絵は一度も出ていなかった）。 */
         el.style.setProperty("--season-img", `url("${new URL(url, document.baseURI).href}")`);
@@ -303,7 +364,7 @@
     }
     /* 次の候も、手の空いたときに覚えておく（オフラインで日をまたいでも、絵が待っている）。 */
     const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
-    if (set) idle(() => preload(set[(k + 1) % 72]));
+    if (set) idle(() => [...listOf(set, k), ...listOf(set, (k + 1) % 72)].forEach((x) => preload(x)));
   }
   /** 装いを替えたとき（app.js の applyLook）、敷いてある画面に今の出どころで敷き直す。 */
   function reapply() {
@@ -313,8 +374,9 @@
   /** 出典の一覧（設定の奥）。絵のある候だけ。いまの装いで敷いている一揃い（無ければ空）。 */
   function credits(where) {
     const set = placeOf(where).set() || {};
-    return Object.keys(set).map(Number).sort((a, b) => a - b).map((k) => ({ k, kou: KN.season.KOU[k][0], ...set[k] }));
+    return Object.keys(set).map(Number).sort((a, b) => a - b)
+      .flatMap((k) => listOf(set, k).map((x) => ({ k, kou: KN.season.KOU[k][0], ...x })));
   }
 
-  KN.seasonArt = { apply, reapply, colorOf, credits, fileOf, ART, PHOTO, SEKKI_C, SOURCE };
+  KN.seasonArt = { apply, reapply, colorOf, credits, fileOf, pick, ART, MORE, PHOTO, SEKKI_C, SOURCE };
 })();
