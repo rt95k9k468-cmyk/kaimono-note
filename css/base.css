@@ -698,8 +698,9 @@ a { color: var(--c-primary); }
   flex: 1;
   min-height: 0;
   position: relative;
-  /* 面が横へ流れるあいだ、外へはみ出したぶんは見せません。 */
-  overflow: hidden;
+  /* 面が横へ流れるあいだ、外へはみ出したぶんは見せません。clip（hidden ではなく）：hidden は送れる器なので、滑りこむ途中の
+     面のボタンにフォーカスが入ると器ごと横へ送られ、戻る送りで手順の小窓が閉じた（2026年11月14日・timeline-late）。 */
+  overflow: clip;
 }
 
 /* ---- 上の帯と暦は、全タブで一つ（docs/shared-header.md の段2） ----

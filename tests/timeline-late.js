@@ -119,7 +119,20 @@ const PX_MIN = 1.2;
   /* 他のタブへ移れば、手順の小窓は閉じる（帯は覆いより手前なので、覆いでは閉じない）。 */
   await page.evaluate(() => KN.app.showScreen("notes"));
   await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
-  await page.evaluate(() => KN.app.showScreen("todo"));
+  /* 滑りこむ途中の面で札を押しても、器（.screens）は横へ送られず、小窓は残る（11月14日。hidden の器がフォーカスで
+     送られ、戻る送りで小窓が閉じた——重い CI で Playwright の click がこの時に当たり、下の「続けて押す」が落ちていた）。 */
+  const race = await page.evaluate(async (id) => {
+    KN.app.showScreen("todo");
+    await new Promise((r) => setTimeout(r, 1));
+    const chip = document.querySelector(`#screen-todo .tl-row[data-todo-id="${id}"] .tl-subs-chip`);
+    chip.focus(); chip.click();
+    const sl = document.getElementById("screens").scrollLeft;
+    await new Promise((r) => setTimeout(r, 900));
+    return { sl, open: !!document.querySelector(".note-pop.is-subs.is-open") };
+  }, ids.prep);
+  c.check("滑りこむ途中で札を押しても、画面の器は横へ送られず、手順の小窓は残る", race.sl === 0 && race.open, JSON.stringify(race));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".note-pop.is-subs"), null, { timeout: 5000 });
   r = await read();
   c.check("閉じても45分＝60px（最低の高さ・R3）のまま", Math.abs(r.prep.h - 60) < 2, JSON.stringify(r.prep));
   /* 残りを続けて済ませると、ずれずに押せて、ぜんぶ済んだら小窓は自分で閉じる。 */
