@@ -8,6 +8,7 @@
    （docs/log/design-review.md の Y7）。
    名札（B3）：同じ巡りで一度、読み上げの木（ブラウザが組んだもの）を引き、押せるもの・打つ欄・絵・紙に名前が無いもの、
    記号だけの名前のものが 0（7画面と紙。からだの紙・ノート・さがすも開く）。Chromium だけ（CDP）。
+   装い×書体の巡り（W9）：手帳5通り・モダン3通りを 393px・明・todo/list/archive で同じく数える。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/legibility.js
    VIEW=375 で幅を変える（既定 375×667、10月10日の総点検と同じ）。 */
 const { open, checker } = require("./lib");
@@ -268,6 +269,28 @@ function waited(bad, where) {
         hit.map((b) => `${b.name}「${b.text}」${b.v}`).join(" / "));
     }
     await page.emulateMedia({ contrast: "no-preference" });
+  }
+  /* 装い×書体の巡り（redesign.md 11節 W9）。393px・明・主な3画面。手帳は本文3×見出し2のうち「明朝×本文と同じ」が
+     「明朝×明朝」と同じ字になるので5通り、モダンは見出しが本文と同じなので3通り。 */
+  {
+    await page.setViewportSize({ width: 393, height: 852 });
+    await page.evaluate(() => { document.documentElement.removeAttribute("data-theme"); KN.store.update((st) => { st.settings.textSize = "std"; }); KN.app.applyTextSize("std"); });
+    const COMBOS = [["now", "gothic", "mincho"], ["now", "gothic", "same"], ["now", "maru", "mincho"], ["now", "maru", "same"], ["now", "mincho", "mincho"],
+      ["modern", "gothic", "mincho"], ["modern", "maru", "mincho"], ["modern", "mincho", "mincho"]];
+    for (const [attire, font, head] of COMBOS) {
+      await page.evaluate(({ attire, font, head }) => {
+        KN.store.update((st) => { st.settings.attire = attire; st.settings.font = font; st.settings.headFont = head; });
+        KN.app.applyLook(); KN.app.applyFont(font);
+      }, { attire, font, head });
+      await page.waitForTimeout(1200);
+      for (const id of ["todo", "list", "archive"]) {
+        await page.evaluate((id) => KN.app.showScreen(id), id);
+        await page.waitForTimeout(500);
+        const bad = (await page.evaluate(measure)).filter((b) => !waitOf(b));
+        t.check(`装い×書体・${attire}・${font}・見出し${head}・${id}：コントラスト・11px・潰れが0`, !bad.length,
+          bad.map((b) => `${b.kind} ${b.name}「${b.text}」${b.v}`).join(" / "));
+      }
+    }
   }
   t.check("頁のエラーなし", !errors.length, errors.join(" | "));
   for (const [w, first] of waits) console.log(`  待ち ${w}：${first}`);

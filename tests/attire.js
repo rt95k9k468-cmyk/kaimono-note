@@ -91,6 +91,14 @@ const { open, checker } = require("./lib");
   t.check("装いのボタンは二つ（手帳・モダン）で、手帳が選ばれている", (await count(".attire-pick[data-pick]")) === 2 && (await pick("techo").getAttribute("aria-pressed")) === "true");
   t.check("手帳では基調色（九つ）と見出しの書体が出る", (await count(".js-accents .accent-dot")) === 9 && (await count('.seg-btn[data-head]')) === 2);
 
+  /* 本文が明朝のあいだ、見出しの書体は出さない（W9。「明朝×本文と同じ」は「明朝×明朝」と同じ字。保存した値は残す）。 */
+  await page.locator('.seg-btn[data-font="mincho"]').click();
+  await page.waitForTimeout(300);
+  t.check("本文が明朝のとき、見出しの書体は出さない・保存した値は残る", (await count('.seg-btn[data-head]')) === 0 && (await set()).headFont === "mincho", JSON.stringify(await set()));
+  await page.locator('.seg-btn[data-font="gothic"]').click();
+  await page.waitForTimeout(300);
+  t.check("本文がゴシックへ戻れば、見出しの書体がまた出る", (await count('.seg-btn[data-head]')) === 2);
+
   await pick("modern").click();
   await page.waitForTimeout(300);
   t.check("モダンで札が付き、記録に残る", (await attr()) === "modern" && (await set()).attire === "modern", JSON.stringify(await set()));

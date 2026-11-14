@@ -169,7 +169,7 @@
 
     /* 装いは二つ：手帳とモダン（docs/redesign.md 4節）。押せば画面ぜんぶがその場で変わる。明るさと同じく小さな画面の絵で
        選ぶ（絵は screens.css の「装いの絵」。絵の札 data-look が、その装いの色を絵の中だけに効かせる）。モダンは自分の
-       主色を持つので、そのあいだ基調色と見出しの書体は出さない。前の装いの値は lookOf が読み替える——手帳から
+       主色を持つので、そのあいだ基調色と見出しの書体は出さない。本文が明朝のときも見出しは明朝になるので、見出しの書体は出さない（W9。保存した値は消さない）。前の装いの値は lookOf が読み替える——手帳から
        モダンへ移るとき、読み替えていた基調色を settings.accent に写して、戻ったときも同じ色にする。 */
     const now = KN.app.lookOf(s);
     const LOOKS = [["techo", "手帳"], ["modern", "モダン"]];
@@ -259,7 +259,7 @@
       head("装い"), attires,
       ...(ownColor ? [] : [head("基調色"), accents]),
       head("文字の大きさ"), sizes,
-      ...(ownColor ? [] : [head("見出しの書体"), heads]),
+      ...(ownColor || font === "mincho" ? [] : [head("見出しの書体"), heads]),
       head("書体"), fonts,
       head("上の帯"),
       card(
