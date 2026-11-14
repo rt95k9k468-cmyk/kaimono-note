@@ -1644,8 +1644,14 @@ a { color: var(--c-primary); }
   :root:not(.rail-fold) .topbar .js-search-btn { display: none; }
   /* 送り棒は細く地の色に（Windows の太い灰の棒が紙と列のあいだに立っていた。Mac の重ねる棒には効かない）。 */
   * { scrollbar-width: thin; scrollbar-color: var(--c-border-2) transparent; }
-  /* ＋は右下の角に（帯が左の列なので）。 */
-  .has-fab .dock { right: var(--sp-8); bottom: 28px; }
+  /* ＋は左の列の底（帯と同じ段＝電話の考えのまま。右下の角では右の段の行の端・丸にかぶった——W5）。
+     列はそのぶん底を空け、畳む口・ノートの木も上へ。候補は右へ開く（下の電話の横と同じ）。 */
+  .has-fab { --rail-fab: calc(var(--fab-size) + var(--sp-3)); }
+  .has-fab .tabbar { padding-bottom: calc(var(--side-pad) + var(--rail-fab)); }
+  .has-fab .dock { left: var(--side-pad); right: auto; bottom: var(--side-pad); }
+  .rail-fold.has-fab .dock { left: calc((var(--rail-w) - 1px - var(--fab-size)) / 2); }
+  .has-fab .quick-add { justify-content: flex-start; }
+  .has-fab .fab-menu { align-items: flex-start; }
   .head-name.is-sub { max-width: calc(100vw - var(--rail-w) - 128px); }
   /* 画面は帯と同じ向きへ流れる（docs/screens-nav.md）——帯が縦なので縦に。一面ぶん滑らせると大きな画面では
      重いので、少しだけずらして入れ替える（Material の shared axis）。出ていく面は先に薄れる。 */
@@ -1665,6 +1671,8 @@ a { color: var(--c-primary); }
   @media (hover: hover) { .rail-fold-btn:hover { background: color-mix(in srgb, var(--c-text) 6%, transparent); color: var(--c-text); } }
   :root.rail-fold { --rail-w: 64px; }
   .rail-fold .rail-fold-btn { left: calc((var(--rail-w) - 1px - var(--side-row)) / 2); bottom: calc(var(--side-pad) + var(--side-row) + var(--side-gap)); }
+  .has-fab .rail-fold-btn { bottom: calc(var(--side-pad) + var(--rail-fab)); }
+  .rail-fold.has-fab .rail-fold-btn { bottom: calc(var(--side-pad) + var(--side-row) + var(--side-gap) + var(--rail-fab)); }
   .rail-fold .tabbar { padding-inline: calc((var(--rail-w) - 1px - var(--side-row)) / 2); }
   .rail-fold :is(.rail-brand b, .rail-find span, .rail-find kbd, .rail-set span) { display: none; }
   .rail-fold :is(.rail-brand, .rail-find, .rail-set) { justify-content: center; padding: 0; margin-right: 0; }
@@ -1683,7 +1691,7 @@ a { color: var(--c-primary); }
   .rail-fold-btn, .rail-brand, .rail-find, .rail-set { display: none; }
   .app { padding-right: var(--safe-r); }
   /* ＋は列の底（右下の角では行の右端の丸に重なった）。行を隠さないので送るあいだも引っ込まない。 */
-  .has-fab .dock { left: calc(var(--safe-l) + (64px - var(--fab-size)) / 2); right: auto;
+  .has-fab .dock, .rail-fold.has-fab .dock { left: calc(var(--safe-l) + (64px - var(--fab-size)) / 2); right: auto;
     bottom: calc(var(--sp-3) + var(--safe-b)); z-index: calc(var(--z-bar) + 1); }
   .has-fab .quick-add { justify-content: flex-start; }
   .has-fab .fab-menu { align-items: flex-start; }

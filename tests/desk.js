@@ -6,8 +6,8 @@
    - 1440px：やることの今日は道が時間割の左（中身の幅 768px〜）、週の面は日の行が左・これからが右（1200px〜）、からだのカードは二段以上に並ぶ
    - ノートの左の木は左の列の中、席の行の下（840px でも出る）
    - 1280px〜：ノートの席で開いたノートは右の段（木と一覧の右・上の帯の下・窓の右端まで）。覆いは無く、
-     一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は一覧の右下。ほかの席へ移ると閉じる
-   - 1280px〜（段7）：ホームは木｜本文の二列（真ん中の一覧なし、★・問い は木に、＋は木の右下）。
+     一覧のほかのノートを押せば入れ替わる（開いているのは一枚）。＋は左の列の底（W5）。ほかの席へ移ると閉じる
+   - 1280px〜（段7）：ホームは木｜本文の二列（真ん中の一覧なし、★・問い は木に、＋は左の列の底）。
      P2：左の列に木があればホームは最近直したの札（題・頭・日付。1100px も）、列を畳むと木のホームへ
      すべてのノート・問い・さがすときだけ真ん中に一覧。さがしているあいだも左の列は残る
    - 書く紙（日記）は読む幅（760px）・窓のほぼいっぱいの背
@@ -270,7 +270,7 @@ const { open, checker } = require("./lib");
   await wait(800);
   const tree = await box(".notes-tree"), lastSeat = await box(".tab-diet"), notesScr = await box("#screen-notes");
   t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 256 && tree.t >= lastSeat.b
-    && tree.b < 900 && tree.b > 820 && notesScr.l === 256, JSON.stringify({ tree, lastSeat, notesScr }));
+    && tree.b < 900 && tree.b > 740 && notesScr.l === 256, JSON.stringify({ tree, lastSeat, notesScr }));
 
   /* 段7・P2 → R7：ホームは木｜本文（真ん中の一覧は出さない）。本文は二段——左に本棚、右に札と最近直したの一覧
      （題・頭の一行・日付・表紙の四角）。★・問い は木にも（最近直したは本文にあるので木には出さない）。 */
@@ -324,7 +324,7 @@ const { open, checker } = require("./lib");
   t.check("三列：開いたノートは木と一覧の右・窓の右端まで（覆いなし）", pane && list && pane.l >= list.r && pane.r === 1440 && pane.t >= 40 && pane.b === 900 && bd === "none",
     JSON.stringify({ pane, list, bd }));
   const fab = await box("#dock");
-  t.check("三列：＋は一覧の右下（右の段に隠れない）", fab && pane && fab.r <= pane.l && fab.r > list.r - 120, JSON.stringify({ fab, pane, list }));
+  t.check("三列：＋は左の列の底（右の段・一覧の行にかぶらない。W5）", fab && pane && fab.r <= 256 && fab.b <= 900 && fab.b > 820, JSON.stringify({ fab, pane, list }));
   await openRow("二つめ");
   const n = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-note")].filter((e) => e.isConnected && e.classList.contains("is-open")).length);
   t.check("一覧のほかのノートを押すと入れ替わる（開いているのは一枚）", n === 1, `開いている紙 ${n}`);

@@ -1583,7 +1583,7 @@
   --set-gap: 10px;   /* 絵と題のあいだ */
   --set-fs: calc(17px * var(--fs-k));
   --set-fs-head: calc(15px * var(--fs-k));
-  --set-fs-sub: calc(14px * var(--fs-k));   /* 根っこの入口の下の一行 */
+  --set-fs-sub: calc(13px * var(--fs-k));   /* 根っこの入口の下の一行（補足 13。docs/redesign.md 4節） */
   /* 説明は少なく、大きく（2026年9月30日）。13px の薄い字で長く書くのを
      やめて、残した一行を 15px で読めるように。 */
   --set-fs-foot: calc(15px * var(--fs-k));
@@ -4735,7 +4735,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-cover > .nt-cv { height: 92px; }
 .nt-cover-t { height: calc(2lh + 10px); padding: 10px 12px 0; font-family: var(--font-display); font-size: var(--fs-md);
   font-weight: var(--fw-bold); line-height: 1.4; overflow: hidden; overflow-wrap: anywhere; }
-.nt-cover-d { padding: var(--sp-1) 12px 12px; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nt-cover-d { padding: var(--sp-1) 12px 12px; font-size: calc(13px * var(--fs-k)); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nt-bks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4) var(--sp-3); margin: var(--sp-2) var(--sp-4) 0; }
 /* 冊を運ぶ（note-drag の shelf）：寄る冊は transform で滑り、持ち上げた冊は指につく（滑らない）。 */
 .nt-bks.is-carrying > .nt-bk { transition: transform var(--m-reorder) var(--ease); }
@@ -4863,7 +4863,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-tree { display: none; }
 @media (min-width: 840px) {
   html:not(.is-locked)[data-screen="notes"] .notes-tree {
-    display: block; position: fixed; top: var(--side-nav-h); bottom: calc(var(--side-row) + var(--sp-3) * 2);
+    display: block; position: fixed; top: var(--side-nav-h); bottom: calc(var(--side-row) + var(--sp-3) * 2 + var(--rail-fab, 0px));
     left: 0; z-index: var(--z-bar);
     width: calc(var(--rail-w) - 1px);
     padding: var(--sp-2) var(--sp-2) var(--sp-6);
@@ -7075,11 +7075,7 @@ button.note-when:active { opacity: var(--press-fade); }
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
-  /* ＋は段の左：一覧の右下、一覧を並べないときは木の右下（木＝--z-bar より前へ）。畳んだ列が細いときは窓の右下のまま
-     （段に隠れる——開いたノートを閉じれば出る）。 */
-  :root.notes-dock[data-screen="notes"]:is(.notes-three, :not(.rail-fold)).has-fab .dock { right: calc(100vw - var(--pane-x) + var(--sp-5)); }
-  /* 木の右下：settings の行と畳む口の上に立つ。 */
-  :root.notes-dock[data-screen="notes"]:not(.rail-fold).has-fab .dock { z-index: calc(var(--z-bar) + 2); bottom: calc(var(--side-pad) + var(--side-row) + var(--sp-3)); }
+  /* ＋はほかの席と同じ左の列の底（base.css。木はそのぶん底を空ける）。 */
 }
 /* ノートのホームを二段に（screen-notes.js の homeBody。840px から）：左に本棚とタグ、右に札と最近直したの一覧。 */
 @media (min-width: 840px) {
@@ -7244,7 +7240,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   content: ""; position: absolute; left: -4px; top: -5px; width: 10px; height: 10px; border-radius: 50%;
   background: var(--c-now); box-shadow: 0 0 0 2px var(--c-surface);
 }
-.strip-tk { position: relative; display: block; height: 15px; margin-top: 4px; font-family: var(--font-num); font-size: calc(11px * var(--fs-k)); color: var(--c-text-3); }
+.strip-tk { position: relative; display: block; height: calc(18px * var(--fs-k)); margin-top: 4px; font-family: var(--font-num); font-size: calc(13px * var(--fs-k)); line-height: 1.35; color: var(--c-text-3); }
 .strip-tk > span { position: absolute; top: 0; translate: -50% 0; }
 .strip-tk > span:first-child { translate: 0 0; }
 .strip-tk > span:last-child { translate: -100% 0; }
