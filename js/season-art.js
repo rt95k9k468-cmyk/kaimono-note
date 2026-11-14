@@ -6,8 +6,8 @@
    2. 絵をごく薄く。読めてから重ねる。NN は春分の初候から数えた候の番号 00〜71（js/season.js の `k`）。
       - daily：写真 `img/season-photo/kNN.webp`（Wikimedia Commons。`PHOTO`）
       - ノート：浮世絵 `img/season/kNN.webp`（歌川広重『名所江戸百景』、国立国会図書館・NDL イメージバンク。`ART`）
-      装いで出どころを替える（RI・2026年11月12日、利用者が見比べて選んだ）：手帳は daily の額もノートの地も広重、
-      モダンは daily の額が写真で、ノートの地には敷かない（候の色だけ）。
+      daily は装いを問わず写真（11月14日、利用者「daily は72候の写真に」。11月12日の「手帳は daily も広重」を戻した）。
+      ノートの地は装いで替える：手帳は広重、モダンは敷かない（候の色だけ）。
 
    どちらも72候すべてに一枚ずつ。出どころは `PHOTO`・`ART` と docs/season-art.md の二つの表。
    出どころの分からない絵は置かない。直リンクはしない（同じ配信元の img/ から）。
@@ -203,7 +203,7 @@
      切るスイッチは画面ごと（既定は入。`!== false` なので、足す前の設定もそのまま入）。 */
   const modern = () => document.documentElement.getAttribute("data-attire") === "modern";
   const WHERE = {
-    daily: { set: () => (modern() ? PHOTO : ART), key: "seasonArt" },
+    daily: { set: () => PHOTO, key: "seasonArt" },
     notes: { set: () => (modern() ? null : ART), key: "notesSeasonArt" },
   };
   const placeOf = (where) => WHERE[where] || WHERE.daily;
@@ -316,5 +316,5 @@
     return Object.keys(set).map(Number).sort((a, b) => a - b).map((k) => ({ k, kou: KN.season.KOU[k][0], ...set[k] }));
   }
 
-  KN.seasonArt = { apply, reapply, isPhoto: () => modern(), colorOf, credits, fileOf, ART, PHOTO, SEKKI_C, SOURCE };
+  KN.seasonArt = { apply, reapply, colorOf, credits, fileOf, ART, PHOTO, SEKKI_C, SOURCE };
 })();

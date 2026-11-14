@@ -149,12 +149,10 @@
         })
       ),
       foot("ひとことは、二十四節気と七十二候を一行。"),
-      /* 出典は装いで敷いている一揃い（モダンは写真、手帳は広重。js/season-art.js）。 */
+      /* 出典は写真の一揃い（daily は装いを問わず写真。js/season-art.js）。 */
       !KN.seasonArt || !KN.seasonArt.credits("daily").length ? null
-        : KN.seasonArt.isPhoto() ? S.more("写真の出典", "Wikimedia Commons ／ " + KN.seasonArt.credits("daily")
-          .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ "))
-          : S.more("絵の出典", `${KN.seasonArt.SOURCE} ／ ` + KN.seasonArt.credits("daily")
-            .map((c) => `${c.kou}：${c.author}『${c.title}』（${c.holder}）`).join(" ／ ")),
+        : S.more("写真の出典", "Wikimedia Commons ／ " + KN.seasonArt.credits("daily")
+          .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")),
       head("月のまとめ"),
       card(
         switchRow({
