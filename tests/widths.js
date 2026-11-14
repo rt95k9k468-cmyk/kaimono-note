@@ -180,8 +180,9 @@ async function seed(page) {
           && Math.abs((p.t + p.b) / 2 - (c.t + c.b) / 2) <= 2, JSON.stringify({ c, p }));
       } else {
         const b = fr && fr.bar, p = fr && fr.fab;
-        t.check(`${at}：左の列は窓の背いっぱい、＋は列にかぶらず窓の中`,
-          !!b && !!p && b.l === 0 && b.t === 0 && b.b === fr.vh && p.l >= b.r && p.r <= fr.vw && p.b <= fr.vh, JSON.stringify({ bar: b, fab: p }));
+        /* ＋は列の底（右下の角では右の段の行の端にかぶった。docs/redesign.md の W5）。 */
+        t.check(`${at}：左の列は窓の背いっぱい、＋は列の底の中`,
+          !!b && !!p && b.l === 0 && b.t === 0 && b.b === fr.vh && p.l >= b.l && p.r <= b.r && p.b <= fr.vh && p.b > fr.vh - 40, JSON.stringify({ bar: b, fab: p }));
       }
     }
     t.check("エラーなし（棒を隠した形）", !errors.length, errors.join(" | "));
