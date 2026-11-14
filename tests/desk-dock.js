@@ -36,7 +36,7 @@ const { open, checker } = require("./lib");
   const inPlace = (f, at) => f.length > 0 && f.every((r) => r.t === at.t && r.w === at.w && r.l >= at.l - 1 && r.l <= at.l + 33);
 
   /* 1. ホームの札から開いて、すべてのノートへ。 */
-  await page.click("#screen-notes .note-row .js-open >> nth=0");
+  await page.click("#screen-notes .nt-cover >> nth=0");
   await page.waitForSelector(".sheet.is-note.is-open.is-docked");
   await page.waitForTimeout(500);
   const a = await page.evaluate(() => { const r = document.querySelector(".sheet.is-note").getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), w: Math.round(r.width) }; });
@@ -69,7 +69,7 @@ const { open, checker } = require("./lib");
     };
     requestAnimationFrame(tick);
   });
-  await page.click("#screen-notes .note-row.is-card .js-open >> nth=0");
+  await page.click("#screen-notes :is(.note-row.is-card .js-open, .nt-cover) >> nth=0");
   await page.waitForSelector(".sheet.is-note.is-open.is-docked");
   const shift = await page.evaluate(() => ({
     want: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--desk-shift")), first: window.__x }));

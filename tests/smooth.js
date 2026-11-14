@@ -127,26 +127,26 @@ const t = checker("smooth");
   });
   const s0 = await scroller();
   t.check("（前提）daily の紙が送れる長さ", s0.max > 300, String(s0.max));
-  await page.evaluate(() => { KN.app.scrollerOf(document.getElementById("screen-archive")).scrollTop = 120; });
+  await page.evaluate(() => { KN.app.scrollerOf(document.getElementById("screen-archive")).scrollTop = 80; });
   await page.waitForTimeout(150);
   await page.evaluate(() => KN.store.update(() => {}));
   await page.waitForTimeout(150);
   const s1 = await scroller();
-  t.check("同じ日を組み直しても、読んでいた位置のまま", Math.abs(s1.top - 120) <= 2, String(s1.top));
+  t.check("同じ日を組み直しても、読んでいた位置のまま", Math.abs(s1.top - 80) <= 2, String(s1.top));
   await page.click('.tab[data-tab="list"]');
   await page.waitForTimeout(600);
   await page.click('.tab[data-tab="archive"]');
   await page.waitForTimeout(600);
   const s2 = await scroller();
-  t.check("よその席から戻っても、同じ日なら読んでいた位置のまま", Math.abs(s2.top - 120) <= 2, String(s2.top));
+  t.check("よその席から戻っても、同じ日なら読んでいた位置のまま", Math.abs(s2.top - 80) <= 2, String(s2.top));
   await page.evaluate((d) => KN.screens.archive.goDay(d), yesterday);
   await page.waitForTimeout(250);
   const s3 = await scroller();
-  /* 前提は「読んでいた位置（120）より先まで送れる」こと——それなら位置を持ち越したとき top が 120 になって見分けられる。
+  /* 前提は「読んでいた位置（80）より先まで送れる」こと——それなら位置を持ち越したとき top が 80 になって見分けられる。
      daily に暦が無くなって（11月12日）紙の窓が広がり、前日の紙は 149px しか送れない。
      前日の紙は短い（月のまとめの空のカードを外して 287px、＋が帯と同じ段になって底の余白が減り 237px。R2）。
-     本文は Daily Log が終わりの数行しか出さないので、長くしても紙は伸びない。 */
-  t.check("別の日へ移れば、その日の頭から", s3.top === 0 && s3.max > 120, JSON.stringify(s3));
+     本文は Daily Log が終わりの数行しか出さないので、長くしても紙は伸びない。電話の候の札と書く口を詰めて（W1）114px、位置は 80 に。 */
+  t.check("別の日へ移れば、その日の頭から", s3.top === 0 && s3.max > 80, JSON.stringify(s3));
   await page.evaluate((d) => KN.screens.archive.goDay(d), today);
   await page.waitForTimeout(400);
 
