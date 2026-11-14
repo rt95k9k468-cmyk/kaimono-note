@@ -1750,8 +1750,8 @@
 }
 
 /* ---- 頭の挿絵（根っこは題の右、入口の先はまん中）----
-   素材は透けない四角（淡い地と光が付いている）ので、縁を丸くぼかして地に溶かす。
-   後ろに基調色のうすい光をひとつ。字の説明は足さない（docs/settings.md「頭の挿絵」）。 */
+   素材は透けない四角なので、丸い額に切って線で縁取る（ぼかさない・後ろに光を敷かない——
+   にじみは地に混ざってくすむ。docs/redesign.md 4節「絵は額に入れて見せ」）。字の説明は足さない。 */
 .set-top {
   position: relative;
   display: flex;
@@ -1759,26 +1759,19 @@
   justify-content: space-between;
   min-height: 112px;
   padding-right: var(--set-gut);
-  isolation: isolate;
-}
-.set-top::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 0 0 -8px 30%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--c-primary) 13%, transparent), transparent);
-  pointer-events: none;
 }
 .set-top.is-page { justify-content: center; min-height: 0; padding: var(--sp-1) 0 0; }
-.set-top.is-page::before { inset: 0 15% -20px; }
 .set-art {
   display: block;
   flex: none;
   height: 116px;
   width: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
   opacity: var(--set-art-op);
-  -webkit-mask-image: radial-gradient(circle closest-side, #000 93%, transparent 100%);
-  mask-image: radial-gradient(circle closest-side, #000 93%, transparent 100%);
   user-select: none;
   -webkit-user-drag: none;
   pointer-events: none;
