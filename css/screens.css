@@ -1717,11 +1717,11 @@
   position: relative;
 }
 .set-back svg { width: var(--ico); height: var(--ico); transform: rotate(180deg); }
-/* 絵は34pxでも、**指の的は44px**（.icon-btn と同じ手）。 */
+/* 絵は34pxでも、**指の的は44px**（.icon-btn と同じ手）。上下は帯の端で半端に切れるので 1px 余分に。 */
 .set-back::after {
   content: "";
   position: absolute;
-  inset: -5px;
+  inset: -6px -5px;
 }
 .set-back { transition: scale var(--m-press) var(--ease); }
 .set-back:active { scale: var(--press-dot); }
@@ -3651,15 +3651,15 @@ button.tl-over:active { opacity: var(--press-fade); }
 }
 /* 指の的は、題の上下の空きまで（docs/improvements.md の B2）。題は一行だと
    高さ21pxで、行の上下の空き（丸薬のぶんの背伸び）はどこを押しても何も
-   起きない面でした。上下に12pxずつ——一行の題で 45px。
-   **下に事実の行（.tl-facts）があるときは、下へは広げません。** あそこには
-   手順の丸薬という別の押せるものが乗っています。 */
+   起きない面でした。上下に13pxずつ——一行の題で 44px。
+   **下の事実の行（.tl-facts）に押せるもの（済ませた時刻・手順の丸薬）があるときだけ、下へは広げません。**
+   低い札は事実が横に並ぶので、いつも上下に（前は事実があるだけで止めて 28px だった。redesign 11節の W8）。 */
 .tl-open::after {
   content: "";
   position: absolute;
-  inset: -12px 0;
+  inset: -13px 0;
 }
-.tl-open:not(:last-child)::after { bottom: 0; }
+.tl-row:not(.is-short) .tl-open:has(+ .tl-facts > button)::after { bottom: 0; }
 
 /* 題の上の前置き（メモ）。読むための文脈なので、題より先に目を
    引かないように薄く小さく。 */
@@ -4265,7 +4265,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .wk-sum > span { display: inline-flex; align-items: center; gap: 6px; }
 /* 今週の過ぎた日は畳む（送って隠すと、開いたときに見出しの無い行から始まった）。暦の週の段に名前は出ている。 */
 .wk-past {
-  display: flex; align-items: center; width: calc(100% - 2 * var(--sp-4)); min-height: 40px; margin: var(--sp-2) var(--sp-4) 0;
+  display: flex; align-items: center; width: calc(100% - 2 * var(--sp-4)); min-height: 44px; margin: var(--sp-2) var(--sp-4) 0;
   border-top: 1px solid var(--c-border); text-align: left; font-size: var(--fs-sm); color: var(--c-text-2);
 }
 .wk-past:active { opacity: var(--press-fade); }
@@ -4299,12 +4299,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .wk-week .wk-day.is-today .wk-wd, .mo-list .mo-day.is-today .mo-wd { color: var(--c-primary); font-weight: var(--fw-bold); }
 .wk-evs {
-  display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; min-width: 0; min-height: 44px;
-  padding: 8px 0 8px var(--sp-3);
+  display: flex; flex-direction: column; justify-content: flex-start; min-width: 0; min-height: 44px;
+  padding: 0 0 0 var(--sp-3);
 }
 .wk-evs:not(:has(.wk-ev)) { min-height: 0; padding-block: 0; }   /* 空の日は低い行（日付の背丈まで） */
-/* 一行は週と月で同じ（js の wkLine）：時刻の列（3字ぶん・そろえる）→ 点 → 名前（細字）→ 終わりの時刻（薄く）。 */
-.wk-ev { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 26px; text-align: left; font-size: var(--fs-md); color: var(--c-text); }
+/* 一行は週と月で同じ（js の wkLine）：時刻の列（3字ぶん・そろえる）→ 点 → 名前（細字）→ 終わりの時刻（薄く）。
+   行の背は 44px＝的（前は 26px＋行間 2px で、当たりが 28px しか取れなかった。redesign 11節の W8）。 */
+.wk-ev { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 44px; text-align: left; font-size: var(--fs-md); color: var(--c-text); }
 .wk-t {
   flex: none; min-width: 3em; font-family: var(--font-num); font-variant-numeric: tabular-nums;
   font-size: var(--fs-sm); font-weight: var(--fw-regular); color: var(--c-text-2);
@@ -7376,7 +7377,9 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 #screen-list .item-meta, #screen-prices .product-meta { min-height: 0; font-size: calc(13px * var(--fs-k)); color: var(--c-text-2); }
 #screen-list .item-price, #screen-prices .item-price { min-width: 3.5em; padding-left: 0; }
 /* docs/shopping.md「S1〜S4」：店の札・買った一拍の値段の欄・これまでの最安。 */
-.shop-stores .chip-row { padding-block: 0 var(--sp-2); }
+/* 札の当たり（::after の 44px）が送る器の頭で切れないよう上に 4px。上の貼りつく帯（.wk-faces）の下 4px は上の札の当たりなので、
+   引き上げて重ねない（重ねると帯が上に描かれて取られる）。 */
+.shop-stores .chip-row { padding-block: 4px var(--sp-2); }
 .item-price-in { width: 5.4em; height: 36px; padding: 0 var(--sp-2); text-align: right; font: var(--fw-bold) calc(17px * var(--fs-k)) var(--font-num); animation: fade-in var(--m-state) var(--ease-out); }
 .pd-low { margin: 0; font-size: var(--fs-md); color: var(--c-text-2); }
 .pd-low b { font-family: var(--font-num); color: var(--c-text); }

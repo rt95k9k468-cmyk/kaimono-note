@@ -108,6 +108,14 @@ const { open, checker } = require("./lib");
   const names = () => page.$$eval("#screen-list .sh-main .item-wrap .item-name", (x) => x.map((e) => e.textContent.trim()).sort().join(","));
   const chips = await page.$$eval("#screen-list .shop-stores .chip", (x) => x.map((e) => e.textContent.trim()));
   t.check("S1：紙の頭に すべて｜店 の札", chips[0] === "すべて" && chips.includes("試しの店A") && chips.includes("試しの店B"), JSON.stringify(chips));
+  /* 札の当たりは 44px（redesign 11節の W8）：上の貼りつく帯にも送る器の頭にも削られない。中心の縦の線を 1px ずつ引いて測る。 */
+  const chipHit = await page.$eval("#screen-list .shop-stores .chip", (e) => {
+    const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    let n = 1;
+    for (const s of [-1, 1]) for (let d = 1; d < 30 && document.elementFromPoint(x, y + s * d)?.closest(".chip") === e; d++) n++;
+    return n;
+  });
+  t.check("S1：店の札の当たりは 44px", chipHit >= 44, String(chipHit));
   const chip = async (l) => { await page.locator("#screen-list .shop-stores .chip", { hasText: l }).click(); await wait(500); };
   const n0 = await page.$eval("#screen-list .face-n", (e) => e.textContent);
   await chip("試しの店A");

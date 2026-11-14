@@ -412,10 +412,13 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("ArrowDown");
   const r2 = await at();
   t.check("↓ で行へ、もう一度で次の行へ", !!r1 && !!r2 && r1 !== r2, `${r1} / ${r2}`);
-  const which = r2.includes("鍵盤の二") ? kx[1] : r2.includes("鍵盤の一") ? kx[0] : null;
+  /* 頭で足した「試しの予定」（10:00）は、10時前だと鍵盤の二つより上に並ぶ——鍵盤の行まで↓で進めてから押す。 */
+  let r3 = r2;
+  for (let i = 0; i < 6 && !r3.includes("鍵盤の"); i++) { await page.keyboard.press("ArrowDown"); r3 = await at(); }
+  const which = r3.includes("鍵盤の二") ? kx[1] : r3.includes("鍵盤の一") ? kx[0] : null;
   await page.keyboard.press("Space");
   await wait(500);
-  t.check("Space でその行を済ませる", !!which && await page.evaluate((id) => !!KN.store.get().todos.find((x) => x.id === id).done, which), r2);
+  t.check("Space でその行を済ませる", !!which && await page.evaluate((id) => !!KN.store.get().todos.find((x) => x.id === id).done, which), r3);
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Enter");
   await page.waitForSelector(".sheet.is-open", { timeout: 3000 }).catch(() => {});

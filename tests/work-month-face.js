@@ -40,6 +40,9 @@ const { open, checker } = require("./lib");
     return { top: sc.scrollTop, n: d.length, first: d[0] && d[0].dataset.day, hit: d.find((e) => e.dataset.day >= "2026-10-21").getBoundingClientRect().top - d[0].getBoundingClientRect().top };
   });
   c.check("月の面は今日以後が頭・過ぎた日は上へ隠れる", mtop.first < "2026-10-21" && mtop.top > 0, JSON.stringify(mtop));
+  /* 行の背は 44px＝的（redesign 11節の W8。前は 26px＋行間 2px）。 */
+  const evH = await page.$$eval("#screen-todo .mo .wk-ev", (x) => x.map((e) => Math.round(e.getBoundingClientRect().height)));
+  c.check("月の面の行は 44px（指の的）", evH.length > 3 && evH.every((h) => h >= 44), JSON.stringify(evH));
   const look = () => page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");
     const cal = document.querySelector("#head .cal");
