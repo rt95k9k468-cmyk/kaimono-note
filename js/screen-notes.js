@@ -351,25 +351,21 @@
       shelf.push(secTitle("タグ"), row);
     }
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
-    const recent = recentOf(all, two ? 12 : 8);
+    const recent = recentOf(all, 8);
     const met = chance(all, recent);
     const meet = met ? [secTitle(met.label), cards([met.n], t)] : [];
     /* ノートが一つも無いときは、ほかの席と同じ額の絵（言葉は足さない。docs/redesign.md 6節「空の画面」）。 */
     const none = all.length ? [] : [node(html`<div class="empty nt-empty"><div class="empty-art">${KN.util.raw(KN.emptyArt.notebook)}</div></div>`)];
-    if (!two) {
+    /* 広い幅も同じ一列を全幅に（W6）：さがすは左の列にあるので出さず、最近は横へ送らず四列に折る。 */
+    if (two) box.classList.add("nt-home-two");
+    else {
       const find = node(html`<button type="button" class="nt-find">${icon("search")}<span>ノートをさがす</span></button>`);
       find.addEventListener("click", () => els.searchBtn.click());
-      box.append(find, gates, ...meet);
-      if (recent.length) box.append(secTitle("最近"), coverCards(recent));
-      box.append(...none, ...shelf);
-      return;
+      box.append(find);
     }
-    box.classList.add("nt-home-two");
-    const l = node(html`<div class="nt-home-l"></div>`), r = node(html`<div class="nt-home-r"></div>`);
-    l.append(...none, ...shelf);
-    r.append(gates, ...meet);
-    if (recent.length) r.append(secTitle("最近直した"), cards(recent, t));
-    box.append(l, r);
+    box.append(gates, ...meet);
+    if (recent.length) box.append(secTitle("最近"), coverCards(recent));
+    box.append(...none, ...shelf);
   }
 
   /** 本棚：ノートブックを本の形で（6つの棚が先、冊の無いノートがあれば終わりに無地の一冊）。押すと、頭のある冊は

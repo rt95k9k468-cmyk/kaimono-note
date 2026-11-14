@@ -7091,11 +7091,13 @@ button.note-when:active { opacity: var(--press-fade); }
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
   /* ＋はほかの席と同じ左の列の底（base.css。木はそのぶん底を空ける）。 */
 }
-/* ノートのホームを二段に（screen-notes.js の homeBody。840px から）：左に本棚とタグ、右に札と最近直したの一覧。 */
+/* ノートのホームの広い幅（screen-notes.js の homeBody。840px から。W6）：電話と同じ一列を全幅に。札と最近は同じ四列、本棚は詰めて並べる。 */
 @media (min-width: 840px) {
-  .nt-home-two { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); align-items: start; }
-  .nt-home-l { margin-right: -8px; } .nt-home-r { margin-left: -8px; }
-  .nt-home-two .nt-bks { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 22px var(--sp-5); }
+  #screen-notes .nt-home-two :is(.notes-books.nt-gates, .nt-covers) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
+  .nt-home-two .nt-covers { display: grid; margin-inline: var(--sp-4); padding: 2px 0 var(--sp-1); overflow: visible; }
+  .nt-home-two .nt-cover { width: auto; }
+  .nt-home-two .nt-cover > .nt-cv { height: 112px; }
+  .nt-home-two .nt-bks { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 22px var(--sp-5); }
 }
 /* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
    重ねられるよう、塗りは background-image の一枚で（色の地はそのまま）。透けるカードは下の色で。 */
