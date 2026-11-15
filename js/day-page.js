@@ -140,5 +140,38 @@
     return top.concat(list, end, foot);
   }
 
-  KN.dayPage = { rows, minOf, clock };
+  /* ---- 年々（構2・README 6.1・8）。日の鍵から引くだけ——索引を持たない。遠い年は10年前まで（R9 と同じ）。 ---- */
+  const BACK = 10;
+  const utc = (y, m, d) => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+  const ymd = (day) => String(day).split("-").map(Number);
+
+  /** 年々のつまみ：同じ月日のほかの年で has(日) が真の日。近い年から n まで、古い順に返す。2月29日は無い年を飛ばす。 */
+  function yearTabs(today, has, n = 3) {
+    const [y, m, d] = ymd(today), out = [];
+    for (let k = 1; k <= BACK && out.length < n; k++) {
+      const day = utc(y - k, m, d);
+      if (day.slice(5) === String(today).slice(5) && has(day)) out.push(day);
+    }
+    return out.reverse();
+  }
+
+  /** いまごろ：ほかの年の同じ候の日。年ごとに同じ月日の前後6日から kouOf(日) が今日と同じ日を拾う。
+      年の札は候の続きが始まる年（年をまたぐ雪下出麦は 12/31 の年）。same は同じ月日の日。古い年から [{ year, days, same }]。 */
+  function kouYears(today, kouOf) {
+    const want = kouOf(today);
+    if (want == null) return [];
+    const [y, m, d] = ymd(today), out = [];
+    for (let k = BACK; k >= 1; k--) {
+      const days = [];
+      for (let o = -6; o <= 6; o++) {
+        const day = utc(y - k, m, d + o);
+        if (kouOf(day) === want) days.push(day);
+      }
+      if (!days.length) continue;
+      out.push({ year: Number(days[0].slice(0, 4)), days, same: days.find((x) => x.slice(5) === String(today).slice(5)) || null });
+    }
+    return out;
+  }
+
+  KN.dayPage = { rows, minOf, clock, yearTabs, kouYears };
 })();

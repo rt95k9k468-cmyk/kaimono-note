@@ -2,7 +2,7 @@
    - 設定 → 外観に「試す」も「2.0 の見た目」も無い。html に .is-v2 は付かない
    - 記録に v2: true が残っていても読み込めて、鍵は消えない（後方互換）
    - 四つのタブが開いてエラーが出ない
-   - daily の紙の下の角は丸い（V21）・日記の抜き出しは五行（V21）・切った Daily Log は終わりの五行（10/6）
+   - daily の紙の下の角は丸い（V21）・いまごろの頁の写しは二行（構2）・切った Daily Log は終わりの五行（10/6）
    - ノートの道具の帯は塗った面（2026年11月10日、docs/redesign.md 2節。前は白を少し透かしてぼかした面）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/v2-switch.js */
 const { open, checker } = require("./lib");
@@ -62,7 +62,7 @@ const { open, checker } = require("./lib");
     return e ? parseFloat(getComputedStyle(e).borderBottomLeftRadius) : -1;
   });
   t.check("daily の紙の下の角は丸い", corner > 0, String(corner));
-  t.check("日記の抜き出しは五行", (await probe("arc-then-memo", "span")).clamp === "5");
+  t.check("いまごろの頁の写しは二行", (await probe("ima-text", "span")).clamp === "2");
   const clamped = await probe("arc-log-memo is-tail", "span");
   t.check("切った Daily Log は既定で終わりの五行・両端揃えにしない",
     Math.abs(parseFloat(clamped.mh) - 5 * parseFloat(clamped.lh)) < 1 && clamped.align === "start", JSON.stringify(clamped));

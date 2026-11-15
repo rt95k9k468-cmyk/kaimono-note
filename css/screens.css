@@ -2905,49 +2905,49 @@ a.btn { text-decoration: none; }
    カレンダーは他のタブ（やること・ダイエット）と同じ .cal 系のクラスを
    そのまま使います。 */
 
-/* ---- ② あの日 ----
-
-   過ぎた日の紙です。今日の紙（Daily Log・積み上げ）と**同じ顔にしません**
-   ——並べたときに、どちらが今でどちらが前か、読まなくても分かるように。
-   季節の写真の上に、透けたガラスとして置きます（10/8 まで沈んだ地と主色の柱）。
-   後ろの写真が透けていることが、この一枚が「いま」ではないことを言います。
-
-   押せますが、ボタンの顔はしていません。読みものとして置いて、触れれば
-   その日へ行く、という順です。 */
+/* ---- ② いまごろ・年々のつまみ（構2）----
+   いまごろは今日の紙の足もとの塗った札（2026年11月10日から。ぼかさない）。年ごとに、その候の頁の小さな写しを横へ
+   （巻かずに折り返す——横に払うと日が替わるので）。同じ月日の頁に朱の栞。下に した・買った を一行ずつ。 */
 .arc-then {
-  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2);
-  width: auto; padding: var(--sp-4); text-align: left;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3);
+  padding: var(--sp-4); text-align: left;
   background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
-  transition: transform var(--m-state) var(--ease), scale var(--m-press) var(--ease);
 }
-.arc-then:active { scale: var(--press-wide); }
-/* 小見出し（明朝）と「◯月◯日の年々」。 */
 .arc-then-head { display: flex; align-items: baseline; gap: var(--sp-2); }
 .arc-then-head b { font: var(--fw-bold) var(--fs-lg)/1.3 var(--font-display); letter-spacing: .06em; color: var(--c-text); }
 .arc-then-when { font-style: normal; font-size: var(--fs-sm); color: var(--c-text-3); }
+.ima-year { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ima-year + .ima-year { padding-top: var(--sp-3); border-top: 1px solid var(--c-border); }
 /* 年は藍の札（R6。見本の .then-y）。 */
-.arc-then-date, .arc-year-y {
-  flex: none; padding: 2px var(--sp-2); border-radius: var(--r-sm);
+.ima-y, .arc-tab {
+  align-self: flex-start; padding: 2px var(--sp-2); border-radius: var(--r-sm);
   background: var(--c-ai-soft); color: var(--c-ai); font-size: var(--fs-sm); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
 }
-/* 本文は明朝で読む。五行で切る（V21）——頭の決まった行で埋まらず地の文まで届くように。切った行は両端揃えにしない（V26）。 */
-.arc-then-memo, .arc-year-text {
-  min-width: 0; font: var(--fw-regular) calc(15px * var(--fs-k))/1.8 var(--font-display); color: var(--c-text);
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; word-break: break-word;
-}
-/* 同じ日の年々（R9）。枠そのものは押せず、年の一行ずつが押せます。 */
-.arc-then.is-years:active { scale: none; }
-.arc-year {
-  display: flex; align-items: baseline; gap: var(--sp-3);
-  width: 100%; padding: var(--sp-2) 0;
-  text-align: left; background: none; border: 0; color: inherit; font: inherit;
+.ima-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: var(--sp-2); }
+.ima-page {
+  position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--sp-2) var(--sp-3);
+  text-align: left; color: inherit; font: inherit; background: var(--c-surface-2); border: 0; border-radius: var(--r-md);
   transition: opacity var(--m-state) var(--ease);
 }
-.arc-year + .arc-year { border-top: 1px solid var(--c-border); }
-.arc-year:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.arc-year-y small { margin-left: var(--sp-1); font-size: var(--fs-xs); font-weight: var(--fw-regular); }
-.arc-year-text { -webkit-line-clamp: 2; }
-.arc-year-text.is-blank { color: var(--c-text-3); }
+.ima-page:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.ima-page.is-same::before {   /* 朱の栞 */
+  content: ""; position: absolute; top: 0; right: var(--sp-3); width: 6px; height: 14px;
+  background: var(--c-primary); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
+.ima-d { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.ima-d small { margin-left: var(--sp-1); font-size: inherit; }
+.ima-text {
+  min-width: 0; font: var(--fw-regular) calc(14px * var(--fs-k))/1.7 var(--font-display); color: var(--c-text);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: break-word;
+}
+.ima-text.is-blank { color: var(--c-text-3); }
+.ima-line { display: flex; gap: var(--sp-2); margin: 0; min-width: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
+.ima-line b { flex: none; font-weight: var(--fw-bold); color: var(--c-text-3); }
+.ima-line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 年々のつまみ：頁の札の上の縁から立つ年の札（右寄せ・上の角だけ丸い）。 */
+.arc-tabs { display: flex; justify-content: flex-end; gap: var(--sp-1); padding-right: var(--sp-4); margin-bottom: calc(-1 * var(--sp-2)); }
+.arc-tab { padding: 3px var(--sp-3) 2px; border: 0; border-radius: var(--r-sm) var(--r-sm) 0 0; font-family: var(--font-num); }
+.arc-tab:active { opacity: var(--press-fade); }
 .arc-any { align-self: flex-start; justify-self: start; }   /* 偶然の一日（D1） */
 
 /* 「◯月の積み上がり」（.arc-rollup / .arc-count）はここにありました。
@@ -6154,37 +6154,6 @@ button.note-when:active { opacity: var(--press-fade); }
 @media (hover: hover) {
   .arc-feed-row:hover .arc-feed-title { color: var(--c-text); }
 }
-/* ---------------- ◯月のまとめ ----------------
-
-   Daily Log のすぐ下に置きます。数だけが単独で立つと「その月の成績」に
-   見えるので、必ず地の文の隣に並べる、という決めごとです。
-
-   数えるのは、あったことだけ。割合も、続いた日数も、先月との比べも
-   出しません——良し悪しを言う場所ではないので。 */
-.arc-counts { padding: var(--sp-4); }
-.arc-counts-head {
-  margin: 0 0 var(--sp-3);
-  font: var(--fw-bold) var(--fs-lg)/1.3 var(--font-display);
-  color: var(--c-text);             /* 見出しは墨（総点検 Y1） */
-  letter-spacing: .06em;
-}
-.arc-counts-list {
-  display: flex; flex-wrap: wrap; gap: var(--sp-2);
-  margin: 0; padding: 0; list-style: none;
-}
-.arc-counts-item {
-  display: flex; align-items: baseline; gap: 6px;
-  padding: 5px 10px;
-  border-radius: var(--r-full);
-  background: var(--c-surface-2);
-}
-.arc-counts-label { font-size: var(--fs-sm); color: var(--c-text-3); font-weight: var(--fw-bold); }
-.arc-counts-n {
-  font-size: var(--fs-lg); font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
-  color: var(--c-text);
-}
-
 /* ---------------- 基調色を選ぶ ----------------
 
    明暗の三択のすぐ下に並べます（別の軸ですが、どちらも「表示」の話なので）。

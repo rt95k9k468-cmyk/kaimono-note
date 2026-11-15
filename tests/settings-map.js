@@ -74,9 +74,9 @@ const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "not
   await go("daily");
   const d = await rows();
   t.check("daily：日記は一枚・出す範囲は月ぜんぶ・行数は3行", d["日記"] === "一枚" && d["出す範囲"] === "月ぜんぶ" && d["行数"] === "3行", JSON.stringify(d));
-  t.check("daily：あの日・起床就寝・ひとこと・季節の絵は切、まとめは上",
-    d["「あの日」を出す"] === "off" && d["起床・就寝の時刻"] === "off" && d["季節のひとこと"] === "off" && d["季節の絵"] === "off"
-      && d["月のまとめ"] === "on" && d["まとめの位置"] === "上", JSON.stringify(d));
+  t.check("daily：いまごろ・起床就寝・ひとこと・季節の絵は切、月のまとめの行は無い",
+    d["いまごろ・年々"] === "off" && d["起床・就寝の時刻"] === "off" && d["季節のひとこと"] === "off" && d["季節の絵"] === "off"
+      && !("月のまとめ" in d) && !("まとめの位置" in d), JSON.stringify(d));
   await back();
   await go("notes");
   const n = await rows();

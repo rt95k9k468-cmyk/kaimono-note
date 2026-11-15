@@ -1,5 +1,5 @@
 /* =========================================================
-   くらしノート — settings screen：daily の一枚（見せ方・表示・季節・月のまとめ・書き出し）とロック
+   くらしノート — settings screen：daily の一枚（見せ方・表示・季節・書き出し）とロック
    土台（紙の重なり・行の部品・PAGES）は screen-settings.js。分け方は
    docs/settings.md の「ファイルの分け方」。
    ========================================================= */
@@ -61,7 +61,7 @@
   }
 
   /** daily の一枚（根っこの入口「daily」の先。2026年11月5日）。前は 根っこ →「表示 ›」「書き出し ›」の二枚に
-      分かれていた。見せ方 → 表示 → 季節 → 月のまとめ → 書き出しと取り込み。daily は評価しないので、
+      分かれていた。見せ方 → 表示 → 季節 → 書き出しと取り込み。daily は評価しないので、
       行の右に数を出さない（docs/settings.md）。 */
   function dailyPageRows() {
     const s = store.get().settings;
@@ -119,7 +119,7 @@
       head("表示"),
       card(
         switchRow({
-          title: "「あの日」を出す", on: s.showThen !== false,
+          title: "いまごろ・年々", on: s.showThen !== false,
           onTap: (v) => dailySet("showThen", v),
         }),
         switchRow({
@@ -132,8 +132,8 @@
         }),
         weatherRow()
       ),
-      /* 何が出るかが題だけでは分からないのは「あの日」だけ。天気は出典（CC BY 4.0）と、送るもの。 */
-      foot("「あの日」は、何年か前の同じ日に書いたものを今日の紙に出します。"),
+      /* 何が出るかが題だけでは分からないのは「いまごろ・年々」だけ。天気は出典（CC BY 4.0）と、送るもの。 */
+      foot("ほかの年の同じころの頁を、今日の紙に。"),
       KN.weather ? foot("天気は Open-Meteo.com（CC BY 4.0）から。送るのは丸めた場所だけ。") : null,
       head("季節"),
       /* 季節の絵（3.0 の E1）。daily の紙の後ろの、候ごとの色と写真（Wikimedia Commons）。既定は入。
@@ -153,26 +153,6 @@
       !KN.seasonArt || !KN.seasonArt.credits("daily").length ? null
         : S.more("写真の出典", "Wikimedia Commons ／ " + KN.seasonArt.credits("daily")
           .map((c) => `${c.kou}：${c.author}「${c.title}」${c.license}（${c.url}）`).join(" ／ ")),
-      head("月のまとめ"),
-      card(
-        switchRow({
-          title: "月のまとめ", on: s.showDigest !== false,
-          onTap: (v) => dailySet("showDigest", v),
-        }),
-        /* 位置は「上か下か」の決め打ちで、日の間には挟まりません——まとめは
-           月ぜんぶの話なので、日の列に混ぜると、どの日の話か分からなくなります。 */
-        s.showDigest === false ? null : pickRow({
-          title: "まとめの位置", value: s.digestPos === "top" ? "上" : "下",
-          onTap: () => choose({
-            title: "月のまとめの位置", value: s.digestPos === "top" ? "top" : "bottom",
-            options: [
-              { id: "top",    label: "上" },
-              { id: "bottom", label: "下" },
-            ],
-            onPick: (v) => dailySet("digestPos", v),
-          }),
-        })
-      ),
       head("書き出しと取り込み"),
       card(...dailyExportRows(), ...S.dailyImportRows()),
       foot(S.DIARY_IN_NOTE),

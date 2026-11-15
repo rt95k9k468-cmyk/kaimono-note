@@ -592,79 +592,76 @@
 
 
   /* ================================================================
-     ②あの日 — 貯めたものを、返すところ
+     ②いまごろ・年々のつまみ（構2・shots/vision/README.md 6.1・8）——「あの日」の札の代わり
      ================================================================
 
-     ここまで作ったのは貯める器だけでした。一年ぶん書けるようにしても、
-     書いたものが自分から出てこなければ、そのうち開かれなくなります。
+     **無い過去のことは、何も言わない。** 頁の無い年は行ごと出さず、年の数も言わない
+     （空いた年を置くと、書かなかった年の一覧になる）。頁＝日記か、した・買った（からだ・食事は数えない）。
+     出すのは今日の紙だけ、「いまごろ・年々」（showThen）と日記の鍵が効く。日の鍵から引くだけ（KN.dayPage）。 */
+  const hasDiary = (d) => !!(d && (String(d.memo || "").trim() || store.memoOut(d)));
+  const hasPage = (day) => hasDiary(store.dayLog(day)) || store.dayFeed(day).length > 0;
+  const showYears = (day) => day === U.todayKey() && S().showThen !== false && !diaryShut();
 
-     出し方には線が一本あります。**無い過去のことは、何も言わない。**
-     「1年前の今日はこう書いていました」は思い出ですが、「去年は書いて
-     いたのに今年は」は採点です。だから見つからなければ**枠ごと出しません**
-     ——「まだ記録がありません」も出しません。それも「無い」を数えた言葉です。
-
-     出すのは一日ぶん、一枚だけ。並べると流れになり、流れは読み飛ばすもの
-     になります。選び方は store.archiveThen にあります。 */
-
-  /* 同じ日の年々（R9）。同じ月日の記録が二年以上あるときだけ、紙の10年日記
-     のように年ごとに一行ずつ（遠い年から）。記録の無い年は行ごと出しません
-     ——空いた年を置くと、書かなかった年の一覧になります。年の数も言いません。
-     一行ずつ押せて、その日へ行きます（だから枠はボタンではなく、行がボタン）。 */
-  function yearsCard(years) {
-    const dt = U.dayDate(years[0].date);
-    const md = dt ? `${dt.getMonth() + 1}月${dt.getDate()}日` : "";
-    const rowText = (y) => (diaryBody() === "off" ? null : y.memo);
-    const sec = node(html`
-      <div class="card arc-then is-years">
-        <span class="arc-then-head">
-          <b>あの日</b>
-          <i class="arc-then-when">${md}の年々</i>
-        </span>
-        ${U.raw(years.map((y) => {
-          const t = rowText(y);
-          const yr = String(y.date).slice(0, 4);
-          return `<button type="button" class="arc-year" data-day="${U.escapeHtml(y.date)}">`
-            + `<span class="arc-year-y">${yr}年<small>${U.escapeHtml(U.weekdayJa(y.date))}</small></span>`
-            + (t == null
-              ? `<span class="arc-year-text is-blank">${UNREAD}</span>`
-              : `<span class="arc-year-text">${U.escapeHtml(t)}</span>`)
-            + `</button>`;
-        }).join(""))}
-      </div>
-    `);
-    sec.querySelectorAll(".arc-year").forEach((b) => b.addEventListener("click", () => {
+  /** 年々のつまみ：同じ月日のほかの年に頁があるときだけ、頁の上の縁に年の札（三つまで）。押すとその年の同じ日。 */
+  function yearTabs(day) {
+    if (!showYears(day) || !KN.dayPage) return null;
+    const list = KN.dayPage.yearTabs(day, hasPage);
+    if (!list.length) return null;
+    const el = node(html`<nav class="arc-tabs" aria-label="同じ日のほかの年">${U.raw(list.map((d) =>
+      `<button type="button" class="arc-tab" data-day="${U.escapeHtml(d)}">${d.slice(0, 4)}</button>`).join(""))}</nav>`);
+    el.querySelectorAll(".arc-tab").forEach((b) => b.addEventListener("click", () => {
       KN.motion.fire("select");
       goToDay(b.dataset.day);
     }));
-    return sec;
+    return el;
   }
 
-  function thenCard() {
-    if (diaryShut()) return null;
-    const years = store.archiveYears();
-    if (years) return yearsCard(years);
-    const then = store.archiveThen();
-    if (!then) return null;             // 無ければ、何も置かない
+  /** 頁の小さな写しの一行：日記の最初の一行（頭の日付・育休の行は飛ばす）。読めなければその旨。 */
+  function leadOf(d) {
+    const out = outText(d);
+    if (out != null) return { text: out, blank: true };
+    if (diaryBody() === "off") return { text: UNREAD, blank: true };
+    const texts = KN.diaryPosts ? KN.diaryPosts.parse(d.memo || "").map((p) => p.text || "") : [String(d.memo || "")];
+    const line = texts.join("\n").split("\n").map((l) => l.trim()).find((l) => l && !isStampLine(l)) || "";
+    return { text: line, blank: false };
+  }
 
-    const dt = U.dayDate(then.date);
-    const when = dt ? `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日 ${U.weekdayJa(then.date)}` : then.date;
-
+  /** いまごろ：同じ候の、ほかの年の頁を年ごとに横へ。同じ月日の頁に朱の栞。下に、その候に した・買った を一行ずつ（あった順・数えない）。 */
+  function imaCard(day) {
+    if (!showYears(day) || !KN.dayPage || !KN.season) return null;
+    const kouOf = (d) => { const r = KN.season.of(d); return r ? r.k : null; };
+    const once = (list) => [...new Set(list.filter(Boolean))];
+    const years = KN.dayPage.kouYears(day, kouOf).map((g) => {
+      const pages = g.days.map((d) => store.dayLog(d)).filter(hasDiary);
+      const feed = g.days.flatMap((d) => store.dayFeed(d));
+      const did = once(feed.filter((f) => f.src === "todo").map((f) => f.title));
+      const got = once(feed.filter((f) => f.src === "item").map((f) => f.title));
+      return pages.length || did.length || got.length ? { year: g.year, same: g.same, pages, did, got } : null;
+    }).filter(Boolean);
+    if (!years.length) return null;
+    const kou = KN.season.of(day);
+    const line = (label, list) => (list.length
+      ? `<p class="ima-line"><b>${label}</b><span>${U.escapeHtml(list.join("・"))}</span></p>` : "");
     const sec = node(html`
-      <button type="button" class="card arc-then" data-day="${then.date}">
+      <section class="card arc-then is-ima">
         <span class="arc-then-head">
-          <b>あの日</b>
-          ${then.label ? html`<i class="arc-then-when">${then.label}</i>` : ""}
+          <b>いまごろ</b>
+          ${kou ? html`<i class="arc-then-when">${kou.kou}</i>` : ""}
         </span>
-        <span class="arc-then-date">${when}</span>
-        ${diaryBody() === "off"
-          ? html`<span class="arc-then-memo is-blank">${UNREAD}</span>`
-          : html`<span class="arc-then-memo">${then.memo}</span>`}
-      </button>
+        ${U.raw(years.map((y) => `<div class="ima-year"><span class="ima-y">${y.year}</span>`
+          + (y.pages.length ? `<div class="ima-pages">${y.pages.map((d) => {
+            const dt = U.dayDate(d.date), l = leadOf(d);
+            return `<button type="button" class="ima-page${d.date === y.same ? " is-same" : ""}" data-day="${U.escapeHtml(d.date)}">`
+              + `<span class="ima-d">${dt.getMonth() + 1}月${dt.getDate()}日<small>${U.escapeHtml(U.weekdayJa(d.date))}</small></span>`
+              + `<span class="ima-text${l.blank ? " is-blank" : ""}">${U.escapeHtml(l.text)}</span></button>`;
+          }).join("")}</div>` : "")
+          + line("した", y.did) + line("買った", y.got) + `</div>`).join(""))}
+      </section>
     `);
-    sec.addEventListener("click", () => {
+    sec.querySelectorAll(".ima-page").forEach((b) => b.addEventListener("click", () => {
       KN.motion.fire("select");
-      goToDay(then.date);
-    });
+      goToDay(b.dataset.day);
+    }));
     return sec;
   }
 
@@ -907,43 +904,7 @@
     return wrap;
   }
 
-  /* ================================================================
-     ◯月のまとめ — Daily Log と同じ材料から
-
-     数えるのは、あったことだけです。「何日書けたか」であって「何%達成
-     したか」ではありません。割合も、続いた日数も、先月との比べも出しま
-     せん——この画面が答えるのは「あの月はどんな月だったか」で、良し悪し
-     ではないので。
-
-     **日を絞っていても出します。** 前は出していませんでした——「その日ぶんは
-     Daily Log の行がそのまま言っている」という理由でしたが、Daily Log が
-     一日ぶんになったいま、この一段だけが月の話をします。消すと、月を
-     見る手だてがどこにも無くなります。
-     ================================================================ */
-  function monthDigest(ym) {
-    const d = store.monthDigest(ym);
-    if (!d.total && !d.daysWith.length) return null;
-
-    const { month } = ymParts(ym);
-    const bits = [];
-    if (d.bySrc.todo) bits.push({ label: "やること", n: d.bySrc.todo });
-    if (d.bySrc.item) bits.push({ label: "買うもの", n: d.bySrc.item });
-    /* 数える行が無ければ出さない（見出しだけの空のカードになる。design-review 12節の Z5）。 */
-    if (!bits.length) return null;
-
-    return node(html`
-      <section class="card arc-counts">
-        <h3 class="arc-counts-head">${month + 1}月のまとめ</h3>
-        <ul class="arc-counts-list">
-          ${bits.map((b) => html`
-            <li class="arc-counts-item">
-              <span class="arc-counts-label">${b.label}</span>
-              <span class="arc-counts-n">${b.n}</span>
-            </li>`)}
-        </ul>
-      </section>
-    `);
-  }
+  /* 「◯月のまとめ」の数の札は外した（構2・README 12節。月を見るのは一年の一冊と月の頁の役。store.monthDigest は残す）。 */
 
   /* 育休の期間（2026.04.01〜2027.03.31）。ユーザーに確認済みの固定日付です——ここだけ
      直接書きます。「あと◯日」の行は、この期間の日にだけ出ます（前でも後でも出さない）。
@@ -2053,30 +2014,22 @@
   function daySlide(day) {
     const ym = day.slice(0, 7);
     const el = node(html`<div class="day-slide m-in"></div>`);
-    /* 二段の器（R6）：電話は一列（候の札 → 書く口 → Daily Log → あの日）、中身 768px からは左に書く口と Daily Log、
-       右に候の札とあの日（CSS の grid。紙を払う幅は変えない）。まとめは Daily Log の隣のまま（daily-rules）。 */
+    /* 二段の器（R6）：電話は一列（候の札 → 書く口 → Daily Log → いまごろ）、中身 768px からは左に書く口と Daily Log、
+       右に候の札といまごろ（CSS の grid。紙を払う幅は変えない）。 */
     const main = node(html`<div class="day-main"></div>`);
 
-    /* まとめは Daily Log の**すぐ下**に置きます。数だけが単独で立つと
-       「その月の成績」に見えるので、必ず地の文の隣に並べる、という
-       決めごとです（daily-rules.js が見張っています）。 */
     const log = dailyLog(ym, day);
-    /* まとめは設定で出し入れできます。出すときは、上か下かのどちらか一方
-       ——日の間には決して挟みません。挟むと「その日のまとめ」に見えます。 */
-    const digest = S().showDigest === false ? null : monthDigest(ym);
-    const logBlock = document.createDocumentFragment();
-    if (digest && S().digestPos === "top") logBlock.append(digest);
-    logBlock.append(log);
-    if (digest && S().digestPos !== "top") logBlock.append(digest);
-    /* 「あの日」は Daily Log の下（外）。出すのは今日の紙だけ、出すかどうかは設定で
-       （2026年10月10日・利用者。Daily Log の中に入れたら起床・就寝や幅が崩れた）。 */
-    const then = day === U.todayKey() && S().showThen !== false ? thenCard() : null;
+    /* 年々のつまみは頁（Daily Log の札）の上の縁に、いまごろは足もとに。どちらも今日の紙だけ（構2）。 */
+    const tabs = yearTabs(day);
+    const body = tabs && log.querySelector(".arc-log-body");
+    if (body) body.before(tabs);
+    const then = imaCard(day);
     const season = seasonCard(day);
-    main.append(logBlock);
+    main.append(log);
     if (season) el.append(season);
     el.append(main);
     if (then) el.append(then);
-    /* 偶然の一日（F6 の D1）：あの日の並びの端。押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。 */
+    /* 偶然の一日（F6 の D1）：いまごろの並びの端。押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。 */
     if (day <= U.todayKey() && S().showThen !== false && !diaryShut() && store.archiveAny(day)) {
       const any = node(html`<button type="button" class="btn btn-soft btn-sm arc-any">${icon("shuffle")}どこかの一日</button>`);
       any.addEventListener("click", () => {

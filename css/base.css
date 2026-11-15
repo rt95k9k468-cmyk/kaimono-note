@@ -444,7 +444,7 @@
 .mono-num, .cal-n, .day-d, .diet-hero-value b, .hero-fact.is-subs i,
 .due-time, .carry-was, .carry-n, .row-times, .when-btn, .price-amount, .log-price,
 .tl-time, .tl-band-time, .time-label, .up-time, .road-carry-time, .urge-row-time,
-.arc-then-date, .arc-year-y, .arc-log-times, .arc-times { font-family: var(--font-num); }
+.ima-y, .ima-d, .arc-log-times, .arc-times { font-family: var(--font-num); }
 
 /* 見出しは明朝（docs/redesign.md 4節）：帯の日付・小見出し・紙の題・ノートの題・日記の日にち。本文と押すものは --font、
    数は --font-num。設定の「見出しの書体」を「本文と同じ」にした人（data-head="same"）と装い「モダン」は本文の書体に揃う。

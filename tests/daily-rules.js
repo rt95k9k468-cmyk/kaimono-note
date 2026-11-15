@@ -63,7 +63,6 @@ const FORBIDDEN = [
   const scr = await page.evaluate(() => {
     const root = document.getElementById("screen-archive");
     const log = root.querySelector(".arc-log");
-    const dg = root.querySelector(".arc-counts");
     const blank = root.querySelector(".arc-log-row.is-today .arc-log-memo");
     const row = blank && blank.closest(".arc-log-row");
     const probe = document.createElement("span");
@@ -75,9 +74,7 @@ const FORBIDDEN = [
       visible: !root.hidden,
       text: root.innerText,
       hasLog: !!log,
-      hasDigest: !!dg,
-      digestNextToLog: !!(dg && log && (log.nextElementSibling === dg || log.previousElementSibling === dg)),
-      digestInsideLog: !!(dg && log && log.contains(dg)),
+      hasDigest: !!root.querySelector(".arc-counts") || /のまとめ/.test(root.innerText),
       blankText: blank ? blank.textContent.trim() : null,
       blankIsBlank: !!(blank && blank.classList.contains("is-blank")),
       blankColor: blank ? getComputedStyle(blank).color : null,
@@ -89,8 +86,7 @@ const FORBIDDEN = [
   const hits = FORBIDDEN.filter((w) => scr.text.includes(w));
   t.check("評価の言葉が出ない（先月に10日・今月に1日でも比べない）", !hits.length, hits.join(","));
   t.check("割合（%）が出ない", !/\d\s*[%％]/.test(scr.text));
-  t.check("月のまとめは出ている", scr.hasDigest);
-  t.check("まとめは Daily Log のすぐ隣（日の間に挟まない）", scr.digestNextToLog && !scr.digestInsideLog);
+  t.check("「◯月のまとめ」の数の札は出さない（構2。外した）", !scr.hasDigest);
   t.check("今日の空の一行は「この日のことを書く」", scr.blankText === "この日のことを書く", scr.blankText);
   t.check("空の一行は薄い字（is-blank ＝ --c-text-3）で、責める色を当てない",
     scr.blankIsBlank && scr.blankColor === scr.text3, `${scr.blankColor} / ${scr.text3}`);
@@ -110,24 +106,14 @@ const FORBIDDEN = [
     return { kids, dash: cs ? cs.borderTopStyle : "", lineOk: !!cs && cs.borderTopColor === line,
       kou: (root.querySelector(".arc-season-main") || {}).textContent || "" };
   });
-  t.check("日の一枚は 候の札 → 本体（書く口・Daily Log・まとめ）の順", r6.kids[0] === "arc-season" && r6.kids[1] === "day-main", r6.kids.join(","));
+  t.check("日の一枚は 候の札 → 本体（書く口・Daily Log）の順", r6.kids[0] === "arc-season" && r6.kids[1] === "day-main", r6.kids.join(","));
   t.check("今日が空なら点線の「この日のことを書く」（線の色は --c-border-2）", r6.dash === "dashed" && r6.lineOk, JSON.stringify(r6));
   t.check("候の札は暦の言葉だけ（評価の言葉なし）", !!r6.kou && !FORBIDDEN.some((x) => r6.kou.includes(x)), r6.kou);
-
-  /* ---- まとめを上に置いても、Daily Log の隣 ---- */
-  await page.evaluate(() => KN.store.update((s) => { s.settings.digestPos = "top"; }));
-  await page.waitForTimeout(300);
-  const top = await page.evaluate(() => {
-    const root = document.getElementById("screen-archive");
-    const log = root.querySelector(".arc-log"), dg = root.querySelector(".arc-counts");
-    return !!(dg && log && log.previousElementSibling === dg);
-  });
-  t.check("まとめを上にすると Daily Log のすぐ上", top);
 
   /* ---- 月ぜんぶ：書いていない日を並べない。開いて閉じただけの日は「—」 ---- */
   await page.evaluate((d) => {
     KN.store.ensureDayLog(d.today);   // 紙を開いて何も書かずに閉じた跡
-    KN.store.update((s) => { s.settings.dailyScope = "month"; s.settings.digestPos = "bottom"; });
+    KN.store.update((s) => { s.settings.dailyScope = "month"; });
   }, days);
   await page.waitForTimeout(300);
   const month = await page.evaluate((d) => {

@@ -1,6 +1,6 @@
 /* 一度だけ描く——決まり三つ（docs/log/design-review.md 12節「手を離せる一冊」の柱2・M1。2026年11月7日）。
    393×852・標準の字で、開いたところ（最初の一画面）を見る。
-   ① 一つのものは一画面に一度：daily の月のまとめは数える行のあるときだけ（Z5。見出しだけの空のカードを出さない）・
+   ① 一つのものは一画面に一度：daily の月のまとめは出さない（構2）・
       買うものの品は一画面に一度（帯は品を描かない）・からだの見出しは一度ずつ。
       やることの今日の面（暦の札・道・時間割）は利用者が「今のまま」と決めた例外（11月7日。札を点にする案は出さない）。
    ② 席ごとに、いちばん多い一手を最初の一画面に：daily は今日の行・やることは今日の面の頭（帯のすぐ下）・
@@ -99,17 +99,10 @@ const { open, checker } = require("./lib");
     t.check(`③ ${id}：末尾まで送ると、最後の中身は＋より上`, end.last <= end.fabTop + 1, JSON.stringify(end));
   }
 
-  /* ① daily の月のまとめ：数える行のある月だけ（Z5） */
+  /* ① daily：「◯月のまとめ」の数の札は外した（構2） */
   await show("archive");
-  let n = (await read("archive")).digests;
-  t.check("① daily：やることのある月はまとめが一つ", n === 1, n);
-  await page.evaluate(() => {   // 日記だけ書いた月（やること・買うものは0件）
-    KN.store.update((s) => { s.todos = []; s.items = []; });
-    KN.store.setDayLog(KN.util.todayKey(), { memo: "試しの一行" });
-  });
-  await page.waitForTimeout(400);
-  n = (await read("archive")).digests;
-  t.check("① daily：やること・買うものが0件の月は、まとめを出さない（見出しだけのカードを出さない）", n === 0, n);
+  const n = (await read("archive")).digests;
+  t.check("① daily：月のまとめの札は出さない", n === 0, n);
 
   t.check("エラーが出ない", !errors.length, errors.join("\n"));
   await browser.close();
