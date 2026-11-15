@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>くらしノート 完成形の見本「一日一頁、めぐる歳時記」</title>
+<!-- 見本（動かない絵）。配らない——sw.js の ASSETS にも build-standalone.js にも載せない。
+     字は作りもの（日記由来の字は置かない）。色・角・字の札は css/base.css の :root の値を写した。 -->
+<style>
+:root {
+  --bg: #f4efe5; --rail: #eee7d9; --surface: #fffdf8; --s2: #ebe4d6; --s3: #ded5c3;
+  --border: #e5ddce; --border2: #cfc5b2;
+  --ink: #25201a; --ink2: #5a5146; --ink3: #6f6558;
+  --shu: #bf4128; --shu-soft: #f7e3da; --shu-ink: #8e2e1b;
+  --ai: #2b5a8c; --ai-soft: #dfe8f2;
+  --take: #2a7354; --take-soft: #dcebe2;
+  --buki: #8a6410; --buki-fill: #dfa32b; --buki-soft: #f6ead0;
+  --fuji: #5d4c98; --kaki: #a04d17;
+  --mincho: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  --gothic: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --num: ui-rounded, "SF Pro Rounded", "Inter", "Noto Sans JP", sans-serif;
+  --shadow1: 0 1px 2px rgba(60, 45, 20, .06), 0 2px 8px rgba(60, 45, 20, .05);
+  --shadow2: 0 6px 20px -6px rgba(60, 45, 20, .22), 0 2px 6px rgba(60, 45, 20, .08);
+  /* 二十四節気の色（js/season-art.js の SEKKI_C。春分から） */
+  --sekki: #f3c6d3, #e9d4e6, #cfe3c5, #bfe0c9, #d9e7b0, #b9d8d0, #b7d3e8, #a9d6e0, #f2d7a7, #e9dcae, #e7cf9f, #d6dfe6,
+           #e8c9a8, #e3b9a0, #d9c2b0, #cfcbc0, #d5d9de, #cdd6e3, #c9cfdc, #d7d3cf, #dcdde6, #ead5d9, #d3e0d8, #dbe5c7;
+}
+.dark {
+  --bg: #1b1916; --rail: #161412; --surface: #262320; --s2: #322e29; --s3: #403a33;
+  --border: #37322c; --border2: #4b443b;
+  --ink: #f1ebdf; --ink2: #c2b9aa; --ink3: #a39a8b;
+  --shu: #ee8468; --shu-soft: #46261d; --shu-ink: #f6b29f;
+  --ai: #8db5e2; --ai-soft: #1f3147;
+  --take: #7cc7a2; --take-soft: #1d3a2d;
+  --buki: #e3b95a; --buki-fill: #e3b95a; --buki-soft: #3d3118;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #d6d0c4; font-family: var(--gothic); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; background: none; border: 0; }
+.sheet { display: flex; gap: 52px; align-items: flex-start; padding: 52px 60px 60px; width: max-content; }
+.sheet + .sheet { border-top: 1px solid #c4bdaf; }
+.shot { display: flex; flex-direction: column; gap: 16px; }
+.cap { font: 700 16px/1.5 var(--gothic); color: #2a251f; }
+.cap i { display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 8px; border-radius: 13px; background: #2a251f; color: #f4efe5; font: 700 13px/1 var(--num); font-style: normal; }
+.cap small { display: block; margin: 4px 0 0 34px; font-weight: 400; font-size: 13.5px; line-height: 1.6; color: #5a5146; }
+.device { padding: 11px; border-radius: 58px; background: #171512; box-shadow: 0 34px 60px -24px rgba(50, 38, 15, .5); }
+.device.pad { border-radius: 34px; padding: 16px; }
+.device.desk { border-radius: 14px; padding: 0; background: none; box-shadow: 0 30px 70px -30px rgba(50, 38, 15, .5), 0 0 0 1px #bdb5a6; }
+.board { position: relative; overflow: hidden; background: var(--bg); color: var(--ink); }
+.phone { width: 393px; height: 852px; border-radius: 47px; }
+.tablet { width: 1180px; height: 820px; border-radius: 18px; }
+.pc { width: 1440px; height: 900px; border-radius: 14px; }
+
+.ic { display: inline-flex; width: 22px; height: 22px; flex: none; }
+.ic svg { width: 100%; height: 100%; display: block; }
+.mi { font-family: var(--mincho); }
+.nu { font-family: var(--num); font-feature-settings: "tnum"; }
+
+/* —— 電話の縁（時計・電池）と下の帯 —— */
+.sb { position: absolute; z-index: 9; inset: 0 0 auto 0; height: 54px; display: flex; justify-content: space-between; align-items: center; padding: 16px 34px 0 46px; font: 600 16.5px/1 var(--num); color: #fff; }
+.sb.on-paper { color: var(--ink); }
+.sb .sbr { display: flex; gap: 6px; align-items: center; }
+.sb .bars { display: flex; gap: 2px; align-items: flex-end; height: 11px; }
+.sb .bars b { width: 3px; border-radius: 1px; background: currentColor; }
+.sb .batt { width: 25px; height: 12px; border-radius: 4px; border: 1.2px solid currentColor; padding: 1.3px; opacity: .95; }
+.sb .batt b { display: block; width: 72%; height: 100%; border-radius: 2px; background: currentColor; }
+.homebar { position: absolute; z-index: 9; left: 50%; bottom: 8px; width: 136px; height: 5px; margin-left: -68px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 34%, transparent); }
+.tabbar { position: absolute; z-index: 8; left: 14px; right: 84px; bottom: 26px; height: 62px; display: flex; align-items: center; padding: 0 5px; border-radius: 31px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow2); }
+.tabbar a { flex: 1; display: grid; justify-items: center; gap: 3px; font: 400 10.5px/1 var(--gothic); color: var(--ink2); letter-spacing: .01em; }
+.tabbar a.on { color: var(--shu-ink); font-weight: 700; }
+.tabbar a.on .ic { color: var(--shu); }
+.tabbar a.on::before { content: ""; position: absolute; width: 54px; height: 52px; margin-top: -5px; border-radius: 26px; background: var(--shu-soft); z-index: -1; }
+.tabbar a { position: relative; z-index: 0; }
+.fab { position: absolute; z-index: 8; right: 14px; bottom: 29px; width: 56px; height: 56px; border-radius: 28px; display: grid; place-items: center; background: var(--shu); color: #fff; box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--shu) 70%, transparent); }
+.dark .fab { color: #1b1916; }
+.fab .ic { width: 26px; height: 26px; }
+
+/* —— 空の帯（今日の頁の頭） —— */
+.sky { position: absolute; inset: 0 0 auto 0; height: 150px; color: #fff; background: linear-gradient(90deg, rgba(8, 14, 26, .58), rgba(8, 14, 26, .12) 72%), url(../../img/sky/winter-morning.webp) center 36% / cover; }
+.sky .sub, .plate .sub { display: flex; align-items: center; }
+.sub em { display: inline-flex; align-items: center; gap: 3px; margin-left: 12px; font: 600 12.5px/1 var(--num); font-style: normal; letter-spacing: 0; }
+.sub em .ic { width: 15px; height: 15px; }
+.sky .sub { position: absolute; left: 20px; top: 60px; font: 700 11.5px/1 var(--gothic); letter-spacing: .14em; }
+.sky .date { position: absolute; left: 20px; top: 78px; display: flex; align-items: baseline; gap: 9px; white-space: nowrap; }
+.sky .date b { font: 700 27px/1.1 var(--mincho); letter-spacing: .01em; }
+.sky .date span { font: 700 13.5px/1 var(--gothic); }
+.sky .date em { display: inline-flex; align-items: center; gap: 3px; font: 600 12.5px/1 var(--num); font-style: normal; opacity: .95; }
+.sky .date em .ic { width: 15px; height: 15px; }
+.rbtn { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; background: rgba(14, 20, 32, .42); border: 1px solid rgba(255, 255, 255, .26); color: #fff; }
+.rbtn .ic { width: 20px; height: 20px; }
+.sky .btns { position: absolute; right: 16px; top: 54px; display: flex; gap: 8px; }
+/* 年々のつまみ：頁の上の縁から、後ろに重なった年の頁が顔を出す */
+.ytabs { position: absolute; z-index: 3; right: 18px; display: flex; gap: 4px; align-items: flex-end; }
+.ytabs b { min-width: 41px; height: 23px; padding: 0 7px; border-radius: 9px 9px 0 0; display: grid; place-items: center; font: 700 11.5px/1 var(--num); color: var(--ink2); background: color-mix(in srgb, var(--surface) 80%, transparent); }
+.ytabs b:nth-child(2) { background: color-mix(in srgb, var(--surface) 66%, transparent); }
+.ytabs b:nth-child(3) { background: color-mix(in srgb, var(--surface) 52%, transparent); }
+.ytabs b.cur { height: 27px; background: var(--surface); color: var(--shu-ink); }
+
+/* —— 頁（盆そのものが紙） —— */
+.page { position: absolute; inset: 122px 0 0 0; border-radius: 24px 24px 0 0; background: var(--surface); }
+.band { padding: 18px 20px 4px; }
+.band-bar { position: relative; height: 14px; border-radius: 7px; background: var(--s2); }
+.band-bar .past { position: absolute; inset: 0 auto 0 0; border-radius: 7px 0 0 7px; background: var(--s3); }
+.band-bar i { position: absolute; top: 2px; height: 10px; border-radius: 4px; background: var(--take); }
+.band-bar i.w { top: 1px; height: 12px; width: 2px; border-radius: 1px; background: var(--shu); }
+.band-bar i.nowdot { top: -4px; width: 2px; height: 22px; border-radius: 1px; background: var(--shu); }
+.band-bar i.nowdot::before { content: ""; position: absolute; left: -4px; top: -5px; width: 10px; height: 10px; border-radius: 5px; background: var(--shu); }
+.band-bar i.todo { background: none; border: 1.6px solid var(--take); }
+.band-t { display: flex; justify-content: space-between; margin-top: 6px; font: 500 11px/1 var(--num); color: var(--ink3); }
+.band-s { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; font: 400 12.5px/1 var(--gothic); color: var(--ink2); }
+.band-s b { font: 700 13px/1 var(--gothic); color: var(--shu-ink); }
+
+.rows { position: relative; padding: 4px 18px 0 var(--pl, 14px); }
+.rows::before { content: ""; position: absolute; left: calc(var(--pl, 14px) + 60.75px); top: 0; bottom: 0; width: 1.5px; }
+.rows.ink::before { background: color-mix(in srgb, var(--shu) 62%, transparent); }
+.rows.pencil::before { background: repeating-linear-gradient(to bottom, var(--border2) 0 4px, transparent 4px 8px); }
+.r { position: relative; display: grid; grid-template-columns: 50px 1fr; column-gap: 24px; padding: 6px 0; }
+.r::before { content: ""; position: absolute; left: 58.5px; top: 14px; width: 6px; height: 6px; border-radius: 3px; background: var(--surface); border: 1.5px solid var(--border2); }
+.r.w::before { top: 17px; background: var(--shu); border-color: var(--shu); }
+.r.d::before { top: 15px; background: var(--take); border-color: var(--take); }
+.r .t { font: 500 12.5px/20px var(--num); color: var(--ink3); text-align: right; font-feature-settings: "tnum"; padding-top: 1px; }
+.r.w .t { padding-top: 5px; }
+.r.d .t { padding-top: 2px; }
+.prose { font: 400 16px/1.85 var(--mincho); color: var(--ink); text-align: justify; letter-spacing: .012em; }
+.good { margin: 1px -11px 0; padding: 3px 11px 4px; border-radius: 11px; background: var(--buki-soft); }
+.r.g .t { color: var(--buki); display: flex; justify-content: flex-end; align-items: center; gap: 2px; height: 30px; padding-top: 4px; }
+.r.g .t .ic { width: 14px; height: 14px; }
+.r.g::before { background: var(--buki-fill); border-color: var(--buki-fill); top: 17px; }
+.fact { display: flex; align-items: center; gap: 7px; font: 400 13.5px/22px var(--gothic); color: var(--ink2); }
+.fact .ic { width: 16px; height: 16px; color: var(--ink3); }
+.fact b { font: 700 14px/22px var(--num); color: var(--ink); }
+.done { display: flex; align-items: center; gap: 7px; font: 400 15.5px/24px var(--gothic); color: var(--ink); }
+.done .ic { width: 19px; height: 19px; color: var(--take); }
+.done small { font: 400 12.5px/1 var(--gothic); color: var(--ink3); margin-left: 2px; }
+
+/* 「いま」の線：ここから上は墨（あったこと）、下は鉛筆（これから） */
+.now { position: relative; display: grid; grid-template-columns: 50px 1fr 40px; column-gap: 10px; align-items: center; padding: 6px 14px 6px 14px; }
+.now::before { content: ""; position: absolute; left: 60px; right: 56px; top: 50%; height: 2px; margin-top: -1px; background: var(--shu); }
+.now .pill { position: relative; justify-self: end; height: 24px; padding: 0 8px; border-radius: 12px; background: var(--shu); color: #fff; font: 700 12.5px/24px var(--num); }
+.dark .now .pill { color: #1b1916; }
+.now .next { position: relative; justify-self: start; margin-left: 20px; padding: 0 9px; background: var(--surface); font: 400 13px/24px var(--gothic); color: var(--ink2); white-space: nowrap; }
+.now .next b { color: var(--ink); font-weight: 700; }
+.now .pen { position: relative; width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; background: var(--surface); border: 1.6px solid var(--shu); color: var(--shu); }
+.now .pen .ic { width: 20px; height: 20px; }
+
+.slip { display: grid; grid-template-columns: 22px 1fr 30px; column-gap: 10px; align-items: center; min-height: 54px; padding: 8px 10px 8px 12px; border-radius: 13px; background: var(--take-soft); }
+.slip .ic { color: var(--take); }
+.slip b { display: block; font: 700 15.5px/1.35 var(--gothic); }
+.slip small { display: block; font: 400 12.5px/1.45 var(--gothic); color: var(--ink2); }
+.slip .o { width: 28px; height: 28px; border-radius: 14px; border: 2px solid var(--take); background: var(--surface); }
+.slip.plan { background: var(--ai-soft); }
+.slip.plan .ic { color: var(--ai); }
+.r.s { padding: 5px 0; }
+.r.s::before { top: 28px; }
+.r.s .t { padding-top: 17px; color: var(--ink2); }
+.hgap { height: 12px; }
+.sub-h { margin: 14px 0 2px 100px; font: 700 12.5px/1 var(--gothic); color: var(--ink3); letter-spacing: .04em; }
+
+/* —— 書く（紙がそのまま頁になる） —— */
+.write-top { position: absolute; inset: 54px 0 auto 0; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; }
+.cbtn { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; background: var(--s2); color: var(--ink2); }
+.cbtn .ic { width: 19px; height: 19px; }
+.write-top h3 { font: 700 16px/1 var(--mincho); }
+.write-top h3 small { margin-left: 6px; font: 400 12.5px/1 var(--gothic); color: var(--ink3); }
+.dim { opacity: .38; }
+.caret { display: inline-block; width: 2px; height: 21px; margin: 0 0 -4px 1px; background: var(--shu); }
+.r.cur .t { color: var(--shu-ink); font-weight: 700; }
+.wbar { position: absolute; left: 0; right: 0; bottom: 336px; height: 54px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--surface); border-top: 1px solid var(--border); }
+.chip { height: 34px; padding: 0 12px; border-radius: 17px; display: inline-flex; align-items: center; gap: 5px; font: 400 13.5px/1 var(--gothic); color: var(--ink2); border: 1px solid var(--border2); background: var(--surface); white-space: nowrap; }
+.chip .ic { width: 16px; height: 16px; }
+.chip.sun { color: var(--buki); border-color: color-mix(in srgb, var(--buki-fill) 70%, transparent); background: var(--buki-soft); }
+.wbar .sp { flex: 1; }
+.wbar .ibtn { width: 34px; height: 34px; display: grid; place-items: center; color: var(--ink3); }
+.wbar .ibtn .ic { width: 19px; height: 19px; }
+.wbar .go { height: 38px; padding: 0 18px; border-radius: 19px; background: var(--shu); color: #fff; font: 700 14.5px/38px var(--gothic); }
+.kb { position: absolute; left: 0; right: 0; bottom: 0; height: 336px; background: #d2d5db; }
+.kb .cand { height: 44px; display: flex; align-items: center; gap: 22px; padding: 0 16px; font: 400 16.5px/1 var(--gothic); color: #1c1c1e; white-space: nowrap; overflow: hidden; }
+.kb .keys { display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 53px; gap: 6px; padding: 2px 4px 0; }
+.kb .keys b { display: grid; place-items: center; border-radius: 6px; background: #fff; box-shadow: 0 1px 0 #898a8d; font: 400 23px/1 var(--gothic); color: #111; }
+.kb .keys b.f { background: #abb0ba; font-size: 15px; }
+.kb .keys b.f .ic { width: 22px; height: 22px; }
+.kb .keys b.ret { grid-row: span 2; }
+
+/* —— 過ぎた日の頁（口絵＝今日の一枚） —— */
+.plate { position: absolute; inset: 0 0 auto 0; height: 246px; color: #fff; background: linear-gradient(180deg, rgba(10, 8, 6, .34), rgba(10, 8, 6, 0) 34%, rgba(10, 8, 6, 0) 52%, rgba(10, 8, 6, .62)), url(../../img/season-photo/k44.webp) center / cover; }
+.plate .sub { position: absolute; left: 20px; bottom: 76px; font: 700 11.5px/1 var(--gothic); letter-spacing: .14em; }
+.plate .date { position: absolute; left: 20px; bottom: 40px; display: flex; align-items: baseline; gap: 9px; white-space: nowrap; }
+.plate .date b { font: 700 27px/1.1 var(--mincho); }
+.plate .date span { font: 700 13.5px/1 var(--gothic); }
+.plate .date em { display: inline-flex; align-items: center; gap: 3px; font: 600 12.5px/1 var(--num); font-style: normal; }
+.plate .date em .ic { width: 15px; height: 15px; }
+.plate .btns { position: absolute; left: 14px; right: 14px; top: 54px; display: flex; justify-content: space-between; }
+.page.past { top: 218px; }
+.body-line { margin: 12px 18px 0 100px; padding-top: 11px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 4px 14px; font: 400 12.5px/1.5 var(--gothic); color: var(--ink2); }
+.body-line span { display: inline-flex; align-items: center; gap: 4px; }
+.body-line .ic { width: 15px; height: 15px; color: var(--ink3); }
+.body-line b { font: 700 13px/1 var(--num); color: var(--ink); }
+
+/* —— archive：章の扉・棚・いまごろ —— */
+.door { position: absolute; inset: 0 0 auto 0; height: 292px; color: #fff; background: linear-gradient(180deg, rgba(10, 8, 6, .30), rgba(10, 8, 6, 0) 30%, rgba(10, 8, 6, 0) 55%, rgba(10, 8, 6, .5)), linear-gradient(270deg, rgba(10, 8, 6, .46), rgba(10, 8, 6, 0) 46%), url(../../img/season-photo/k46.webp) center / cover; }
+.door .btns { position: absolute; right: 16px; top: 54px; display: flex; gap: 8px; }
+.door .ko { position: absolute; right: 26px; top: 112px; writing-mode: vertical-rl; font: 700 36px/1 var(--mincho); letter-spacing: .16em; text-shadow: 0 1px 12px rgba(0, 0, 0, .45); }
+.door .yomi { position: absolute; right: 72px; top: 114px; writing-mode: vertical-rl; font: 400 12px/1 var(--gothic); letter-spacing: .24em; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+.door .sekki { position: absolute; left: 20px; bottom: 52px; font: 700 12px/1.5 var(--gothic); letter-spacing: .12em; text-shadow: 0 1px 8px rgba(0, 0, 0, .6); }
+.door .sekki b { display: block; font: 700 19px/1.3 var(--mincho); letter-spacing: .08em; }
+.arch { position: absolute; inset: 266px 0 0 0; border-radius: 24px 24px 0 0; background: var(--bg); padding: 18px 0 0; }
+.shelf { position: relative; display: flex; align-items: flex-end; gap: 5px; height: 104px; margin: 0 16px; padding: 0 10px; border-bottom: 3px solid var(--s3); }
+.spine { position: relative; width: 38px; height: 92px; border-radius: 4px 4px 1px 1px; display: grid; place-items: center; color: #fff; box-shadow: inset -5px 0 0 rgba(0, 0, 0, .10), inset 2px 0 0 rgba(255, 255, 255, .14); }
+.spine b { writing-mode: vertical-rl; font: 700 15px/1 var(--mincho); letter-spacing: .1em; }
+.spine::after { content: ""; position: absolute; left: 7px; right: 7px; bottom: 9px; height: 5px; border-radius: 1px; background: linear-gradient(90deg, var(--sekki)); opacity: .95; }
+.spine.y26 { height: 98px; background: var(--shu); }
+.spine.y25 { background: #2f4d6b; }
+.spine.y24 { background: #2f6149; }
+.spine.y23 { background: #6a4a2c; height: 88px; }
+.spine.y22 { background: #54446e; }
+.spine .ribbon { position: absolute; top: -8px; right: 7px; width: 7px; height: 30px; background: #f1d9a6; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
+.shelf .any { margin-left: auto; margin-bottom: 14px; height: 44px; padding: 0 16px; border-radius: 22px; display: inline-flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border2); font: 700 14px/1 var(--gothic); color: var(--ink); box-shadow: var(--shadow1); }
+.shelf .any .ic { width: 18px; height: 18px; color: var(--shu); }
+.h2 { margin: 20px 20px 0; font: 700 20px/1.2 var(--mincho); display: flex; align-items: baseline; gap: 10px; }
+.h2 small { font: 400 12.5px/1 var(--gothic); color: var(--ink3); }
+.yblock { margin-top: 12px; }
+.yhead { display: flex; align-items: center; gap: 10px; margin: 0 20px 8px; font: 700 17px/1 var(--mincho); color: var(--ink2); }
+.yhead::after { content: ""; flex: 1; height: 1px; background: var(--border2); }
+.strip { display: flex; gap: 10px; padding: 0 16px; }
+.mini { flex: none; width: 104px; height: 138px; border-radius: 11px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow1); overflow: hidden; position: relative; }
+.mini .ph { height: 58px; background: center / cover; }
+.mini .d { display: flex; align-items: baseline; gap: 5px; padding: 9px 10px 0; font: 700 19px/1 var(--mincho); }
+.mini .d small { font: 400 11px/1 var(--gothic); color: var(--ink3); }
+.mini p { padding: 6px 10px 0; font: 400 12px/1.62 var(--mincho); color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.mini.has-ph p { -webkit-line-clamp: 2; }
+.mini.same { border-color: color-mix(in srgb, var(--shu) 55%, var(--border)); }
+.mini.same::after { content: ""; position: absolute; top: 0; right: 12px; width: 9px; height: 20px; background: var(--shu); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%); }
+.mini.same .d { color: var(--shu-ink); }
+.kura { margin: 10px 20px 0; display: grid; gap: 3px; font: 400 13px/1.6 var(--gothic); color: var(--ink2); }
+.kura span { display: flex; gap: 7px; align-items: flex-start; }
+.kura .ic { width: 16px; height: 16px; margin-top: 2.5px; color: var(--ink3); }
+
+/* —— 一年の一冊：月ごとに六つの候 —— */
+.vol-top { position: absolute; inset: 54px 0 auto 0; height: 58px; display: flex; align-items: center; gap: 12px; padding: 0 14px; }
+.vol-top h1 { flex: 1; font: 700 30px/1 var(--mincho); letter-spacing: .02em; }
+.edge-h { position: absolute; left: 0; right: 0; top: 114px; height: 6px; background: linear-gradient(90deg, #c9cfdc, #d7d3cf, #dcdde6, #ead5d9, #d3e0d8, #dbe5c7, #f3c6d3, #e9d4e6, #cfe3c5, #bfe0c9, #d9e7b0, #b9d8d0, #b7d3e8, #a9d6e0, #f2d7a7, #e9dcae, #e7cf9f, #d6dfe6, #e8c9a8, #e3b9a0, #d9c2b0, #cfcbc0, #d5d9de, #cdd6e3, #c9cfdc); }
+.vol { position: absolute; inset: 120px 0 0 0; padding: 4px 30px 0 16px; }
+.mhead { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 9px; font: 700 21px/1 var(--mincho); }
+.mhead small { font: 400 12.5px/1 var(--gothic); color: var(--ink3); letter-spacing: .06em; }
+.kgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 9px; }
+.kt .ph { aspect-ratio: 3 / 2; border-radius: 9px; background: center / cover; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); }
+.kt b { display: block; margin-top: 6px; font: 700 13.5px/1.2 var(--mincho); letter-spacing: .04em; }
+.kt p { margin-top: 2px; font: 400 11.5px/1.5 var(--mincho); color: var(--ink2); height: 34px; overflow: hidden; }
+.kt.cur b { color: var(--shu-ink); }
+.kt.cur .ph { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--shu); }
+/* 小口：頁の束の縁に、季節の色が出る */
+.edge-v { position: absolute; right: 7px; top: 132px; bottom: 100px; width: 12px; border-radius: 6px; background: linear-gradient(180deg, #c9cfdc, #d7d3cf, #dcdde6, #ead5d9, #d3e0d8, #dbe5c7, #f3c6d3, #e9d4e6, #cfe3c5, #bfe0c9, #d9e7b0, #b9d8d0, #b7d3e8, #a9d6e0, #f2d7a7, #e9dcae, #e7cf9f, #d6dfe6, #e8c9a8, #e3b9a0, #d9c2b0, #cfcbc0, #d5d9de, #cdd6e3, #c9cfdc); box-shadow: inset 0 0 0 1px rgba(60, 45, 20, .10); }
+.edge-v::before { content: ""; position: absolute; inset: 0; border-radius: 6px; background: repeating-linear-gradient(180deg, rgba(60, 45, 20, .16) 0 1px, transparent 1px 3px); }
+.edge-v i { position: absolute; right: -3px; top: 79%; width: 18px; height: 26px; margin-top: -13px; border-radius: 9px; background: var(--surface); border: 1px solid var(--border2); box-shadow: var(--shadow2); }
+.edge-v u { position: absolute; right: 22px; top: 79%; margin-top: -15px; height: 30px; padding: 0 11px; border-radius: 15px; background: var(--ink); color: var(--bg); font: 700 13px/30px var(--mincho); text-decoration: none; white-space: nowrap; }
+
+/* —— 広い幅（iPad 横・パソコン） —— */
+.rail { position: absolute; inset: 0 auto 0 0; background: var(--rail); border-right: 1px solid var(--border); }
+.rail.slim { width: 78px; display: flex; flex-direction: column; align-items: center; padding: 22px 0 18px; gap: 6px; }
+.logo { width: 36px; height: 36px; border-radius: 11px; background: var(--surface); border: 1px solid var(--border); display: grid; place-items: center; }
+.logo::before { content: ""; width: 18px; height: 9px; border-radius: 9px 9px 0 0; background: var(--shu); box-shadow: 0 3px 0 -1px var(--surface), 0 4.5px 0 -1px var(--shu); }
+.rail.slim .logo { margin-bottom: 14px; }
+.rail.slim a { width: 62px; height: 56px; border-radius: 16px; display: grid; place-content: center; justify-items: center; gap: 4px; font: 400 10.5px/1 var(--gothic); color: var(--ink2); }
+.rail.slim a.on { background: var(--surface); box-shadow: var(--shadow1); color: var(--shu-ink); font-weight: 700; }
+.rail.slim a.on .ic { color: var(--shu); }
+.rail.slim .sp { flex: 1; }
+.rail.slim .fab { position: static; width: 50px; height: 50px; margin-top: 8px; }
+.wsky { position: absolute; top: 0; right: 0; color: #fff; background: linear-gradient(90deg, rgba(8, 14, 26, .58), rgba(8, 14, 26, .10) 60%), url(../../img/sky/winter-morning.webp) center 40% / cover; }
+.wsky .sub { position: absolute; left: 30px; top: 26px; font: 700 12px/1 var(--gothic); letter-spacing: .14em; }
+.wsky .date { position: absolute; left: 30px; top: 46px; display: flex; align-items: baseline; gap: 12px; }
+.wsky .date b { font: 700 33px/1.1 var(--mincho); }
+.wsky .date span { font: 700 15px/1 var(--gothic); }
+.wsky .date em { display: inline-flex; align-items: center; gap: 4px; font: 600 14px/1 var(--num); font-style: normal; }
+.wsky .date em .ic { width: 17px; height: 17px; }
+.wsky .btns { position: absolute; right: 22px; top: 24px; display: flex; gap: 10px; align-items: center; }
+.seg { display: inline-flex; padding: 3px; border-radius: 13px; background: rgba(14, 20, 32, .46); border: 1px solid rgba(255, 255, 255, .22); }
+.seg b { height: 32px; padding: 0 14px; border-radius: 10px; font: 700 13.5px/32px var(--gothic); color: rgba(255, 255, 255, .86); white-space: nowrap; }
+.seg b.on { background: var(--surface); color: var(--ink); }
+.seg.paper { background: var(--s2); border-color: transparent; }
+.seg.paper b { color: var(--ink2); }
+.seg.paper b.on { box-shadow: var(--shadow1); color: var(--ink); }
+
+/* 見開き：左の頁＝今日、右の頁＝選んだ相手（年々・いまごろ・あした・ノート） */
+.spread { position: absolute; display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow2); }
+.spread::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 44px; margin-left: -22px; background: linear-gradient(90deg, transparent, rgba(60, 45, 20, .07) 46%, rgba(60, 45, 20, .13) 50%, rgba(60, 45, 20, .07) 54%, transparent); pointer-events: none; }
+.leaf { position: relative; padding: 4px 6px 0 0; overflow: hidden; }
+.leaf + .leaf { padding: 4px 6px 0 14px; }
+.leaf .prose { font-size: 16.5px; }
+.lhead { display: flex; align-items: baseline; gap: 10px; padding: 20px 26px 4px 30px; }
+.lhead b { font: 700 28px/1 var(--mincho); color: var(--shu-ink); }
+.lhead span { font: 700 14px/1 var(--gothic); color: var(--ink2); }
+.lhead em { display: inline-flex; align-items: center; gap: 4px; font: 600 13px/1 var(--num); font-style: normal; color: var(--ink2); }
+.lhead em .ic { width: 16px; height: 16px; }
+.lhead .ph { margin-left: auto; width: 132px; height: 88px; border-radius: 10px; border: 4px solid var(--surface); box-shadow: 0 0 0 1px var(--border2), var(--shadow1); background: url(../../img/season-photo/k44.webp) center / cover; transform: translateY(8px); }
+.ydiv { display: flex; align-items: baseline; gap: 10px; margin: 16px 26px 2px 30px; padding-top: 14px; border-top: 1px solid var(--border); }
+.ydiv b { font: 700 21px/1 var(--mincho); color: var(--ink2); }
+.ydiv span { font: 400 12.5px/1 var(--gothic); color: var(--ink3); }
+.leaf .ytabs { top: -27px; }
+
+/* パソコン：左の列・頁・となりの頁・小口 */
+.rail.wide { width: 248px; padding: 18px 14px; display: flex; flex-direction: column; gap: 4px; }
+.rail.wide .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 12px; font: 700 18px/1 var(--mincho); letter-spacing: .06em; }
+.find { height: 38px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border2); display: flex; align-items: center; gap: 8px; padding: 0 10px; margin-bottom: 8px; font: 400 14px/1 var(--gothic); color: var(--ink3); }
+.find .ic { width: 17px; height: 17px; }
+.find kbd { margin-left: auto; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border2); font: 500 11px/1 var(--num); color: var(--ink3); }
+.rail.wide a { height: 42px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 0 12px; font: 400 14.5px/1 var(--gothic); color: var(--ink2); }
+.rail.wide a.on { background: var(--surface); box-shadow: var(--shadow1); color: var(--ink); font-weight: 700; }
+.rail.wide a.on .ic { color: var(--shu); }
+.rail.wide .sp { flex: 1; }
+.mcal { padding: 12px 10px 8px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow1); }
+.mcal h5 { display: flex; justify-content: space-between; align-items: center; padding: 0 4px 8px; font: 700 13.5px/1 var(--gothic); }
+.mcal h5 .ic { width: 14px; height: 14px; color: var(--ink3); }
+.mcal .g { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 3px; justify-items: center; font: 500 11.5px/22px var(--num); }
+.mcal .g u { text-decoration: none; font: 400 10px/18px var(--gothic); color: var(--ink3); }
+.mcal .g s { text-decoration: none; color: var(--border2); }
+.mcal .g b { width: 22px; height: 22px; border-radius: 11px; background: var(--shu); color: #fff; text-align: center; font-weight: 700; }
+.rshelf { display: flex; align-items: flex-end; gap: 4px; height: 76px; margin: 12px 4px 6px; padding: 0 8px; border-bottom: 3px solid var(--s3); }
+.rshelf .spine { width: 28px; height: 64px; }
+.rshelf .spine b { font-size: 11.5px; }
+.rshelf .spine.y26 { height: 68px; }
+.rshelf .spine.y23 { height: 61px; }
+.rshelf .spine::after { left: 5px; right: 5px; bottom: 6px; height: 4px; }
+.rshelf .spine .ribbon { width: 6px; height: 22px; top: -6px; right: 5px; }
+.write-btn { height: 46px; margin-top: 8px; border-radius: 23px; background: var(--shu); color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font: 700 15px/1 var(--gothic); box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--shu) 70%, transparent); }
+.write-btn .ic { width: 19px; height: 19px; }
+.write-btn kbd { margin-left: 4px; padding: 3px 6px; border-radius: 6px; background: rgba(255, 255, 255, .2); font: 600 11px/1 var(--num); }
+.sheet-page { position: absolute; background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: var(--shadow2); overflow: hidden; }
+.week { display: grid; grid-template-columns: repeat(7, 1fr); padding: 12px 10px 10px; border-bottom: 1px solid var(--border); }
+.week div { padding: 0 4px; min-height: 86px; border-left: 1px solid var(--border); }
+.week div:first-child { border-left: 0; }
+.week u { display: block; text-align: center; text-decoration: none; font: 400 11px/1.4 var(--gothic); color: var(--ink3); }
+.week b { display: block; width: 28px; height: 28px; margin: 2px auto 5px; border-radius: 14px; text-align: center; font: 700 15px/28px var(--num); }
+.week .sat b, .week .sat u { color: var(--ai); }
+.week .sun u { color: var(--shu); }
+.week .today b { background: var(--shu); color: #fff; }
+.week i { display: block; margin-top: 3px; padding: 0 5px; border-radius: 5px; background: var(--take-soft); font: 700 11.5px/19px var(--gothic); font-style: normal; color: #1f5a41; white-space: nowrap; overflow: hidden; }
+.side { position: absolute; }
+.side .seg { margin-bottom: 14px; }
+.ycard { padding: 16px 20px 16px; margin-bottom: 12px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow1); }
+.ycard header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.ycard header b { font: 700 23px/1 var(--mincho); color: var(--shu-ink); }
+.ycard header span { font: 400 12.5px/1 var(--gothic); color: var(--ink3); }
+.ycard header em { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: 600 12.5px/1 var(--num); font-style: normal; color: var(--ink3); }
+.ycard header em .ic { width: 15px; height: 15px; }
+.ycard .prose { font-size: 15.5px; line-height: 1.8; }
+.ycard .prose + .prose { margin-top: 6px; }
+.ycard .prose u { text-decoration: none; margin-right: 8px; font: 500 12px/1 var(--num); color: var(--ink3); }
+.ycard .kura { margin: 10px 0 0; padding-top: 9px; border-top: 1px solid var(--border); }
+.ycard.two { display: grid; grid-template-columns: 1fr 124px; column-gap: 16px; }
+.ycard.two .ph { border-radius: 10px; background: url(../../img/season-photo/k44.webp) center / cover; min-height: 96px; }
+.again { margin-left: auto; flex: none; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid var(--border2); font: 700 12px/24px var(--gothic); color: var(--shu-ink); white-space: nowrap; }
+.pc .edge-v { right: 8px; top: 132px; bottom: 16px; width: 12px; }
+.pc .edge-v i { top: 87%; }
+.pc .edge-v u { top: 87%; }
+
+/* パソコン：一年の七十二枚 */
+.yr-top { position: absolute; display: flex; align-items: center; gap: 18px; }
+.yr-top h1 { font: 700 52px/1 var(--mincho); letter-spacing: .02em; }
+.yr-top .cbtn { background: var(--surface); border: 1px solid var(--border2); }
+.wall { position: absolute; display: grid; grid-template-columns: repeat(12, 1fr); grid-template-rows: auto repeat(6, auto); grid-auto-flow: column; column-gap: 8px; row-gap: 15px; }
+.wall h6 { font: 700 15px/1 var(--mincho); padding-bottom: 2px; display: flex; flex-direction: column; gap: 5px; }
+.wall h6 small { font: 400 10.5px/1 var(--gothic); color: var(--ink3); letter-spacing: .04em; }
+.wall .kt .ph { border-radius: 7px; aspect-ratio: 4 / 3; }
+.wall .kt b { margin-top: 4px; font-size: 12px; white-space: nowrap; overflow: hidden; }
+.pop { position: absolute; z-index: 5; width: 300px; padding: 12px 12px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border2); box-shadow: 0 24px 50px -18px rgba(50, 38, 15, .5); }
+.pop .ph { aspect-ratio: 3 / 2; border-radius: 10px; background: url(../../img/season-photo/k46.webp) center / cover; }
+.pop h4 { margin: 10px 4px 0; font: 700 21px/1.2 var(--mincho); display: flex; align-items: baseline; gap: 8px; }
+.pop h4 small { font: 400 11.5px/1 var(--gothic); color: var(--ink3); }
+.pop p { margin: 5px 4px 0; font: 400 13px/1.7 var(--mincho); color: var(--ink2); }
+.pop p u { text-decoration: none; margin-right: 7px; font: 500 11.5px/1 var(--num); color: var(--ink3); }
+.edge-w { position: absolute; height: 22px; border-radius: 6px; background: linear-gradient(90deg, #c9cfdc, #d7d3cf, #dcdde6, #ead5d9, #d3e0d8, #dbe5c7, #f3c6d3, #e9d4e6, #cfe3c5, #bfe0c9, #d9e7b0, #b9d8d0, #b7d3e8, #a9d6e0, #f2d7a7, #e9dcae, #e7cf9f, #d6dfe6, #e8c9a8, #e3b9a0, #d9c2b0, #cfcbc0, #d5d9de, #cdd6e3, #c9cfdc); box-shadow: inset 0 0 0 1px rgba(60, 45, 20, .10); }
+.edge-w::before { content: ""; position: absolute; inset: 0; border-radius: 6px; background: repeating-linear-gradient(90deg, rgba(60, 45, 20, .17) 0 1px, transparent 1px 3.09px); }
+.edge-m { position: absolute; display: grid; grid-template-columns: repeat(12, 1fr); font: 500 11px/1 var(--num); color: var(--ink3); }
+
+/* 三つの案の骨組み（小さな図） */
+.dia { width: 250px; height: 500px; border-radius: 30px; background: var(--bg); border: 8px solid #171512; position: relative; overflow: hidden; font: 700 12.5px/1.3 var(--gothic); }
+.dia div { position: absolute; left: 10px; right: 10px; border-radius: 10px; display: grid; place-items: center; text-align: center; background: var(--surface); border: 1px solid var(--border2); color: var(--ink2); padding: 0 6px; }
+.dia .hd { background: #54708c; color: #fff; border: 0; left: 0; right: 0; border-radius: 0; }
+.dia .k { background: var(--shu-soft); border-color: color-mix(in srgb, var(--shu) 40%, var(--border2)); color: var(--shu-ink); }
+.dia .tb { left: 10px; right: 10px; bottom: 10px; height: 40px; border-radius: 20px; display: flex; justify-content: space-around; align-items: center; font: 400 9.5px/1 var(--gothic); padding: 0 6px; }
+.dia .tb u { text-decoration: none; }
+.dia .tb u.on { color: var(--shu-ink); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ================= 電話 その1：一日一頁 ================= -->
+<section class="sheet" id="sheet-phone-1">
+
+  <div class="shot">
+    <p class="cap"><i>1</i>今日の頁<small>「いま」の線から上は墨（あったこと）、下は札（これから）。<br>済ませた用事は、記録の一行に変わる。</small></p>
+    <div class="device"><div class="board phone" id="p-today">
+      <div class="sb"><b>10:30</b><span class="sbr"><span class="bars"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8.5px"></b><b style="height:11px"></b></span><span class="batt"><b></b></span></span></div>
+      <div class="sky">
+        <p class="sub">2026 ・ 立冬 ・ 地始凍<em><i class="ic" data-ic="sun"></i>14°/6°</em></p>
+        <p class="date"><b>11月15日</b><span>日曜日</span></p>
+        <div class="btns"><span class="rbtn"><i class="ic" data-ic="search"></i></span><span class="rbtn"><i class="ic" data-ic="gear"></i></span></div>
+      </div>
+      <div class="ytabs" style="top:99px"><b>2025</b><b>2024</b><b>2023</b></div>
+      <div class="page">
+        <div class="band">
+          <div class="band-bar"><span class="past" style="width:30.6%"></span>
+            <i class="w" style="left:9.3%"></i><i class="w" style="left:23.6%"></i>
+            <i style="left:27.8%;width:2.8%"></i><i class="todo" style="left:50%;width:5.6%"></i><i class="todo" style="left:66.7%;width:2.8%"></i>
+            <i class="nowdot" style="left:30.6%"></i></div>
+          <div class="band-t"><span>5</span><span>8</span><span>11</span><span>14</span><span>17</span><span>20</span><span>23</span></div>
+          <div class="band-s"><span>予定 2時間・空き 10時間30分</span><b>詰める</b></div>
+        </div>
+        <div class="rows ink">
+          <div class="r"><span class="t">06:20</span><p class="fact"><i class="ic" data-ic="sunrise"></i>起床</p></div>
+          <div class="r w"><span class="t">06:40</span><p class="prose">霜が降りていた。窓を開けると空気が冷たい。コーヒーを淹れて、ベランダの鉢に水をやる。</p></div>
+          <div class="r"><span class="t">07:00</span><p class="fact"><i class="ic" data-ic="scale"></i><b>64.0</b>kg</p></div>
+          <div class="r w g"><span class="t"><i class="ic" data-ic="sun"></i>09:15</span><p class="prose good">散歩の途中で、去年と同じ場所に山茶花が咲いているのを見つけた。</p></div>
+          <div class="r d"><span class="t">10:00</span><p class="done"><i class="ic" data-ic="check"></i>病院の予約<small>30分</small></p></div>
+        </div>
+        <div class="now"><span class="pill">10:30</span><span class="next">次は <b>14:00 資料をまとめる</b></span><span class="pen"><i class="ic" data-ic="edit"></i></span></div>
+        <div class="rows pencil">
+          <div class="r s"><span class="t">14:00</span><div class="slip"><i class="ic" data-ic="paper"></i><div><b>資料をまとめる</b><small>1時間</small></div><span class="o"></span></div></div>
+          <div class="r s"><span class="t">17:00</span><div class="slip"><i class="ic" data-ic="cart"></i><div><b>買い物へ行く</b><small>30分 ・ 牛乳・卵・食パン・洗剤</small></div><span class="o"></span></div></div>
+          <p class="sub-h">時刻なし</p>
+          <div class="r s"><span class="t"></span><div class="slip"><i class="ic" data-ic="checklist"></i><div><b>電球を替える</b><small>前の日から</small></div><span class="o"></span></div></div>
+        </div>
+      </div>
+      <nav class="tabbar"><a><i class="ic" data-ic="book"></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a class="on"><i class="ic" data-ic="calendar" data-solid></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a></nav>
+      <span class="fab"><i class="ic" data-ic="plus"></i></span><span class="homebar"></span>
+    </div></div>
+  </div>
+
+  <div class="shot">
+    <p class="cap"><i>2</i>書く<small>紙がそのまま頁になる。枠も吹き出しも無く、<br>書いた所に、書いた時刻で残る。</small></p>
+    <div class="device"><div class="board phone" id="p-write" style="background:var(--surface)">
+      <div class="sb on-paper"><b>10:32</b><span class="sbr"><span class="bars"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8.5px"></b><b style="height:11px"></b></span><span class="batt"><b></b></span></span></div>
+      <div class="write-top"><span class="cbtn"><i class="ic" data-ic="close"></i></span><h3>11月15日<small>日曜日</small></h3><span class="cbtn"><i class="ic" data-ic="more"></i></span></div>
+      <div style="position:absolute;inset:112px 0 390px 0;overflow:hidden">
+        <div class="rows ink" style="height:100%">
+          <div class="r w g dim"><span class="t"><i class="ic" data-ic="sun"></i>09:15</span><p class="prose good">散歩の途中で、去年と同じ場所に山茶花が咲いているのを見つけた。</p></div>
+          <div class="r d dim"><span class="t">10:00</span><p class="done"><i class="ic" data-ic="check"></i>病院の予約<small>30分</small></p></div>
+          <div class="r w cur"><span class="t">10:32</span><p class="prose">待合室の窓から、銀杏の黄色がよく見えた。帰り道は一駅ぶん歩くことにする。歩きながら、読みかけの本の問いを思い出した<span class="caret"></span></p></div>
+        </div>
+      </div>
+      <div class="wbar"><span class="chip sun"><i class="ic" data-ic="sun"></i>よかったこと</span><span class="sp"></span><span class="ibtn"><i class="ic" data-ic="undo"></i></span><span class="ibtn"><i class="ic" data-ic="redo"></i></span><span class="go">書き終える</span></div>
+      <div class="kb">
+        <div class="cand"><span>思い出した</span><span>思い出</span><span>思い出す</span><span>重い</span><span>想い</span></div>
+        <div class="keys">
+          <b class="f"><i class="ic" data-ic="chevron"></i></b><b>あ</b><b>か</b><b>さ</b><b class="f"><i class="ic" data-ic="backspace"></i></b>
+          <b class="f"><i class="ic" data-ic="undo"></i></b><b>た</b><b>な</b><b>は</b><b class="f">空白</b>
+          <b class="f">ABC</b><b>ま</b><b>や</b><b>ら</b><b class="f ret">改行</b>
+          <b class="f">123</b><b style="font-size:17px">小゛゜</b><b>わ</b><b style="font-size:17px">、。?!</b>
+        </div>
+      </div>
+      <span class="homebar"></span>
+    </div></div>
+  </div>
+
+  <div class="shot">
+    <p class="cap"><i>3</i>過ぎた日の頁<small>書かなくても、一日は頁になる。済ませたこと・買ったもの・<br>からだは、その時刻に引かれている（写さない）。</small></p>
+    <div class="device"><div class="board phone" id="p-past">
+      <div class="sb"><b>10:34</b><span class="sbr"><span class="bars"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8.5px"></b><b style="height:11px"></b></span><span class="batt"><b></b></span></span></div>
+      <div class="plate">
+        <div class="btns"><span class="rbtn"><i class="ic" data-ic="chevron-left"></i></span><span class="rbtn"><i class="ic" data-ic="more"></i></span></div>
+        <p class="sub">2025 ・ 立冬 ・ 地始凍<em><i class="ic" data-ic="cloud-sun"></i>15°/7°</em></p>
+        <p class="date"><b>11月15日</b><span>土曜日</span></p>
+      </div>
+      <div class="ytabs" style="top:191px"><b>2026</b><b class="cur">2025</b><b>2024</b><b>2023</b></div>
+      <div class="page past">
+        <div class="rows ink" style="padding-top:16px">
+          <div class="r"><span class="t">06:10</span><p class="fact"><i class="ic" data-ic="sunrise"></i>起床</p></div>
+          <div class="r w"><span class="t">08:20</span><p class="prose">朝から風が強かった。落ち葉を掃いて、庭の隅に集める。</p></div>
+          <div class="r d"><span class="t">09:30</span><p class="done"><i class="ic" data-ic="check"></i>タイヤ交換の予約</p></div>
+          <div class="r"><span class="t">11:40</span><p class="fact"><i class="ic" data-ic="cart"></i>みかん・灯油・切り餅</p></div>
+          <div class="r"><span class="t">12:20</span><p class="fact"><i class="ic" data-ic="meal"></i>きつねうどん</p></div>
+          <div class="r d"><span class="t">14:00</span><p class="done"><i class="ic" data-ic="check"></i>障子の張り替え<small>2時間</small></p></div>
+          <div class="r w g"><span class="t"><i class="ic" data-ic="sun"></i>16:30</span><p class="prose good">張り替えた障子ごしの光がやわらかい。部屋が広くなったように見える。</p></div>
+          <div class="r w"><span class="t">20:40</span><p class="prose">夜は鍋。みかんを食べながら、来年の手帳のことを考えた。</p></div>
+          <div class="r"><span class="t">23:05</span><p class="fact"><i class="ic" data-ic="bed"></i>就寝</p></div>
+        </div>
+        <p class="body-line"><span><i class="ic" data-ic="steps"></i><b>8,420</b>歩</span><span><i class="ic" data-ic="moon"></i><b>6:50</b></span><span><i class="ic" data-ic="scale"></i><b>64.8</b>kg</span></p>
+      </div>
+      <nav class="tabbar"><a class="on"><i class="ic" data-ic="book" data-solid></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a><i class="ic" data-ic="calendar"></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a></nav>
+      <span class="fab"><i class="ic" data-ic="plus"></i></span><span class="homebar"></span>
+    </div></div>
+  </div>
+</section>
+
+<!-- ================= 電話 その2：めぐる歳時記 ================= -->
+<section class="sheet" id="sheet-phone-2">
+
+  <div class="shot">
+    <p class="cap"><i>4</i>archive（歳時記）<small>いまの候が章の扉。棚に年の背表紙。<br>「いまごろ」＝同じ候の、ほかの年の頁とくらし。</small></p>
+    <div class="device"><div class="board phone" id="p-archive">
+      <div class="sb"><b>10:36</b><span class="sbr"><span class="bars"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8.5px"></b><b style="height:11px"></b></span><span class="batt"><b></b></span></span></div>
+      <div class="door">
+        <div class="btns"><span class="rbtn"><i class="ic" data-ic="search"></i></span><span class="rbtn"><i class="ic" data-ic="gear"></i></span></div>
+        <p class="ko">地始凍</p><p class="yomi">ちはじめてこおる</p>
+        <p class="sekki">立冬 次候<b>11月12日 ― 16日</b></p>
+      </div>
+      <div class="arch">
+        <div class="shelf">
+          <span class="spine y26"><span class="ribbon"></span><b>2026</b></span><span class="spine y25"><b>2025</b></span><span class="spine y24"><b>2024</b></span><span class="spine y23"><b>2023</b></span><span class="spine y22"><b>2022</b></span>
+          <span class="any"><i class="ic" data-ic="shuffle"></i>ふと開く</span>
+        </div>
+        <h2 class="h2">いまごろ</h2>
+        <div class="yblock">
+          <p class="yhead">2025</p>
+          <div class="strip" style="margin-left:-170px">
+            <div class="mini"><p class="d">12<small>水</small></p><p>朝、車の窓に霜。</p></div>
+            <div class="mini"><p class="d">13<small>木</small></p><p>図書館で三冊借りる。帰りに銀杏並木を歩いた。</p></div>
+            <div class="mini"><p class="d">14<small>金</small></p><p>雨。一日家で過ごす。棚の整理をした。</p></div>
+            <div class="mini same has-ph"><div class="ph" style="background-image:url(../../img/season-photo/k44.webp)"></div><p class="d">15<small>土</small></p><p>落ち葉を掃いて、障子を張り替えた。</p></div>
+            <div class="mini"><p class="d">16<small>日</small></p><p>灯油を買い足す。ストーブを出した。</p></div>
+          </div>
+          <p class="kura"><span><i class="ic" data-ic="check"></i>タイヤ交換の予約・障子の張り替え・ストーブを出す</span><span><i class="ic" data-ic="cart"></i>みかん・灯油・切り餅</span></p>
+        </div>
+        <div class="yblock" style="margin-top:16px">
+          <p class="yhead">2024</p>
+          <div class="strip">
+            <div class="mini"><p class="d">12<small>火</small></p><p>柿をもらった。皮をむいて、軒に吊るす。</p></div>
+            <div class="mini same"><p class="d">15<small>金</small></p><p>夜に長い手紙を書いた。書き終えるころには雨が上がっていた。</p></div>
+            <div class="mini"><p class="d">16<small>土</small></p><p>毛布を干す。</p></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabbar"><a class="on"><i class="ic" data-ic="book" data-solid></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a><i class="ic" data-ic="calendar"></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a></nav>
+      <span class="fab"><i class="ic" data-ic="plus"></i></span><span class="homebar"></span>
+    </div></div>
+  </div>
+
+  <div class="shot">
+    <p class="cap"><i>5</i>一年の一冊<small>一年は七十二の章。右の縁は小口——頁の束に季節の色が出て、<br>なぞると日へ飛ぶ。厚みで見せ、数や穴では見せない。</small></p>
+    <div class="device"><div class="board phone" id="p-year">
+      <div class="sb on-paper"><b>10:37</b><span class="sbr"><span class="bars"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8.5px"></b><b style="height:11px"></b></span><span class="batt"><b></b></span></span></div>
+      <div class="vol-top"><span class="cbtn"><i class="ic" data-ic="chevron-left"></i></span><h1>2025</h1><span class="cbtn"><i class="ic" data-ic="more"></i></span></div>
+      <div class="edge-h"></div>
+      <div class="vol" id="vol-phone"></div>
+      <div class="edge-v"><i></i><u>11月15日</u></div>
+      <nav class="tabbar"><a class="on"><i class="ic" data-ic="book" data-solid></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a><i class="ic" data-ic="calendar"></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a></nav>
+      <span class="fab"><i class="ic" data-ic="plus"></i></span><span class="homebar"></span>
+    </div></div>
+  </div>
+
+  <div class="shot">
+    <p class="cap"><i>6</i>暗い面（墨）<small>同じ頁を、札の組だけ替えて。<br>形・働き・動きは変えない。</small></p>
+    <div class="device"><div class="board phone dark" id="p-today-dark"></div></div>
+  </div>
+</section>
+
+<!-- ================= iPad：見開き ================= -->
+<section class="sheet" id="sheet-pad">
+  <div class="shot">
+    <p class="cap"><i>7</i>iPad（横）：見開き<small>左の頁は今日。右の頁は相手を選ぶ——年々（同じ日のほかの年）・いまごろ・あした・ノート。去年の今日のとなりで、今日を書く。</small></p>
+    <div class="device pad"><div class="board tablet" id="t-spread">
+      <div class="rail slim">
+        <span class="logo"></span>
+        <a><i class="ic" data-ic="book"></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a class="on"><i class="ic" data-ic="calendar" data-solid></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a>
+        <span class="sp"></span>
+        <a><i class="ic" data-ic="search"></i></a><a><i class="ic" data-ic="gear"></i></a>
+        <span class="fab"><i class="ic" data-ic="plus"></i></span>
+      </div>
+      <div class="wsky" style="left:78px;height:128px">
+        <p class="sub">2026 ・ 立冬 ・ 地始凍</p>
+        <p class="date"><b>11月15日</b><span>日曜日</span><em><i class="ic" data-ic="sun"></i>14°/6°</em></p>
+        <div class="btns"><span class="seg"><b class="on">年々</b><b>いまごろ</b><b>あした</b><b>ノート</b></span></div>
+      </div>
+      <div class="spread" style="left:100px;right:22px;top:102px;bottom:-24px">
+        <div class="leaf">
+          <div class="band" style="padding:22px 26px 4px 30px">
+            <div class="band-bar"><span class="past" style="width:30.6%"></span>
+              <i class="w" style="left:9.3%"></i><i class="w" style="left:23.6%"></i>
+              <i style="left:27.8%;width:2.8%"></i><i class="todo" style="left:50%;width:5.6%"></i><i class="todo" style="left:66.7%;width:2.8%"></i>
+              <i class="nowdot" style="left:30.6%"></i></div>
+            <div class="band-t"><span>5</span><span>8</span><span>11</span><span>14</span><span>17</span><span>20</span><span>23</span></div>
+            <div class="band-s"><span>予定 2時間・空き 10時間30分</span><b>詰める</b></div>
+          </div>
+          <div class="rows ink" style="--pl:24px;padding-right:26px">
+            <div class="r"><span class="t">06:20</span><p class="fact"><i class="ic" data-ic="sunrise"></i>起床</p></div>
+            <div class="r w"><span class="t">06:40</span><p class="prose">霜が降りていた。窓を開けると空気が冷たい。コーヒーを淹れて、ベランダの鉢に水をやる。</p></div>
+            <div class="r"><span class="t">07:00</span><p class="fact"><i class="ic" data-ic="scale"></i><b>64.0</b>kg</p></div>
+            <div class="r w g"><span class="t"><i class="ic" data-ic="sun"></i>09:15</span><p class="prose good">散歩の途中で、去年と同じ場所に山茶花が咲いているのを見つけた。</p></div>
+            <div class="r d"><span class="t">10:00</span><p class="done"><i class="ic" data-ic="check"></i>病院の予約<small>30分</small></p></div>
+          </div>
+          <div class="now" style="padding-left:24px;padding-right:22px"><span class="pill">10:30</span><span class="next">次は <b>14:00 資料をまとめる</b></span><span class="pen"><i class="ic" data-ic="edit"></i></span></div>
+          <div class="rows pencil" style="--pl:24px;padding-right:26px">
+            <div class="r s"><span class="t">14:00</span><div class="slip"><i class="ic" data-ic="paper"></i><div><b>資料をまとめる</b><small>1時間</small></div><span class="o"></span></div></div>
+            <div class="r s"><span class="t">17:00</span><div class="slip"><i class="ic" data-ic="cart"></i><div><b>買い物へ行く</b><small>30分 ・ 牛乳・卵・食パン・洗剤</small></div><span class="o"></span></div></div>
+            <p class="sub-h" style="margin-left:110px">時刻なし</p>
+            <div class="r s"><span class="t"></span><div class="slip"><i class="ic" data-ic="checklist"></i><div><b>電球を替える</b><small>前の日から</small></div><span class="o"></span></div></div>
+          </div>
+        </div>
+        <div class="leaf">
+          <div class="lhead"><b>2025</b><span>土曜日</span><em><i class="ic" data-ic="cloud-sun"></i>15°/7°</em><span class="ph"></span></div>
+          <div class="rows ink" style="--pl:24px;padding-right:26px">
+            <div class="r"><span class="t">06:10</span><p class="fact"><i class="ic" data-ic="sunrise"></i>起床</p></div>
+            <div class="r w"><span class="t">08:20</span><p class="prose">朝から風が強かった。落ち葉を掃いて、庭の隅に集める。</p></div>
+            <div class="r d"><span class="t">09:30</span><p class="done"><i class="ic" data-ic="check"></i>タイヤ交換の予約</p></div>
+            <div class="r"><span class="t">11:40</span><p class="fact"><i class="ic" data-ic="cart"></i>みかん・灯油・切り餅</p></div>
+            <div class="r d"><span class="t">14:00</span><p class="done"><i class="ic" data-ic="check"></i>障子の張り替え<small>2時間</small></p></div>
+            <div class="r w g"><span class="t"><i class="ic" data-ic="sun"></i>16:30</span><p class="prose good">張り替えた障子ごしの光がやわらかい。部屋が広くなったように見える。</p></div>
+            <div class="r w"><span class="t">20:40</span><p class="prose">夜は鍋。みかんを食べながら、来年の手帳のことを考えた。</p></div>
+          </div>
+          <div class="ydiv"><b>2024</b><span>金曜日</span></div>
+          <div class="rows ink" style="--pl:24px;padding-right:26px">
+            <div class="r w"><span class="t">22:00</span><p class="prose">夜に長い手紙を書いた。書き終えるころには雨が上がっていた。</p></div>
+          </div>
+          <div class="ydiv"><b>2023</b><span>水曜日</span></div>
+          <div class="rows ink" style="--pl:24px;padding-right:26px">
+            <div class="r w"><span class="t">19:10</span><p class="prose">はじめて七輪で秋刀魚を焼いた。煙がすごくて笑った。</p></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ================= パソコン：机 ================= -->
+<section class="sheet" id="sheet-pc-1">
+  <div class="shot">
+    <p class="cap"><i>8</i>パソコン：頁・となりの頁・小口<small>左の列に棚（年の背表紙）。まん中は今日の頁、右は年々（同じ日のほかの年）と、去年のいまごろのくらし。右の縁の小口で一年をなぞる。J K で頁をめくり、N で書く。</small></p>
+    <div class="device desk"><div class="board pc" id="d-page">
+      <div class="rail wide">
+        <p class="brand"><span class="logo"></span>くらしノート</p>
+        <p class="find"><i class="ic" data-ic="search"></i>さがす<kbd>Ctrl K</kbd></p>
+        <a><i class="ic" data-ic="book"></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a class="on"><i class="ic" data-ic="calendar" data-solid></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a>
+        <span class="sp"></span>
+        <div class="mcal"><h5>2026年 11月<span><i class="ic" data-ic="chevron-left"></i> <i class="ic" data-ic="chevron"></i></span></h5><div class="g" id="mcal"></div></div>
+        <div class="rshelf"><span class="spine y26"><span class="ribbon"></span><b>2026</b></span><span class="spine y25"><b>2025</b></span><span class="spine y24"><b>2024</b></span><span class="spine y23"><b>2023</b></span><span class="spine y22"><b>2022</b></span></div>
+        <a><i class="ic" data-ic="gear"></i>settings</a>
+        <span class="write-btn"><i class="ic" data-ic="edit"></i>書く<kbd>N</kbd></span>
+      </div>
+      <div class="wsky" style="left:248px;height:138px">
+        <p class="sub">2026 ・ 立冬 ・ 地始凍</p>
+        <p class="date"><b>11月15日</b><span>日曜日</span><em><i class="ic" data-ic="sun"></i>14°/6°</em></p>
+        <div class="btns"><span class="seg"><b class="on">今日</b><b>週</b><b>月</b></span><span class="rbtn"><i class="ic" data-ic="gear"></i></span></div>
+      </div>
+      <div class="sheet-page" style="left:272px;width:640px;top:108px;bottom:0">
+        <div class="week">
+          <div><u>月</u><b>9</b></div><div><u>火</u><b>10</b></div><div><u>水</u><b>11</b></div><div><u>木</u><b>12</b></div><div><u>金</u><b>13</b></div><div class="sat"><u>土</u><b>14</b></div>
+          <div class="sun today"><u>日</u><b>15</b><i>病院の予約</i><i>資料をまとめる</i></div>
+        </div>
+        <div class="band" style="padding:16px 28px 4px 30px">
+          <div class="band-bar"><span class="past" style="width:30.6%"></span>
+            <i class="w" style="left:9.3%"></i><i class="w" style="left:23.6%"></i>
+            <i style="left:27.8%;width:2.8%"></i><i class="todo" style="left:50%;width:5.6%"></i><i class="todo" style="left:66.7%;width:2.8%"></i>
+            <i class="nowdot" style="left:30.6%"></i></div>
+          <div class="band-t"><span>5</span><span>8</span><span>11</span><span>14</span><span>17</span><span>20</span><span>23</span></div>
+          <div class="band-s"><span>予定 2時間・空き 10時間30分</span><b>詰める</b></div>
+        </div>
+        <div class="rows ink" style="--pl:24px;padding-right:30px">
+          <div class="r"><span class="t">06:20</span><p class="fact"><i class="ic" data-ic="sunrise"></i>起床</p></div>
+          <div class="r w"><span class="t">06:40</span><p class="prose">霜が降りていた。窓を開けると空気が冷たい。コーヒーを淹れて、ベランダの鉢に水をやる。</p></div>
+          <div class="r"><span class="t">07:00</span><p class="fact"><i class="ic" data-ic="scale"></i><b>64.0</b>kg</p></div>
+          <div class="r w g"><span class="t"><i class="ic" data-ic="sun"></i>09:15</span><p class="prose good">散歩の途中で、去年と同じ場所に山茶花が咲いているのを見つけた。</p></div>
+          <div class="r d"><span class="t">10:00</span><p class="done"><i class="ic" data-ic="check"></i>病院の予約<small>30分</small></p></div>
+        </div>
+        <div class="now" style="padding-left:24px;padding-right:26px"><span class="pill">10:30</span><span class="next">次は <b>14:00 資料をまとめる</b></span><span class="pen"><i class="ic" data-ic="edit"></i></span></div>
+        <div class="rows pencil" style="--pl:24px;padding-right:30px">
+          <div class="r s"><span class="t">14:00</span><div class="slip"><i class="ic" data-ic="paper"></i><div><b>資料をまとめる</b><small>1時間</small></div><span class="o"></span></div></div>
+          <div class="r s"><span class="t">17:00</span><div class="slip"><i class="ic" data-ic="cart"></i><div><b>買い物へ行く</b><small>30分 ・ 牛乳・卵・食パン・洗剤</small></div><span class="o"></span></div></div>
+          <p class="sub-h" style="margin-left:110px">時刻なし</p>
+          <div class="r s"><span class="t"></span><div class="slip"><i class="ic" data-ic="checklist"></i><div><b>電球を替える</b><small>前の日から</small></div><span class="o"></span></div></div>
+        </div>
+      </div>
+      <div class="side" style="left:936px;width:462px;top:154px">
+        <span class="seg paper"><b class="on">年々</b><b>いまごろ</b><b>あした</b><b>ノート</b></span>
+        <div class="ycard two"><div>
+          <header><b>2025</b><span>土曜日</span><em><i class="ic" data-ic="cloud-sun"></i>15°/7°</em></header>
+          <p class="prose"><u>08:20</u>朝から風が強かった。落ち葉を掃いて、庭の隅に集める。</p>
+          <p class="prose"><u>16:30</u>張り替えた障子ごしの光がやわらかい。</p>
+        </div><div class="ph"></div></div>
+        <div class="ycard">
+          <header><b>2024</b><span>金曜日</span></header>
+          <p class="prose"><u>22:00</u>夜に長い手紙を書いた。書き終えるころには雨が上がっていた。</p>
+        </div>
+        <div class="ycard">
+          <header><b>2023</b><span>水曜日</span></header>
+          <p class="prose"><u>19:10</u>はじめて七輪で秋刀魚を焼いた。煙がすごくて笑った。</p>
+        </div>
+        <div class="ycard">
+          <header><b style="font-size:17px;color:var(--ink)">去年のいまごろ</b><span>立冬・次候</span></header>
+          <p class="kura" style="margin-top:2px;padding-top:0;border:0"><span><i class="ic" data-ic="check"></i>タイヤ交換の予約・障子の張り替え・ストーブを出す<b class="again">今年も</b></span><span><i class="ic" data-ic="cart"></i>みかん・灯油・切り餅</span></p>
+        </div>
+      </div>
+      <div class="edge-v"><i></i></div>
+    </div></div>
+  </div>
+</section>
+
+<section class="sheet" id="sheet-pc-2">
+  <div class="shot">
+    <p class="cap"><i>9</i>パソコン：一年の七十二枚<small>一年が一画面に収まる。列は月、升は候。升にふれると、その候の頁が出る。下の帯は小口（一年ぶんの頁の束）。</small></p>
+    <div class="device desk"><div class="board pc" id="d-year">
+      <div class="rail wide">
+        <p class="brand"><span class="logo"></span>くらしノート</p>
+        <p class="find"><i class="ic" data-ic="search"></i>さがす<kbd>Ctrl K</kbd></p>
+        <a class="on"><i class="ic" data-ic="book" data-solid></i>archive</a><a><i class="ic" data-ic="notes"></i>notes</a><a><i class="ic" data-ic="calendar"></i>daily</a><a><i class="ic" data-ic="cart"></i>shopping</a><a><i class="ic" data-ic="heart"></i>health</a>
+        <span class="sp"></span>
+        <div class="rshelf"><span class="spine y26"><span class="ribbon"></span><b>2026</b></span><span class="spine y25" style="outline:2px solid var(--shu);outline-offset:2px"><b>2025</b></span><span class="spine y24"><b>2024</b></span><span class="spine y23"><b>2023</b></span><span class="spine y22"><b>2022</b></span></div>
+        <a><i class="ic" data-ic="gear"></i>settings</a>
+        <span class="write-btn"><i class="ic" data-ic="edit"></i>書く<kbd>N</kbd></span>
+      </div>
+      <div class="yr-top" style="left:284px;top:34px"><span class="cbtn"><i class="ic" data-ic="chevron-left"></i></span><h1>2025</h1><span class="cbtn"><i class="ic" data-ic="chevron"></i></span></div>
+      <div class="yr-top" style="right:36px;top:44px"><span class="seg paper"><b class="on">七十二候</b><b>月</b><b>年々</b></span><span class="cbtn" style="margin-left:4px"><i class="ic" data-ic="shuffle"></i></span><span class="cbtn"><i class="ic" data-ic="more"></i></span></div>
+      <div class="wall" id="wall" style="left:284px;right:36px;top:124px"></div>
+      <div class="pop" style="left:872px;top:330px">
+        <div class="ph"></div>
+        <h4>地始凍<small>立冬 次候 ・ 11月12日―16日</small></h4>
+        <p><u>12 水</u>朝、車の窓に霜。</p>
+        <p><u>13 木</u>図書館で三冊借りる。</p>
+        <p><u>15 土</u>落ち葉を掃いて、障子を張り替えた。</p>
+      </div>
+      <div class="edge-w" style="left:284px;right:36px;bottom:44px"></div>
+      <div class="edge-m" style="left:284px;right:36px;bottom:22px"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span></div>
+    </div></div>
+  </div>
+</section>
+
+<!-- ================= 三つの案（骨組みの図） ================= -->
+<section class="sheet" id="sheet-plans">
+  <div class="shot">
+    <p class="cap"><i>A</i>磨く<small>席は今のまま五つ。daily の<br>日記を組み直し、年々を足す。</small></p>
+    <div class="dia">
+      <div class="hd" style="top:0;height:64px">空の帯・日付</div>
+      <div style="top:76px;height:54px">候の札</div>
+      <div style="top:138px;height:44px">書く口 三つ</div>
+      <div class="k" style="top:190px;height:150px">Daily Log<br>（組み直した頁）</div>
+      <div class="k" style="top:348px;height:48px">年々・いまごろ</div>
+      <div class="tb"><u class="on">daily</u><u>notes</u><u>tasks</u><u>shopping</u><u>health</u></div>
+    </div>
+  </div>
+  <div class="shot">
+    <p class="cap"><i>B</i>一日一頁、めぐる歳時記<small>tasks は「今日の頁」に、daily は<br>「archive」に。席の数と場所は同じ。</small></p>
+    <div class="dia" style="border-color:var(--shu)">
+      <div class="hd" style="top:0;height:64px">空の帯・日付</div>
+      <div style="top:76px;height:36px">一日の帯</div>
+      <div class="k" style="top:120px;height:120px">墨：あったこと<br>（日記・済ませた・買った・からだ）</div>
+      <div style="top:246px;height:26px;background:var(--shu);color:#fff;border:0">いま ─ 書く</div>
+      <div style="top:278px;height:118px;background:var(--take-soft)">札：これから<br>（予定・やること）</div>
+      <div class="tb"><u>archive</u><u>notes</u><u class="on">daily</u><u>shopping</u><u>health</u></div>
+    </div>
+  </div>
+  <div class="shot">
+    <p class="cap"><i>C</i>三つの時<small>きょう・これまで・ノートの三席。<br>買うもの・からだは「きょう」の中へ。</small></p>
+    <div class="dia">
+      <div class="hd" style="top:0;height:64px">空の帯・日付</div>
+      <div class="k" style="top:76px;height:110px">きょうの頁</div>
+      <div style="top:194px;height:60px">買うもの（頁の中の段）</div>
+      <div style="top:262px;height:60px">からだ（頁の中の段）</div>
+      <div style="top:330px;height:66px">これから（週・月）</div>
+      <div class="tb" style="justify-content:space-evenly"><u class="on">きょう</u><u>これまで</u><u>ノート</u></div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* 絵は本体と同じ（js/icons-phosphor.js）。見本の頁の中でだけ組む。 */
+window.KN = { icons: { register: function (name, set) { window.PH = set; } } };
+</script>
+<script src="../../js/icons-phosphor.js"></script>
+<script>
+(function () {
+  var PH = window.PH || {};
+  function paint(root) {
+    root.querySelectorAll("[data-ic]").forEach(function (el) {
+      var d = PH[el.getAttribute("data-ic")];
+      if (!d) return;
+      var body = (el.hasAttribute("data-solid") && d.solid) || d.body;
+      var attrs = d.mode === "fill" ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
+      if (el.hasAttribute("data-solid") && d.solid && d.mode !== "fill") attrs = 'fill="currentColor"';
+      el.innerHTML = '<svg viewBox="' + (d.viewBox || "0 0 256 256") + '" ' + attrs + ' aria-hidden="true">' + body + "</svg>";
+    });
+  }
+  /* 七十二候（js/season.js の並び。春分から）。 */
+  var KO = ["雀始巣","桜始開","雷乃発声","玄鳥至","鴻雁北","虹始見","葭始生","霜止出苗","牡丹華","蛙始鳴","蚯蚓出","竹笋生","蚕起食桑","紅花栄","麦秋至","蟷螂生","腐草為螢","梅子黄","乃東枯","菖蒲華","半夏生","温風至","蓮始開","鷹乃学習","桐始結花","土潤溽暑","大雨時行","涼風至","寒蝉鳴","蒙霧升降","綿柎開","天地始粛","禾乃登","草露白","鶺鴒鳴","玄鳥去","雷乃収声","蟄虫坏戸","水始涸","鴻雁来","菊花開","蟋蟀在戸","霜始降","霎時施","楓蔦黄","山茶始開","地始凍","金盞香","虹蔵不見","朔風払葉","橘始黄","閉塞成冬","熊蟄穴","鱖魚群","乃東生","麋角解","雪下出麦","芹乃栄","水泉動","雉始雊","款冬華","水沢腹堅","鶏始乳","東風解凍","黄鶯睍睆","魚上氷","土脉潤起","霞始靆","草木萌動","蟄虫啓戸","桃始笑","菜虫化蝶"];
+  var SEKKI = ["春分","清明","穀雨","立夏","小満","芒種","夏至","小暑","大暑","立秋","処暑","白露","秋分","寒露","霜降","立冬","小雪","大雪","冬至","小寒","大寒","立春","雨水","啓蟄"];
+  var photo = function (k) { return "../../img/season-photo/k" + String(k).padStart(2, "0") + ".webp"; };
+  /* 月の列：1月＝小寒・大寒（候 57〜62）から、六つずつ。 */
+  var monthKo = function (m) { return [0, 1, 2, 3, 4, 5].map(function (i) { return (57 + 6 * (m - 1) + i) % 72; }); };
+  var monthSekki = function (m) { var k = monthKo(m)[0]; return SEKKI[Math.floor(k / 3)] + "・" + SEKKI[(Math.floor(k / 3) + 1) % 24]; };
+
+  var wall = document.getElementById("wall");
+  if (wall) {
+    var h = "";
+    for (var m = 1; m <= 12; m++) {
+      h += "<h6>" + m + "月<small>" + monthSekki(m) + "</small></h6>";
+      monthKo(m).forEach(function (k) {
+        h += '<div class="kt' + (k === 46 ? " cur" : "") + '"><div class="ph" style="background-image:url(' + photo(k) + ')"></div><b>' + KO[k] + "</b></div>";
+      });
+    }
+    wall.innerHTML = h;
+  }
+  var vol = document.getElementById("vol-phone");
+  if (vol) {
+    var lines = { 39: "朝の空に雁の声。", 40: "菊を一輪、玄関に。", 41: "虫の音が戸口まで届く。", 42: "初霜。車の窓が白い。", 43: "通り雨のあと、虹を見た。", 44: "公園の楓が色づく。",
+      45: "山茶花が咲きはじめた。", 46: "落ち葉を掃いて、障子を張り替えた。", 47: "水仙のつぼみを見つけた。", 48: "朝、吐く息が白い。", 49: "北風。洗濯物がよく乾く。", 50: "みかんを箱で買う。",
+      51: "初雪。", 52: "毛布を一枚足す。", 53: "大掃除の段取りを書く。" };
+    var v = "";
+    [10, 11, 12].forEach(function (m) {
+      v += '<p class="mhead">' + m + "月<small>" + monthSekki(m) + "</small></p><div class=\"kgrid\">";
+      monthKo(m).slice(0, m === 12 ? 3 : 6).forEach(function (k) {
+        v += '<div class="kt' + (k === 46 ? " cur" : "") + '"><div class="ph" style="background-image:url(' + photo(k) + ')"></div><b>' + KO[k] + "</b><p>" + (lines[k] || "") + "</p></div>";
+      });
+      v += "</div>";
+    });
+    vol.innerHTML = v;
+  }
+  var mcal = document.getElementById("mcal");
+  if (mcal) {
+    var c = "月火水木金土日".split("").map(function (w) { return "<u>" + w + "</u>"; }).join("");
+    [26, 27, 28, 29, 30, 31].forEach(function (d) { c += "<s>" + d + "</s>"; });
+    for (var d = 1; d <= 30; d++) c += d === 15 ? "<b>15</b>" : "<span>" + d + "</span>";
+    [1, 2, 3, 4, 5, 6].forEach(function (d) { c += "<s>" + d + "</s>"; });
+    mcal.innerHTML = c;
+  }
+  /* 暗い面は、今日の頁をそのまま写して札だけ替える。 */
+  var src = document.getElementById("p-today"), dst = document.getElementById("p-today-dark");
+  if (src && dst) {
+    dst.innerHTML = src.innerHTML;
+  }
+  paint(document);
+  document.documentElement.setAttribute("data-ready", "1");
+})();
+</script>
+</body>
+</html>
