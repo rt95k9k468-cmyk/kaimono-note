@@ -728,7 +728,7 @@
               ${icon("copy")}
             </button>` : ""}
           ${/* 今日の一枚（F6 の D2）を付ける・替える・外す。一日ぶん・鍵が開いている・写真の入れ物が使える日だけ。 */
-              oneDayLog() && only <= U.todayKey() && !diaryShut() && KN.dayPhoto && KN.dayPhoto.items(only).length ? html`
+              oneDayLog() && !diaryShut() && logMore(only).length ? html`
             <button type="button" class="icon-btn js-log-more" aria-label="ほかの操作">${icon("more")}</button>` : ""}
         </header>
         <div class="arc-log-body"></div>
@@ -736,7 +736,7 @@
     `);
     const body = sec.querySelector(".arc-log-body");
     const moreBtn = sec.querySelector(".js-log-more");
-    if (moreBtn) moreBtn.addEventListener("click", () => KN.ui.popMenu(moreBtn, KN.dayPhoto.items(only)));
+    if (moreBtn) moreBtn.addEventListener("click", () => KN.ui.popMenu(moreBtn, logMore(only)));
     /* 開いた日は本文の上に一枚（額の背は CSS が先に取る）。月ぜんぶのときは日の行の右に小さく（下の rows）。 */
     const pic = only && !diaryShut() && KN.dayPhoto ? KN.dayPhoto.frame(days[0], false) : null;
     if (pic) body.append(pic);
@@ -769,9 +769,7 @@
         const cr = chatRow(d, !!only);
         const th = thumb(d);
         if (th) cr.append(th);
-        body.append(cr);
-        const feed = feedRows(d.date);
-        if (feed) body.append(feed);
+        body.append(cr);   // 済ませたこと・買ったものは頁の行の中（構1）
         return;
       }
       const dt = U.dayDate(d.date);
@@ -1378,6 +1376,18 @@
   const stampOnly = (text) => String(text).split("\n").every((l) => !l.trim()
     || isStampLine(l.trim()));
 
+  /** Daily Log の ⋯：今日の一枚と、時刻ごとの頁では一枚で開く（作成・更新の時刻は ⋯ の中。構1）。 */
+  function logMore(day) {
+    const out = day <= U.todayKey() && KN.dayPhoto ? KN.dayPhoto.items(day).slice() : [];
+    const d = store.dayLog(day);
+    if (chatView() && d && (d.createdAt || d.wake || d.sleep || String(d.memo || "").trim())) {
+      const sub = S().showStamps === false || !d.createdAt ? ""
+        : `作成 ${U.formatStamp(d.createdAt)}${edits(d) ? ` ・ 更新 ${U.formatStamp(d.updatedAt)}` : ""}`;
+      out.push({ icon: "edit", label: "一枚で開く", sub, onPick: () => openLogSheet(day) });
+    }
+    return out;
+  }
+
   /** 「更新」を出すか。同じ分のうちに直しただけなら、作成と同じ字が二つ並ぶだけなので出さない。 */
   function edits(d) {
     return !!(d.updatedAt && d.createdAt && d.updatedAt !== d.createdAt
@@ -1392,55 +1402,111 @@
     return w ? html`<span class="arc-log-wx" role="img" aria-label="${w.label} 最高${w.max}度 最低${w.min}度">${icon(w.icon)}<span>${w.max}°／${w.min}°</span></span>` : "";
   }
 
+  /* 頁の材料（構1・README 6.2）。記録から引くだけ（写しを持たない）。並べるのは KN.dayPage.rows。
+     からだは今の daily のコピーと同じ範囲（体重・歩数・睡眠・食事。飲酒は出さない）。 */
+  const pad2 = (n) => String(n).padStart(2, "0");
+  function localOf(iso) {
+    const t = new Date(iso);
+    return isNaN(t) ? {} : { day: U.dayKey(t), clock: `${pad2(t.getHours())}:${pad2(t.getMinutes())}` };
+  }
+  function pageOf(d, items) {
+    const day = d.date;
+    const feed = store.dayFeed(day);
+    const byId = new Map(store.get().todos.map((t) => [t.id, t]));
+    const times = S().showDayTimes !== false;
+    const w = store.weightOfDay(day);
+    return KN.dayPage.rows({
+      day, posts: items,
+      todos: feed.filter((f) => f.src === "todo").map((f) => {
+        const t = byId.get(f.id) || {}, l = localOf(f.at);
+        return { id: f.id, title: f.title, due: t.due || null, time: t.time || null, doneDay: l.day, doneClock: l.clock };
+      }),
+      bought: feed.filter((f) => f.src === "item").map((f) => Object.assign({ id: f.id, title: f.title }, localOf(f.at))),
+      meals: store.mealsOfDay(day).map((m) => ({ slot: m.slot, time: m.time,
+        text: String(m.memo || "").trim() || (m.items || []).map((x) => x.name).join("、") })),
+      weight: w ? { time: w.time, kg: w.kg } : null,
+      wake: times ? d.wake : null, sleep: times ? d.sleep : null,
+      sleepMin: store.healthValue(day, "sleep"), steps: store.healthValue(day, "steps"),
+      slotOf: KN.sky ? (min) => { const t = U.dayDate(day); t.setHours(0, min, 0, 0); return KN.sky.slotOf(t); } : null,
+    });
+  }
+  const sleepLabel = (m) => `${Math.floor(m / 60)}時間${pad2(Math.round(m % 60))}分`;
+
+  /** 時刻ごとの日記を頁の行に（構1・README 6.1・6.4）。朱の細い縦線の左に時刻、右に中身。言葉は明朝、
+      よかったことは山吹の面、済ませたこと・事実は一行。箱は持たない。言葉の行を押すと道具（直す・写す・ノートへ移す）。
+      本文の字は足し引きせず、切って並べるだけ。本文がまだ無い日も、一日ぶんなら頭の日付と育休の行。 */
   function chatRow(d, one) {
-    const dt = U.dayDate(d.date);
-    const edited = edits(d);
     const items = KN.diaryPosts.parse(d.memo || "");
+    const list = pageOf(d, items);
+    const dayCell = html`<span class="arc-log-day">
+          <b>${String((U.dayDate(d.date) || { getDate: () => "" }).getDate())}</b>
+          <i>${U.dayDate(d.date) ? U.weekdayJa(d.date) : ""}</i>${wxOf(d.date)}
+        </span>`;
+    const at = (x, cls) => html`<span class="pg-at ${cls || ""} ${x.showAt === false ? "is-same" : ""} ${x.brk ? "is-brk" : ""}">${x.at}</span>`;
+    const post = (x, first) => {
+      const p = x.post, good = KN.diaryPosts.isGood(p.text);
+      const tools = !(!p.mark && stampOnly(p.text));
+      return html`
+        <span class="arc-post pg-row is-folded ${p.mark ? "" : "is-head"} ${good ? "is-good" : ""} ${x.brk ? "is-brk" : ""}" data-k="${x.k}" data-key="${d.date}|${p.start}"
+          >${first ? html`<span class="pg-at">${dayCell}</span>` : p.mark ? html`<span class="pg-at arc-post-at ${x.showAt === false ? "is-same" : ""} ${x.brk ? "is-brk" : ""} ${p.date ? "is-later" : ""}">${good ? icon("sun") : ""}${x.at}</span>` : html`<span class="pg-at"></span>`}<span class="arc-post-body"
+            >${tools ? html`<span class="arc-post-text" role="button" tabindex="0" aria-expanded="false">` : html`<span class="arc-post-text">`}${KN.diaryPosts.bare(p.text)}</span
+            ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="全文を読む">${icon("chevron-down")}<span>全文を読む</span></button
+            ><span class="arc-post-tail" aria-hidden="true">${KN.diaryPosts.bare(p.text)}</span
+            >${tools ? html`<span class="arc-post-acts"
+              ><button type="button" class="arc-post-act js-post-edit">${icon("edit")}<span>直す</span></button
+              ><button type="button" class="arc-post-act js-post-copy">${icon("copy")}<span>写す</span></button
+              ><button type="button" class="arc-post-act js-post-move">${icon("notes")}<span>ノートへ移す</span></button></span>` : ""}</span></span>`;
+    };
+    const titles = (x) => (x.items || [x.item]).map((i) => i.title).join("、");
+    const fact = (x) => {
+      switch (x.kind) {
+        case "wake": return html`<span class="pg-row is-fact is-times js-times" role="button" tabindex="0">${at(x)}<span class="pg-body">起床${x.sleepMin != null ? `　眠り ${sleepLabel(x.sleepMin)}` : ""}</span></span>`;
+        case "sleep": return html`<span class="pg-row is-fact is-times js-times" role="button" tabindex="0">${at(x)}<span class="pg-body">就寝</span></span>`;
+        case "weight": return html`<span class="pg-row is-fact">${at(x)}<span class="pg-body">体重 ${x.kg}kg</span></span>`;
+        case "meal": return html`<span class="pg-row is-fact ${x.brk ? "is-brk" : ""}">${at(x)}<span class="pg-body">${x.text}</span></span>`;
+        case "done": case "bought": return html`<button type="button" class="pg-row is-${x.kind} ${x.many ? "is-many" : ""} ${x.brk ? "is-brk" : ""}" data-src="${x.kind === "done" ? "todo" : "item"}"
+            aria-label="${x.kind === "done" ? "済ませたこと" : "買ったもの"} ${x.at} ${titles(x)}">${at(x)}<span class="pg-body">${icon(x.kind === "done" ? "check" : "cart")}<span class="pg-title">${titles(x)}</span></span></button>`;
+        default: return "";
+      }
+    };
+    const rows = list.filter((x) => x.zone !== "foot");
+    const foot = list.filter((x) => x.zone === "foot").map((x) => x.kind === "steps" ? `歩数 ${Math.round(x.steps).toLocaleString()}歩`
+      : x.kind === "weight" ? `体重 ${x.kg}kg` : `眠り ${sleepLabel(x.sleepMin)}`);
+    const hasPost = items.length > 0;
+    const firstHead = rows.length && rows[0].kind === "head";
     const row = node(html`
-      <div class="arc-log-row is-chat ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
-        <span class="arc-log-day">
-          <b>${String(dt ? dt.getDate() : "")}</b>
-          <i>${dt ? U.weekdayJa(d.date) : ""}</i>${wxOf(d.date)}
-        </span>
+      <div class="arc-log-row is-chat is-page ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
         <span class="arc-log-text">
-          <span class="arc-posts">${items.length ? items.map((x, k) => html`
-            <span class="arc-post is-folded ${x.mark ? "" : "is-head"} ${KN.diaryPosts.isGood(x.text) ? "is-good" : ""}" data-k="${k}" data-key="${d.date}|${x.start}"
-              >${x.mark ? html`<span class="arc-post-at">${KN.diaryPosts.isGood(x.text) ? icon("sun") : ""}${x.date ? `${x.date} ` : ""}${x.at}</span>` : ""}<span class="arc-post-body"
-                >${!x.mark && stampOnly(x.text) ? "" : html`<span class="arc-post-acts"
-                  ><button type="button" class="arc-post-act js-post-edit" aria-label="直す">${icon("edit")}</button
-                  ><button type="button" class="arc-post-act js-post-copy" aria-label="コピー">${icon("copy")}</button></span>`
-                }<span class="arc-post-text">${KN.diaryPosts.bare(x.text)}</span
-                ><button type="button" class="arc-post-more" aria-expanded="false" aria-label="全文を読む">${icon("chevron-down")}<span>全文を読む</span></button
-                ><span class="arc-post-tail" aria-hidden="true">${KN.diaryPosts.bare(x.text)}</span></span></span>`)
-            : html`${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span>`}</span>
-          ${/* 起床・就寝は一枚の紙で直す（時刻の欄があるのはそこだけ）。 */
-              S().showDayTimes === false ? "" : html`
-            <span class="arc-log-times js-times" role="button" tabindex="0">起床 ${orDash(d.wake)} ・ 就寝 ${orDash(d.sleep)}</span>`}
-          ${S().showStamps === false ? "" : html`
-            <span class="arc-log-meta">
-              <span class="arc-stamp">作成 ${U.formatStamp(d.createdAt) || "-"}</span>
-              ${edited ? html`<span class="arc-stamp">更新 ${U.formatStamp(d.updatedAt)}</span>` : ""}
-            </span>`}
+          <span class="arc-posts">${firstHead ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : fact(x)))}</span>
+          ${foot.length ? html`<span class="pg-foot">${foot.join("　")}</span>` : ""}
         </span>
       </div>
     `);
-    const times = row.querySelector(".js-times");
-    if (times) {
-      times.addEventListener("click", () => openLogSheet(d.date));
-      times.addEventListener("keydown", (e) => {
+    row.querySelectorAll(".js-times").forEach((el) => {
+      el.addEventListener("click", () => openLogSheet(d.date));
+      el.addEventListener("keydown", (e) => {
         if (!KN.util.isEnter(e) && e.key !== " ") return;
         e.preventDefault();
         openLogSheet(d.date);
       });
-    }
+    });
+    /* やること・買うものは、それぞれのタブが本体です。 */
+    row.querySelectorAll("button.pg-row").forEach((el) => el.addEventListener("click", () => {
+      KN.motion.fire("select");
+      KN.app.showScreen(el.dataset.src === "todo" ? "todo" : "list");
+    }));
     /* 選んでいるあいだは押したことにしない（選んだそばから選択が消えないように）。 */
     const selecting = (el) => {
       const sel = window.getSelection && window.getSelection();
       return !!(sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode));
     };
+    const setTools = (el, on) => {
+      el.classList.toggle("is-tools", on);
+      const tx = el.querySelector(".arc-post-text");
+      if (tx) tx.setAttribute("aria-expanded", String(on));
+    };
     row.querySelectorAll(".arc-post").forEach((el) => {
       const k = Number(el.dataset.k);
-      const body = el.querySelector(".arc-post-body");
       if (k < 0) {
         const text = el.querySelector(".arc-post-text");
         const go = () => openPost(d.date, null);
@@ -1450,7 +1516,7 @@
       }
       const x = items[k];
       const edit = el.querySelector(".js-post-edit");
-      if (edit) edit.addEventListener("click", (e) => { e.stopPropagation(); openPost(d.date, x); });
+      if (edit) edit.addEventListener("click", (e) => { e.stopPropagation(); setTools(el, false); openPost(d.date, x); });
       const copy = el.querySelector(".js-post-copy");
       if (copy) copy.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -1460,15 +1526,31 @@
           KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
         });
       });
-      /* 長い一件だけ、押すと伸び縮み（「全文を読む」も同じ。キーで押せるのはこちら）。 */
+      const move = el.querySelector(".js-post-move");
+      if (move) move.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setTools(el, false);
+        if (diaryShut() || bodyBlocked()) return;
+        const m = memoOf(d.date);
+        if (!KN.diaryPosts.still(m, x)) { KN.ui.toast("日記が変わっていました"); render(); return; }
+        moveToNote(d.date, { at: KN.diaryPosts.chunkAt(x), chunk: KN.diaryPosts.chunkOf(m, x), mark: x.mark, text: x.text });
+      });
       el.querySelector(".arc-post-more").addEventListener("click", (e) => {
         e.stopPropagation();
         setFold(el, !el.classList.contains("is-folded"));
       });
-      body.addEventListener("click", () => {
-        if (!el.classList.contains("can-more") || selecting(el)) return;
-        setFold(el, !el.classList.contains("is-folded"));
-      });
+      /* 言葉の行を押すと道具（もう一度で畳む）。ほかの行の道具は閉じる。 */
+      const text = el.querySelector(".arc-post-text");
+      if (!el.querySelector(".arc-post-acts")) return;
+      const toggle = () => {
+        if (selecting(el)) return;
+        const on = !el.classList.contains("is-tools");
+        row.querySelectorAll(".arc-post.is-tools").forEach((o) => setTools(o, false));
+        setTools(el, on);
+        KN.motion.fire("select");
+      };
+      text.addEventListener("click", toggle);
+      text.addEventListener("keydown", (e) => { if (!KN.util.isEnter(e) && e.key !== " ") return; e.preventDefault(); toggle(); });
     });
     watchFold([...row.querySelectorAll(".arc-post.is-folded")]);
     return row;

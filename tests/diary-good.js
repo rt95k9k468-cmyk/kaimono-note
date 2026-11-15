@@ -42,6 +42,12 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await page.waitForTimeout(150);
   };
   const said = () => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((x) => x.textContent).join("|"));
+  /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
+  const tool = async (k, name) => {
+    const p = `#screen-archive .arc-post[data-k="${k}"]`;
+    if (!(await page.$(`${p}.is-tools`))) await page.click(`${p} .arc-post-text`);
+    await page.click(`${p} .js-post-${name}`);
+  };
   const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")]
     .map((p) => ({ good: p.classList.contains("is-good"), sun: !!p.querySelector(".arc-post-at svg"),
       text: p.querySelector(".arc-post-text").textContent })));
@@ -111,7 +117,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("空にした一件だけ外れる", !/消すつもり/.test(m3) && m3.endsWith(`\n\n12:34${W}\nのこす`) && m3.startsWith(m2), JSON.stringify(m3));
 
   /* ---- 直す紙：印は欄に見せず、直しても残る ---- */
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
+  await tool(1, "edit");
   await sheetOpen();
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
@@ -127,7 +133,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- コピー・書き出しの字にだけ「よかった：」 ---- */
   await page.evaluate(() => { KN.util.copy = (s) => { window.__copied = s; return Promise.resolve(true); }; });
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-copy");
+  await tool(1, "copy");
   await page.waitForTimeout(200);
   t.check("一件のコピーは「よかった：」つき", (await page.evaluate(() => window.__copied)) === "よかった：よい字を直した", await page.evaluate(() => window.__copied));
   const ex = await page.evaluate((d) => ({

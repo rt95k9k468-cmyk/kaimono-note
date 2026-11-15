@@ -163,7 +163,7 @@ function waited(bad, where) {
   const w = +(process.env.VIEW || 375);
   const { browser, page, errors } = await open({ road: true, viewport: { width: w, height: w === 375 ? 667 : 844 } });
 
-  /* 3週間ぶんの試しの記録。買うもの3つ（帯の数の札）・体重・お酒・時刻のある用事（道の端）。 */
+  /* 3週間ぶんの試しの記録。買うもの3つ（帯の数の札）・体重・お酒・時刻のある用事（道の端）・今日の頁の行。 */
   await page.evaluate(() => {
     const S = KN.store, U = KN.util;
     const day = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return U.dayKey(d); };
@@ -174,6 +174,10 @@ function waited(bad, where) {
     }
     S.addTodo({ title: "病院の予約", due: day(0), time: "10:00", minutes: 30 });
     S.addTodo({ title: "買いもの", due: day(0), time: "17:00", minutes: 30 });
+    /* 頁の組み（構1）：言葉・よかったこと（山吹の面の上の明朝）・事実（墨2）・時刻の列を今日の daily に。 */
+    const W = KN.diaryPosts.TAG;
+    S.setDayLog(day(0), { memo: `06:50${W}\n朝の字\n\n08:10${W}\n\u2063よい字`, wake: "06:30" });
+    S.addMeal({ day: day(0), time: null, slot: "lunch", items: [], memo: "そば" });
   });
   /* ノートの6つの棚（見出しの字は棚の色。空のホームには出ないので数えていなかった。10月17日、T1）。 */
   await page.evaluate(() => KN.notes.ready());

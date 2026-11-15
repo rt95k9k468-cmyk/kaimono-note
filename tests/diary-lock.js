@@ -42,7 +42,9 @@ const WORD = "しおかぜ";
   });
   const logText = () => page.evaluate(() => (document.querySelector("#screen-archive .arc-log") || {}).textContent || "");
 
-  await page.evaluate((w) => KN.store.setDayLog(KN.util.todayKey(), { memo: w }), WORD);
+  /* 頁の事実（構1）：体重・食事。閉じているあいだは本文と同じく組まない。 */
+  await page.evaluate((w) => { const d = KN.util.todayKey(); KN.store.setDayLog(d, { memo: w });
+    KN.store.addWeight({ day: d, time: "07:00", kg: 61.5 }); KN.store.addMeal({ day: d, time: "07:30", slot: "breakfast", items: [], memo: "はまなす" }); }, WORD);
   const before = await plain();
 
   /* ---- 番号を決めて、daily を切り、日記を入れる ---- */
@@ -70,6 +72,8 @@ const WORD = "しおかぜ";
   await show("archive");
   t.check("daily に覆いは出ない", !(await veil()).on);
   t.check("本文は出さない", !(await logText()).includes(WORD));
+  t.check("頁の行（本文・体重・食事）を組まない", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")
+    && !/61\.5|はまなす/.test(document.querySelector("#screen-archive .arc-log").textContent)));
   t.check("代わりに「開ける」", await page.evaluate(() => !!document.querySelector("#screen-archive .arc-diary-shut")));
   t.check("検索は日記を探さない", await page.evaluate((w) =>
     !KN.searchAll.find(w, "todo").groups.some((g) => g.id === "daily"), WORD));
@@ -95,6 +99,7 @@ const WORD = "しおかぜ";
   await type("1234");
   t.check("番号で開くと覆いが消える", !(await veil()).on);
   t.check("開けると本文が出る", (await logText()).includes(WORD));
+  t.check("開けると頁の事実も出る", /61\.5kg/.test(await logText()) && (await logText()).includes("はまなす"));
 
   /* 開けた紙は、鍵が閉じると閉じる。本文はそのまま。 */
   await page.evaluate(() => {
@@ -108,6 +113,7 @@ const WORD = "しおかぜ";
   t.check("鍵が閉じると紙も閉じる", await page.evaluate(() => !document.querySelector(".sheet.is-open .js-memo")));
   t.check("閉じても本文はそのまま", await page.evaluate((w) => (KN.store.dayLog(KN.util.todayKey()) || {}).memo === w, WORD));
   t.check("閉じたら本文はまた隠れる", !(await logText()).includes(WORD));
+  t.check("閉じたら頁の行も DOM から消える", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")));
 
   /* 書き出しの入口も、開けてから。 */
   await show("settings");

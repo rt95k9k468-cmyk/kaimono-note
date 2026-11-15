@@ -113,7 +113,9 @@ const t = checker("smooth");
   await page.evaluate((d) => {
     const memo = "きょうは あさから あめ。えきまで あるいた。".repeat(40);
     KN.store.setDayLog(d.today, { memo });
-    KN.store.setDayLog(d.yesterday, { memo });
+    /* 頁の組み（構1）で長い一件が箱を持たなくなり、紙が縮んだ。前の日は時刻の一件を三つ足して、80px より先まで送れるように。 */
+    const W = KN.diaryPosts.TAG;
+    KN.store.setDayLog(d.yesterday, { memo: `${memo}\n\n09:00${W}\nひとつめ\n\n12:00${W}\nふたつめ\n\n18:00${W}\nみっつめ` });
   }, { today, yesterday });
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(700);
@@ -151,8 +153,9 @@ const t = checker("smooth");
   await page.waitForTimeout(400);
 
   /* ---- 紙の中で打っているあいだ、後ろは組み直さない ---- */
-  /* 時刻ごとでは、一件を直す紙は左の余白の「直す」から（吹き出しを押すと伸び縮み）。 */
-  await page.click("#screen-archive .arc-log-row .js-post-edit");
+  /* 時刻ごとでは、一件を直す紙は言葉の行を押して出る「直す」から。 */
+  await page.click('#screen-archive .arc-post-text[role="button"]');
+  await page.click("#screen-archive .arc-post.is-tools .js-post-edit");
   await page.waitForSelector(".sheet.is-card .js-memo");
   await page.waitForTimeout(600);
   await page.focus(".sheet.is-card .js-memo");

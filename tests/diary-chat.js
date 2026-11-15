@@ -1,8 +1,9 @@
 /* 思考のホーム・時刻ごとの日記（docs/thinking.md）。
    - 本文は一つの文字のまま：一件は「このアプリが書いた時刻の行」（見えない印 U+2060 つき）から。
      印の無い時刻の行（前からの本文・取り込んだ本文・10月12〜13日の版の一件）は分けず、一字も変わらない
-   - 一件は吹き出し。長い一件は頭と終わりの三行ずつで畳み、押すと伸び縮み（書く紙は開かない）。直す・コピーは左の余白のボタン
-     （日付と育休の行だけの頭には出さない）
+   - 頁の組み（構1・js/day-page.js）：6.2 の例・同じ時刻の順・束ね（用事三つ・買い物30分）・枠だけの食事・時間帯の境（node）。
+     一件は頁の行。長い一件は頭と終わりの三行ずつで畳み「全文を読む」で伸び縮み。押すと道具（直す・写す・ノートへ移す。
+     日付と育休の行だけの頭には出さない）。作成は Daily Log の ⋯
    - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
    - daily の冒頭に書く口と問いの札。＋も書く口も、種類を選ばずに書く紙（新しい一件）
    - 今日の問いは開くたびにでたらめに引き、最近出た問い（askSeen）を避ける（読み込み直すと替わる）
@@ -56,6 +57,51 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("印の無い「6:30」だけの行は分けない（地の文のまま）", lg.length === 1 && lg[0].text === legacy.trim(), JSON.stringify(lg));
 }
 
+/* ---- 頁の並び（構1・shots/vision/README.md 6.2。js/day-page.js は読むだけ） ---- */
+{
+  require(path.join(__dirname, "..", "js", "day-page.js"));
+  const D = global.KN.dayPage;
+  const D15 = "2026-11-15", D16 = "2026-11-16";
+  const td = (id, o) => Object.assign({ id, title: id, due: null, time: null, doneDay: D15 }, o);
+  const pick = (rows, kind) => rows.filter((x) => x.kind === kind);
+  const ats = (rows) => rows.filter((x) => x.zone === "time").map((x) => `${x.kind}@${x.at}`).join(" ");
+  const todos = [td("a", { due: D15, time: "10:00", doneClock: "11:30" }), td("b", { due: D15, time: "20:00", doneClock: "19:39" }),
+    td("c", { doneClock: "09:05" }), td("d", { due: "2026-11-14", time: "10:00", doneClock: "08:00" }),
+    td("x1", { doneClock: "21:00" }), td("x2", { doneClock: "21:00" }), td("x3", { doneClock: "21:00" })];
+  const r = D.rows({ day: D15, todos });
+  const at = (id) => { const x = pick(r, "done").find((y) => (y.items || [y.item]).some((i) => i.id === id)); return x && x.at; };
+  t.check("頁：10:00 の予定を 11:30 に丸 → 10:00", at("a") === "10:00", at("a"));
+  t.check("頁：20:00 の用事を 19:39 に丸 → 19:39", at("b") === "19:39", at("b"));
+  t.check("頁：時刻なしの持ち越しを 09:05 に丸 → 09:05", at("c") === "09:05", at("c"));
+  t.check("頁：前の日 10:00 の予定を今日 08:00 に丸 → 08:00", at("d") === "08:00", at("d"));
+  const three = pick(r, "done").find((x) => x.many);
+  t.check("頁：21:00 に三つ続けて丸 → 一行に三つ", !!three && three.at === "21:00" && three.items.length === 3, JSON.stringify(three));
+  t.check("頁：押した日でない頁には出ない", D.rows({ day: "2026-11-14", todos }).length === 0);
+  const night = D.rows({ day: D15, sleep: "01:10", wake: "07:00", posts: [{ mark: "x", at: "23:10", text: "夜" }] });
+  t.check("頁：就寝 01:10 は 23時台より後ろ（頁の最後）", ats(night) === "wake@07:00 post@23:10 sleep@01:10", ats(night));
+  const morn = D.rows({ day: D16, wake: "06:30", sleepMin: 320, posts: P.parse(tag("2026.11.16（月）\n\n00:40\n夜中の一件\n\n08:00\n朝")) });
+  t.check("頁：起床と眠りの長さは同じ行", pick(morn, "wake")[0].sleepMin === 320);
+  t.check("頁：00:40 に書いた一件は頭の次（時刻の並びのいちばん上）", morn[0].kind === "head" && ats(morn) === "post@00:40 wake@06:30 post@08:00", ats(morn));
+  const meal = D.rows({ day: D15, meals: [{ slot: "breakfast", time: null, text: "パン" }, { slot: "dinner", time: "18:40", text: "鍋" }, { slot: "lunch", time: null, text: " " }] });
+  t.check("頁：時刻を入れていない朝食は朝の並びに「朝」", pick(meal, "meal")[0].at === "朝" && pick(meal, "meal")[0].min === 420 && pick(meal, "meal").length === 2, JSON.stringify(meal));
+  t.check("頁：時刻のある食事はその時刻", pick(meal, "meal")[1].at === "18:40");
+  const same = D.rows({ day: D15, wake: "07:00", weight: { time: "07:00", kg: 60 }, meals: [{ slot: "breakfast", time: "07:00", text: "x" }],
+    todos: [td("t", { doneClock: "07:00" })], bought: [{ id: "i", title: "牛乳", day: D15, clock: "07:00" }], posts: [{ mark: "m", at: "07:00", text: "y" }], sleep: "07:00" });
+  t.check("頁：同じ時刻は 起床→体重→食事→済ませた→買った→言葉→就寝", ats(same) === "wake@07:00 weight@07:00 meal@07:00 done@07:00 bought@07:00 post@07:00 sleep@07:00", ats(same));
+  t.check("頁：時刻の字は一度だけ", same.filter((x) => x.zone === "time" && x.showAt).length === 1);
+  const moved = D.rows({ day: D15, todos: [td("a", { due: D15, time: "12:00", doneClock: "11:30" })] });
+  t.check("頁：時刻を直すと次に描くとき動く（写しを持たない）", pick(moved, "done")[0].at === "11:30");
+  const shop = D.rows({ day: D15, bought: [["a", "10:00"], ["b", "10:20"], ["c", "10:45"], ["d", "11:30"]].map(([id, c]) => ({ id, title: id, day: D15, clock: c })) });
+  t.check("頁：買ったものは30分以内の続きを一行に", pick(shop, "bought").length === 2 && pick(shop, "bought")[0].items.length === 3, JSON.stringify(pick(shop, "bought")));
+  const two = D.rows({ day: D15, todos: [td("p", { doneClock: "09:00" }), td("q", { doneClock: "09:10" })] });
+  t.check("頁：済ませた用事は二つなら束ねない", pick(two, "done").length === 2 && !two.some((x) => x.many));
+  const ends = D.rows({ day: D15, posts: [{ mark: "m", at: "07:10", date: "11/16", text: "あと" }], steps: 8000, weight: { time: null, kg: 61 } });
+  t.check("頁：あとの日に書いた一件は終わりに日付つき・歩数と時刻の無い体重は足もと",
+    ends.map((x) => `${x.zone}:${x.kind}`).join(" ") === "end:later foot:weight foot:steps" && ends[0].at === "11/16 07:10", JSON.stringify(ends));
+  const band = D.rows({ day: D15, slotOf: (m) => (m < 600 ? "morning" : "day"), todos: [td("p", { doneClock: "09:00" }), td("q", { doneClock: "11:00" })] });
+  t.check("頁：時間帯の境に印（空けて太く）", !band[0].brk && band[1].brk);
+}
+
 /* ---- 前からの本文・取り込んだ本文は分けない（印の無い時刻の行） ---- */
 {
   const old = "2025.03.02（日）\n\n\n08:30\n起きた。\n\n１２：００\n昼。\n\n10/12 08:52\n前の版の一件\n\n\n\n"
@@ -103,6 +149,12 @@ const AT = new Date(2026, 9, 6, 12, 34);
     window.__ear.observe(document.body, { childList: true, subtree: true });
   });
   const said = () => page.evaluate(() => (window.__said || []).join("|"));
+  /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
+  const tool = async (k, name) => {
+    const p = `#screen-archive .arc-post[data-k="${k}"]`;
+    if (!(await page.$(`${p}.is-tools`))) await page.click(`${p} .arc-post-text`);
+    await page.click(`${p} .js-post-${name}`);
+  };
   const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")]
     .map((p) => ({ at: (p.querySelector(".arc-post-at") || {}).textContent || null, text: p.querySelector(".arc-post-text").textContent })));
 
@@ -231,7 +283,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     });
     mo.observe(document.body, { childList: true, subtree: true });
   });
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
+  await tool(1, "edit");
   await sheetOpen();
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
@@ -252,13 +304,13 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const odd = tag("前からの地の文。\n\n\n12:00\n\n空行のある一件\n\n\n13:00\nもう一件");
   await setMemo(odd);
   await page.waitForTimeout(300);
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
+  await tool(1, "edit");
   await sheetOpen();
   await closeSheet();
   t.check("開いて閉じただけなら一字も変わらない", (await memo()) === odd, JSON.stringify(await memo()));
 
   /* ---- 空にして閉じると外れる → 元に戻す ---- */
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
+  await tool(1, "edit");
   await sheetOpen();
   await page.fill(".sheet.is-open .js-memo", "");
   await page.dispatchEvent(".sheet.is-open .js-memo", "input");
@@ -270,7 +322,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("元に戻すで戻る", undo && (await memo()) === odd, JSON.stringify(await memo()));
 
   /* ---- 「消す」（⋯） ---- */
-  await page.click("#screen-archive .arc-post:nth-child(3) .js-post-edit");
+  await tool(2, "edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "消す" }).click();
@@ -298,7 +350,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- ノートへ移す：新しいノート ---- */
   await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
+  await tool(1, "edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "ノートへ移す" }).click();
@@ -334,7 +386,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return n.id;
   });
   await page.evaluate(() => KN.notes.flush());
-  await page.click("#screen-archive .arc-post:nth-child(3) .js-post-edit");
+  await tool(2, "edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "ノートへ移す" }).click();
@@ -345,15 +397,24 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("前からのノートの終わりに日付と時刻の行と字", app.body === "前からの本文\n\n10月6日(火) 12:34\n昼の一件", JSON.stringify(app.body));
   t.check("日記からは外れる（頭と一件目は残る）", app.memo === tag("2026.10.06（火）\n\n08:00\n朝の一件"), JSON.stringify(app.memo));
 
-  /* ---- 起床・就寝の行・「一枚で開く」は一枚の紙へ（時刻の欄と本文ぜんぶ） ---- */
+  /* ---- 起床・就寝の行（時刻の行）・「一枚で開く」は一枚の紙へ（時刻の欄と本文ぜんぶ） ---- */
   const base = await memo();
+  t.check("起床・就寝が無ければ時刻の行も無い", !(await page.$("#screen-archive .arc-log-row.is-chat .js-times")));
+  await page.click("#screen-archive .arc-log .js-log-more");
+  await page.waitForSelector(".note-pop.is-open .note-pop-item", { timeout: 4000 }).catch(() => {});
+  const sub = await page.evaluate(() => { const b = [...document.querySelectorAll(".note-pop.is-open .note-pop-item")].find((x) => /一枚で開く/.test(x.textContent));
+    return b ? (b.querySelector(".note-pop-sub") || {}).textContent || "" : null; });
+  t.check("作成の札は Daily Log の ⋯ の「一枚で開く」の下に", /^作成 /.test(sub || ""), JSON.stringify(sub));
+  await page.keyboard.press("Escape");
+  await page.evaluate((d) => KN.store.setDayLog(d, { wake: "06:10" }), day);
+  await page.waitForTimeout(300);
   await page.click("#screen-archive .arc-log-row.is-chat .js-times");
   await sheetOpen();
   const viaTimes = await page.evaluate(() => ({ t: document.querySelector(".sheet.is-open .sheet-title").textContent,
     wake: !!document.querySelector(".sheet.is-open .js-wake"), v: document.querySelector(".sheet.is-open .js-memo").value }));
   t.check("起床・就寝の行を押すと一枚の紙（時刻の欄・本文ぜんぶ）", / の log/.test(viaTimes.t) && viaTimes.wake && viaTimes.v === base, JSON.stringify(viaTimes));
   await closeSheet();
-  await page.click("#screen-archive .arc-post:nth-child(2) .js-post-edit");
+  await tool(1, "edit");
   await sheetOpen();
   await page.click(".sheet.is-open .js-menu");
   await page.locator(".note-pop.is-open .note-pop-item", { hasText: "一枚で開く" }).click();
@@ -381,7 +442,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await setMemo(base);
   await page.waitForTimeout(200);
 
-  /* ---- 吹き出し：長い一件は頭と終わりの三行ずつで畳み、押すと伸び縮み。直す・コピーは左の余白のボタン ---- */
+  /* ---- 頁の行：長い一件は頭と終わりの三行ずつで畳み「全文を読む」で伸び縮み。押すと道具 ---- */
   const long = "長い一件の字です。".repeat(80);
   await setMemo(tag(`2026.10.06（火）\n\n08:00\n短い一件\n\n12:34\n${long}`));
   await page.waitForTimeout(400);
@@ -399,51 +460,67 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("短い一件に「全文を読む」は出ない", fold.length === 3 && !fold[1].more, JSON.stringify(fold));
   t.check("長い一件は畳まれ「全文を読む」", fold[2] && fold[2].folded && fold[2].clamp && fold[2].more, JSON.stringify(fold[2]));
   t.check("畳むと頭の三行・ボタン・終わりの三行", fold[2] && fold[2].lines === 3 && fold[2].tail === 3 && fold[1].tail === 0, JSON.stringify(fold));
-  t.check("吹き出しの地は透ける", /rgba?\(.*,\s*0?\.\d+\)$|color\(.*\/\s*0?\.\d+\)$/.test(fold[2].bg), fold[2].bg);
-  await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-more");
+  t.check("言葉の行は地を持たない（箱は「これから」だけ）", /rgba\(0, 0, 0, 0\)|transparent/.test(fold[2].bg), fold[2].bg);
+  await page.click("#screen-archive .arc-post[data-k=\"2\"] .arc-post-more");
   await page.waitForTimeout(200);
   const opened = await page.evaluate(() => {
-    const p = document.querySelector("#screen-archive .arc-post:nth-child(3)"), tx = p.querySelector(".arc-post-text");
+    const p = document.querySelector("#screen-archive .arc-post[data-k=\"2\"]"), tx = p.querySelector(".arc-post-text");
     return { sheet: !!document.querySelector(".sheet.is-open"), folded: p.classList.contains("is-folded"), full: tx.scrollHeight <= tx.clientHeight + 1 };
   });
   t.check("「全文を読む」はその場で開く（書く紙は開かない）", !opened.sheet && !opened.folded && opened.full, JSON.stringify(opened));
   await page.evaluate((d) => KN.store.setDayLog(d, { wake: "06:10" }), day);
   await page.waitForTimeout(300);
-  t.check("組み直しても開いたまま", await page.evaluate(() => !document.querySelector("#screen-archive .arc-post:nth-child(3)").classList.contains("is-folded")));
+  t.check("組み直しても開いたまま", await page.evaluate(() => !document.querySelector("#screen-archive .arc-post[data-k=\"2\"]").classList.contains("is-folded")));
   const tapState = () => page.evaluate(() => ({ sheet: !!document.querySelector(".sheet.is-open"),
-    folded: [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => p.classList.contains("is-folded")) }));
-  await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-text");
+    folded: [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => p.classList.contains("is-folded")),
+    tools: [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => { const a = p.querySelector(".arc-post-acts");
+      return !!a && getComputedStyle(a).display !== "none"; }) }));
+  const tap0 = await tapState();
+  t.check("道具は押すまで出ない", tap0.tools.every((x) => !x), JSON.stringify(tap0));
+  await page.click("#screen-archive .arc-post[data-k=\"2\"] .arc-post-text");
   await page.waitForTimeout(200);
   const tap1 = await tapState();
-  t.check("長い吹き出しを押すと縮む（書く紙は開かない）", !tap1.sheet && tap1.folded[2] === true, JSON.stringify(tap1));
-  await page.click("#screen-archive .arc-post:nth-child(3) .arc-post-text");
+  t.check("言葉の行を押すと道具（畳みは変えない・書く紙は開かない）", !tap1.sheet && tap1.folded[2] === false && tap1.tools[2] && !tap1.tools[1], JSON.stringify(tap1));
+  await page.click("#screen-archive .arc-post[data-k=\"1\"] .arc-post-text");
   await page.waitForTimeout(200);
   const tap2 = await tapState();
-  t.check("もう一度押すと伸びる", !tap2.sheet && tap2.folded[2] === false, JSON.stringify(tap2));
-  await page.click("#screen-archive .arc-post:nth-child(2) .arc-post-text");
+  t.check("ほかの行を押すと道具はそちらへ", !tap2.sheet && tap2.tools[1] && !tap2.tools[2], JSON.stringify(tap2));
+  await page.click("#screen-archive .arc-post[data-k=\"1\"] .arc-post-text");
   await page.waitForTimeout(200);
   const tap3 = await tapState();
-  t.check("短い吹き出しは押しても何も起きない", !tap3.sheet && tap3.folded[1] === false, JSON.stringify(tap3));
-  const acts = await page.evaluate(() => {
-    const ps = [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")];
-    const posts = document.querySelector("#screen-archive .arc-log-row.is-chat .arc-posts").getBoundingClientRect();
-    const day = document.querySelector("#screen-archive .arc-log-row.is-chat .arc-log-day").getBoundingClientRect();
-    return ps.map((p) => {
-      const a = p.querySelector(".arc-post-acts"), b = p.querySelector(".arc-post-body").getBoundingClientRect();
-      const r = a && a.getBoundingClientRect();
-      return { has: !!a, wide: Math.abs(b.width - posts.width) < 1, gutter: !r || (r.right <= b.left && r.left >= day.left - 1 && r.top >= day.bottom - 1) };
-    });
-  });
-  t.check("日付と育休の行だけの頭には、直す・コピーのボタンが無い", !acts[0].has && acts[1].has && acts[2].has, JSON.stringify(acts));
-  t.check("ボタンは左の余白に（吹き出しの幅は変えない・日付の字の下）", acts.every((a) => a.wide && a.gutter), JSON.stringify(acts));
+  t.check("もう一度押すと道具は閉じる", !tap3.sheet && tap3.tools.every((x) => !x), JSON.stringify(tap3));
+  await page.click("#screen-archive .arc-post[data-k=\"1\"] .arc-post-text");
+  await page.waitForTimeout(200);
+  const acts = await page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => {
+    const a = p.querySelector(".arc-post-acts");
+    return { has: !!a, names: a ? [...a.querySelectorAll("button")].map((b) => b.textContent.trim()).join("・") : "",
+      under: !a || getComputedStyle(a).display === "none" || a.getBoundingClientRect().top >= p.querySelector(".arc-post-text").getBoundingClientRect().bottom - 1 };
+  }));
+  t.check("日付と育休の行だけの頭には、道具が無い", !acts[0].has && acts[1].has && acts[2].has, JSON.stringify(acts));
+  t.check("道具は 直す・写す・ノートへ移す（言葉の下）", acts[1].names === "直す・写す・ノートへ移す" && acts.every((a) => a.under), JSON.stringify(acts));
   const one = await page.evaluate(async () => {
     let got = null;
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (s) => { got = s; return Promise.resolve(); } } });
-    document.querySelector("#screen-archive .arc-post:nth-child(2) .js-post-copy").click();
+    document.querySelector("#screen-archive .arc-post[data-k=\"1\"] .js-post-copy").click();
     await new Promise((r) => setTimeout(r, 200));
     return got;
   });
   t.check("コピーはその一件の字だけ", one === "短い一件", JSON.stringify(one));
+
+  /* ---- 頁の行の種類：済ませたこと・食事が頁の中（前の小さな札は出さない） ---- */
+  const kinds = await page.evaluate(async (d) => {
+    const at = KN.util.dayDate(d); at.setHours(9, 30, 0, 0);
+    KN.store.update((s) => { s.todos.push({ id: "pg-done", title: "頁の用事", createdAt: at.toISOString(), due: d, time: null, done: true, doneAt: at.toISOString(), order: 999 }); });
+    KN.store.addMeal({ day: d, time: null, slot: "lunch", items: [], memo: "頁の昼" });
+    await new Promise((r) => setTimeout(r, 300));
+    const row = document.querySelector("#screen-archive .arc-log-row.is-chat");
+    const done = row.querySelector(".pg-row.is-done");
+    const meal = [...row.querySelectorAll(".pg-row.is-fact")].find((e) => e.textContent.includes("頁の昼"));
+    return { done: done ? done.textContent.replace(/\s+/g, "") : null, meal: meal ? meal.querySelector(".pg-at").textContent : null,
+      feed: !!document.querySelector("#screen-archive .arc-feed"), line: getComputedStyle(row.querySelector(".arc-posts"), "::before").width };
+  }, day);
+  t.check("済ませたことは時刻つきの一行・枠だけの食事は「昼」・札の列は出さない",
+    kinds.done === "09:30頁の用事" && kinds.meal === "昼" && !kinds.feed && kinds.line === "1px", JSON.stringify(kinds));
 
   /* ---- 前からの本文・取り込んだ本文は分けない ---- */
   const imported = "2025.03.02（日）\n\n08:30\n起きた。\n\n\n１２：００\n昼。\n\n10/12 08:52\n前の版の一件\n" + "長い段落".repeat(60);
@@ -451,7 +528,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.waitForTimeout(300);
   const ip = await posts();
   t.check("印の無い時刻の行は分けず、時刻なしの吹き出し一つ", ip.length === 1 && ip[0].at === null && ip[0].text === imported, JSON.stringify(ip.map((x) => x.at)));
-  await page.click("#screen-archive .arc-post:nth-child(1) .js-post-edit");
+  await tool(0, "edit");
   await sheetOpen();
   await closeSheet();
   t.check("開いて閉じても一字も変わらない", (await memo()) === imported);

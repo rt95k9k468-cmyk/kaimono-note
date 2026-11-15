@@ -225,6 +225,22 @@ const FORBIDDEN = [
   t.check("配る器に問いの元（出典・文脈つきの問い）が無い", !shipped.length, shipped.join(" "));
   t.check("初めて開いた端末に問いの元は無い", await page.evaluate(() => KN.store.get().asks.length === 0 && !KN.askItems));
 
+  /* 頁の組み（構1）：書いた今日の頁にも評価の言葉・割合・赤い色が無い（体重・歩数・眠り・食事・済ませたことを引いても）。 */
+  const pg = await page.evaluate(async () => {
+    const S = KN.store, d = KN.util.todayKey(), W = KN.diaryPosts.TAG;
+    S.setDayLog(d, { memo: `08:00${W}\n朝の字`, wake: "06:40", sleep: "23:10" });
+    S.addWeight({ day: d, time: "06:50", kg: 60.2 });
+    S.addMeal({ day: d, time: null, slot: "lunch", items: [], memo: "そば" });
+    S.setHealth(d, "steps", 4321); S.setHealth(d, "sleep", 380);
+    await new Promise((r) => setTimeout(r, 400));
+    const log = document.querySelector("#screen-archive .arc-log");
+    const red = [...log.querySelectorAll(".pg-row, .pg-row *")].filter((e) => !e.closest(".arc-log-day")).some((e) => /rgb\((2[0-5]\d|1[89]\d), ([0-6]?\d), ([0-6]?\d)\)/.test(getComputedStyle(e).color));
+    return { text: log.innerText, rows: log.querySelectorAll(".pg-row").length, red };
+  });
+  const hitsP = FORBIDDEN.filter((w) => pg.text.includes(w));
+  t.check("頁の行に評価の言葉・割合が無い", pg.rows >= 5 && !hitsP.length && !/\d\s*[%％]/.test(pg.text), `${pg.rows} ${hitsP.join(",")}`);
+  t.check("頁の行に赤い字が無い", !pg.red);
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();
