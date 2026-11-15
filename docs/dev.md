@@ -41,21 +41,11 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   作り替え、後戻りできない類。それは「よっぽど」のほう。
   **main へ流すのは一区切りごと**（2026年10月10日、制限の節約の点検で）。ブランチへの push はこまめでよいが、
   細かい直しを一つずつ main へ流すと、断られる・取りこむ・門を見る、がその回数ぶん増える。
-- `main` への直接pushの手順（`<branch>` は現在の作業ブランチ）：
-  ```
-  git push -u origin <branch>
-  git push origin <branch>:main
-  ```
-  **ローカルの `main` は使わない（checkout も merge もしない）。** 容器は環境の
-  古い写しから始まるので、ローカルの `main` は写しを取った日のまま。取得も浅い
-  （`--depth 50`）ので `origin/main` とのつながりが見えず、`merge --ff-only` は
-  必ず失敗する。早送りかどうかは GitHub 側が見る（`--force` は付けない）。
-  断られたら先に誰かが流している：`git fetch -q origin main && git merge --no-stat origin/main` → 門（`run-all.js --gate`、
-  約1.5分）と自分の変更の台本（触った画面の台本・直した台本。競合を手で直したならその所のも）だけ回して → もう一度。
-  全部回しは流したあと裏で一度で足りる（門の外は tests-daily.yml が毎日回す）。取りこむたびに全部（約11分）を回すと、
-  そのあいだに次の誰かが流してまた断られる（10月10日は2時間半に取りこみ8回）。2026年10月10日、利用者が決めた。
-  `-q`・`--no-stat` は、取りこんだ他人の変更の一覧（数十行になる）を会話に載せないため（同じ日、制限の節約）。
-  衝突はそれでも `CONFLICT` の行で出る。
+- `main` へは `node .claude/ship.js [自分の変更の台本]` で流す（2026年11月15日、利用者が決めた。配信の赤8回のうち
+  6回は門を回さずに流した退行だった）：origin/main を取りこむ → 門（`--gate`、約1.5分）と名を挙げた台本 →
+  枝へ push → main へ push。門が赤・取りこみが競合なら止まり、名だけ出す。断られたら取りこみからやり直す（2回まで）。
+  **ローカルの `main` は使わない（checkout も merge もしない）。** 容器の写しは古く浅い（`--depth 50`）ので、
+  早送りかどうかは GitHub 側が見る（`--force` は付けない）。全部回しは流したあと裏で一度で足りる。
 - デプロイは GitHub Actions（"Deploy to GitHub Pages"）が自動実行。確かめるのは
   必要なときだけ：`mcp__github__actions_list`（method: list_workflow_runs,
   **resource_id: "pages.yml"**, **perPage: 1**）。perPage を省くと30件返って大きい。
@@ -70,7 +60,8 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
   - `run_attempt` が2以上の run は、前の回が落ちている（`list_workflow_jobs` の filter "all" で見える）。
   - `cancelled` は落ちたのではない（`concurrency: pages` が待ちを一つに畳む）。後の run の head_sha が自分の
     コミットを含めば（`git merge-base --is-ancestor <自分> <その sha>`）それで足りる。
-  - 赤い main に別件を積まない。自分の push で赤くしたら、次の仕事より先に片づける。
+  - 赤い main に別件を積まない。取りこんだあとの門が人の変更で赤いなら、自分の仕事より先に直す。直せなければ
+    積まずに利用者へ伝える。自分の push で赤くしたら、次の仕事より先に片づける。
   - 共通の部品（下の「テストの回し方」の一覧）と門の試験を触る前に
     `git log origin/main -3 --format='%h %ar %s' -- <file>` を見る。ほかのセッションが数時間内に触っていたら、
     その差分を読んでから始める。
