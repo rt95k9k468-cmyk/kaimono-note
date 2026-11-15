@@ -142,14 +142,15 @@
 
   /* ---- 年々（構2・README 6.1・8）。日の鍵から引くだけ——索引を持たない。遠い年は10年前まで（R9 と同じ）。 ---- */
   const BACK = 10;
-  const utc = (y, m, d) => new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10);
+  const p2 = (n) => String(n).padStart(2, "0");
+  const dayAt = (y, m, d) => { const t = new Date(y, m - 1, d, 12); return `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`; };
   const ymd = (day) => String(day).split("-").map(Number);
 
   /** 年々のつまみ：同じ月日のほかの年で has(日) が真の日。近い年から n まで、古い順に返す。2月29日は無い年を飛ばす。 */
   function yearTabs(today, has, n = 3) {
     const [y, m, d] = ymd(today), out = [];
     for (let k = 1; k <= BACK && out.length < n; k++) {
-      const day = utc(y - k, m, d);
+      const day = dayAt(y - k, m, d);
       if (day.slice(5) === String(today).slice(5) && has(day)) out.push(day);
     }
     return out.reverse();
@@ -164,7 +165,7 @@
     for (let k = BACK; k >= 1; k--) {
       const days = [];
       for (let o = -6; o <= 6; o++) {
-        const day = utc(y - k, m, d + o);
+        const day = dayAt(y - k, m, d + o);
         if (kouOf(day) === want) days.push(day);
       }
       if (!days.length) continue;

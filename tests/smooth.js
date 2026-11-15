@@ -113,6 +113,11 @@ const t = checker("smooth");
   await page.evaluate((d) => {
     const memo = "きょうは あさから あめ。えきまで あるいた。".repeat(40);
     KN.store.setDayLog(d.today, { memo });
+    /* 構2 で足もとの「あの日」の札が外れ、紙が縮んだ。去年の同じ日とその前後に書いて、いまごろを出す。 */
+    for (const o of [-1, 0, 1]) {
+      const t = new Date(); t.setFullYear(t.getFullYear() - 1); t.setDate(t.getDate() + o);
+      KN.store.setDayLog(KN.util.dayKey(t), { memo: "去年のいまごろの試験の字" });
+    }
     /* 頁の組み（構1）で長い一件が箱を持たなくなり、紙が縮んだ。前の日は時刻の一件を三つ足して、80px より先まで送れるように。 */
     const W = KN.diaryPosts.TAG;
     KN.store.setDayLog(d.yesterday, { memo: `${memo}\n\n09:00${W}\nひとつめ\n\n12:00${W}\nふたつめ\n\n18:00${W}\nみっつめ` });
