@@ -7194,7 +7194,7 @@
 
   KN.screens = KN.screens || {};
   /* open … 用事の紙を外から開く（通知から来た紙の「用事の紙を開く」、js/due-sheet.js）。 */
-  KN.screens.todo = { mount, render, weekAdd, dockButton, onEnter, again, day: () => titleDay(), open: (id) => openSheet(id), sayDone,
+  KN.screens.todo = { mount, render, weekAdd, dockButton, onEnter, again, day: () => titleDay(), open: (id) => openSheet(id), sayDone, tick,   // tick：daily の線の下の札の丸（構3）
     /* ほかから「その日を見せて」（これからの二週間・js/upcoming.js）。暦の月も
        その日へ合わせます——一日ずつの紙でなければ、その日の棚まで運びます
        （「今日へ戻る」と同じ二通り）。 */

@@ -599,6 +599,30 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const gone = await page.evaluate(() => ({ open: typeof KN.screens.archive.openEntry, seed: typeof KN.screens.archive.seedFromNote }));
   t.check("記録の紙を開く口は無い", gone.open === "undefined" && gone.seed === "undefined", JSON.stringify(gone));
 
+  /* ---- 「いま」の線（構3②③）：時刻の丸薬・線・筆。線の下は今の時間割と同じ並びの札（時刻なしは「ごろ」）。
+     過ぎてもまだの用事も線の下。線の下の言葉（時計より後の時刻）とは時刻の順に混ざる。筆は書く紙 ---- */
+  {
+    await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n13:00\nあとの一件"));
+    await page.evaluate((d) => {
+      KN.store.addTodo({ title: "線の過ぎた用事", due: d, time: "10:00", minutes: 30 });
+      KN.store.addTodo({ title: "線の夕方", due: d, time: "17:00" });
+      KN.store.addTodo({ title: "線の時刻なし", due: d });
+    }, day);
+    await page.waitForTimeout(400);
+    const seq = await page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-posts > :not(.pg-ahead), #screen-archive .pg-ahead > *")]
+      .map((e) => (e.matches(".pg-now") ? `いま${(e.querySelector(".pg-now-pill") || {}).textContent}${e.querySelector(".pg-now-pen") ? "筆" : ""}`
+        : e.matches(".arc-post") ? e.querySelector(".pg-at").textContent + e.querySelector(".arc-post-text").textContent : e.textContent.replace(/\s+/g, "")))
+      .filter((s) => /^いま|線の|一件/.test(s)));
+    t.check("線は時計の所・下は時間割の並び（過ぎてもまだも下・時刻なしは「ごろ」・言葉と時刻の順）", JSON.stringify(seq)
+      === JSON.stringify(["08:00朝の一件", "いま12:34筆", "10:00線の過ぎた用事", "12:34ごろ線の時刻なし", "13:00あとの一件", "17:00線の夕方"]), JSON.stringify(seq));
+    await page.click("#screen-archive .pg-now-pen");
+    await sheetOpen();
+    const pen = await page.evaluate(() => document.querySelector(".sheet.is-open .js-memo").value);
+    t.check("筆は書く紙（新しい一件）", pen === "", JSON.stringify(pen));
+    await closeSheet();
+    await page.evaluate(() => KN.store.update((s) => { s.todos = s.todos.filter((x) => !/^線の/.test(x.title)); }));
+  }
+
   /* ---- 書く紙は頁の組み（構3）：直前の二行が薄く・鍵盤が出ても帯は鍵盤の上・書き終えると下へ帰らずその場で薄れる ---- */
   {
     await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:30\n三つめ\n\n13:00\nあとの一件"));
@@ -622,11 +646,19 @@ const AT = new Date(2026, 9, 6, 12, 34);
     });
     t.check("鍵盤が出ても「書き終える」とよかったことの札は鍵盤の上", kb.ok <= 464 && kb.good <= 464 && kb.memo > 0, JSON.stringify(kb));
     const top0 = await page.evaluate(() => document.querySelector(".sheet.is-open").getBoundingClientRect().top);
+    const field0 = await page.evaluate(() => document.querySelector(".sheet.is-open .js-memo").getBoundingClientRect().top);
     await page.click(".sheet.is-open .js-ok");
     await page.waitForTimeout(80);
     const melt = await page.evaluate(() => { const s = document.querySelector("#sheet-root .sheet"); return s && { top: s.getBoundingClientRect().top, op: Number(getComputedStyle(s).opacity) }; });
     t.check("書き終えた紙は下へ帰らず、その場で薄れる", !!melt && Math.abs(melt.top - top0) < 1 && melt.op < 1, JSON.stringify([top0, melt]));
     await page.waitForFunction(() => !document.querySelector("#sheet-root .sheet"), null, { timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(200);
+    const landed = await page.evaluate(() => {
+      const p = [...document.querySelectorAll("#screen-archive .arc-post")].find((e) => e.querySelector(".arc-post-text").textContent.startsWith("行1"));
+      const sc = p && KN.app.scrollerOf(p);
+      return p && { top: Math.round(p.querySelector(".arc-post-text").getBoundingClientRect().top), scroll: Math.round(sc.scrollTop), max: Math.round(sc.scrollHeight - sc.clientHeight) };
+    });
+    t.check("書き終えた一件の字は、欄のあった高さに（線の下のぶん頁が送れる）", !!landed && Math.abs(landed.top - field0) <= 2, JSON.stringify([field0, landed]));
     const m9 = await memo();
     t.check("書いた一件は終わりに", m9.includes(tag("\n\n13:00\nあとの一件\n\n12:34\n行1\n行2\n")) && m9.endsWith("行30"), JSON.stringify(m9.slice(-40)));
   }

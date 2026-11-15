@@ -3,6 +3,7 @@
    - 曲線に linear() を使わない（Safari は linear() の動きを合成に回さず、主の糸で動かす）
    - 開いて落ち着いたら、動きの長さはもう読んである（はじめての席移りで :root の長さを読みにいかない）
    - daily へ移ると、紙は一度だけ組む（前は二度。その日はじめてなら三度）
+   - daily の「いま」の線は毎フレーム動かない・動きを持たない（構3）
    - 送るあいだも止まったあとも帯の裏を当てない・帯と＋はぼかさない（塗った面。docs/redesign.md 2節）
    - 指で何かした直後の保存は、主の糸が描いている動きが終わるまで待つ（上限つき）。合成に乗る動き・
      くり返す動きは待たない・隠れる瞬間は待たずに書く・指の無い書き換えは待たない
@@ -126,6 +127,19 @@ const t = checker("smooth");
   await page.waitForTimeout(700);
   const built = await sheetsBuilt(async () => { await page.click('.tab[data-tab="archive"]'); await page.waitForTimeout(700); });
   t.check("daily へ移ると、紙は一度だけ組む", built === 1, String(built));
+  /* 「いま」の線（構3）：流れ続ける動きは無い（置き直しは分の拍だけ）。動きを持たないので「動きを減らす」でも動かない。 */
+  const still = await page.evaluate(() => new Promise((res) => {
+    const el = document.querySelector("#screen-archive .pg-now");
+    if (!el) { res(null); return; }
+    const sc = KN.app.scrollerOf(el), tops = [], t0 = performance.now();
+    const step = () => {
+      tops.push(Math.round(el.getBoundingClientRect().top + sc.scrollTop));
+      if (performance.now() - t0 < 600) requestAnimationFrame(step);
+      else res({ at: new Set(tops).size, anims: el.getAnimations({ subtree: true }).length, n: tops.length });
+    };
+    requestAnimationFrame(step);
+  }));
+  t.check("「いま」の線は毎フレーム動かない・動きを持たない", !!still && still.at === 1 && still.anims === 0 && still.n > 5, JSON.stringify(still));
 
   /* ---- daily は同じ日なら、組み直しても読んでいた位置のまま ---- */
   const scroller = () => page.evaluate(() => {

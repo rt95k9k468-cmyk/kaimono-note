@@ -841,6 +841,12 @@
          日記」を開き、下の一つ一つは**それぞれの元**を開きます。 */
       const feed = feedRows(d.date);
       if (feed) body.append(feed);
+      /* 今日は、頁を組まない一行（まだ書いていない・鍵・読めない）でも「いま」の線とこれから（構3）。 */
+      if (only && d.date === U.todayKey() && chatView()) {
+        const pg = node(html`<div class="pg-page" data-day="${d.date}">${withNow([], [], d.date)}</div>`);
+        wireNow(pg, d.date);
+        body.append(pg);
+      }
     });
 
     return sec;
@@ -1407,6 +1413,68 @@
     }
   }
 
+  /* 「いま」の線と、線の下の今日のこれから（構3②③・README 6.3・6.1）。今日の頁だけ。線は時刻の丸薬・線・筆だけ
+     （残り・割合は足さない。予定が無い日は線と筆だけ）。これからは今の時間割と同じ並び（KN.plan.buildDay。今日済ませた
+     ものも渡して、これからの時間を食べさせない）。過ぎてもまだの用事も線の下（赤くしない）。丸＝やることの済ませる（tick）、
+     押す＝用事の紙。動かす・詰める・長さは無い。置き直しは分の拍（nowTick）で、並びが替わる分（data-next）に来たときだけ。 */
+  const nowMin = () => { const t = new Date(); return t.getHours() * 60 + t.getMinutes(); };
+  const rankOf = (x) => (x.kind === "sleep" && x.min < 300 ? x.min + 1440 : x.min);   // 就寝の 0〜5時は夜の続き（day-page の night）
+  function planAhead(day) {
+    const P = KN.plan, s = S(), m = nowMin();
+    const shut = (t) => t.done || t.archived;
+    const open = store.sortedTodos().filter((t) => !shut(t) && store.fallsOn(t, day));
+    const done = store.get().todos.filter((t) => shut(t) && t.due === day);
+    /* 時刻なしを置きはじめる「いま」は screen-todo の planNow と同じ5分きざみ（並びを同じにする）。 */
+    return P.buildDay(day, open.concat(done), { start: s.dayStart, end: s.dayEnd, now: P.toTime(Math.floor(m / 5) * 5) })
+      .items.filter((it) => !shut(it.todo));
+  }
+  const planCard = (it) => html`<span class="pg-row is-plan" data-id="${it.todo.id}"><span class="pg-at">${KN.plan.toTime(it.atMin)}${it.fixed ? "" : html`<i class="pg-about">ごろ</i>`}</span><span class="pg-plan"
+    ><button type="button" class="pg-plan-t">${it.todo.title}</button
+    ><button type="button" class="check" role="checkbox" aria-checked="false" aria-label="${it.todo.title} を終わりにする">${icon("check")}</button></span></span>`;
+  /** 頁の行（描いた字）に線と札を差しこむ。rows は KN.dayPage.rows の頭・時刻・あとから（足もとは除く）。 */
+  function withNow(rows, out, day) {
+    if (day !== U.todayKey() || !chatView()) return out;
+    const m = nowMin();
+    let cut = rows.findIndex((x) => x.zone === "end" || (x.zone === "time" && rankOf(x) > m));
+    if (cut < 0) cut = rows.length;
+    let k = cut;
+    while (k < rows.length && rows[k].zone === "time") k++;
+    const cards = planAhead(day), mid = [];
+    let j = 0;
+    for (let i = cut; i < k; i++) {
+      while (j < cards.length && cards[j].atMin <= rankOf(rows[i])) mid.push(planCard(cards[j++]));
+      mid.push(out[i]);
+    }
+    while (j < cards.length) mid.push(planCard(cards[j++]));
+    /* 次に並びが替わる分：線の下の最初の行が来る分か、時刻なしの札がある日は次の5分。 */
+    const next = Math.min(k > cut ? rankOf(rows[cut]) : 9999, cards.some((c) => !c.fixed) ? Math.floor(m / 5) * 5 + 5 : 9999);
+    const line = html`<span class="pg-row pg-now" data-next="${next}"><span class="pg-at">${cards.length ? html`<span class="pg-now-pill">${U.nowTime()}</span>` : ""}</span><span class="pg-now-line"
+      ><button type="button" class="pg-now-pen" aria-label="いまのことを書く">${icon("edit")}</button></span></span>`;
+    /* 線から下（これから）は一まとまりで、短い日でも画面の高さ近くを持つ（書き終えた字を欄の高さまで送れるように）。 */
+    return out.slice(0, cut).concat(html`<span class="pg-ahead">${[line].concat(mid, out.slice(k))}</span>`);
+  }
+  function wireNow(el, day) {
+    const pen = el.querySelector(".pg-now-pen");
+    if (pen) pen.addEventListener("click", (e) => { e.stopPropagation(); openPost(day, null); });
+    el.querySelectorAll(".pg-row.is-plan").forEach((r) => {
+      const id = r.dataset.id;
+      r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); KN.screens.todo.tick(id, e.currentTarget); });
+      r.querySelector(".pg-plan-t").addEventListener("click", () => { KN.motion.fire("select"); KN.screens.todo.open(id); });
+    });
+  }
+  /* 拍は分の変わり目（screen-todo の nowTick と同じ）。丸薬の字を替えるだけ。並びが替わる分なら組み直す。戻ってきたときにも一度。 */
+  function paintNow() {
+    if (!root || document.hidden) return;
+    const el = root.querySelector(".pg-now");
+    if (!el || !el.offsetParent) return;
+    if (Number(el.dataset.next) <= nowMin() || el.closest("[data-day]").dataset.day !== U.todayKey()) { render(); return; }
+    const pill = el.querySelector(".pg-now-pill");
+    if (pill && pill.textContent !== U.nowTime()) pill.textContent = U.nowTime();
+  }
+  const nowTick = () => setTimeout(() => { nowTick(); paintNow(); }, 60000 - (Date.now() % 60000) + 250);
+  nowTick();
+  document.addEventListener("visibilitychange", paintNow);
+
   /** 時刻ごとの日記を頁の行に（構1・README 6.1・6.4）。朱の細い縦線の左に時刻、右に中身。言葉は明朝、
       よかったことは山吹の面、済ませたこと・事実は一行。箱は持たない。言葉の行を押すと道具（直す・写す・ノートへ移す）。
       本文の字は足し引きせず、切って並べるだけ。本文がまだ無い日も、一日ぶんなら頭の日付と育休の行。 */
@@ -1439,7 +1507,7 @@
     const row = node(html`
       <div class="arc-log-row is-chat is-page ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
         <span class="arc-log-text">
-          <span class="arc-posts">${firstHead ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x)))}</span>
+          <span class="arc-posts">${firstHead ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${withNow(rows, rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x))), one ? d.date : "")}</span>
           ${foot.length ? html`<span class="pg-foot">${foot.join("　")}</span>` : ""}
         </span>
       </div>
@@ -1452,6 +1520,7 @@
         openLogSheet(d.date);
       });
     });
+    wireNow(row, d.date);
     /* やること・買うものは、それぞれのタブが本体です。 */
     row.querySelectorAll("button.pg-row").forEach((el) => el.addEventListener("click", () => {
       KN.motion.fire("select");

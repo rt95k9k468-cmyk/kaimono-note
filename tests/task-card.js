@@ -6,6 +6,7 @@
    - 閉じると窓は行の箱へ縮み、片づく。行の中に隠したもの（行・丸薬）は残らない
    - 閉じてすぐ別の行を押せる（縮んで帰るあいだ、覆いが指を食べない）
    - 動きを減らす設定では窓を動かさない（カードのまま）
+   - daily の線の下の札（構3）：丸はやることの済ませると同じ記録・「元に戻す」で戻る・題で用事の紙
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/task-card.js */
 const { open, checker } = require("./lib");
 
@@ -189,6 +190,37 @@ const { open, checker } = require("./lib");
     await page.click("#screen-diet .diet-hero-value", { noWaitAfter: true });
     await page.waitForTimeout(60);
     t.check("記録の頭：体重のカードの絵から飛ぶ", await page.evaluate(() => !!document.querySelector(".sheet-morph.hero-node") && !document.querySelector(".rec-hero.is-pop")));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(700);
+  }
+
+  /* ---- 構3：daily の線の下の札。丸はやることの済ませると同じ記録を動かし（札は線の上の一行に）、「元に戻す」で戻る。題を押すと用事の紙 ---- */
+  {
+    await page.evaluate(() => {
+      const d = KN.util.todayKey();   // 頁を組む日（書いた一件がある）。日記の字は無難な作りもの
+      KN.store.setDayLog(d, { memo: `${KN.diaryPosts.mark(new Date(new Date().setHours(0, 0, 0, 0)), d)}\n試験の一件` });
+      KN.app.showScreen("archive");
+    });
+    await page.waitForTimeout(700);
+    const look = () => page.evaluate(() => {
+      const r = document.getElementById("screen-archive"), t = KN.store.get().todos.find((x) => x.title === "間の用事");
+      const kids = [...r.querySelectorAll(".pg-now, .pg-row.is-plan, .pg-row.is-done")];
+      const at = (sel) => kids.findIndex((e) => e.matches(sel) && e.textContent.includes("間の用事"));
+      return { done: !!(t && t.done), card: at(".is-plan"), row: at(".is-done"), now: kids.findIndex((e) => e.matches(".pg-now")) };
+    });
+    const b0 = await look();
+    await page.locator("#screen-archive .pg-row.is-plan", { hasText: "間の用事" }).locator(".check").click();
+    await page.waitForTimeout(500);
+    const b1 = await look();
+    t.check("daily の札の丸で済ませると、同じ用事が済み・札は線の上の一行に", b0.card > b0.now && !b0.done && b1.done && b1.card < 0 && b1.row >= 0 && b1.row < b1.now,
+      JSON.stringify([b0, b1]));
+    await page.locator(".toast-action", { hasText: "元に戻す" }).click();
+    await page.waitForTimeout(500);
+    const b2 = await look();
+    t.check("「元に戻す」で用事も札も戻る", !b2.done && b2.card > b2.now && b2.row < 0, JSON.stringify(b2));
+    await page.locator("#screen-archive .pg-row.is-plan", { hasText: "間の用事" }).locator(".pg-plan-t").click();
+    await page.waitForTimeout(700);
+    t.check("札の題を押すと用事の紙", await page.evaluate(() => { const s = document.querySelector(".sheet.is-open"); return !!s && s.textContent.includes("間の用事") || !!(s && [...s.querySelectorAll("input,textarea")].some((i) => i.value === "間の用事")); }));
     await page.keyboard.press("Escape");
     await page.waitForTimeout(700);
   }

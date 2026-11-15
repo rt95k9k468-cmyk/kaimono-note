@@ -3139,8 +3139,8 @@ a.btn { text-decoration: none; }
 }
 /* 頁の組み（構1・shots/vision/README.md 6.1・6.4）。箱・影・区切りの線は無い。長い一件の畳みは JS の watchFold。 */
 .arc-log-row.is-page { display: block; cursor: default; }
-.arc-log-row.is-page .arc-posts { position: relative; display: flex; flex-direction: column; }
-.arc-log-row.is-page .arc-posts::before, .wr-page::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
+.arc-log-row.is-page .arc-posts, .pg-page { position: relative; display: flex; flex-direction: column; }
+.arc-log-row.is-page .arc-posts::before, .wr-page::before, .pg-page::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
 .pg-row {
   display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: baseline; min-height: 24px;
   width: 100%; padding: 0; text-align: left; color: var(--c-text-2); font-size: calc(13.5px * var(--fs-k)); line-height: var(--lh-ui);
@@ -3195,6 +3195,20 @@ a.btn { text-decoration: none; }
 .arc-post-act svg { width: var(--ico-sm); height: var(--ico-sm); }
 .arc-post-act:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-post.is-blank .arc-post-text { color: var(--c-text-3); }
+/* 「いま」の線と、線の下のこれから（構3）。箱を持つのは札だけ。動くのは分の拍の置き直しだけ（流れる動きは無い）。 */
+.pg-page { margin-top: var(--sp-2); }
+.pg-ahead { display: flex; flex-direction: column; min-height: calc(100svh - 240px); }
+.pg-now { align-items: center; margin: var(--sp-1) 0; }
+.pg-now > .pg-at { padding-right: 4px; }
+.pg-now-pill { padding: 1px 5px; border-radius: var(--r-full); background: var(--c-primary-fill); color: var(--c-text-on); font-weight: var(--fw-bold); }
+.pg-now-line { display: flex; justify-content: flex-end; background: linear-gradient(var(--c-primary), var(--c-primary)) 0 50% / 100% 1.5px no-repeat; }
+.pg-now-pen { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-full); background: var(--c-surface); color: var(--c-text-2); box-shadow: inset 0 0 0 1.5px var(--c-primary); transition: opacity var(--m-state) var(--ease); }
+.pg-now-pen svg { width: var(--ico-sm); height: var(--ico-sm); }
+.pg-row.is-plan { align-items: center; margin: 3px 0; }
+.pg-row > .pg-plan { display: flex; align-items: center; gap: var(--sp-2); margin-left: var(--sp-2); padding: 4px var(--sp-2) 4px var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+.pg-plan-t { flex: 1; min-width: 0; min-height: 36px; text-align: left; font-size: calc(15.5px * var(--fs-k)); color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity var(--m-state) var(--ease); }
+.pg-now-pen:active, .pg-plan-t:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.pg-about { display: block; font-style: normal; font-size: var(--fs-xs); line-height: 1; }
 
 /* ---- ④積み上げ項目 ---- */
 
@@ -3387,22 +3401,7 @@ a.btn { text-decoration: none; }
    線、線の上に丸いアイコン、右に用事。**線が繋がっているか切れているか**
    だけで、詰まっているか空いているかが読めます——文字を読む前に。
 
-   寸法は参考画面を実測して合わせました（1284px 幅 ＝ CSS 428pt の
-   スクリーンショットから、390pt へ換算）。
-
-     丸の径      164px → 54.7pt → 50px
-     丸の中心    x=233 → 77.7pt → 71px
-     題の左端    x=356 → 118.7pt → 108px
-     題の字面    43px  → 14.3pt → font 17px
-     時刻の右端  x=123 → 41pt   → 37px
-
-   はじめは丸34px・題14px で作っていました。同じ形でも、この差だけで
-   読みやすさが変わります——一日の形を**眺める**画面なので、目が拾う
-   単位が小さいと、読むのではなく探すことになります。
-
-   色は一つだけ使います。棚の色（--cat）は丸の中にだけ入れて、行そのものは
-   塗りません。九本の帯を塗るのをやめたのはここです：色が九つあると、
-   色は何も言わなくなります。
+   寸法は参考画面の実測（丸50px・題17px）。色は棚の色（--cat）を丸の中にだけ——九色あると色は何も言わない。
    ========================================================= */
 
 /* **枠に入れません。** 画面の端から端まで使います。
@@ -3526,19 +3525,7 @@ button.tl-over:active { opacity: var(--press-fade); }
   justify-self: center;
   width: 2px;
   align-self: stretch;
-  /* 丸（50px）が入る高さ。もとは 72px でしたが、用事が八つある日で
-     一覧が745pxになり、一日ぶんが画面に入りませんでした。「眺める」ため
-     の余白は、**一日が一目に入る**ことより先には来ません。
-
-     **かかる時間では変わりません。** ここは長さに応じて伸びていました
-     （--tl-span）が、参考にした画面は時間に比例しません——4時間の用事も
-     25分の用事も同じ高さの行で、長さは題の下の字が言います。行の高さが
-     揃うぶん、一日が一本のリズムとして読めます。
-
-     64px は実測でしたが、**60px に詰めました**（丸の上下に5pxずつ）。
-     点線が「ここは離れている」を言うようになったので、離れていることを
-     余白でも言う必要が薄くなりました。同じことを二つで言っているぶんは、
-     詰めてよい——詰めたぶんは、一日が一画面に入ることに回ります。
+  /* 丸（50px）が入る高さ。一日が一目に入ることを余白より先に。かかる時間では伸ばさない（長さは題の下の字が言う）。
      （時間割の札の高さは .tl-list の物差しが決める。これは「これから」の行。） */
   min-height: 60px;
   /* 絵を押すと詳細が開きます（題を押したときと同じ場所へ）。指で押せる
@@ -4549,28 +4536,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 
    **送る器は、画面ではなく紙です**（やること・daily・買うもの・health）。
 
-   前はひとつでした——`.screen` が送る器で、紙はその中のふつうのブロック。
-   だから下へ送ると、丸角のついた紙の上端はそのまま上へ流れて消えます
-   （実測：送り 270px で紙の上端が **-140px**）。手当てとして掴み手に
-   sticky と同じ丸角を着せていましたが、掴み手の地も紙の地も同じ白
-   （どちらも実測 rgb(255,255,255)）なので、角を落とした隙間から覗くのは
-   紙自身の白——**丸角は最初から見えていませんでした**。しかも流れてくる行が
-   その隙間を通る、という禁じ手そのものの構造でした。
-
-   外枠（丸角＋掴み手）と、中身を送る器を分けます：紙が器になり、上のバー・
-   探す欄・暦は紙の外に留まる。中身は紙の中だけを流れます。
-
-   **health も、この四つ目です。** 前は「あの紙は is-bare で丸角を持たない
-   （隠れる角がない）」という理由で画面のほうを器にしていましたが、
-   `is-bare` は面（白い地）を持たないだけの話で、器になれない理由には
-   なりません——器は `overflow-y: auto` と丸角のクリップが要るだけで、
-   地の色は別に透明（`background: none`）のままで構いません。画面のほうを
-   器にしたままだと、掴み手の丸い切り欠きの後ろを中身がそのまま通り抜けて、
-   スクロールするたびに丸角から中身の四角い角が透けて見えていました
-   （他の三つは中身が紙の丸角の内側にしか居られないので、この透けが
-   起きません）。「下に引いて更新」は廃止したので、あちらの理由も無くなり
-   ました。キーボードの送りだけは、この画面が自分の入力欄を扱う都合で
-   引き続き `KN.app.scrollerOf()` の返す器（＝いまはこの紙）を動かします。
+   画面を器にすると、紙の丸角の上端が流れて消え、角の隙間を行が通った（health も、器にしないと丸角から中身の角が
+   透けた）。外枠（丸角＋掴み手）と送る器を分け、上のバー・探す欄・暦は紙の外に留める。器に要るのは
+   `overflow-y: auto` と丸角のクリップだけ（地は透明でよい）。送るのは `KN.app.scrollerOf()` の器。
 
    **価格・設定は、これまでどおり画面が送ります。** どちらも紙を持たない
    ので（価格は買うものの後ろに敷いた地、設定は目次と中身の入れ替えだけ）。
@@ -5956,24 +5924,8 @@ button.note-when:active { opacity: var(--press-fade); }
   left: -28px; top: 0; bottom: 0;
   width: 3.5px;
   transform: translateX(-50%);
-  /* 手順の段の背骨は、**一色**です。塗りの境目を持ちません。
-
-     ここは `--p` で切っていました（上の行と同じつもりで）。**それが
-     「線が丸薬を追い越す」の正体でした。**
-
-     `--p` はパーセントなので、掛かる相手は**この段自身の高さ**です。
-     ところがこの段の高さを決めているのは**手順が何件あるか**で、時間とは
-     何の関係もありません。実測（6:30〜7:30 の用事を 6:49 に見る、
-     --pass = 0.317）：手順4件をひらくとこの段は180px あり、その31.7%
-     ＝ 57px が色付きになりました。丸薬の下端より **62px 下**まで色が
-     下りていた、ということです。たたんでいても、余白の10px の31.7%
-     ＝ 3px が、丸薬から少し離れて浮いて見えていました。
-
-     そもそもこの段は**丸薬の下端より下**＝その用事が終わったあとの場所
-     です。まだ終わっていない用事なら、ここは全部「まだ来ていない」側。
-     だから境目は要らず、上の行のレールの下半分（--rail-bot-c）と
-     **同じ一色**を continue すれば足ります。境目が無ければ、追い越しは
-     起こりようがありません。 */
+  /* 手順の段の背骨は一色（--p で切ると、% が段の高さに掛かって線が丸薬を追い越した）。この段は丸薬の下端より下
+     ＝まだ来ていない側なので、上の行のレールの下半分（--rail-bot-c）と同じ色を続ける。 */
   background: var(--rail-bot-c, var(--tl-wait));
 }
 .tl-sub-list { display: flex; flex-direction: column; margin-top: 2px; }

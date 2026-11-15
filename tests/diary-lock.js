@@ -72,7 +72,9 @@ const WORD = "しおかぜ";
   await show("archive");
   t.check("daily に覆いは出ない", !(await veil()).on);
   t.check("本文は出さない", !(await logText()).includes(WORD));
-  t.check("頁の行（本文・体重・食事）を組まない", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")
+  /* 「いま」の線と用事の札は鍵のあいだも出る（README 6.6：今の tasks と同じ中身・筆は効く。構3）。 */
+  t.check("頁の行（本文・体重・食事）を組まない・線と札は出る", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row:not(.pg-now):not(.is-plan)")
+    && !!document.querySelector("#screen-archive .pg-now .pg-now-pen")
     && !/61\.5|はまなす/.test(document.querySelector("#screen-archive .arc-log").textContent)));
   t.check("代わりに「開ける」", await page.evaluate(() => !!document.querySelector("#screen-archive .arc-diary-shut")));
   t.check("検索は日記を探さない", await page.evaluate((w) =>
@@ -113,7 +115,7 @@ const WORD = "しおかぜ";
   t.check("鍵が閉じると紙も閉じる", await page.evaluate(() => !document.querySelector(".sheet.is-open .js-memo")));
   t.check("閉じても本文はそのまま", await page.evaluate((w) => (KN.store.dayLog(KN.util.todayKey()) || {}).memo === w, WORD));
   t.check("閉じたら本文はまた隠れる", !(await logText()).includes(WORD));
-  t.check("閉じたら頁の行も DOM から消える", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")));
+  t.check("閉じたら頁の行も DOM から消える", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row:not(.pg-now):not(.is-plan)")));
   /* 閉じたまま書ける紙（構3）：直前の行（頁の写し）は組まない。開いて閉じただけでは何も書かない。 */
   await page.evaluate(() => { const b = document.querySelector('#dock button[aria-label="書く"]'); if (b) b.click(); });
   await page.waitForTimeout(500);
