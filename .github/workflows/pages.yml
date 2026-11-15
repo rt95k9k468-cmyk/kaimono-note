@@ -52,7 +52,7 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
     steps:
       - name: Checkout
@@ -91,6 +91,18 @@ jobs:
           # The app is static — publish the repository root as-is.
           path: .
 
+      # 上げた直後の artifact を「見つからない」として落ちることがある（#1379・#1381。test は緑）。
+      # 落ちたら30秒待って、このジョブの中で一度だけやり直す。二度目も落ちたら赤。test はやり直さない。
       - name: Deploy
         id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Wait before retrying the deploy
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy (retry)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
