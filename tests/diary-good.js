@@ -1,8 +1,8 @@
 /* よかったこと（docs/thinking.md）。
-   - 新しい一件の書く紙の頭に「よかったこと」の一行（いまのことの欄の上・カーソルはいまのことのまま）
-   - 打てば別の一件（時刻つき）。中身の頭に見えない印 U+2063 だけ——本文に「よかった」の字は書かない
-   - 吹き出しは is-good（温かい地・時刻の前に陽の絵）。印は見せない
-   - 同じ紙で二つ書いても、前の一件を直したあとに後ろの一件が重ならない。空にすれば黙って外れる
+   - 書く紙の帯に「よかったこと」の札（構3）。押すとその一件に印、押し直せば外れる（書く前でも後でも。カーソルは欄のまま）
+   - 中身の頭に見えない印 U+2063 だけ——本文に「よかった」の字は書かない
+   - 頁の行は is-good（温かい地・時刻の前に陽の絵）。印は見せない
+   - 一件ずつ重ならない。札を押して書いた字を空にすれば黙って外れる
    - 直す紙は印を欄に見せず、直しても印は残る
    - コピー・書き出し（月・期間）・ノートへ移すの字にだけ「よかった：」。記録は変わらない
    日記の本文は試験用の無難な字だけ。
@@ -55,75 +55,84 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
 
-  /* ---- 書く紙：よかったことの一行が上に。カーソルはいまのこと ---- */
+  /* ---- 書く紙：よかったことは帯の札（構3・README 6.5）。カーソルはいまのことの欄 ---- */
+  const chipOn = () => page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-open");
+    return { on: s.querySelector(".wr-good").getAttribute("aria-pressed") === "true", row: s.querySelector(".wr-cur").classList.contains("is-good"),
+      ph: s.querySelector(".js-memo").placeholder, focus: document.activeElement === s.querySelector(".js-memo") };
+  });
   await page.click("#screen-archive .js-think-write");
   await sheetOpen();
   const s1 = await page.evaluate(() => {
-    const s = document.querySelector(".sheet.is-open");
-    const g = s.querySelector(".js-good"), m = s.querySelector(".js-memo");
-    return { g: !!g, above: !!(g && (g.compareDocumentPosition(m) & Node.DOCUMENT_POSITION_FOLLOWING)), ph: g && g.placeholder,
-      icon: !!s.querySelector(".arc-good-field svg"), focus: document.activeElement === g,
+    const s = document.querySelector(".sheet.is-open"), c = s.querySelector(".sheet-foot .wr-good");
+    return { chip: !!c && c.textContent.trim() === "よかったこと" && !!c.querySelector("svg"), off: !!c && c.getAttribute("aria-pressed") === "false",
+      field: !!s.querySelector(".js-good, .arc-good-field"), focus: document.activeElement === s.querySelector(".js-memo"),
       emoji: /\p{Extended_Pictographic}/u.test(s.innerText) };
   });
-  t.check("よかったことの一行が、いまのことの欄の上に（絵つき・字は「よかったこと」）", s1.g && s1.above && s1.ph === "よかったこと" && s1.icon, JSON.stringify(s1));
+  t.check("よかったことは帯の札（絵つき・押していない）・欄は一つ", s1.chip && s1.off && !s1.field, JSON.stringify(s1));
   /* RS 2回目：題の前に書く口「日記に書く」と同じ絵。 */
   t.check("日記の紙の題に書く口と同じ絵", await page.evaluate(() => /think\/diary\.webp$/.test((document.querySelector(".sheet.is-open .sheet-mark-art") || {}).src || "")));
-  t.check("カーソルはよかったことの欄・絵文字なし", s1.focus && !s1.emoji, JSON.stringify(s1));
+  t.check("カーソルはいまのことの欄・絵文字なし", s1.focus && !s1.emoji, JSON.stringify(s1));
 
-  /* よかったことだけ書く */
-  await page.focus(".sheet.is-open .js-good");
+  /* 先に札を押してから書く */
+  await page.click(".sheet.is-open .wr-good");
+  const c1 = await chipOn();
+  t.check("札を押すと行が温かい地・案内は「よかったこと」・カーソルは欄のまま", c1.on && c1.row && c1.ph === "よかったこと" && c1.focus, JSON.stringify(c1));
   await page.keyboard.insertText("よい字");
   await page.waitForTimeout(800);
   const m1 = await memo();
-  t.check("打った先から別の一件（中身の頭に見えない印だけ）", m1.endsWith(`\n\n12:34${W}\n${G}よい字`) && !/よかった/.test(m1), JSON.stringify(m1));
+  t.check("打った先から一件（中身の頭に見えない印だけ）", m1.endsWith(`\n\n12:34${W}\n${G}よい字`) && !/よかった/.test(m1), JSON.stringify(m1));
   await closeSheet();
   t.check("閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
-  t.check("吹き出しは温かい地・陽の絵、印は見せない", p1.length === 2 && p1[1].good && p1[1].sun && p1[1].text === "よい字" && !p1[0].good, JSON.stringify(p1));
+  t.check("頁の行は温かい地・陽の絵、印は見せない", p1.length === 2 && p1[1].good && p1[1].sun && p1[1].text === "よい字" && !p1[0].good, JSON.stringify(p1));
 
-  /* ---- 同じ紙で二つ：前の一件を直しても、後ろが重ならない ---- */
+  /* ---- 書いてから札を押しても、その一件に印。押し直せば外れる ---- */
   await page.click("#screen-archive .js-think-write");
   await sheetOpen();
-  await page.focus(".sheet.is-open .js-good");
   await page.keyboard.insertText("二つめ");
   await page.waitForTimeout(700);
-  await page.focus(".sheet.is-open .js-memo");
-  await page.keyboard.insertText("いまのこと");
-  await page.waitForTimeout(700);
-  await page.focus(".sheet.is-open .js-good");
-  await page.keyboard.press("End");
+  await page.click(".sheet.is-open .wr-good");
+  await page.waitForTimeout(100);
+  t.check("書いたあとに札：その一件に印", (await memo()).endsWith(`12:34${W}\n${G}二つめ`), JSON.stringify((await memo()).slice(-20)));
   await page.keyboard.insertText("のよいこと");
   await page.waitForTimeout(700);
   await closeSheet();
-  const m2 = await memo();
-  t.check("二件に分かれ、直した前の一件と後ろの一件が一度ずつ",
-    m2.endsWith(`12:34${W}\n${G}よい字\n\n12:34${W}\n${G}二つめのよいこと\n\n12:34${W}\nいまのこと`)
-    && m2.split("いまのこと").length === 2, JSON.stringify(m2));
-
-  /* ---- 同じ紙で書いたよかったことを空にすれば、黙って外れる（いまのことは残る） ---- */
   await page.click("#screen-archive .js-think-write");
   await sheetOpen();
-  await page.focus(".sheet.is-open .js-good");
+  await page.keyboard.insertText("いまのこと");
+  await page.waitForTimeout(700);
+  await page.click(".sheet.is-open .wr-good");
+  await page.waitForTimeout(100);
+  await page.click(".sheet.is-open .wr-good");
+  const c2 = await chipOn();
+  await closeSheet();
+  const m2 = await memo();
+  t.check("押し直すと印が外れる（一件ずつ・重ならない）", !c2.on && !c2.row && c2.focus
+    && m2.endsWith(`12:34${W}\n${G}よい字\n\n12:34${W}\n${G}二つめのよいこと\n\n12:34${W}\nいまのこと`)
+    && m2.split("いまのこと").length === 2, JSON.stringify([c2, m2]));
+
+  /* ---- 札を押して書いた字を空にすれば、黙って外れる ---- */
+  await page.click("#screen-archive .js-think-write");
+  await sheetOpen();
+  await page.click(".sheet.is-open .wr-good");
   await page.keyboard.insertText("消すつもり");
   await page.waitForTimeout(700);
-  await page.focus(".sheet.is-open .js-memo");
-  await page.keyboard.insertText("のこす");
-  await page.waitForTimeout(700);
-  await page.focus(".sheet.is-open .js-good");
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.press("Backspace");
   await closeSheet();
   const m3 = await memo();
-  t.check("空にした一件だけ外れる", !/消すつもり/.test(m3) && m3.endsWith(`\n\n12:34${W}\nのこす`) && m3.startsWith(m2), JSON.stringify(m3));
+  t.check("空にした一件は外れ、前の本文のまま", m3 === m2, JSON.stringify(m3));
 
-  /* ---- 直す紙：印は欄に見せず、直しても残る ---- */
+  /* ---- 直す紙：印は欄に見せず、札は押してある。直しても印は残る ---- */
   await tool(1, "edit");
   await sheetOpen();
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
-    return { v: s.querySelector(".js-memo").value, ph: s.querySelector(".js-memo").placeholder, g: !!s.querySelector(".js-good") };
+    return { v: s.querySelector(".js-memo").value, ph: s.querySelector(".js-memo").placeholder,
+      on: s.querySelector(".wr-good").getAttribute("aria-pressed") === "true", sun: !!s.querySelector(".wr-cur.is-good .wr-at svg") };
   });
-  t.check("直す紙はその一件の字だけ（印なし・よかったことの欄は足さない）", s2.v === "よい字" && s2.ph === "よかったこと" && !s2.g, JSON.stringify(s2));
+  t.check("直す紙はその一件の字だけ（印なし・札は押してある）", s2.v === "よい字" && s2.ph === "よかったこと" && s2.on && s2.sun, JSON.stringify(s2));
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.press("End");
   await page.keyboard.insertText("を直した");

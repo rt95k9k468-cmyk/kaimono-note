@@ -1392,6 +1392,20 @@
     });
   }
   const sleepLabel = (m) => `${Math.floor(m / 60)}時間${pad2(Math.round(m % 60))}分`;
+  const pgAt = (x, cls) => html`<span class="pg-at ${cls || ""} ${x.showAt === false ? "is-same" : ""} ${x.brk ? "is-brk" : ""}">${x.at}</span>`;
+  const pgTitles = (x) => (x.items || [x.item]).map((i) => i.title).join("、");
+  /** 頁の事実の行（起床・就寝・体重・食事・済ませた・買った）。頁と書く紙の直前の行で同じもの。 */
+  function pgFact(x) {
+    switch (x.kind) {
+      case "wake": return html`<span class="pg-row is-fact is-times js-times" role="button" tabindex="0">${pgAt(x)}<span class="pg-body">起床${x.sleepMin != null ? `　眠り ${sleepLabel(x.sleepMin)}` : ""}</span></span>`;
+      case "sleep": return html`<span class="pg-row is-fact is-times js-times" role="button" tabindex="0">${pgAt(x)}<span class="pg-body">就寝</span></span>`;
+      case "weight": return html`<span class="pg-row is-fact">${pgAt(x)}<span class="pg-body">体重 ${x.kg}kg</span></span>`;
+      case "meal": return html`<span class="pg-row is-fact ${x.brk ? "is-brk" : ""}">${pgAt(x)}<span class="pg-body">${x.text}</span></span>`;
+      case "done": case "bought": return html`<button type="button" class="pg-row is-${x.kind} ${x.many ? "is-many" : ""} ${x.brk ? "is-brk" : ""}" data-src="${x.kind === "done" ? "todo" : "item"}"
+          aria-label="${x.kind === "done" ? "済ませたこと" : "買ったもの"} ${x.at} ${pgTitles(x)}">${pgAt(x)}<span class="pg-body">${icon(x.kind === "done" ? "check" : "cart")}<span class="pg-title">${pgTitles(x)}</span></span></button>`;
+      default: return "";
+    }
+  }
 
   /** 時刻ごとの日記を頁の行に（構1・README 6.1・6.4）。朱の細い縦線の左に時刻、右に中身。言葉は明朝、
       よかったことは山吹の面、済ませたこと・事実は一行。箱は持たない。言葉の行を押すと道具（直す・写す・ノートへ移す）。
@@ -1403,7 +1417,6 @@
           <b>${String((U.dayDate(d.date) || { getDate: () => "" }).getDate())}</b>
           <i>${U.dayDate(d.date) ? U.weekdayJa(d.date) : ""}</i>${wxOf(d.date)}
         </span>`;
-    const at = (x, cls) => html`<span class="pg-at ${cls || ""} ${x.showAt === false ? "is-same" : ""} ${x.brk ? "is-brk" : ""}">${x.at}</span>`;
     const post = (x, first) => {
       const p = x.post, good = KN.diaryPosts.isGood(p.text);
       const tools = !(!p.mark && stampOnly(p.text));
@@ -1418,18 +1431,6 @@
               ><button type="button" class="arc-post-act js-post-copy">${icon("copy")}<span>写す</span></button
               ><button type="button" class="arc-post-act js-post-move">${icon("notes")}<span>ノートへ移す</span></button></span>` : ""}</span></span>`;
     };
-    const titles = (x) => (x.items || [x.item]).map((i) => i.title).join("、");
-    const fact = (x) => {
-      switch (x.kind) {
-        case "wake": return html`<span class="pg-row is-fact is-times js-times" role="button" tabindex="0">${at(x)}<span class="pg-body">起床${x.sleepMin != null ? `　眠り ${sleepLabel(x.sleepMin)}` : ""}</span></span>`;
-        case "sleep": return html`<span class="pg-row is-fact is-times js-times" role="button" tabindex="0">${at(x)}<span class="pg-body">就寝</span></span>`;
-        case "weight": return html`<span class="pg-row is-fact">${at(x)}<span class="pg-body">体重 ${x.kg}kg</span></span>`;
-        case "meal": return html`<span class="pg-row is-fact ${x.brk ? "is-brk" : ""}">${at(x)}<span class="pg-body">${x.text}</span></span>`;
-        case "done": case "bought": return html`<button type="button" class="pg-row is-${x.kind} ${x.many ? "is-many" : ""} ${x.brk ? "is-brk" : ""}" data-src="${x.kind === "done" ? "todo" : "item"}"
-            aria-label="${x.kind === "done" ? "済ませたこと" : "買ったもの"} ${x.at} ${titles(x)}">${at(x)}<span class="pg-body">${icon(x.kind === "done" ? "check" : "cart")}<span class="pg-title">${titles(x)}</span></span></button>`;
-        default: return "";
-      }
-    };
     const rows = list.filter((x) => x.zone !== "foot");
     const foot = list.filter((x) => x.zone === "foot").map((x) => x.kind === "steps" ? `歩数 ${Math.round(x.steps).toLocaleString()}歩`
       : x.kind === "weight" ? `体重 ${x.kg}kg` : `眠り ${sleepLabel(x.sleepMin)}`);
@@ -1438,7 +1439,7 @@
     const row = node(html`
       <div class="arc-log-row is-chat is-page ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
         <span class="arc-log-text">
-          <span class="arc-posts">${firstHead ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : fact(x)))}</span>
+          <span class="arc-posts">${firstHead ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x)))}</span>
           ${foot.length ? html`<span class="pg-foot">${foot.join("　")}</span>` : ""}
         </span>
       </div>
@@ -1520,8 +1521,9 @@
   /* 日記の紙の ↶ ↷（2026年10月26日・利用者「貼ったのを戻したい」）。ノートの帯と同じ控え
      （KN.noteFormat.history）で、紙を開いているあいだだけの記憶。貼ったのは一手。戻した字は
      input を出して、打ったときと同じ保存の道を通す。押しても欄からカーソルを奪わない。 */
-  function histFoot(memo, ok) {
+  function histFoot(memo, ok, lead) {
     const foot = node(html`<div class="arc-foot"></div>`);
+    if (lead) foot.append(lead);
     if (memo) {
       foot.append(node(html`<button type="button" class="note-tool js-hist" data-k="undo" aria-label="取り消す" aria-disabled="true">${icon("undo")}</button>`));
       foot.append(node(html`<button type="button" class="note-tool js-hist" data-k="redo" aria-label="やり直す" aria-disabled="true">${icon("redo")}</button>`));
@@ -1565,6 +1567,26 @@
     return foot;
   }
 
+  /** 書く紙の直前の行（構3・README 6.5）：頁と同じ組みを薄く、二つまで。押せない・読み上げない。
+      item … 直す一件（その前の行）。無ければ書く時刻まで（過ぎた日は頁の終わり）。鍵のあいだは組まない。 */
+  function ghostRows(day, item) {
+    if (diaryShut()) return "";
+    const d = Object.assign({ date: day }, store.dayLog(day) || {});
+    const list = pageOf(d, KN.diaryPosts.parse(d.memo || "")).filter((x) => x.zone === "time" || x.zone === "end");
+    const now = new Date(), min = now.getHours() * 60 + now.getMinutes();
+    let cut = list.length;
+    if (item) cut = Math.max(0, list.findIndex((x) => x.post && x.post.start === item.start));
+    else if (day === U.todayKey()) { const i = list.findIndex((x) => x.zone === "end" || x.kind === "sleep" || x.min > min); if (i >= 0) cut = i; }
+    const two = list.slice(Math.max(0, cut - 2), cut).map((x, i) => (i ? x : Object.assign({}, x, { showAt: true, brk: false })));
+    if (!two.length) return "";
+    const row = (x) => {
+      if (!x.post) return pgFact(x);
+      const p = x.post, good = KN.diaryPosts.isGood(p.text);
+      return html`<span class="arc-post pg-row is-folded ${good ? "is-good" : ""}"><span class="pg-at arc-post-at ${p.date ? "is-later" : ""}">${good ? icon("sun") : ""}${x.at || ""}</span><span class="arc-post-body"><span class="arc-post-text">${KN.diaryPosts.bare(p.text)}</span></span></span>`;
+    };
+    return html`<div class="wr-prev" inert aria-hidden="true">${two.map(row)}</div>`;
+  }
+
   /**
    * 時刻ごとの一件を書く・直す紙。item が無ければ新しい一件（時刻は打ち始めた時）。
    * 足すのは本文の終わりに。直すのは、開いたときの字が同じ場所にまだあるときだけ
@@ -1585,25 +1607,29 @@
     const fresh = !item;
     /* 開いたときの一件が、もう同じ場所に無い（ほかで直した）なら、開かずに組み直す。 */
     if (!fresh && !P.still(memoOf(day), item)) { KN.ui.toast("日記が変わっていました"); render(); return; }
-    /* よかったこと（docs/thinking.md）：新しい一件の紙は、いまのことの上に細い一行（別の一件になる）。
-       問いから開いたときは出さない。前からのよかったことを直す紙は、その一件だけ（印は欄に見せない）。 */
+    /* 紙は頁と同じ組み（構3・README 6.5）：直前の行を薄く、いま書く行は時刻の列と枠の無い欄。
+       よかったこと（docs/thinking.md）は帯の札で、この一件の印を付け外す（印は欄に見せない）。 */
     const good = !fresh && P.isGood(item.text);
-    const withGood = fresh && !seed;
     /* 紙ぜんぶで：最初に書く前の本文と、最後に書いた本文（新しく書いて空にしたら、そっくり戻す）。 */
     let before = null, after = null;
+    const atOf = (mk) => { const m = P.markOf(mk); return m ? `${m.date ? `${m.date} ` : ""}${m.at}` : ""; };
+    const atText = fresh ? atOf(P.mark(new Date(), day)) : item.mark ? atOf(item.mark) : "";
 
     const body = node(html`
-      <div class="stack gap-4">
-        ${withGood ? html`<label class="arc-good-field">
-          <span class="arc-good-ico" aria-hidden="true">${icon("sun")}</span>
-          <textarea class="textarea grow-field js-good" rows="1" aria-label="よかったこと" placeholder="よかったこと"></textarea>
-        </label>` : ""}
-        <label class="field arc-memo-field ${good ? "is-good" : ""}">
-          <textarea class="textarea js-memo" rows="5" aria-label="${good ? "よかったこと" : "日記"}" placeholder="${good ? "よかったこと" : "いまのことを一行から"}">${fresh ? seed || "" : P.bare(item.text)}</textarea>
-        </label>
+      <div class="wr-page">
+        ${ghostRows(day, item)}
+        <div class="pg-row wr-cur ${good ? "is-good" : ""}">
+          <span class="pg-at arc-post-at wr-at ${atText.includes("/") ? "is-later" : ""}">${icon("sun")}<span class="js-at">${atText}</span></span>
+          <label class="field arc-memo-field wr-field">
+            <textarea class="textarea js-memo" rows="3" aria-label="${good ? "よかったこと" : "日記"}" placeholder="${good ? "よかったこと" : "いまのことを一行から"}">${fresh ? seed || "" : P.bare(item.text)}</textarea>
+          </label>
+        </div>
       </div>
     `);
     const memo = body.querySelector(".js-memo");
+    const cur = body.querySelector(".wr-cur");
+    /* 時刻の列は打ち始めた時（開いてから分が替わっても）。 */
+    if (fresh) memo.addEventListener("input", () => { body.querySelector(".js-at").textContent = atOf(P.mark(new Date(), day)); }, { once: true });
 
     /* 書いた一件の、いまの場所。書いた場所にそのままあればそこ、無ければ同じ字の一件が一つだけのときその場所
        （同じ紙のもう一つの欄が前で長さを変えた）。どちらでもなければ -1。 */
@@ -1620,7 +1646,7 @@
      */
     const pen = (ta, lead, it) => {
       const p = {
-        ta, gone: false,
+        ta, lead, gone: false,
         wrote: it ? { at: P.chunkAt(it), chunk: P.chunkOf(memoOf(day), it), mark: it.mark, text: it.text } : null,
         /* 前からの一件は、打ったときだけ書く（開いて閉じただけで本文の形を変えない）。 */
         touched: false, changed: false, timer: 0,
@@ -1633,7 +1659,7 @@
         if (!p.touched || p.gone) return;
         const t = P.clean(ta.value);
         if (!t) return;                       // 空のうちは書かない（閉じたときに決める）
-        const text = lead + t;
+        const text = p.lead + t;
         const m = memoOf(day);
         const w = p.wrote;
         if (!w) {
@@ -1678,9 +1704,25 @@
       return p;
     };
     const main = pen(memo, good ? P.GOOD : "", item);
-    const goodTa = body.querySelector(".js-good");
-    const pens = goodTa ? [pen(goodTa, P.GOOD, null), main] : [main];
+    const pens = [main];
     const saveAll = () => pens.forEach((p) => p.save());
+
+    /* よかったことの札：押すとこの一件の印を付け外す（打ったのと同じ道で残す）。欄からカーソルを奪わない。 */
+    const chip = node(html`<button type="button" class="arc-post-act wr-good" aria-pressed="${String(good)}">${icon("sun")}<span>よかったこと</span></button>`);
+    const keepCaret = (e) => e.preventDefault();
+    chip.addEventListener("pointerdown", keepCaret);
+    chip.addEventListener("mousedown", keepCaret);
+    chip.addEventListener("click", () => {
+      const on = chip.getAttribute("aria-pressed") !== "true";
+      U.haptic();
+      chip.setAttribute("aria-pressed", String(on));
+      cur.classList.toggle("is-good", on);
+      memo.placeholder = on ? "よかったこと" : "いまのことを一行から";
+      memo.setAttribute("aria-label", on ? "よかったこと" : "日記");
+      main.lead = on ? P.GOOD : "";
+      main.touched = true;
+      main.save();
+    });
 
     /* 裏へ回る・閉じられる瞬間は、待っている分をその場で（日記の紙と同じ）。 */
     const hide = () => { if (pens.some((p) => p.timer)) { saveAll(); store.flush(); } };
@@ -1708,6 +1750,20 @@
         if (memoOf(day) === out) store.setDayLog(day, { memo: m });
       } } });
     };
+    /* 書き終えた字は同じ場所に残る（構3）：紙はその場で薄れ、頁はその一件の字が欄のあった高さに来るまで送る。 */
+    let landY = null;
+    const land = (at, y) => {
+      if (at < 0) return;
+      const screen = document.getElementById("screen-archive");
+      const go = (n) => requestAnimationFrame(() => {
+        const el = screen && screen.querySelector(`.arc-post[data-key="${day}|${at}"] .arc-post-text`);
+        if (!el) { if (n) go(n - 1); return; }
+        const sc = KN.app.scrollerOf(screen);
+        const dy = el.getBoundingClientRect().top - y;
+        if (sc && Math.abs(dy) > 1) sc.scrollTop += dy;
+      });
+      go(3);
+    };
     let toNote = false, toPage = false;
     let unwatch = () => {};
     const close = () => {
@@ -1722,6 +1778,7 @@
       if (toNote && main.wrote && !main.gone) { const c = Object.assign({}, main.wrote); setTimeout(() => moveToNote(day, c), 0); return; }
       /* 一枚で開く：本文ぜんぶと起床・就寝の紙へ（書いた一件は残してから）。 */
       if (toPage) { setTimeout(() => openLogSheet(day), 0); return; }
+      if (landY != null && main.wrote && !main.gone) land(where(memoOf(day), main.wrote), landY);
       /* 書いた先から残す紙の一言（docs/look.md）：新しい一件は「保存しました」、直したら「更新しました」。 */
       if (fresh ? kept.length : main.changed) KN.ui.toast(fresh ? "保存しました" : "更新しました");
     };
@@ -1732,18 +1789,17 @@
       { icon: "edit", label: "一枚で開く", onPick: () => { toPage = true; h.close(); } },
       { icon: "trash", label: "消す", danger: true, onPick: () => { saveAll(); drop(true, pens); h.close(); } },
     ];
-    const at = item && item.mark ? ` ${item.date ? `${item.date} ` : ""}${item.at}` : "";
     h = KN.ui.sheet({
-      title: `${dayLabel(day)}${at}`,
+      title: dayLabel(day),
       /* 開いた拍に日記の紙と分かるよう、書く口の「日記に書く」と同じ絵を題の前に（RS 2回目）。 */
       titleMark: KN.util.raw('<img class="sheet-mark-art" src="img/think/diary.webp" alt="" decoding="async">'),
       content: body,
       menu,
-      cls: "is-card",
+      cls: "is-card is-write",
       clear: true,
       // 打った先から残しているので、閉じるときに引き止めません。
       guard: false,
-      footer: histFoot(memo, node(html`<button class="btn btn-primary btn-block js-ok">${fresh ? "保存する" : "閉じる"}</button>`)),
+      footer: histFoot(memo, node(html`<button class="btn btn-primary btn-block wr-go js-ok">書き終える</button>`), chip),
       onClose: close,
     });
     /* 日記だけの鍵が閉じたら、この紙も閉じる（閉じれば残す）。 */
@@ -1751,11 +1807,17 @@
     h.el.querySelector(".js-ok").addEventListener("click", () => {
       saveAll();
       KN.motion.fire("select");
+      /* 測ってから書く（docs/traps.md）。下へ帰らず、いまの位置のまま薄れる。 */
+      landY = memo.getBoundingClientRect().top;
+      const tf = getComputedStyle(h.el).transform;
+      h.el.style.transform = tf;
+      h.el.style.transition = `opacity ${KN.motion.ms("--m-sheet-close")}ms ${KN.motion.ease("--ease-in")}`;
+      h.el.style.opacity = "0";
       h.close();
     });
     /* 新しい一件は、押した流れのまま欄へ（iOS は同期で focus しないとキーボードを出さない）。
        前からの一件は日記の紙と同じく、カーソルを終わりに置くだけ。 */
-    if (fresh) KN.ui.focusNow(withGood ? body.querySelector(".js-good") : memo);
+    if (fresh) KN.ui.focusNow(memo);
     if (fresh && !seed) return;
     const end = memo.value.length;
     try { memo.setSelectionRange(end, end); } catch (_) { /* 投げる端末がある */ }

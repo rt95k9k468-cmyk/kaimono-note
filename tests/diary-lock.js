@@ -114,6 +114,13 @@ const WORD = "しおかぜ";
   t.check("閉じても本文はそのまま", await page.evaluate((w) => (KN.store.dayLog(KN.util.todayKey()) || {}).memo === w, WORD));
   t.check("閉じたら本文はまた隠れる", !(await logText()).includes(WORD));
   t.check("閉じたら頁の行も DOM から消える", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")));
+  /* 閉じたまま書ける紙（構3）：直前の行（頁の写し）は組まない。開いて閉じただけでは何も書かない。 */
+  await page.evaluate(() => { const b = document.querySelector('#dock button[aria-label="書く"]'); if (b) b.click(); });
+  await page.waitForTimeout(500);
+  const shut = await page.evaluate(() => { const s = document.querySelector(".sheet.is-open"); return s && { memo: !!s.querySelector(".js-memo"), prev: !!s.querySelector(".wr-prev, .wr-page .pg-row:not(.wr-cur)"), text: s.textContent }; });
+  t.check("閉じたままでも書く紙は開き、直前の行は組まない", !!shut && shut.memo && !shut.prev && !shut.text.includes(WORD), JSON.stringify(shut && { memo: shut.memo, prev: shut.prev }));
+  await page.evaluate(() => { const b = document.querySelector(".sheet.is-open .js-close"); if (b) b.click(); });
+  await page.waitForTimeout(500);
 
   /* 書き出しの入口も、開けてから。 */
   await show("settings");

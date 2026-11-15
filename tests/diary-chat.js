@@ -242,12 +242,12 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await sheetOpen();
   const s1 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
-    return { focused: document.activeElement === s.querySelector(".js-good"), pick: !!s.querySelector(".js-pick, .arc-pick-b"),
+    return { focused: document.activeElement === s.querySelector(".js-memo"), pick: !!s.querySelector(".js-pick, .arc-pick-b"),
       ok: s.querySelector(".js-ok").textContent.trim(), title: s.querySelector(".sheet-title").textContent.trim(),
-      ph: s.querySelector(".js-memo").placeholder };
+      ph: s.querySelector(".js-memo").placeholder, at: s.querySelector(".wr-cur .js-at").textContent };
   });
-  t.check("書く紙はよかったことの欄にカーソル・種類の札なし", s1.focused && !s1.pick, JSON.stringify(s1));
-  t.check("ボタンは「保存する」・空の欄に短い案内・題はその日", s1.ok === "保存する" && !!s1.ph && /10月6日/.test(s1.title), JSON.stringify(s1));
+  t.check("書く紙はいまのことの欄にカーソル・種類の札なし", s1.focused && !s1.pick, JSON.stringify(s1));
+  t.check("ボタンは「書き終える」・空の欄に短い案内・題はその日・時刻の列にいま", s1.ok === "書き終える" && !!s1.ph && /10月6日/.test(s1.title) && s1.at === "12:34", JSON.stringify(s1));
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("一件目の字");
   await page.waitForTimeout(800);
@@ -288,9 +288,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
     return { v: s.querySelector(".js-memo").value, title: s.querySelector(".sheet-title").textContent.trim(),
+      at: s.querySelector(".wr-cur .js-at").textContent, prev: s.querySelectorAll(".wr-prev .pg-row").length,
       ok: s.querySelector(".js-ok").textContent.trim(), focused: window.__openFocus !== false };
   });
-  t.check("その一件の字で開く（題に時刻・キーボードは出さない）", s2.v === "一件目の字" && /12:34/.test(s2.title) && s2.ok === "閉じる" && !s2.focused, JSON.stringify(s2));
+  t.check("その一件の字で開く（時刻の列にその時刻・直前の行は無い・キーボードは出さない）",
+    s2.v === "一件目の字" && s2.at === "12:34" && !/12:34/.test(s2.title) && s2.prev === 0 && s2.ok === "書き終える" && !s2.focused, JSON.stringify(s2));
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.press("End");
   await page.keyboard.insertText("を直した");
@@ -596,6 +598,38 @@ const AT = new Date(2026, 9, 6, 12, 34);
   /* ---- 積み上げはやめた：記録の紙を開く口は無い ---- */
   const gone = await page.evaluate(() => ({ open: typeof KN.screens.archive.openEntry, seed: typeof KN.screens.archive.seedFromNote }));
   t.check("記録の紙を開く口は無い", gone.open === "undefined" && gone.seed === "undefined", JSON.stringify(gone));
+
+  /* ---- 書く紙は頁の組み（構3）：直前の二行が薄く・鍵盤が出ても帯は鍵盤の上・書き終えると下へ帰らずその場で薄れる ---- */
+  {
+    await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:30\n三つめ\n\n13:00\nあとの一件"));
+    await page.waitForTimeout(300);
+    await page.click("#screen-archive .js-think-write");
+    await sheetOpen();
+    await page.waitForTimeout(500);
+    const g = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .wr-prev .pg-row")]
+      .map((r) => r.textContent.replace(/\s+/g, " ").trim()));
+    /* 12:34 には済ませた用事がある（上の試験）。13:00 の一件は書く時刻より後なので出さない。 */
+    t.check("直前の二行（書く時刻までの、いちばん近い二つ。言葉も事実も）", JSON.stringify(g) === JSON.stringify(["12:30三つめ", "12:34試験のやること"]), JSON.stringify(g));
+    await page.keyboard.insertText(Array.from({ length: 30 }, (_, i) => `行${i + 1}`).join("\n"));
+    await page.evaluate(() => {
+      Object.defineProperty(visualViewport, "height", { configurable: true, get: () => 464 });
+      visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await page.waitForTimeout(500);
+    const kb = await page.evaluate(() => {
+      const s = document.querySelector(".sheet.is-open"), b = (q) => s.querySelector(q).getBoundingClientRect();
+      return { ok: Math.round(b(".js-ok").bottom), good: Math.round(b(".wr-good").bottom), memo: Math.round(b(".js-memo").top) };
+    });
+    t.check("鍵盤が出ても「書き終える」とよかったことの札は鍵盤の上", kb.ok <= 464 && kb.good <= 464 && kb.memo > 0, JSON.stringify(kb));
+    const top0 = await page.evaluate(() => document.querySelector(".sheet.is-open").getBoundingClientRect().top);
+    await page.click(".sheet.is-open .js-ok");
+    await page.waitForTimeout(80);
+    const melt = await page.evaluate(() => { const s = document.querySelector("#sheet-root .sheet"); return s && { top: s.getBoundingClientRect().top, op: Number(getComputedStyle(s).opacity) }; });
+    t.check("書き終えた紙は下へ帰らず、その場で薄れる", !!melt && Math.abs(melt.top - top0) < 1 && melt.op < 1, JSON.stringify([top0, melt]));
+    await page.waitForFunction(() => !document.querySelector("#sheet-root .sheet"), null, { timeout: 4000 }).catch(() => {});
+    const m9 = await memo();
+    t.check("書いた一件は終わりに", m9.includes(tag("\n\n13:00\nあとの一件\n\n12:34\n行1\n行2\n")) && m9.endsWith("行30"), JSON.stringify(m9.slice(-40)));
+  }
 
   /* ---- 今日の問い：読み込み直すと、出た問いを避けて替わる ---- */
   {

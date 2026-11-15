@@ -2950,10 +2950,6 @@ a.btn { text-decoration: none; }
 .arc-tab:active { opacity: var(--press-fade); }
 .arc-any { align-self: flex-start; justify-self: start; }   /* 偶然の一日（D1） */
 
-/* 「◯月の積み上がり」（.arc-rollup / .arc-count）はここにありました。
-   数を絞り込みの札のほうへ入れて、行ごと畳みました——五つの種類を、
-   数えるほうと押すほうで二度並べていたので。screen-archive.js に経緯。 */
-
 /* ---- ③ Daily Log ----
    字は大きく、静けさは空きの多さで持たせる（docs/daily.md）。 */
 .arc-log { display: flex; flex-direction: column; gap: var(--sp-2); }
@@ -3144,7 +3140,7 @@ a.btn { text-decoration: none; }
 /* 頁の組み（構1・shots/vision/README.md 6.1・6.4）。箱・影・区切りの線は無い。長い一件の畳みは JS の watchFold。 */
 .arc-log-row.is-page { display: block; cursor: default; }
 .arc-log-row.is-page .arc-posts { position: relative; display: flex; flex-direction: column; }
-.arc-log-row.is-page .arc-posts::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
+.arc-log-row.is-page .arc-posts::before, .wr-page::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
 .pg-row {
   display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: baseline; min-height: 24px;
   width: 100%; padding: 0; text-align: left; color: var(--c-text-2); font-size: calc(13.5px * var(--fs-k)); line-height: var(--lh-ui);
@@ -3170,8 +3166,8 @@ a.btn { text-decoration: none; }
 .arc-post-at { display: inline-flex; justify-content: flex-end; align-items: baseline; gap: 3px; }
 .arc-post-at svg { width: 1em; height: 1em; translate: 0 .15em; color: var(--c-yamabuki); }
 .arc-post-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); }
-.arc-post.is-good .arc-post-body { margin-left: 6px; padding: 2px var(--sp-2) 2px var(--sp-3); border-radius: var(--r-sm); background: var(--c-yamabuki-soft); }
-.arc-post-text, .arc-post-tail {
+.arc-post.is-good .arc-post-body, .wr-cur.is-good .wr-field { margin-left: 6px; padding: 2px var(--sp-2) 2px var(--sp-3); border-radius: var(--r-sm); background: var(--c-yamabuki-soft); }
+.arc-post-text, .arc-post-tail, .sheet.is-write .wr-field > .textarea {
   align-self: stretch;
   font-family: var(--font-display); font-size: var(--fs-lg); line-height: 1.85; color: var(--c-text); white-space: pre-wrap;
   text-align: justify; word-break: normal; overflow-wrap: anywhere; line-break: strict;
@@ -5565,9 +5561,7 @@ button.note-when:active { opacity: var(--press-fade); }
    下の角も丸くして、途中で切れた紙ではなく一枚として終わらせます。
    角は `#screen-archive .tl-sheet`（送る器にした段）も持つので、ID を付けて勝たせます。 */
 #screen-archive .tl-sheet.is-daily { border-radius: 0 0 var(--r-xl) var(--r-xl); }   /* 頭は盆から続く（角を持たない） */
-/* 日記・積み上げの書く紙（.sheet.is-card）は、ノートの書く紙と同じ四隅の丸い白いカード
-   （2026年10月6日、利用者「メモ欄が狭いし色合いも暗い」）。透ける灰の地をやめて白に、
-   背いっぱいに伸ばし、余った高さはメモ欄が取る。形の数はノート（.sheet.is-note）と同じ。 */
+/* 日記の書く紙（.sheet.is-card）は四隅の丸い白いカード。背いっぱい、余った高さは欄が取る（10月6日・利用者）。 */
 .sheet.is-card {
   height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   background: var(--c-surface);
@@ -5576,32 +5570,30 @@ button.note-when:active { opacity: var(--press-fade); }
 .sheet.is-card .sheet-body > .stack,
 .sheet.is-card .arc-memo-field { flex: 1 0 auto; }
 .sheet.is-card .arc-memo-field > .textarea { flex: 1 0 auto; min-height: 5lh; resize: none; }
-/* よかったこと：新しい一件の紙の頭に細い一行（打てば伸びる）。いまのことの欄より温かい地。 */
-.arc-good-field {
-  display: flex; align-items: flex-start; gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--c-warn) 16%, var(--c-surface));
-  border: 1.5px solid color-mix(in srgb, var(--c-warn) 50%, transparent);
-  transition: border-color var(--m-state) var(--ease);
+/* 書く紙（構3・README 6.5。openPost）：頁と同じ組み。直前の行は薄く、帯は鍵盤の上。 */
+.wr-page { position: relative; flex: 1 0 auto; display: flex; flex-direction: column; }
+.wr-prev {
+  display: grid; grid-auto-rows: max-content; align-content: unsafe end; max-height: calc(var(--vvh, 100dvh) * .22);
+  overflow: clip; opacity: .45; mask-image: linear-gradient(transparent, #000 var(--sp-6));
 }
-.arc-good-field:focus-within { border-color: var(--c-warn); }
-.arc-good-ico { flex: none; display: grid; place-items: center; height: calc(var(--fs-lg) * var(--lh-body)); color: var(--c-warn); }
-.arc-good-ico svg { width: var(--ico-sm); height: var(--ico-sm); }
-.arc-good-field > .textarea, .arc-good-field > .textarea:focus {
-  flex: 1 1 auto; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; resize: none;
-}
+.wr-cur { flex: 1 0 auto; align-items: stretch; padding-top: 10px; }
+.wr-at { align-self: start; line-height: calc(var(--fs-lg) * 1.85); }
+.wr-cur:not(.is-good) .wr-at > svg { display: none; }
+.sheet.is-write .wr-field > .textarea { min-height: 3lh; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.sheet.is-write .sheet-body { padding-bottom: 0; }
+.sheet.is-write .sheet-foot { position: sticky; bottom: 0; padding-bottom: var(--sp-3); background: var(--c-surface); }
+.wr-good { flex: none; white-space: nowrap; }
+.wr-good > svg { color: var(--c-yamabuki); }
+.wr-good[aria-pressed="true"] { background: var(--c-yamabuki-soft); color: var(--c-text); box-shadow: inset 0 0 0 1.5px var(--c-yamabuki); }
+.arc-foot > .wr-go { padding-inline: var(--sp-3); border-radius: var(--r-full); }
 .arc-memo-field.is-good > .textarea { background: color-mix(in srgb, var(--c-warn) 12%, var(--c-surface)); }
-/* 日付は一行（字と欄を横に並べる）。縦に積むと、メモより先に場所を取っていた
-   （2026年10月6日・利用者「日付で場所をとりすぎ」）。 */
-/* 日記の紙の底：↶ ↷ と閉じる（screen-archive.js の histFoot）。 */
+/* 日記の紙の帯（histFoot）：よかったこと・↶ ↷・閉じる。 */
 .arc-foot { display: flex; align-items: center; gap: var(--sp-1); width: 100%; }
 .arc-foot > .note-tool { flex: none; width: 44px; }
 .arc-foot > .btn-block { flex: 1 1 auto; width: auto; margin-inline-start: var(--sp-1); }
-/* キーボードを出してメモ（日記）を打っているあいだは、メモ欄だけにする。札・日付・起床就寝・
-   「メモ」の字を畳み、余った高さはぜんぶメモ欄へ（2026年10月6日・利用者「メモ欄が狭すぎる。
-   中心に大きく」）。キーボードを下げれば元に戻る。電話の幅だけ（`.kb-open` は欄に触れただけで付く）。 */
+/* 一枚の紙で打つあいだは欄だけ（10月6日・利用者「中心に大きく」）。電話の幅だけ（`.kb-open` は欄に触れただけで付く）。 */
 @media (max-width: 639.98px) {
-  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .sheet-body > .stack > :not(.arc-memo-field, .arc-good-field),
+  .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .sheet-body > .stack > :not(.arc-memo-field),
   .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .arc-memo-field > .field-label { display: none; }
   .kb-open .sheet.is-card:has(.arc-memo-field > .textarea:focus) .arc-memo-field > .textarea { min-height: 3lh; }
 }
@@ -5720,9 +5712,6 @@ button.note-when:active { opacity: var(--press-fade); }
   pointer-events: none;
   z-index: 4;
 }
-/* **うすい地は外しました。** 運んでいるあいだ、時間軸の幅（左100px）に
-   地を敷いて「ここが時計」と言っていましたが、左右で言うことが違わなく
-   なった以上（行のどこでも時刻）、区切って見せるものがありません。 */
 .tl-aim-line {
   position: absolute;
   left: 0; top: 0;
