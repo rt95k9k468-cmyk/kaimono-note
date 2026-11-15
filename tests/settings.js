@@ -152,9 +152,10 @@ const { open, checker } = require("./lib");
   await openSettings("archive");
   t.check("daily の歯車からも同じ入口", (await entries()).join() === ENTRIES.join(), (await entries()).join());
   const D1 = await into("daily");
-  t.check("daily の一枚に見え方の行（あの日・出す範囲・季節・月のまとめ）",
-    ["「あの日」を出す", "日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "季節の絵", "月のまとめ"]
-      .every((x) => D1.includes(x)) && !/積み上げ/.test(D1), D1.slice(0, 200));
+  /* 構2：「「あの日」を出す」は「いまごろ・年々」に、「月のまとめ」の行は外した。 */
+  t.check("daily の一枚に見え方の行（いまごろ・年々・出す範囲・季節。月のまとめは無い）",
+    ["いまごろ・年々", "日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "季節の絵"]
+      .every((x) => D1.includes(x)) && !/積み上げ|月のまとめ|「あの日」/.test(D1), D1.slice(0, 200));
   /* 「行数」（全文・3行・5行）は一枚の紙のときだけ効くので、時刻ごと（既定）では出さない（docs/thinking.md）。 */
   t.check("日記は時刻ごと（既定）・行数は一枚のときだけ", /日記\s*時刻ごと/.test(D1) && !D1.includes("行数"), D1.slice(0, 200));
   t.check("daily の一枚に書き出し（期間・年の本。月ぶんは外した）と取り込み（説明は置かない）",
