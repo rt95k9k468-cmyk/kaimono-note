@@ -335,7 +335,7 @@ const { open, checker } = require("./lib");
   /* 書く紙（日記）は広い幅では読む幅の大きな一枚。 */
   await page.click(".tab-archive");
   await wait(800);
-  await page.evaluate(() => document.querySelector(".js-think-write").click());
+  await page.evaluate(() => document.querySelector("#screen-archive .pg-now-pen").click());
   await page.waitForSelector(".sheet.is-card.is-open");
   await wait(600);
   const card = await box(".sheet.is-card.is-open");

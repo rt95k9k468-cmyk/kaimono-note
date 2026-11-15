@@ -151,7 +151,7 @@ const { open, checker } = require("./lib");
     await page.setViewportSize({ width: w, height: h });
     await wait(500);
     await go("archive");
-    await page.evaluate(() => document.querySelector(".js-think-write").click());
+    await page.evaluate(() => document.querySelector("#screen-archive .pg-now-pen").click());
     await page.waitForSelector(".sheet.is-card.is-open", { timeout: 4000 }).catch(() => {});
     await wait(600);
     const fit = await page.evaluate(() => {

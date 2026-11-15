@@ -61,7 +61,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return { on: s.querySelector(".wr-good").getAttribute("aria-pressed") === "true", row: s.querySelector(".wr-cur").classList.contains("is-good"),
       ph: s.querySelector(".js-memo").placeholder, focus: document.activeElement === s.querySelector(".js-memo") };
   });
-  await page.click("#screen-archive .js-think-write");
+  await page.click("#screen-archive .pg-now-pen");
   await sheetOpen();
   const s1 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open"), c = s.querySelector(".sheet-foot .wr-good");
@@ -70,8 +70,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
       emoji: /\p{Extended_Pictographic}/u.test(s.innerText) };
   });
   t.check("よかったことは帯の札（絵つき・押していない）・欄は一つ", s1.chip && s1.off && !s1.field, JSON.stringify(s1));
-  /* RS 2回目：題の前に書く口「日記に書く」と同じ絵。 */
-  t.check("日記の紙の題に書く口と同じ絵", await page.evaluate(() => /think\/diary\.webp$/.test((document.querySelector(".sheet.is-open .sheet-mark-art") || {}).src || "")));
+  /* RS 2回目：題の前に日記の絵（img/think/diary）。 */
+  t.check("日記の紙の題に日記の絵", await page.evaluate(() => /think\/diary\.webp$/.test((document.querySelector(".sheet.is-open .sheet-mark-art") || {}).src || "")));
   t.check("カーソルはいまのことの欄・絵文字なし", s1.focus && !s1.emoji, JSON.stringify(s1));
 
   /* 先に札を押してから書く */
@@ -88,7 +88,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("頁の行は温かい地・陽の絵、印は見せない", p1.length === 2 && p1[1].good && p1[1].sun && p1[1].text === "よい字" && !p1[0].good, JSON.stringify(p1));
 
   /* ---- 書いてから札を押しても、その一件に印。押し直せば外れる ---- */
-  await page.click("#screen-archive .js-think-write");
+  await page.click("#screen-archive .pg-now-pen");
   await sheetOpen();
   await page.keyboard.insertText("二つめ");
   await page.waitForTimeout(700);
@@ -98,7 +98,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.keyboard.insertText("のよいこと");
   await page.waitForTimeout(700);
   await closeSheet();
-  await page.click("#screen-archive .js-think-write");
+  await page.click("#screen-archive .pg-now-pen");
   await sheetOpen();
   await page.keyboard.insertText("いまのこと");
   await page.waitForTimeout(700);
@@ -113,7 +113,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     && m2.split("いまのこと").length === 2, JSON.stringify([c2, m2]));
 
   /* ---- 札を押して書いた字を空にすれば、黙って外れる ---- */
-  await page.click("#screen-archive .js-think-write");
+  await page.click("#screen-archive .pg-now-pen");
   await sheetOpen();
   await page.click(".sheet.is-open .wr-good");
   await page.keyboard.insertText("消すつもり");

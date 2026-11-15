@@ -3071,25 +3071,22 @@ a.btn { text-decoration: none; }
 }
 
 /* ---- 思考のホーム・時刻ごとの日記（docs/thinking.md） ----
-   三枚の札（日記に書く・ノートを書く・思考）と今日の問い。水彩の絵は img/think/。字は要る一語だけ。
+   二枚の札（ノート・思考）と今日の問い。水彩の絵は img/think/。字は要る一語だけ。
    札の地は絵の色を面の色に混ぜた塗り（暗い面でも同じ式で沈む。透かさない・ぼかさない）。 */
 .think-home { display: flex; flex-direction: column; gap: var(--sp-3); }
-/* 書く口（R6）：日記に書く＝朱の塗り（広め）｜ノート｜思考。絵は札の右上、題は左下。 */
-.think-cards { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+/* 小さな札（構3④）：ノート｜思考。日記を書く口は線の筆と＋。絵は札の右、題は左。 */
+.think-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .think-card {
-  position: relative; min-width: 0; height: 96px; padding: 10px 12px;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
+  position: relative; min-width: 0; height: 52px; padding: 0 12px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
   background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
   transition: opacity var(--m-state) var(--ease);
 }
-.think-card.is-main { background: var(--c-primary); border-color: transparent; }
 .think-card:active, .think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.think-card-art { position: absolute; right: -6px; top: -2px; width: 74px; height: 62px; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-.think-card.is-main .think-card-art { width: 84px; height: 70px; }
-.think-card-t { position: relative; color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.35; word-break: keep-all; }
-.think-card.is-main .think-card-t { color: var(--c-text-on); }
-/* 電話の最初の一画面は記録へ（W1・docs/redesign.md 2節）：候の札は額 58px・名 22px の一段、書く口は 60px の帯。順は変えない（daily-rules）。 */
+.think-card-art { position: absolute; right: -6px; top: 50%; translate: 0 -50%; width: 44px; height: 44px; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.think-card-t { position: relative; z-index: 1; color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.35; word-break: keep-all; }
+/* 電話の最初の一画面は記録へ（W1・docs/redesign.md 2節）：候の札は額 58px・名 22px の一段。順は変えない（daily-rules）。 */
 @media (max-width: 639.98px) {
   .arc-season { gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); }
   .arc-season-art { width: 58px; }
@@ -3098,10 +3095,6 @@ a.btn { text-decoration: none; }
   .arc-season-name { font-size: calc(22px * var(--fs-k)); }
   .arc-season-row:nth-child(3) { margin-top: 0; padding-top: 0; border-top: 0; }
   .arc-season-row:nth-child(n+3) { font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); }
-  .think-card { height: 60px; justify-content: center; }
-  .think-card-t { z-index: 1; }
-  .think-card-art, .think-card.is-main .think-card-art { top: 50%; right: -8px; translate: 0 -50%; width: 40px; height: 40px; }
-  .think-card.is-main .think-card-art { width: 46px; height: 46px; }
 }
 
 .think-today {

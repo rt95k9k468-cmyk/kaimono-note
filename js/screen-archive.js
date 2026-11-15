@@ -1199,7 +1199,7 @@
     return { text: a.q || "", hint: a.hint || "", from: a.from || "" };
   }
 
-  /** daily の冒頭：日記に書く・ノートを書く・思考 の三枚と、今日の問い。説明は書かない。 */
+  /** daily の冒頭：ノート・思考 の小さな札と、今日の問い。説明は書かない。日記を書く口は線の筆と＋（構3④。朱の札は外した）。 */
   function thinkHome(day) {
     const card = (cls, img, a, b) => html`
       <button type="button" class="think-card ${cls}">
@@ -1209,7 +1209,6 @@
     const el = node(html`
       <div class="think-home">
         <div class="think-cards">
-          ${card("js-think-write is-main", "diary", "日記に", "書く")}
           ${card("js-think-note", "note", "ノート", "")}
           ${card("js-think-new", "think", "思考", "")}
         </div>
@@ -1230,7 +1229,6 @@
     `);
     /* 題は語の切れ目（<wbr>）でだけ折る。絵が届かない（一枚の書き出し・控えに無い）ときは、字だけの札にする。 */
     el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => im.remove(), { once: true }));
-    el.querySelector(".js-think-write").addEventListener("click", () => openPost(day, null));
     el.querySelector(".js-think-note").addEventListener("click", () => {
       KN.motion.fire("select");
       if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(null);
@@ -1240,7 +1238,7 @@
       KN.motion.fire("select");
       if (KN.screens.notes && KN.screens.notes.think) KN.screens.notes.think();
     });
-    /* 今日の問いは今日だけ（利用者の頼み）。前の日・先の日は三枚の札だけ。 */
+    /* 今日の問いは今日だけ（利用者の頼み）。前の日・先の日は札だけ。 */
     if (day !== U.todayKey()) { el.querySelector(".think-today").remove(); return el; }
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
@@ -2284,7 +2282,32 @@
     store.ensureDayLog(U.todayKey());
   }
 
+  /** 「いま」の線へ（構3⑤・README 6.3）。開いたとき（glide なし）は、線が画面の上6割に見えていれば送らない。
+      席の二度押し（again）は滑らせて寄せる。線は今日の頁だけ——無ければ断る。
+      「開いたとき」はその日はじめてと、30分より長く離れて戻ったときだけ（席を移って戻るのは読んでいた位置のまま。smooth）。 */
+  let linedDay = null, hidAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { hidAt = Date.now(); return; }
+    if (Date.now() - hidAt < 30 * 60000) return;
+    linedDay = null;
+    if (root && root.classList.contains("is-active")) requestAnimationFrame(() => { if (toLine(false)) linedDay = U.todayKey(); });
+  });
+  function toLine(glide) {
+    const line = root && root.querySelector(".day-slide:not(.is-peek) .pg-now");
+    const sc = line && KN.app.scrollerOf(root);
+    if (!sc) return false;
+    const at = line.getBoundingClientRect().top - sc.getBoundingClientRect().top - sc.clientTop;
+    if (!glide && at >= 0 && at <= sc.clientHeight * 0.6) return true;
+    const to = Math.round(sc.scrollTop + at - sc.clientHeight * 0.35);
+    if (glide) KN.app.glideTo(sc, to);
+    else sc.scrollTop = Math.max(0, Math.min(to, sc.scrollHeight - sc.clientHeight));
+    return true;
+  }
+  const again = () => toLine(true);
+
   function onEnter() {
+    /* 検索の帯を畳む一枚（app.js の parkSearch）のあとで測る。 */
+    if (linedDay !== U.todayKey()) requestAnimationFrame(() => requestAnimationFrame(() => { if (toLine(false)) linedDay = U.todayKey(); }));
     if (KN.healthRelay) KN.healthRelay.pullNow();
     if (KN.weather) KN.weather.pull();   // 場所を選んでいなければ何もしない
   }
@@ -2315,7 +2338,7 @@
     root.classList.toggle("is-season-first", first);
   });
 
-  KN.screens.archive = { mount, render, dockButton, prepare, onEnter, day: () => focusDay(),
+  KN.screens.archive = { mount, render, dockButton, prepare, onEnter, again, day: () => focusDay(),
     goDay: (d) => goDayTo(d), recountLeave };
 
   /* 開いたら一度、落ち着いてから（立ち上がりの一拍を重くしない）。 */

@@ -48,7 +48,7 @@ const t = checker("write-awake");
   await page.waitForTimeout(500);
   t.check("欄にいないときは持たない", (await wl()).held === 0, JSON.stringify(await wl()));
 
-  await page.click("#screen-archive .js-think-write");
+  await page.click("#screen-archive .pg-now-pen");
   await page.waitForSelector(".sheet.is-open.is-card .js-memo", { timeout: 4000 });
   await tick();
   t.check("日記の書く紙の欄に入ると持つ", (await wl()).held === 1, JSON.stringify(await wl()));

@@ -234,7 +234,7 @@ function under(safe) {
     /* 7. 日記の書く紙：「保存する」は開いてすぐ見える（送らない）。 */
     await page.evaluate(() => KN.app.showScreen("archive"));
     await wait(600);
-    await page.locator(".think-card").first().click();
+    await page.locator("#screen-archive .day-slide:not(.is-peek) .pg-now-pen").first().click();
     await page.waitForSelector(".sheet.is-card.is-open", { timeout: 3000 }).catch(() => {});
     await wait(600);
     const ok = await page.evaluate(() => {

@@ -77,7 +77,7 @@ const { open, checker, URL, fakeDropbox } = require("./lib");
   /* 日記の書く紙の打ちかけ。 */
   await A.click(".tab-archive");
   await A.waitForTimeout(600);
-  await A.evaluate(() => document.querySelector(".js-think-write").click());
+  await A.evaluate(() => document.querySelector("#screen-archive .pg-now-pen").click());
   await A.waitForSelector(".sheet.is-card.is-open", { timeout: 4000 });
   await A.waitForTimeout(500);
   await A.evaluate(() => {
