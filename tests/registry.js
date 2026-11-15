@@ -87,8 +87,8 @@ t.check("試験の台本はサイトの登録に入っていない", !testsIn.le
   t.check("sw.js が文として読める", !err, err);
 }
 
-/* 大きさの上限（docs/dev.md「短く書く」の「一手を軽く」）。警報であって止める柵ではない：
-   門（--gate／--quick。KN_GATE）では書くだけで落とさず、毎日の全部（tests-daily）で赤になる。
+/* 大きさの上限（docs/dev.md「短く書く」の「一手を軽く」）。門でも落とす（2026年11月15日、利用者が決めた。
+   門で警報だけだと、翌朝の全部で赤くなっていた）。
    数えるのは字（Array.from ではなく length。比べるだけなので足りる）。カテゴリの合計なので、
    ファイルどうしの移動・分割は増えない。生成物・外のもの（dist・node_modules・tools/season-src・
    tools/vendor）は数えない。上げるのは利用者の OK があるときだけ。 */
@@ -116,11 +116,9 @@ const CAP = { js: 3560000, css: 580000, tests: 245, docs: 900000, claude: 3450, 
   };
   const label = { js: "JS（試験除く）の字", css: "CSS の字", tests: "試験の本数", docs: "docs の字",
     claude: "CLAUDE.md の字", indexRow: "tests/INDEX.md の一行の字" };
-  const gate = !!process.env.KN_GATE;
   for (const k of Object.keys(CAP)) {
-    const name = `大きさ：${label[k]} ${got[k].toLocaleString()} ≦ ${CAP[k].toLocaleString()}`;
-    if (gate && got[k] > CAP[k]) console.log(`  警報 ${name}（門では落とさない）`);
-    else t.check(name, got[k] <= CAP[k], "減らすか、利用者の OK を得て CAP を上げる");
+    t.check(`大きさ：${label[k]} ${got[k].toLocaleString()} ≦ ${CAP[k].toLocaleString()}`,
+      got[k] <= CAP[k], "減らすか、利用者の OK を得て CAP を上げる");
   }
 }
 t.done();
