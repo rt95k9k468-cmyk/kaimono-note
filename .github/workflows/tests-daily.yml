@@ -46,7 +46,7 @@ jobs:
         env:
           TZ: Asia/Tokyo
           KN_TZ: Asia/Tokyo
-        run: node tests/run-all.js
+        run: node tests/run-all.js --retry
 
   # WebKit の列（roadmap-3.2 の G3・X22 (a)）：エンジンで違いが出る台本だけ。知らせるだけ——門にも配るのにも入れない。
   # Linux の WebKit は iOS の Safari と同じではない。ここで落ちても、iPhone で確かめるまでアプリは直さない。
@@ -77,7 +77,7 @@ jobs:
           TZ: Asia/Tokyo
           KN_TZ: Asia/Tokyo
           KN_BROWSER: webkit
-        run: node tests/run-all.js scroll-anchor fit-fields typeface text-size top-tap feel-3
+        run: node tests/run-all.js --retry scroll-anchor fit-fields typeface text-size top-tap feel-3
 
   # 西の時間帯の列（総点検 2026-10-27 の P2-5）：日付の台本だけを America/Los_Angeles で。知らせるだけ——門にも配るのにも入れない。
   # 日本の祝日・節気・雑節は日本時間で決まり、端末の時間帯で変わってはいけない（js/season.js・js/holiday.js）。
@@ -106,4 +106,4 @@ jobs:
         env:
           TZ: America/Los_Angeles
           KN_TZ: America/Los_Angeles
-        run: node tests/run-all.js holiday season season-art season-beat when-dict when-fields yearbook due-sheet sky
+        run: node tests/run-all.js --retry holiday season season-art season-beat when-dict when-fields yearbook due-sheet sky

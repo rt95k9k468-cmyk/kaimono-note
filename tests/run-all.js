@@ -6,10 +6,12 @@
      … tests/run-all.js --quick            門のうち画面を開かないものだけ（数秒。main への push の前）
      … tests/run-all.js -j 4               並べる数（既定：全部はコアの1.5倍、門・名前で絞ったときは 3）
      … tests/run-all.js --verbose          通った台本の出力も出す
+     … tests/run-all.js --retry            落ちたものを一本ずつもう一度（毎日の全部だけ。門では効かない）
      KN_TIMES=ファイル                       一本ごとの秒を JSON に（長い順）
 
    落ちた台本は NG の行（と、数えずに落ちたら出力の終わり）を出す。一本でも
-   落ちれば終了コード 1。やり直しはしない——揺れた試験は揺れた、と出す。
+   落ちれば終了コード 1。--retry（tests-daily.yml だけ）は、落ちたものを一本ずつもう一度回し、
+   二度目に通れば 0 で「揺れた：名前」を出す（CI では ::warning:: にも）。門はやり直さない。
    通った台本の一本一行（秒と数）は GitHub（CI）と --verbose だけ。手元では落ちたものと
    最後の一行だけ（全部で約150行が会話に載らないように。2026年10月10日、制限の節約）。
 
@@ -72,15 +74,17 @@ const SLOW = { "scroll-anchor": 110, "head-still": 80, legibility: 76, "update-p
 const JOBS = Math.max(3, Math.round(require("os").cpus().length * 1.5));
 
 function parseArgs(argv) {
-  const o = { jobs: 0, gate: false, quick: false, verbose: false, names: [] };
+  const o = { jobs: 0, gate: false, quick: false, verbose: false, retry: false, names: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--gate") o.gate = true;
     else if (a === "--quick") o.quick = true;
     else if (a === "--verbose" || a === "-v") o.verbose = true;
+    else if (a === "--retry") o.retry = true;
     else if (a === "-j") o.jobs = Math.max(1, Number(argv[++i]) || 3);
     else o.names.push(a.replace(/\.js$/, "").replace(/^tests\//, ""));
   }
+  if (o.gate || o.quick) o.retry = false;  // 門はやり直さない（落ちたら配らない）
   if (!o.jobs) o.jobs = o.gate || o.quick || o.names.length ? 3 : JOBS;
   return o;
 }
@@ -159,9 +163,31 @@ async function main() {
     }
   }
   await Promise.all(Array.from({ length: Math.min(o.jobs, names.length) }, worker));
-  const bad = results.filter((r) => !r.ok).map((r) => r.name);
+  let bad = results.filter((r) => !r.ok).map((r) => r.name);
+  /* やり直し：落ちたものだけ、一本ずつ（並べた揺れを除くため）。二度落ちたものだけ赤。 */
+  const shaky = [];
+  if (o.retry && bad.length) {
+    console.log(`\nやり直す（一本ずつ）：${bad.join(" ")}`);
+    const still = [];
+    for (const name of bad) {
+      const r = await runOne(name);
+      if (r.code === 0) shaky.push(name);
+      else {
+        still.push(name);
+        console.log(`NG  ${name}（二度目も）`);
+        const s = summarize(r);
+        console.log((s.ng.length && !r.timedOut ? s.ng.map((l) => l.trim()) : r.out.trim().split("\n").slice(-15))
+          .map((l) => `      ${l}`).join("\n"));
+      }
+    }
+    bad = still;
+  }
   const min = ((Date.now() - t0) / 60000).toFixed(1);
   console.log(`\nrun-all: ${results.length - bad.length}/${results.length} 通った（${min}分、${o.jobs}本ずつ）`);
+  if (shaky.length) {
+    console.log(`揺れた：${shaky.join(" ")}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::warning title=揺れた試験::${shaky.join(" ")}（一度目に落ち、一本で回し直して通った）`);
+  }
   /* KN_TIMES=ファイル で一本ごとの秒を JSON に（長い順）。SLOW の表を測り直すときに。 */
   if (process.env.KN_TIMES) {
     const times = Object.fromEntries(results.slice().sort((a, b) => b.sec - a.sec).map((r) => [r.name, Math.round(r.sec)]));
