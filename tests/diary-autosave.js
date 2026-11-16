@@ -4,7 +4,7 @@
    - 何も打たずに裏へ回っても、記録はできない
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-autosave.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 (async () => {
   const c = checker("diary-autosave");
@@ -21,7 +21,7 @@ const { open, checker } = require("./lib");
   }, on);
 
   // 何も打たずに裏へ回っても記録はできない
-  await page.click("#screen-archive .arc-log-row");
+  await pen(page);   // 今日を書く口は席3 の「いま」の筆（構4b）
   await page.waitForTimeout(700);
   const before = await page.evaluate((d) => KN.store.dayLog(d), day);
   await hidden(true); await hidden(false);

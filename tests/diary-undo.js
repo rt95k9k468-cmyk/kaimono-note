@@ -4,7 +4,7 @@
    - 戻した字も保存される（打ったときと同じ道）
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-undo.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 (async () => {
   const c = checker("diary-undo");
@@ -17,7 +17,7 @@ const { open, checker } = require("./lib");
   const val = () => page.evaluate(() => document.querySelector(".sheet.is-card .js-memo").value);
   const off = (k) => page.evaluate((k) => document.querySelector(`.sheet .js-hist[data-k="${k}"]`).getAttribute("aria-disabled"), k);
 
-  await page.click("#screen-archive .arc-log-row");
+  await pen(page);   // 今日を書く口は席3 の「いま」の筆（構4b）
   await page.waitForTimeout(700);
   const row = await page.evaluate(() => {
     const t = (s) => { const el = document.querySelector(s); return el ? Math.round(el.getBoundingClientRect().top) : null; };

@@ -3,10 +3,11 @@
    daily の鍵を切って日記の鍵を入れると：daily に覆いは出ない・本文は出さず「開ける」・
    検索は日記を探さない・コピーは開けてから・押せば覆いが出て、やめれば元のまま・番号で開けば
    本文が出る・開けた紙は鍵が閉じると閉じる（本文はそのまま）・書き出しの入口も開けてから・
+   今日の頁は席3（頭の頁は組まず「いま」の筆は効く）、過ぎた日の頁は席1（構4b の二つめ。ここでは昨日）・
    設定に「日記」の入切・記録は一つも変わらない・絵文字なし。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-lock.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 const t = checker("diary-lock");
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
@@ -42,9 +43,12 @@ const WORD = "しおかぜ";
   });
   const logText = () => page.evaluate(() => (document.querySelector("#screen-archive .arc-log") || {}).textContent || "");
 
-  /* 頁の事実（構1）：体重・食事。閉じているあいだは本文と同じく組まない。 */
-  await page.evaluate((w) => { const d = KN.util.todayKey(); KN.store.setDayLog(d, { memo: w });
-    KN.store.addWeight({ day: d, time: "07:00", kg: 61.5 }); KN.store.addMeal({ day: d, time: "07:30", slot: "breakfast", items: [], memo: "はまなす" }); }, WORD);
+  /* 頁の事実（構1）：体重・食事。閉じているあいだは本文と同じく組まない。今日（席3）と昨日（席1）に同じものを。 */
+  await page.evaluate((w) => [KN.util.todayKey(), KN.util.shiftDay(KN.util.todayKey(), -1)].forEach((d) => { KN.store.setDayLog(d, { memo: w });
+    KN.store.addWeight({ day: d, time: "07:00", kg: 61.5 }); KN.store.addMeal({ day: d, time: "07:30", slot: "breakfast", items: [], memo: "はまなす" }); }), WORD);
+  /* 見ている日は全部の席で一つ：席1 は昨日、席3 は今日へ合わせて開く。 */
+  const arc = async () => { await show("archive"); await page.evaluate(() => KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1))); await page.waitForTimeout(300); };
+  const mid3 = async () => { await page.evaluate(() => KN.screens.archive.goDay(KN.util.todayKey())); await show("todo"); };
   const before = await plain();
 
   /* ---- 番号を決めて、daily を切り、日記を入れる ---- */
@@ -69,25 +73,24 @@ const WORD = "しおかぜ";
 
   /* ---- 閉じたところから ---- */
   await page.evaluate(() => KN.lock.close());
-  await show("archive");
+  await arc();
   t.check("daily に覆いは出ない", !(await veil()).on);
   t.check("本文は出さない", !(await logText()).includes(WORD));
-  /* 「いま」の線と用事の札は鍵のあいだも出る（README 6.6：今の tasks と同じ中身・筆は効く。構3）。 */
-  t.check("頁の行（本文・体重・食事）を組まない・線と札は出る", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row:not(.pg-now):not(.is-plan)")
-    && !!document.querySelector("#screen-archive .pg-now .pg-now-pen")
+  t.check("頁の行（本文・体重・食事）を組まない", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")
     && !/61\.5|はまなす/.test(document.querySelector("#screen-archive .arc-log").textContent)));
   t.check("代わりに「開ける」", await page.evaluate(() => !!document.querySelector("#screen-archive .arc-diary-shut")));
   t.check("検索は日記を探さない", await page.evaluate((w) =>
     !KN.searchAll.find(w, "todo").groups.some((g) => g.id === "daily"), WORD));
   t.check("hides は daily・diary とも true、notes は false", await page.evaluate(() =>
     KN.lock.hides("diary") && KN.lock.hides("daily") && !KN.lock.hides("notes")));
-  /* まん中（tasks の今日の面）の頭の頁（構4a）：覆わず、頁を組まない。 */
+  /* まん中（tasks の今日の面）の頭の頁（構4a）：覆わず、頁と今日の問いを組まない。「いま」の筆は効く（README 6.6）。 */
   const mid = () => page.evaluate(() => { const r = document.getElementById("screen-todo"), p = r.querySelector(".tk-page");
-    return { page: !!p, text: p ? p.textContent : "", face: !!r.querySelector(".tl-sheet"), all: r.textContent }; });
-  await show("todo");
+    return { page: !!(p && p.querySelector(".arc-log-row, .think-home")), text: p ? p.textContent : "", face: !!r.querySelector(".tl-sheet"),
+      pen: !!r.querySelector(".tl-now-pen"), all: r.textContent }; });
+  await mid3();
   const m0 = await mid();
-  t.check("まん中は覆わず、頭の頁を組まない", !(await veil()).on && m0.face && !m0.page && !/しおかぜ|61\.5|はまなす/.test(m0.all), JSON.stringify({ page: m0.page, face: m0.face }));
-  await show("archive");
+  t.check("まん中は覆わず、頭の頁を組まない・筆は出る", !(await veil()).on && m0.face && !m0.page && m0.pen && !/しおかぜ|61\.5|はまなす/.test(m0.all), JSON.stringify({ page: m0.page, face: m0.face, pen: m0.pen }));
+  await arc();
 
   /* コピーは開けてから。やめれば元のまま。 */
   await page.click("#screen-archive .js-log-copy");
@@ -109,9 +112,9 @@ const WORD = "しおかぜ";
   t.check("番号で開くと覆いが消える", !(await veil()).on);
   t.check("開けると本文が出る", (await logText()).includes(WORD));
   t.check("開けると頁の事実も出る", /61\.5kg/.test(await logText()) && (await logText()).includes("はまなす"));
-  await show("todo");
+  await mid3();
   t.check("開けるとまん中の頭に頁（本文）", (await mid()).text.includes(WORD));
-  await show("archive");
+  await arc();
 
   /* 開けた紙は、鍵が閉じると閉じる。本文はそのまま。 */
   await page.evaluate(() => {
@@ -123,11 +126,11 @@ const WORD = "しおかぜ";
   await page.evaluate(() => KN.lock.close());
   await page.waitForTimeout(600);
   t.check("鍵が閉じると紙も閉じる", await page.evaluate(() => !document.querySelector(".sheet.is-open .js-memo")));
-  t.check("閉じても本文はそのまま", await page.evaluate((w) => (KN.store.dayLog(KN.util.todayKey()) || {}).memo === w, WORD));
+  t.check("閉じても本文はそのまま", await page.evaluate((w) => (KN.store.dayLog(KN.util.shiftDay(KN.util.todayKey(), -1)) || {}).memo === w, WORD));
   t.check("閉じたら本文はまた隠れる", !(await logText()).includes(WORD));
-  t.check("閉じたら頁の行も DOM から消える", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row:not(.pg-now):not(.is-plan)")));
-  /* 閉じたまま書ける紙（構3）：直前の行（頁の写し）は組まない。開いて閉じただけでは何も書かない。 */
-  await page.evaluate(() => { const b = document.querySelector('#dock button[aria-label="書く"]'); if (b) b.click(); });
+  t.check("閉じたら頁の行も DOM から消える", await page.evaluate(() => !document.querySelector("#screen-archive .pg-row")));
+  /* 閉じたまま書ける紙（構3）：席3 の「いま」の筆。直前の行（頁の写し）は組まない。開いて閉じただけでは何も書かない。 */
+  await pen(page);
   await page.waitForTimeout(500);
   const shut = await page.evaluate(() => { const s = document.querySelector(".sheet.is-open"); return s && { memo: !!s.querySelector(".js-memo"), prev: !!s.querySelector(".wr-prev, .wr-page .pg-row:not(.wr-cur)"), text: s.textContent }; });
   t.check("閉じたままでも書く紙は開き、直前の行は組まない", !!shut && shut.memo && !shut.prev && !shut.text.includes(WORD), JSON.stringify(shut && { memo: shut.memo, prev: shut.prev }));
