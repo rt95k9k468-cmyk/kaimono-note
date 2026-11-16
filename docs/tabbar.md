@@ -5,7 +5,7 @@
 `.is-away` は CSS が何もしない）。席の印（`tab-lens`）は丈 52px・左右 5px。640〜839px は帯 520px と＋のひと組を真ん中に（`--bar-x`）。
 
 **席の名前（構4c・2026年11月16日・利用者）**：archive・notes・daily・shopping・health（`app.js` の `TABS`・`FACES` と画面の `aria-label`）。
-id（`archive`・`todo`）・設定の鍵・検索の札・設定の頁の名は変えない（shots/vision/README.md 5節）。
+id（`archive`・`todo`）・設定の鍵・検索の札・設定の頁の名は変えない（shots/vision/README.md 5節）。archive に＋は無い（構4b の二つめ）。
 
 CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26日）。
 本文は移す前と一字も変えていない。入口（どの docs を読むか）と、どの画面でも

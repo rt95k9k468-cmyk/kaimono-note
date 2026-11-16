@@ -2885,7 +2885,7 @@ a.btn { text-decoration: none; }
 .ima-year { display: flex; flex-direction: column; gap: var(--sp-2); }
 .ima-year + .ima-year { padding-top: var(--sp-3); border-top: 1px solid var(--c-border); }
 /* 年は藍の札（R6。見本の .then-y）。 */
-.ima-y, .arc-tab {
+.ima-y {
   align-self: flex-start; padding: 2px var(--sp-2); border-radius: var(--r-sm);
   background: var(--c-ai-soft); color: var(--c-ai); font-size: var(--fs-sm); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
 }
@@ -2910,10 +2910,6 @@ a.btn { text-decoration: none; }
 .ima-line { display: flex; gap: var(--sp-2); margin: 0; min-width: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
 .ima-line b { flex: none; font-weight: var(--fw-bold); color: var(--c-text-3); }
 .ima-line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 年々のつまみ：頁の札の上の縁から立つ年の札（右寄せ・上の角だけ丸い）。 */
-.arc-tabs { display: flex; justify-content: flex-end; gap: var(--sp-1); padding-right: var(--sp-4); margin-bottom: calc(-1 * var(--sp-2)); }
-.arc-tab { padding: 3px var(--sp-3) 2px; border: 0; border-radius: var(--r-sm) var(--r-sm) 0 0; font-family: var(--font-num); }
-.arc-tab:active { opacity: var(--press-fade); }
 .arc-any { align-self: flex-start; justify-self: start; }   /* 偶然の一日（D1） */
 
 /* ---- ③ Daily Log ----
@@ -3111,8 +3107,8 @@ a.btn { text-decoration: none; }
 }
 /* 頁の組み（構1・shots/vision/README.md 6.1・6.4）。箱・影・区切りの線は無い。長い一件の畳みは JS の watchFold。 */
 .arc-log-row.is-page { display: block; cursor: default; }
-.arc-log-row.is-page .arc-posts, .pg-page { position: relative; display: flex; flex-direction: column; }
-.arc-log-row.is-page .arc-posts::before, .wr-page::before, .pg-page::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
+.arc-log-row.is-page .arc-posts { position: relative; display: flex; flex-direction: column; }
+.arc-log-row.is-page .arc-posts::before, .wr-page::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
 .pg-row {
   display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: baseline; min-height: 24px;
   width: 100%; padding: 0; text-align: left; color: var(--c-text-2); font-size: calc(13.5px * var(--fs-k)); line-height: var(--lh-ui);
@@ -3167,20 +3163,7 @@ a.btn { text-decoration: none; }
 .arc-post-act svg { width: var(--ico-sm); height: var(--ico-sm); }
 .arc-post-act:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-post.is-blank .arc-post-text { color: var(--c-text-3); }
-/* 「いま」の線と、線の下のこれから（構3）。箱を持つのは札だけ。動くのは分の拍の置き直しだけ（流れる動きは無い）。 */
-.pg-page { margin-top: var(--sp-2); }
-.pg-ahead { display: flex; flex-direction: column; min-height: calc(100svh - 240px); }
-.pg-now { align-items: center; margin: var(--sp-1) 0; }
-.pg-now > .pg-at { padding-right: 4px; }
-.pg-now-pill { padding: 1px 5px; border-radius: var(--r-full); background: var(--c-primary-fill); color: var(--c-text-on); font-weight: var(--fw-bold); }
-.pg-now-line { display: flex; justify-content: flex-end; background: linear-gradient(var(--c-primary), var(--c-primary)) 0 50% / 100% 1.5px no-repeat; }
-.pg-now-pen { display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-full); background: var(--c-surface); color: var(--c-text-2); box-shadow: inset 0 0 0 1.5px var(--c-primary); transition: opacity var(--m-state) var(--ease); }
-.pg-now-pen svg { width: var(--ico-sm); height: var(--ico-sm); }
-.pg-row.is-plan { align-items: center; margin: 3px 0; }
-.pg-row > .pg-plan { display: flex; align-items: center; gap: var(--sp-2); margin-left: var(--sp-2); padding: 4px var(--sp-2) 4px var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
-.pg-plan-t { flex: 1; min-width: 0; min-height: 36px; text-align: left; font-size: calc(15.5px * var(--fs-k)); color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity var(--m-state) var(--ease); }
-.pg-now-pen:active, .tl-now-pen:active, .pg-plan-t:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.pg-about { display: block; font-style: normal; font-size: var(--fs-xs); line-height: 1; }
+.tl-now-pen:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 
 /* ---- ④積み上げ項目 ---- */
 
@@ -3762,7 +3745,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   display: flex; align-items: center; gap: 2px;
 }
 .tl-now > * { flex: none; z-index: 1; }   /* 線（::after）より前 */
-/* 日記の筆（構4c・daily の線の筆 .pg-now-pen の小さい形）。層は押せない作り（.tl-axis）なので、筆だけ押せる。当たりは ::before で 44px。 */
+/* 日記の筆（構4c）。層は押せない作り（.tl-axis）なので、筆だけ押せる。当たりは ::before で 44px。 */
 .tl-now-pen { position: relative; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--c-surface); color: var(--c-text-2); box-shadow: inset 0 0 0 1.5px var(--c-now); pointer-events: auto; transition: opacity var(--m-state) var(--ease); }
 .tl-now-pen::before { content: ""; position: absolute; inset: -9px -4px; }
 .tl-now-pen svg { width: var(--ico-sm); height: var(--ico-sm); }
@@ -4042,7 +4025,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 今日の済ませたもの（js の doneList）。一行ずつ、灰に取り消し線。札にはしない——まだのもの（札）と形で分かれる。
    「いま」より上の頁（.tk-page・構4a）は開くと帯の裏（js の doneRest）。下の余白は帯の溶かしと同じ（--faces-edge）。 */
 .tl-done { list-style: none; margin: 0; padding: var(--sp-2) var(--sp-4) var(--faces-edge) 0; }
-.tk-page { grid-column: 1; grid-row: 1; padding: var(--sp-3) var(--sp-4) var(--faces-edge); }
+.tk-page { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4) var(--faces-edge); }
 .tl-done-row { display: flex; align-items: center; min-height: 34px; }
 .tl-done-row > .tl-doneat {
   flex: none; width: 44px; box-sizing: border-box; justify-content: flex-end;
@@ -6881,8 +6864,11 @@ button.note-when:active { opacity: var(--press-fade); }
       padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide, 1180px)) / 2));
     }
     .day-slide > .arc-season { grid-column: 2; grid-row: 1; }
+    .day-slide.is-front > .arc-season { grid-column: 1; }
     .day-slide > .day-main { grid-column: 1; grid-row: 1 / -1; }
     .day-slide > .arc-then, .day-slide > .arc-any, .day-slide > .arc-shelf { grid-column: 2; }
+    .day-slide.is-front > .arc-shelf { grid-column: 1; }   /* 今日（構4b）：左に扉と棚、右にいまごろ */
+    .day-slide.is-front > .arc-then { grid-row: 1 / -1; }
   }
   @container seat (min-width: 1100px) {
     .arc-season-art { width: 128px; }

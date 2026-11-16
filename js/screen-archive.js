@@ -106,9 +106,6 @@
      本文の形はどちらも同じ一つの文字。変わるのは見せ方と書く紙だけ。 */
   const chatView = () => S().diaryView !== "page";
 
-  /** ＋ で書く先の日。まだ来ていない日を見ているときは、今日へ書きます。 */
-  const writeDay = () => (viewDay && viewDay <= U.todayKey() ? viewDay : U.todayKey());
-
   /* 他のタブで日が動いていたら、その日を引き取ります（util の dayShare。
      席を移るとき app.js の show() が置いていきます）。月もその日へ。 */
   let dayVer = 0;
@@ -600,22 +597,7 @@
      （空いた年を置くと、書かなかった年の一覧になる）。頁＝日記か、した・買った（からだ・食事は数えない）。
      出すのは今日の紙だけ、「いまごろ・年々」（showThen）と日記の鍵が効く。日の鍵から引くだけ（KN.dayPage）。 */
   const hasDiary = (d) => !!(d && (String(d.memo || "").trim() || store.memoOut(d)));
-  const hasPage = (day) => hasDiary(store.dayLog(day)) || store.dayFeed(day).length > 0;
   const showYears = (day) => day === U.todayKey() && S().showThen !== false && !diaryShut();
-
-  /** 年々のつまみ：同じ月日のほかの年に頁があるときだけ、頁の上の縁に年の札（三つまで）。押すとその年の同じ日。 */
-  function yearTabs(day) {
-    if (!showYears(day) || !KN.dayPage) return null;
-    const list = KN.dayPage.yearTabs(day, hasPage);
-    if (!list.length) return null;
-    const el = node(html`<nav class="arc-tabs" aria-label="同じ日のほかの年">${U.raw(list.map((d) =>
-      `<button type="button" class="arc-tab" data-day="${U.escapeHtml(d)}">${d.slice(0, 4)}</button>`).join(""))}</nav>`);
-    el.querySelectorAll(".arc-tab").forEach((b) => b.addEventListener("click", () => {
-      KN.motion.fire("select");
-      goToDay(b.dataset.day);
-    }));
-    return el;
-  }
 
   /** 頁の小さな写しの一行：日記の最初の一行（頭の日付・育休の行は飛ばす）。読めなければその旨。 */
   function leadOf(d) {
@@ -842,12 +824,6 @@
          日記」を開き、下の一つ一つは**それぞれの元**を開きます。 */
       const feed = feedRows(d.date);
       if (feed) body.append(feed);
-      /* 今日は、頁を組まない一行（まだ書いていない・鍵・読めない）でも「いま」の線とこれから（構3）。 */
-      if (only && d.date === U.todayKey() && chatView()) {
-        const pg = node(html`<div class="pg-page" data-day="${d.date}">${withNow([], [], d.date)}</div>`);
-        wireNow(pg, d.date);
-        body.append(pg);
-      }
     });
 
     return sec;
@@ -1399,51 +1375,8 @@
      押す＝用事の紙。動かす・詰める・長さは無い。置き直しは分の拍（nowTick）で、並びが替わる分（data-next）に来たときだけ。 */
   const nowMin = () => { const t = new Date(); return t.getHours() * 60 + t.getMinutes(); };
   const rankOf = (x) => (x.kind === "sleep" && x.min < 300 ? x.min + 1440 : x.min);   // 就寝の 0〜5時は夜の続き（day-page の night）
-  function planAhead(day) {
-    const P = KN.plan, s = S(), m = nowMin();
-    const shut = (t) => t.done || t.archived;
-    const open = store.sortedTodos().filter((t) => !shut(t) && store.fallsOn(t, day));
-    const done = store.get().todos.filter((t) => shut(t) && t.due === day);
-    /* 時刻なしを置きはじめる「いま」は screen-todo の planNow と同じ5分きざみ（並びを同じにする）。 */
-    return P.buildDay(day, open.concat(done), { start: s.dayStart, end: s.dayEnd, now: P.toTime(Math.floor(m / 5) * 5) })
-      .items.filter((it) => !shut(it.todo));
-  }
-  const planCard = (it) => html`<span class="pg-row is-plan" data-id="${it.todo.id}"><span class="pg-at">${KN.plan.toTime(it.atMin)}${it.fixed ? "" : html`<i class="pg-about">ごろ</i>`}</span><span class="pg-plan"
-    ><button type="button" class="pg-plan-t">${it.todo.title}</button
-    ><button type="button" class="check" role="checkbox" aria-checked="false" aria-label="${it.todo.title} を終わりにする">${icon("check")}</button></span></span>`;
-  /** 頁の行（描いた字）に線と札を差しこむ。rows は KN.dayPage.rows の頭・時刻・あとから（足もとは除く）。 */
-  function withNow(rows, out, day) {
-    if (day !== U.todayKey() || !chatView()) return out;
-    const m = nowMin();
-    let cut = rows.findIndex((x) => x.zone === "end" || (x.zone === "time" && rankOf(x) > m));
-    if (cut < 0) cut = rows.length;
-    let k = cut;
-    while (k < rows.length && rows[k].zone === "time") k++;
-    const cards = planAhead(day), mid = [];
-    let j = 0;
-    for (let i = cut; i < k; i++) {
-      while (j < cards.length && cards[j].atMin <= rankOf(rows[i])) mid.push(planCard(cards[j++]));
-      mid.push(out[i]);
-    }
-    while (j < cards.length) mid.push(planCard(cards[j++]));
-    /* 次に並びが替わる分：線の下の最初の行が来る分か、時刻なしの札がある日は次の5分。 */
-    const next = Math.min(k > cut ? rankOf(rows[cut]) : 9999, cards.some((c) => !c.fixed) ? Math.floor(m / 5) * 5 + 5 : 9999);
-    const line = html`<span class="pg-row pg-now" data-next="${next}"><span class="pg-at">${cards.length ? html`<span class="pg-now-pill">${U.nowTime()}</span>` : ""}</span><span class="pg-now-line"
-      ><button type="button" class="pg-now-pen" aria-label="いまのことを書く">${icon("edit")}</button></span></span>`;
-    /* 線から下（これから）は一まとまりで、短い日でも画面の高さ近くを持つ（書き終えた字を欄の高さまで送れるように）。 */
-    return out.slice(0, cut).concat(html`<span class="pg-ahead">${[line].concat(mid, out.slice(k))}</span>`);
-  }
-  function wireNow(el, day) {
-    const pen = el.querySelector(".pg-now-pen");
-    if (pen) pen.addEventListener("click", (e) => { e.stopPropagation(); openPost(day, null); });
-    el.querySelectorAll(".pg-row.is-plan").forEach((r) => {
-      const id = r.dataset.id;
-      r.querySelector(".check").addEventListener("click", (e) => { e.stopPropagation(); KN.screens.todo.tick(id, e.currentTarget); });
-      r.querySelector(".pg-plan-t").addEventListener("click", () => { KN.motion.fire("select"); KN.screens.todo.open(id); });
-    });
-  }
   /* まん中の頁（構4a・shots/vision/stages.md 構4）：tasks の今日の面の頭に、「いま」より上を daily の頁と同じ行で（組み・道具も同じ）。
-     切り目は withNow と同じ。頭の日付と育休だけの一件・足もとは出さない（日付は題が言う）。鍵のあいだ・本文を読めない日は
+     切り目は時計（「いま」より後の時刻の行と、あとから・足もとから下を切る）。頭の日付と育休だけの一件・足もとは出さない（日付は題が言う）。鍵のあいだ・本文を読めない日は
      daily と同じく頁を組まない（面は覆わない）。済ませた用事は面の下の「済ませたもの」が持つ（MID_DONE＝false。✓で戻す口が
      あるので。見比べ shots/vision/09-4a-compare.jpg の B）。 */
   const MID_DONE = false;
@@ -1466,18 +1399,6 @@
     const d = midDay(day);
     return midReadable(d) ? JSON.stringify(midCut(pageOf(d, KN.diaryPosts.parse(d.memo || ""), !MID_DONE))) : "";
   }
-  /* 拍は分の変わり目（screen-todo の nowTick と同じ）。丸薬の字を替えるだけ。並びが替わる分なら組み直す。戻ってきたときにも一度。 */
-  function paintNow() {
-    if (!root || document.hidden) return;
-    const el = root.querySelector(".pg-now");
-    if (!el || !el.offsetParent) return;
-    if (Number(el.dataset.next) <= nowMin() || el.closest("[data-day]").dataset.day !== U.todayKey()) { render(); return; }
-    const pill = el.querySelector(".pg-now-pill");
-    if (pill && pill.textContent !== U.nowTime()) pill.textContent = U.nowTime();
-  }
-  const nowTick = () => setTimeout(() => { nowTick(); paintNow(); }, 60000 - (Date.now() % 60000) + 250);
-  nowTick();
-  document.addEventListener("visibilitychange", paintNow);
 
   /** 時刻ごとの日記を頁の行に（構1・README 6.1・6.4）。朱の細い縦線の左に時刻、右に中身。言葉は明朝、
       よかったことは山吹の面、済ませたこと・事実は一行。箱は持たない。言葉の行を押すと道具（直す・写す・ノートへ移す）。
@@ -1511,7 +1432,7 @@
     const row = node(html`
       <div class="arc-log-row is-chat is-page ${mid ? "is-mid" : ""} ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
         <span class="arc-log-text">
-          <span class="arc-posts">${firstHead || mid ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${withNow(rows, rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x))), one && !mid ? d.date : "")}</span>
+          <span class="arc-posts">${firstHead || mid ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x)))}</span>
           ${foot.length ? html`<span class="pg-foot">${foot.join("　")}</span>` : ""}
         </span>
       </div>
@@ -1524,7 +1445,6 @@
         openLogSheet(d.date);
       });
     });
-    wireNow(row, d.date);
     /* やること・買うものは、それぞれのタブが本体です。 */
     row.querySelectorAll("button.pg-row").forEach((el) => el.addEventListener("click", () => {
       KN.motion.fire("select");
@@ -2216,21 +2136,13 @@
     const el = node(html`<div class="day-slide m-in"></div>`);
     /* 二段の器（R6）：電話は一列（候の札 → 書く口 → Daily Log → いまごろ）、中身 768px からは左に書く口と Daily Log、
        右に候の札といまごろ（CSS の grid。紙を払う幅は変えない）。 */
-    const main = node(html`<div class="day-main"></div>`);
-
-    const log = dailyLog(ym, day);
-    /* 年々のつまみは頁（Daily Log の札）の上の縁に、いまごろは足もとに。どちらも今日の紙だけ（構2）。 */
-    const tabs = yearTabs(day);
-    const body = tabs && log.querySelector(".arc-log-body");
-    if (body) body.before(tabs);
-    const then = imaCard(day);
-    const season = seasonCard(day);
-    /* 今日（一日ぶん）は頭に章の扉と棚（構4b）。今日の頁はその下に残す——外すのは 4c の答え（＋の役・筆の置き場）のあと。 */
+    /* 今日（一日ぶん）は章の扉・棚・いまごろだけ（構4b）。今日の頁（「いま」の線と筆・これから・今日の問い）は席3 の今日の面。 */
     const front = day === U.todayKey() && oneDayLog();
-    main.append(log);
+    const season = seasonCard(day);
     if (season) el.append(season);
-    if (front) el.append(shelfOf(day));
-    el.append(main);
+    if (front) { el.classList.add("is-front"); el.append(shelfOf(day)); }
+    else { const main = node(html`<div class="day-main"></div>`); main.append(dailyLog(ym, day)); el.append(main); }
+    const then = imaCard(day);
     if (then) el.append(then);
     const any = !front && anyDay(day);
     if (any) el.append(any);
@@ -2238,8 +2150,6 @@
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
     if (day > U.todayKey()) { el.inert = true; el.classList.add("is-ahead"); }
-    /* 今日の問いは今日の Daily Log の上に（時刻ごとのときだけ）。ノート・思考の札は notes の＋へ移した（構4b）。 */
-    else if (chatView() && day === U.todayKey()) { const h = thinkHome(day); if (h) main.prepend(h); }
     return el;
   }
 
@@ -2306,26 +2216,6 @@
     settle();
   }
 
-  /* ＋ は、まず**記録の紙**を開きます（2026年9月28日）。前は押すと「Daily Log／
-     記録」の二択が出て、どちらかを選ぶ一手が毎回はさまっていた。＋で書きたく
-     なるのはたいてい記録のほうなので、そちらを先に開き、日記は紙の頭の札
-     （種類の札の並びの先頭、ほかより一回り大きい一枚）から一押しで移れます。 */
-  function dockButton() {
-    const fab = node(html`
-      <div class="quick-add">
-        <button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button>
-      </div>
-    `);
-    /* ＋は分けずに書く（思考のホーム。docs/thinking.md）。種類を選ぶ記録の紙は、前からの記録を直すときだけ。
-       時刻ごとなら新しい一件、一枚ならその日の日記の紙。 */
-    fab.querySelector(".js-open-add").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (chatView()) openPost(writeDay(), null);
-      else openLogSheet(writeDay());
-    });
-    return fab;
-  }
-
   KN.screens = KN.screens || {};
   /* ---------------- 中継所を覗く ----------------
 
@@ -2349,32 +2239,7 @@
     store.ensureDayLog(U.todayKey());
   }
 
-  /** 「いま」の線へ（構3⑤・README 6.3）。開いたとき（glide なし）は、線が画面の上6割に見えていれば送らない。
-      席の二度押し（again）は滑らせて寄せる。線は今日の頁だけ——無ければ断る。
-      「開いたとき」はその日はじめてと、30分より長く離れて戻ったときだけ（席を移って戻るのは読んでいた位置のまま。smooth）。 */
-  let linedDay = null, hidAt = 0;
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { hidAt = Date.now(); return; }
-    if (Date.now() - hidAt < 30 * 60000) return;
-    linedDay = null;
-    if (root && root.classList.contains("is-active")) requestAnimationFrame(() => { if (toLine(false)) linedDay = U.todayKey(); });
-  });
-  function toLine(glide) {
-    const line = root && root.querySelector(".day-slide:not(.is-peek) .pg-now");
-    const sc = line && KN.app.scrollerOf(root);
-    if (!sc) return false;
-    const at = line.getBoundingClientRect().top - sc.getBoundingClientRect().top - sc.clientTop;
-    if (!glide && at >= 0 && at <= sc.clientHeight * 0.6) return true;
-    const to = Math.round(sc.scrollTop + at - sc.clientHeight * 0.35);
-    if (glide) KN.app.glideTo(sc, to);
-    else sc.scrollTop = Math.max(0, Math.min(to, sc.scrollHeight - sc.clientHeight));
-    return true;
-  }
-  const again = () => toLine(true);
-
   function onEnter() {
-    /* 検索の帯を畳む一枚（app.js の parkSearch）のあとで測る。 */
-    if (linedDay !== U.todayKey()) requestAnimationFrame(() => requestAnimationFrame(() => { if (toLine(false)) linedDay = U.todayKey(); }));
     if (KN.healthRelay) KN.healthRelay.pullNow();
     if (KN.weather) KN.weather.pull();   // 場所を選んでいなければ何もしない
   }
@@ -2405,9 +2270,12 @@
     root.classList.toggle("is-season-first", first);
   });
 
-  KN.screens.archive = { mount, render, dockButton, prepare, onEnter, again, day: () => focusDay(),
+  /* ＋は無い（構4b：書くのは席3 の「いま」の筆と、過ぎた日の頁の終わりの一行）。二度押しは受けない。 */
+  KN.screens.archive = { mount, render, prepare, onEnter, day: () => focusDay(),
     goDay: (d) => goDayTo(d), recountLeave, midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
-    pen: (day) => openPost(day, null) };   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
+    pen: (day) => openPost(day, null),   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
+    /* 今日の問い（構4b）：席3 の今日の頁の頭。時刻ごとのときだけ・日記かノートの鍵のあいだは出さない（問いの元はノートの字）。 */
+    ask: (day) => (chatView() && !diaryShut() && !(KN.lock && KN.lock.hides("notes")) ? thinkHome(day) : null) };
 
   /* 開いたら一度、落ち着いてから（立ち上がりの一拍を重くしない）。 */
   window.addEventListener("load", () => setTimeout(() => {

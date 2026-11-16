@@ -2804,9 +2804,8 @@
     /* 空の画面は紙の中に（外に出すと、白い紙が空のまま上に残る）。 */
     if (!all.length) {
       /* 用事が一件も無くても、今日の面の頭には「いま」より上の頁（構4a。送らない——下は空の一枚だけ）。 */
-      const page = sheet !== els.body && oneDay() && face === "today" && shownDay() === todayKey()
-        && KN.screens.archive && KN.screens.archive.midPage(todayKey());
-      if (page) { const box = node(html`<div class="tk-page"></div>`); box.append(page); sheet.append(box); }
+      const box = sheet !== els.body && oneDay() && face === "today" && shownDay() === todayKey() && headPage(todayKey());
+      if (box) sheet.append(box);
       sheet.append(node(html`
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
@@ -2969,6 +2968,16 @@
   }
 
   /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
+  /** 今日の頁の頭（無ければ null）：今日の問いと「いま」より上の頁（screen-archive の ask・midPage）。 */
+  function headPage(day) {
+    const A = KN.screens.archive;
+    const parts = A ? [A.ask && A.ask(day), A.midPage(day)].filter(Boolean) : [];
+    if (!parts.length) return null;
+    const box = node(html`<div class="tk-page"></div>`);
+    box.append(...parts);
+    return box;
+  }
+
   /** その日ぶんの紙まるごと（時間割＋長期タスク）。横に払うと、この一枚が
       隣の日のものと入れ替わります。 */
   function daySlide(day, open) {
@@ -2977,9 +2986,9 @@
        済ませたものは前は紙のいちばん上で、開くと帯の裏へ送っていた（doneRest）——いまは下の一枚なので送らない。 */
     open = open.filter(mineT);
     const el = node(html`<div class="day-slide tk-day"></div>`);
-    /* 今日は頭に「いま」より上の頁（構4a。行は daily の頁と同じ——screen-archive の midPage）。開くと帯の裏へ送る（doneRest）。 */
-    const page = day === todayKey() && KN.screens.archive && KN.screens.archive.midPage(day);
-    if (page) { const box = node(html`<div class="tk-page"></div>`); box.append(page); el.append(box); }
+    /* 今日は頭に今日の問い（構4b）と「いま」より上の頁（構4a。行は daily の頁と同じ——screen-archive の midPage）。 */
+    const box = day === todayKey() && headPage(day);
+    if (box) el.append(box);
     const sec = daySection(day, open);
     el.append(sec);
     const side = node(html`<div class="tk-side"></div>`);
