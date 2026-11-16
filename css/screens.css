@@ -21,7 +21,7 @@
 /* notes の＋の上の小さな丸：思考（構4b。前は daily の札）。 */
 .fab-sub { position: absolute; bottom: calc(100% + var(--sp-2)); right: 6px; width: 44px; height: 44px; padding: 0; border-radius: 50%; pointer-events: auto;
   display: grid; place-items: center; background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-2); box-shadow: var(--shadow-1); }
-.fab-sub svg { width: 22px; height: 22px; }
+.fab-sub svg { width: 22px; height: 22px; }   /* 入れもの：小さな丸ボタン */
 
 /* Room under the last card so the button is never sitting on top of the thing
    you are trying to read — one button's height plus the gap it floats by,
@@ -3049,7 +3049,7 @@ a.btn { text-decoration: none; }
 .arc-door-ko { position: absolute; right: 22px; top: 22px; writing-mode: vertical-rl; font: var(--fw-bold) calc(34px * var(--fs-k))/1 var(--font-display); letter-spacing: .16em; }
 .arc-door-yomi { position: absolute; right: 68px; top: 24px; writing-mode: vertical-rl; font-size: var(--fs-xs); letter-spacing: .24em; }
 .arc-door-sekki { position: absolute; left: 18px; bottom: 16px; font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .12em; }
-.arc-door-sekki b { display: block; font: var(--fw-bold) calc(19px * var(--fs-k))/1.3 var(--font-display); letter-spacing: .08em; }
+.arc-door-sekki b { display: block; font: var(--fw-bold) var(--fs-xl)/1.3 var(--font-display); letter-spacing: .08em; }
 .arc-door-ko, .arc-door-yomi { white-space: nowrap; }   /* 絶対配置の縦組みは長さが縮む */
 .arc-season-art :is(.arc-door-ko, .arc-door-yomi, .arc-door-sekki) { text-shadow: 0 1px 10px rgb(0 0 0 / .6); }
 [data-attire="modern"] :is(.arc-door-ko, .arc-door-yomi) { writing-mode: horizontal-tb; left: 18px; right: auto; top: 20px; }

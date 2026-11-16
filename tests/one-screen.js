@@ -39,7 +39,7 @@ const { open, checker } = require("./lib");
     /* 掴み手の下の、最初の中身 */
     const first = [...sc.children].find((e) => !e.matches("i") && e.getBoundingClientRect().height);
     const out = { id, active: scr.id, headBottom: head.bottom, barTop: bar.top, first: box(first),
-      scTop: sc.getBoundingClientRect().top };
+      scTop: sc.getBoundingClientRect().top, scroll: sc.scrollTop };
     if (id === "archive") {
       out.today = box(scr.querySelector(".arc-log-row.is-today"));
       out.digests = scr.querySelectorAll(".arc-counts").length;
@@ -66,7 +66,8 @@ const { open, checker } = require("./lib");
     /* ③ 帯は中身にかぶらない */
     /* daily は暦なし：中身の面は盆（26px）に重なって角を持つ（base.css の is-bare）ので、帯の下は盆の上端。 */
     const under = r.headBottom - (id === "archive" ? 26 : 0) - 1;
-    t.check(`③ ${id}：中身は頭の帯の下から始まる`, r.first && r.first.top >= under && r.scTop >= under, JSON.stringify(r));
+    /* 送った分は足して測る（daily は開くと「いま」の線へ送る。構3⑤。構4b で扉が上に来た）。 */
+    t.check(`③ ${id}：中身は頭の帯の下から始まる`, r.first && r.first.top + r.scroll >= under && r.scTop >= under, JSON.stringify(r));
 
     /* ② 最初の一画面 */
     if (id === "archive") t.check("② daily：今日の行が最初の一画面に（下の帯より上）", r.today && r.today.top >= r.headBottom && r.today.bottom <= r.barTop, JSON.stringify(r.today));
