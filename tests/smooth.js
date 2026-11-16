@@ -79,6 +79,7 @@ const t = checker("smooth");
   const raw = () => page.evaluate(() => localStorage.getItem("kaimono-note-v2") || "");
   const today = await page.evaluate(() => KN.util.todayKey());
   const yesterday = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 1); return KN.util.dayKey(d); });
+  const before2 = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 2); return KN.util.dayKey(d); });
 
   /* ---- 動きの長さは、開いて落ち着いたところで読んである ---- */
   await page.waitForTimeout(400);
@@ -119,29 +120,20 @@ const t = checker("smooth");
       const t = new Date(); t.setFullYear(t.getFullYear() - 1); t.setDate(t.getDate() + o);
       KN.store.setDayLog(KN.util.dayKey(t), { memo: "去年のいまごろの試験の字" });
     }
-    /* 頁の組み（構1）で長い一件が箱を持たなくなり、紙が縮んだ。前の日は時刻の一件を三つ足して、80px より先まで送れるように。 */
-    const W = KN.diaryPosts.TAG;
-    KN.store.setDayLog(d.yesterday, { memo: `${memo}\n\n09:00${W}\nひとつめ\n\n12:00${W}\nふたつめ\n\n18:00${W}\nみっつめ` });
-  }, { today, yesterday });
+    /* 席1 の今日は扉・棚・いまごろだけ（構4b）。読んでいた位置は昨日の頁（時刻の一件を十二）で、別の日は一昨日（六つ）で見る。 */
+    const W = KN.diaryPosts.TAG, posts = (n) => Array.from({ length: n }, (_, i) => `${String(8 + i).padStart(2, "0")}:00${W}\n${i + 1}つめの一件`).join("\n\n");
+    KN.store.setDayLog(d.yesterday, { memo: `${memo}\n\n${posts(12)}` });
+    KN.store.setDayLog(d.before2, { memo: `${memo}\n\n${posts(6)}` });
+  }, { today, yesterday, before2 });
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(700);
   const built = await sheetsBuilt(async () => { await page.click('.tab[data-tab="archive"]'); await page.waitForTimeout(700); });
   t.check("daily へ移ると、紙は一度だけ組む", built === 1, String(built));
-  /* 「いま」の線（構3）：流れ続ける動きは無い（置き直しは分の拍だけ）。動きを持たないので「動きを減らす」でも動かない。 */
-  const still = await page.evaluate(() => new Promise((res) => {
-    const el = document.querySelector("#screen-archive .pg-now");
-    if (!el) { res(null); return; }
-    const sc = KN.app.scrollerOf(el), tops = [], t0 = performance.now();
-    const step = () => {
-      tops.push(Math.round(el.getBoundingClientRect().top + sc.scrollTop));
-      if (performance.now() - t0 < 600) requestAnimationFrame(step);
-      else res({ at: new Set(tops).size, anims: el.getAnimations({ subtree: true }).length, n: tops.length });
-    };
-    requestAnimationFrame(step);
-  }));
-  t.check("「いま」の線は毎フレーム動かない・動きを持たない", !!still && still.at === 1 && still.anims === 0 && still.n > 5, JSON.stringify(still));
+  t.check("席1 に「いま」の線は無い（構4b。今日の線は席3）", await page.evaluate(() => !document.querySelector("#screen-archive .pg-now")));
 
-  /* ---- daily は同じ日なら、組み直しても読んでいた位置のまま ---- */
+  /* ---- daily は同じ日なら、組み直しても読んでいた位置のまま（昨日の頁） ---- */
+  await page.evaluate((d) => KN.screens.archive.goDay(d), yesterday);
+  await page.waitForTimeout(400);
   const scroller = () => page.evaluate(() => {
     const sc = KN.app.scrollerOf(document.getElementById("screen-archive"));
     return { top: Math.round(sc.scrollTop), max: sc.scrollHeight - sc.clientHeight };
@@ -160,7 +152,7 @@ const t = checker("smooth");
   await page.waitForTimeout(600);
   const s2 = await scroller();
   t.check("よその席から戻っても、同じ日なら読んでいた位置のまま", Math.abs(s2.top - 80) <= 2, String(s2.top));
-  await page.evaluate((d) => KN.screens.archive.goDay(d), yesterday);
+  await page.evaluate((d) => KN.screens.archive.goDay(d), before2);
   await page.waitForTimeout(250);
   const s3 = await scroller();
   /* 前提は「読んでいた位置（80）より先まで送れる」こと——それなら位置を持ち越したとき top が 80 になって見分けられる。
@@ -168,12 +160,12 @@ const t = checker("smooth");
      前日の紙は短い（月のまとめの空のカードを外して 287px、＋が帯と同じ段になって底の余白が減り 237px。R2）。
      本文は Daily Log が終わりの数行しか出さないので、長くしても紙は伸びない。電話の候の札と書く口を詰めて（W1）114px、位置は 80 に。 */
   t.check("別の日へ移れば、その日の頭から", s3.top === 0 && s3.max > 80, JSON.stringify(s3));
-  await page.evaluate((d) => KN.screens.archive.goDay(d), today);
+  await page.evaluate((d) => KN.screens.archive.goDay(d), yesterday);
   await page.waitForTimeout(400);
 
-  /* ---- 紙の中で打っているあいだ、後ろは組み直さない ---- */
+  /* ---- 紙の中で打っているあいだ、後ろは組み直さない（昨日の頁の終わりの一件） ---- */
   /* 時刻ごとでは、一件を直す紙は言葉の行を押して出る「直す」から。 */
-  await page.click('#screen-archive .arc-post-text[role="button"]');
+  await page.evaluate(() => [...document.querySelectorAll('#screen-archive .day-slide:not(.is-peek) .arc-post-text[role="button"]')].pop().click());
   await page.click("#screen-archive .arc-post.is-tools .js-post-edit");
   await page.waitForSelector(".sheet.is-card .js-memo");
   await page.waitForTimeout(600);
@@ -183,13 +175,14 @@ const t = checker("smooth");
     await page.keyboard.insertText(" さんぽ");
     await page.waitForTimeout(1000);   // 手が止まって 500ms で残る
   });
-  const savedMemo = await page.evaluate((d) => (KN.store.dayLog(d) || {}).memo || "", today);
+  const savedMemo = await page.evaluate((d) => (KN.store.dayLog(d) || {}).memo || "", yesterday);
   t.check("（前提）打っているあいだに日記は残っている", savedMemo.endsWith(" さんぽ"));
   t.check("打っているあいだ、後ろの daily は組み直さない", typedBuilt === 0, String(typedBuilt));
   const closedBuilt = await sheetsBuilt(async () => { await page.click(".sheet .js-ok"); await page.waitForTimeout(600); });
   t.check("紙を閉じたら、後ろを組み直す", closedBuilt >= 1, String(closedBuilt));
-  t.check("…組み直した daily に打った字が出る", await page.evaluate(() =>
-    (document.querySelector("#screen-archive .arc-log-row.is-today") || {}).textContent || "").then((x) => x.includes("さんぽ")));
+  t.check("…組み直した daily に打った字が出る", await page.evaluate((d) =>
+    (document.querySelector(`#screen-archive .arc-log-row[data-day="${d}"]`) || {}).textContent || "", yesterday).then((x) => x.includes("さんぽ")));
+  await page.evaluate((d) => KN.screens.archive.goDay(d), today);   // 見ている日は全部の席で一つ（今日へ戻してから買うものへ）
 
   /* ---- 送るあいだ、帯の裏を見張らない ---- */
   await page.evaluate(() => {

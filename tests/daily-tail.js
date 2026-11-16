@@ -17,7 +17,7 @@ const LINES = Array.from({ length: 12 }, (_, i) => `試験の行${i + 1}`).join(
   const t = checker("daily-tail");
   const { browser, page, errors } = await open({
     before: async (ctx, pg) => {
-      await pg.clock.setFixedTime(new Date(2026, 9, 6, 10, 0));
+      await pg.clock.setFixedTime(new Date(2026, 9, 7, 10, 0));   // 長い日（10/6）は昨日の頁で見る（席1 の今日は扉だけ・構4b）
       await ctx.addInitScript((memo) => {
         if (sessionStorage.getItem("__seeded")) return;
         sessionStorage.setItem("__seeded", "1");
@@ -50,7 +50,7 @@ const LINES = Array.from({ length: 12 }, (_, i) => `試験の行${i + 1}`).join(
         first: pos("試験の行1\n") , last: pos("試験の行12") });
     }))));
 
-  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay("2026-10-06"); });
   let v = await look();
   t.check("前の保存（logLines 無し）は5行", v.rows === 5, JSON.stringify(v));
   t.check("最後の行が見え、頭は切れる", v.last && !v.first && v.cut, JSON.stringify(v));
@@ -65,6 +65,7 @@ const LINES = Array.from({ length: 12 }, (_, i) => `試験の行${i + 1}`).join(
 
   await page.evaluate(() => { KN.store.update((s) => { s.settings.logFull = false; }); });
   const short = await page.evaluate(() => new Promise((res) => {
+    KN.screens.archive.goDay(KN.util.todayKey());   // 月ぜんぶは日を選んでいないとき
     KN.store.update((s) => { s.settings.dailyScope = "month"; });
     KN.app.showScreen("archive");
     requestAnimationFrame(() => requestAnimationFrame(() => {

@@ -73,9 +73,11 @@ async function openSheet(name) {
   } else if (name === "品物の紙") {
     KN.productSheet.open(S.get().products[0].id);
   } else if (name === "daily の記録の紙") {
-    KN.app.showScreen("archive");
+    /* 今日を書く口は席3 の「いま」の筆（構4b。席1 に＋は無い）。 */
+    KN.screens.archive.goDay(KN.util.todayKey());
+    KN.app.showScreen("todo");
     await wait(400);
-    document.querySelector('button[aria-label="書く"]').click();
+    document.querySelector("#screen-todo .tl-now-pen").click();
   } else {
     KN.app.showScreen("todo");
     await wait(400);

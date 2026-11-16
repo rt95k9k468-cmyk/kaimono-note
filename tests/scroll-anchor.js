@@ -13,7 +13,7 @@
    - 暦を払って月をめくる（5行の月と6行の月をまたぐ。送りが頭のときと、下へ送ったとき）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/scroll-anchor.js */
-const { open, checker, noAnchor } = require("./lib");
+const { open, checker, noAnchor, pen } = require("./lib");
 
 const TOL = 1;   // 二通りの差（px）。字の位置は小数で揺れるので 1px まで
 
@@ -161,9 +161,8 @@ const SCENES = [
   {
     title: "daily の記録の紙で打つ",
     setup: async (page) => {
-      await page.evaluate(() => KN.app.showScreen("archive"));
-      await page.waitForTimeout(900);
-      await page.click("#dock .js-open-add");
+      /* 席1 に＋は無い（構4b）。書く紙は席3 の「いま」の筆から。 */
+      await pen(page);
       await page.waitForSelector(".sheet.is-open .js-memo");
       await page.waitForTimeout(600);
       await page.$eval(".sheet.is-open .js-memo", (m) => {

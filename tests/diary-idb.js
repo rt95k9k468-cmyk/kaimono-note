@@ -152,7 +152,7 @@ const holdIdb = (ctx) => ctx.addInitScript(() => {
 
 /* 設定 → daily →「期間を選んで書き出す」を押す（「月ぶん」は2026年11月7日に外した）。押したあと、その紙が出ているか。 */
 async function tapMonthExport(page) {
-  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
   await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
@@ -282,7 +282,7 @@ async function tapMonthExport(page) {
   {
     const { browser, page, errors } = await open();
     await settled(page);
-    const today = await page.evaluate(() => KN.util.todayKey());
+    const today = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -1));   // 頁を見る日は昨日（席1 の今日は扉だけ・構4b）
     const BA = "印の試験：写しにある一日目";
     const BB = "印の試験：写しにある二日目";
     await page.evaluate(({ A, B, BA, BB }) => {
@@ -297,7 +297,7 @@ async function tapMonthExport(page) {
     await editLive(page, `
       const a = p.archive.days.find((d) => d.date === arg.A);
       a.memo = ""; a.memoOut = true;
-      // 今日の行は、開いたときに空の一行（ensureDayLog）があればそれに印を。
+      // 頁を見る日の行（昨日）は、あればそれに印を。
       const t = p.archive.days.find((d) => d.date === arg.today);
       if (t) { t.memo = ""; t.memoOut = true; }
       else p.archive.days.push({ date: arg.today, memo: "", memoOut: true, wake: null, sleep: null,
@@ -320,12 +320,12 @@ async function tapMonthExport(page) {
     t.check("違う本文は「届いている」と言わない",
       !(await page.evaluate((A) => KN.diaryIdb.delivered(A, "違う本文"), A)));
 
-    /* 写しにも無い印の日（今日）：画面は「本文が見つかりません」、紙は本文の欄なし。 */
+    /* 写しにも無い印の日（昨日）：画面は「本文が見つかりません」、紙は本文の欄なし。 */
     const memT = await page.evaluate((d) => KN.store.dayLog(d), today);
     t.check("写しにも無い印の日は、印のまま", memT && memT.memo === "" && memT.memoOut === true, JSON.stringify(memT));
     t.check("countsOf は印の行を「中身のある日」と数える", await page.evaluate(() => KN.store.countsOf().days) === 3,
       String(await page.evaluate(() => KN.store.countsOf().days)));
-    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
     await page.waitForTimeout(400);
     t.check("写しにも無い印の日は「本文が見つかりません」", (await rowMemo(page, today)) === "本文が見つかりません", await rowMemo(page, today));
     await page.click(`.arc-log-row[data-day="${today}"]`);
@@ -412,7 +412,7 @@ async function tapMonthExport(page) {
         await ctx.addInitScript(({ K, A, NORMAL }) => {
           if (localStorage.getItem(K) || sessionStorage.getItem("__seeded")) return;
           sessionStorage.setItem("__seeded", "1");
-          const n = new Date();
+          const n = new Date(); n.setDate(n.getDate() - 1);   // 昨日の頁で見る
           const k = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
           const row = (date, memo, out) => Object.assign({ date, memo, wake: null, sleep: null,
             wakeSource: "manual", sleepSource: "manual", createdAt: date, updatedAt: date }, out ? { memoOut: true } : {});
@@ -420,10 +420,10 @@ async function tapMonthExport(page) {
         }, { K: KEY, A, NORMAL });
       },
     });
-    const today = await page.evaluate(() => KN.util.todayKey());
+    const today = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -1));   // 頁を見る日は昨日（席1 の今日は扉だけ・構4b）
     t.check("（前提）元に印の行がある", await page.evaluate((d) => KN.store.memoOut(KN.store.dayLog(d)), today));
     t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
-    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
     await page.waitForTimeout(300);
     t.check("読み込み中の印の行は「読み込み中」", (await rowMemo(page, today)) === "読み込み中", await rowMemo(page, today));
     await settled(page);
@@ -473,9 +473,9 @@ async function tapMonthExport(page) {
     t.check("開いた直後は「読み込み中」", await page.evaluate(() => KN.diaryIdb.body()) === "loading");
     /* 控えは先に頼んでおく（紙・書き出しを確かめるあいだも、済むのを待ったまま）。 */
     await page.evaluate(() => { window.__took = null; KN.backup.take("試験").then((r) => { window.__took = r; }); });
-    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
     await page.waitForTimeout(200);
-    const today = await page.evaluate(() => KN.util.todayKey());
+    const today = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -1));   // 頁を見る日は昨日（席1 の今日は扉だけ・構4b）
     await page.click(`.arc-log-row[data-day="${today}"]`);
     await page.waitForTimeout(200);
     t.check("読み込み中は日記の紙を開かない", await page.evaluate(() => !document.querySelector(".sheet .js-memo")));
@@ -487,7 +487,7 @@ async function tapMonthExport(page) {
     t.check("読み込み中は控えを取らない（済むのを待つ）",
       await page.evaluate(() => window.__took === null && KN.diaryIdb.body() === "loading"));
     await page.evaluate(() => window.__idbGo());
-    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
     await page.waitForFunction(() => KN.diaryIdb.body() === "ok", null, { timeout: 8000 });
     const took = await page.waitForFunction(() => window.__took !== null, null, { timeout: 8000 }).then(() => true, () => false);
     t.check("済んだら控えが取れる", took, await page.evaluate(() => String(window.__took)));
@@ -520,7 +520,7 @@ async function tapMonthExport(page) {
     await settled(page);
     /* 行の本文（.arc-log-memo）で、どちらの本文が勝ったかを読むので、日記は一枚で（docs/thinking.md）。 */
     await page.evaluate(() => KN.store.update((s) => { s.settings.diaryView = "page"; }));
-    const today = await page.evaluate(() => KN.util.todayKey());
+    const today = await page.evaluate(() => KN.util.shiftDay(KN.util.todayKey(), -1));   // 頁を見る日は昨日（席1 の今日は扉だけ・構4b）
     const MEMO = "読めない日の試験の一行";
     await page.evaluate(({ today, MEMO }) => KN.store.setDayLog(today, { memo: MEMO, wake: "06:30" }), { today, MEMO });
     await page.waitForTimeout(600);
@@ -538,7 +538,7 @@ async function tapMonthExport(page) {
     await settled(page);
 
     t.check("大きな保存場所を開けない日は「読めない」", await page.evaluate(() => KN.diaryIdb.body()) === "off");
-    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
     await page.waitForTimeout(300);
     const row = await page.evaluate((today) => {
       const r = document.querySelector(`.arc-log-row[data-day="${today}"]`);
@@ -579,7 +579,7 @@ async function tapMonthExport(page) {
     await page.waitForTimeout(300);   // 断るときの読み直し（retry）が、また読めずに終わるのを待つ
 
     /* 直ったら、前に出てきたときに読み直す。 */
-    await page.evaluate(() => KN.app.showScreen("archive"));
+    await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
     await page.evaluate(() => { window.__idbFix = true; });
     await page.waitForTimeout(5200);   // 前に試してから5秒は読み直さない
     await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));

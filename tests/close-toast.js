@@ -18,7 +18,8 @@ const { open, checker } = require("./lib");
   const gone = (sel) => page.waitForFunction((s) => !document.querySelector(s), sel, { timeout: 3000 });
 
   /* ---- daily の log（一枚の紙。時刻ごとの書く紙は tests/diary-chat.js） ---- */
-  await page.evaluate(() => { KN.store.update((s) => { s.settings.diaryView = "page"; }); KN.app.showScreen("archive"); });
+  /* 席1 の今日は扉だけ（構4b）。書く紙は昨日の頁の行から。 */
+  await page.evaluate(() => { KN.store.update((s) => { s.settings.diaryView = "page"; }); KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -1)); });
   await page.waitForTimeout(600);
   await page.click("#screen-archive .arc-log-row");
   await page.waitForTimeout(600);
