@@ -11,7 +11,7 @@
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/capture.js */
 const path = require("path");
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 global.window = global;
 require(path.join(__dirname, "..", "js", "capture.js"));
@@ -215,10 +215,11 @@ const SEP = "\u001E";
   const tel = after.todos.find((x) => /田中/.test(x.title));
   t.check("@ で推せない字は、今日のやること", tel && tel.due === after.today, JSON.stringify(after.todos));
 
-  /* ---- daily の＋：種類を選ばずに書く紙（思考のホーム。docs/thinking.md。前は記録の紙から） ---- */
+  /* ---- 今日の筆：種類を選ばずに書く紙（思考のホーム。docs/thinking.md）。席1 に＋は無い（構4b） ---- */
   await tab("archive");
+  t.check("席1 に＋は無い", await page.evaluate(() => !document.querySelector("#dock .add-fab")));
   const memoBefore = await page.evaluate(() => JSON.stringify(KN.store.dayLog(KN.util.todayKey()) || null));
-  await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
+  await pen(page);
   await page.waitForTimeout(700);
   const d = await page.evaluate(() => {
     const s = [...document.querySelectorAll(".sheet.is-open")].pop();
@@ -235,8 +236,8 @@ const SEP = "\u001E";
       memoTall: !!m && m.getBoundingClientRect().height > innerHeight / 2,
     };
   });
-  t.check("＋で二択は出ない", !d.menu);
-  t.check("＋で書く紙が開く（種類の札・記録の紙は出ない）", d.n === 1 && !d.pick && !d.rec, JSON.stringify(d));
+  t.check("筆で二択は出ない", !d.menu);
+  t.check("筆で書く紙が開く（種類の札・記録の紙は出ない）", d.n === 1 && !d.pick && !d.rec, JSON.stringify(d));
   t.check("書く紙は欄にカーソル", d.focused);
   t.check("書く紙は塗りきった四隅の丸いカード（底が浮く）", d.card && d.bottomGap > 0, JSON.stringify({ card: d.card, gap: d.bottomGap }));
   t.check("書く欄は紙の半分より高い", d.memoTall);

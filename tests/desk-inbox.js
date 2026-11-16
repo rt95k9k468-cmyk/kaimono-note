@@ -10,7 +10,7 @@
    - 読めない・知らない kind・大きすぎるものは当てず・消さず・動かさない。職場の受け箱（inbox 直下）にも触れない
    - ノートへ移すは、そのノートが手元に届いてから外す
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-inbox.js */
-const { open, checker, URL } = require("./lib");
+const { open, checker, URL, pen } = require("./lib");
 
 (async () => {
   const t = checker("desk-inbox");
@@ -108,10 +108,8 @@ const { open, checker, URL } = require("./lib");
   await viaFab("todo", "写しで足したやること");
   await viaFab("list", "たまご");
   await viaFab("list", "写しの品");
-  /* daily の＋：今日の一件。 */
-  await A.click(".tab-archive");
-  await A.waitForTimeout(600);
-  await A.click("#dock .add-fab");
+  /* 今日の一件：席3 の「いま」の筆（構4b。席1 に＋は無い）。 */
+  await pen(A);
   await A.waitForSelector(".sheet .js-memo", { timeout: 4000 });
   await A.fill(".sheet .js-memo", "写しで書いた日記");
   await A.click(".sheet .js-ok");
