@@ -1828,6 +1828,7 @@
     const land = (at, y) => {
       if (at < 0) return;
       const screen = document.getElementById("screen-archive");
+      if (!screen || screen.hidden) return;   // tasks の「いま」の筆から書いたとき（構4c）：隠れた頁は送らない
       const go = (n) => requestAnimationFrame(() => {
         const el = screen && screen.querySelector(`.arc-post[data-key="${day}|${at}"] .arc-post-text`);
         if (!el) { if (n) go(n - 1); return; }
@@ -2405,7 +2406,8 @@
   });
 
   KN.screens.archive = { mount, render, dockButton, prepare, onEnter, again, day: () => focusDay(),
-    goDay: (d) => goDayTo(d), recountLeave, midPage, midSig };   // midPage・midSig：tasks の今日の面の頭（構4a）
+    goDay: (d) => goDayTo(d), recountLeave, midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
+    pen: (day) => openPost(day, null) };   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
 
   /* 開いたら一度、落ち着いてから（立ち上がりの一拍を重くしない）。 */
   window.addEventListener("load", () => setTimeout(() => {

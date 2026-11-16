@@ -142,7 +142,11 @@ const { open, checker } = require("./lib");
   await page.click('.tab[data-tab="todo"]');
   await page.waitForTimeout(500);
   a = await look();
-  c.check("席をもう一度押すと週へ", a.pressed === "週" && !!a.week, JSON.stringify(a.pressed));
+  c.check("席をもう一度押しても今日の面のまま（「いま」へ。構4c）", a.pressed === "今日" && !a.week, JSON.stringify(a.pressed));
+  await page.click('.wk-faces .seg-btn[data-face="week"]');
+  await page.waitForTimeout(500);
+  a = await look();
+  c.check("週は帯から", a.pressed === "週" && !!a.week, JSON.stringify(a.pressed));
 
   await page.click('.wk-day[data-day="2026-10-22"]');
   await page.waitForTimeout(500);
@@ -168,9 +172,9 @@ const { open, checker } = require("./lib");
     && JSON.stringify(a.heads) === JSON.stringify(["来週10月26日〜11月1日"]) && !a.past, JSON.stringify([a.week, next, a.heads]));
 
   // 済ませる
-  await page.click('.tab[data-tab="todo"]');
+  await page.click('.tab[data-tab="todo"]');   // 席の二度押しで今日の面の今日へ（構4c）、週は帯から
   await page.waitForTimeout(300);
-  await page.click('.tab[data-tab="todo"]');
+  await page.click('.wk-faces .seg-btn[data-face="week"]');
   await page.waitForTimeout(500);
   await page.click('.wk-row[data-id] .check');
   await page.waitForTimeout(600);

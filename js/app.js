@@ -35,11 +35,11 @@
      ——毎日そこへ「行く」ものではなく、何かを直したいときに開くもの。
      各タブの右上の歯車へ戻して、席は daily に譲ります。 */
   const TABS = [
-    { id: "archive", label: "daily", icon: "book" },
+    { id: "archive", label: "archive", icon: "book" },   // 席の名前（構4c・shots/vision/README.md 5節）：字と読み上げだけ。id・鍵は変えない
     /* **ノートは五つめの席**（2026年10月11日まで daily の紙の裏。docs/notes.md）。
        裏へ回る一手が、毎日書くものには重かったので。 */
     { id: "notes", label: "notes", icon: "notes" },
-    { id: "todo", label: "tasks", icon: "checklist" },
+    { id: "todo", label: "daily", icon: "checklist" },
     /* **価格はタブではありません。** 買うものの紙の後ろに敷いてある一枚で、
        そこへは、買うものに居るところでこの席を押して、紙を下げて行きます
        （2026年9月28日まで掴み手を引いていた。いまの掴み手は暦のもの）。だから帯には席を持たず、価格を見て
@@ -54,8 +54,8 @@
 
   /* 裏面の名前と絵。表と同じ形で持っておくと、塗るときに分岐が要りません。 */
   const FACES = {
-    todo:     { label: "tasks",    icon: "checklist" },
-    archive:  { label: "daily",    icon: "book" },
+    todo:     { label: "daily",    icon: "checklist" },
+    archive:  { label: "archive",  icon: "book" },
     list:     { label: "shopping", icon: "cart" },
     prices:   { label: "prices",   icon: "tag" },
     notes:    { label: "notes",    icon: "notes" },

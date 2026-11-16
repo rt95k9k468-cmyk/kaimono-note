@@ -6451,13 +6451,19 @@
       これからを分けるようになったので、「いま」は塗りの境目としてもう
       画面に出ています。そこへ点と線を重ねると、同じことを三度言うことに
       なります。残すのは、境目が**何時なのか**だけ（それは色では言えない）。
-      参考にした画面も、ここは太字の時刻ひとつです。 */
+      参考にした画面も、ここは太字の時刻ひとつです。
+      札のすぐ右に日記の筆（構4c・README 6.5「筆＝いまのことを書く」）。daily の線の筆と同じ紙。線の右端は
+      進んでいる用事の札と丸に重なるので、時刻の列と背骨のあいだに。 */
   function nowMark(nowMin, y) {
-    return node(html`
+    const el = node(html`
       <span class="tl-now" style="top:${y.toFixed(1)}px">
         <span class="tl-time is-now">${tlClock(KN.plan.toTime(nowMin))}</span>
+        ${KN.screens.archive && KN.screens.archive.pen ? html`<button type="button" class="tl-now-pen" aria-label="いまのことを書く">${icon("edit")}</button>` : ""}
       </span>
     `);
+    const pen = el.querySelector(".tl-now-pen");
+    if (pen) pen.addEventListener("click", (e) => { e.stopPropagation(); KN.screens.archive.pen(todayKey()); });
+    return el;
   }
 
   /* ---------------- 物差し（目盛り・背骨・畳んだ空き） ----------------
@@ -7156,9 +7162,10 @@
       - sc.getBoundingClientRect().top - sc.clientTop - faceFloor()));
   }
 
-  function toNow() {
+  function toNow(glide) {
     if (!root) return;
     keepAim++;
+    const put = (sc, to) => { if (glide === true) KN.app.glideTo(sc, to); else sc.scrollTop = to; };   // 席の二度押しだけ滑らせる（rAF の時刻は true でない）
     /* **今日の面は、まだのものの頭から**——前の日から・道（上のとき）・はみ出しの一行・物差しが帯のすぐ下。済ませた
        ものの一覧があれば、それを帯の裏へ送ったところ（doneRest。無ければ紙の頭）。物差しは いまの時 から始まり、
        その上に居るのはどれも これからのこと（過ぎてもまだの用事も）なので、「いま」を画面の4割（AIM）へ寄せると
@@ -7169,7 +7176,7 @@
     const roadUp = store.get().settings.todoRoadAt !== "below" && root.querySelector(".day-slide:not(.is-peek) .day-strip");
     if (today || roadUp) {
       const to = Math.min(doneRest(sc), Math.max(0, sc.scrollHeight - sc.clientHeight));
-      if (Math.abs(to - sc.scrollTop) >= 1) sc.scrollTop = to;
+      if (Math.abs(to - sc.scrollTop) >= 1) put(sc, to);
       return;
     }
     const mark = root.querySelector(".tl-now")
@@ -7185,15 +7192,16 @@
     const max = Math.max(0, root2.scrollHeight - root2.clientHeight);
     const to = Math.round(Math.min(max, Math.max(0, want)));
     if (Math.abs(to - root2.scrollTop) < 4) return;
-    root2.scrollTop = to;
+    put(root2, to);
   }
 
-  /* tasks の席をもう一度押したら、今日｜週 を行き来（2026年10月18日、利用者。前の「時間割 ⇄ 一日の道」の
-     置き換え）。一覧で見ているときは断ります（帯は今までどおり組み直す）。 */
+  /* daily（席3）の席をもう一度押したら「いま」へ（構4c・README 6.3）：今日の面の今日でなければそこへ、居れば「いま」へ滑らせる。
+     前の「今日｜週 を行き来」（2026年10月18日）は置き換えた——週・月は 今日｜週｜月 の帯から。一覧で見ているときは断ります。 */
   function again() {
     if (!oneDay()) return false;
     if (faceFixed) return true;   // 試験の台本：面は替えず、組み直しもしない
-    setFace(face === "week" ? "today" : "week", todayKey());
+    if (face !== "today" || shownDay() !== todayKey()) setFace("today", todayKey());
+    else toNow(true);
     return true;
   }
 

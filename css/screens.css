@@ -3179,7 +3179,7 @@ a.btn { text-decoration: none; }
 .pg-row.is-plan { align-items: center; margin: 3px 0; }
 .pg-row > .pg-plan { display: flex; align-items: center; gap: var(--sp-2); margin-left: var(--sp-2); padding: 4px var(--sp-2) 4px var(--sp-3); border-radius: var(--r-md); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
 .pg-plan-t { flex: 1; min-width: 0; min-height: 36px; text-align: left; font-size: calc(15.5px * var(--fs-k)); color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity var(--m-state) var(--ease); }
-.pg-now-pen:active, .pg-plan-t:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.pg-now-pen:active, .tl-now-pen:active, .pg-plan-t:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .pg-about { display: block; font-style: normal; font-size: var(--fs-xs); line-height: 1; }
 
 /* ---- ④積み上げ項目 ---- */
@@ -3758,15 +3758,14 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
      数字で書いておきます——足す順に頼ると、順を変えたときに黙って
      壊れます。 */
   z-index: 1;
+  /* 高さ 0 の行のまん中に札と筆（構4c）。札の幅は字で変わるので、筆は札に続けて並べる（測らない）。 */
+  display: flex; align-items: center; gap: 2px;
 }
-.tl-now .tl-time {
-  position: absolute;
-  left: 0; top: 0;
-  width: 44px;
-  padding-right: 3px;
-  text-align: right;
-  transform: translateY(-50%);
-}
+.tl-now > * { flex: none; z-index: 1; }   /* 線（::after）より前 */
+/* 日記の筆（構4c・daily の線の筆 .pg-now-pen の小さい形）。層は押せない作り（.tl-axis）なので、筆だけ押せる。当たりは ::before で 44px。 */
+.tl-now-pen { position: relative; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--c-surface); color: var(--c-text-2); box-shadow: inset 0 0 0 1.5px var(--c-now); pointer-events: auto; transition: opacity var(--m-state) var(--ease); }
+.tl-now-pen::before { content: ""; position: absolute; inset: -9px -4px; }
+.tl-now-pen svg { width: var(--ico-sm); height: var(--ico-sm); }
 /* ここには点（.tl-now-dot）と、右へ流れる線（.tl-now-line）がありました。
    **外しました。** 丸薬と背骨が、過ぎたぶんとこれからで色を変えるように
    なったので、「いま」はもう塗りの境目として画面に出ています。そこへ点と

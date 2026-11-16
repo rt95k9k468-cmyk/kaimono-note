@@ -80,15 +80,15 @@ const { open, checker } = require("./lib");
   });
 
   /* ---- 五つめの席（2026年10月11日まで daily の裏） ---- */
-  t.check("帯は daily / notes / tasks / shopping / health の五席",
+  t.check("帯は archive / notes / daily / shopping / health の五席（構4c）",
     (await page.$$eval("#tabbar .tab", (bs) => bs.map((b) => b.dataset.tab + ":" + b.querySelector(".tab-label").textContent).join(",")))
-      === "archive:daily,notes:notes,todo:tasks,list:shopping,diet:health");
+      === "archive:archive,notes:notes,todo:daily,list:shopping,diet:health");
   await page.evaluate(() => KN.app.showScreen("archive"));
   await settled("archive");
   await tab("notes");
   await settled("notes");
   t.check("notes の席を押すとノートが出る（daily の紙は留まらない）", (await active()) === "notes" && !(await parked()));
-  t.check("daily の席は daily のまま", (await label()) === "daily", await label());
+  t.check("archive の席は archive のまま", (await label()) === "archive", await label());
   t.check("ノートの＋が出ている", !!(await page.$("#dock .add-fab")));
   /* 二週間の絵は既定で畳んである（3.1 の S4）。ノートで消えるのを見るために出す。 */
   await page.evaluate(() => KN.store.update((s) => { s.settings.showUpcoming = true; }));
