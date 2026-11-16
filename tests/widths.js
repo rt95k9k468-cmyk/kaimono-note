@@ -143,7 +143,7 @@ async function seed(page) {
       await page.waitForTimeout(500);
       const at = `${w}×${h}（${label}）`;
       const wide = [], out = [], small = [];
-      let frame = null;
+      let frame = null, fabFrame = null;   // ＋は席1 に無い（構4b）ので、帯と＋の組は席3 で測る
       for (const s of SEATS) {
         await page.click(`.tab-${s}`);
         await page.waitForTimeout(450);
@@ -157,6 +157,7 @@ async function seed(page) {
           else small.push(`${s}: ${x.name} ${x.px}px`);
         }
         if (s === "archive") frame = await page.evaluate(frameFn);
+        if (s === "todo") fabFrame = await page.evaluate(frameFn);
       }
       t.check(`${at}：どの席も頁が横に伸びない`, !wide.length, wide.join(" | "));
       t.check(`${at}：窓の外へ出た字・押すところが無い`, !out.length, out.slice(0, 6).join(" | "));
@@ -172,14 +173,14 @@ async function seed(page) {
           JSON.stringify(fr && { read: fr.read, slide: fr.slideW }));
       }
       if (w < 840) {
-        const c = fr && fr.cap, p = fr && fr.fab;
+        const c = fabFrame && fabFrame.cap, p = fabFrame && fabFrame.fab;
         /* 帯と＋はひと組で窓の中（docs/redesign.md 5節）。640px からは 帯 520px＋間 12px＋＋ 56px を真ん中に。 */
         const capOk = !!c && !!p && c.l >= 0 && p.r <= fr.vw && c.b <= fr.vh && (w < 640 || (c.w <= 520 && Math.abs(c.l - (fr.vw - p.r)) <= 1));
         t.check(`${at}：下の帯と＋は窓の中${w >= 640 ? "・ひと組で真ん中（帯は 520px まで）" : ""}`, capOk, JSON.stringify({ c, p }));
         t.check(`${at}：＋は帯と同じ段の右（重ならない・背の真ん中がそろう）`, !!c && !!p && p.l >= c.r && p.l - c.r <= 16
           && Math.abs((p.t + p.b) / 2 - (c.t + c.b) / 2) <= 2, JSON.stringify({ c, p }));
       } else {
-        const b = fr && fr.bar, p = fr && fr.fab;
+        const b = fabFrame && fabFrame.bar, p = fabFrame && fabFrame.fab;
         /* ＋は列の底（右下の角では右の段の行の端にかぶった。docs/redesign.md の W5）。 */
         t.check(`${at}：左の列は窓の背いっぱい、＋は列の底の中`,
           !!b && !!p && b.l === 0 && b.t === 0 && b.b === fr.vh && p.l >= b.l && p.r <= b.r && p.b <= fr.vh && p.b > fr.vh - 40, JSON.stringify({ bar: b, fab: p }));
