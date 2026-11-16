@@ -912,8 +912,8 @@ bfcache からの `pageshow`）に、人が四歩あるいて、いつもの形�
 - 日記・daily の鍵のあいだは頁を組まない・面は覆わない（daily と同じ）。組み直しの印は `midSig`（`sheetDigest`）。試験は timeline-done-rest・diary-lock・daily-rules。
 
 #### 「いま」・済ませたもの・進んでいる用事の見た目
-- **札の右に日記の筆**（`.tl-now-pen`・構4c）：日記の一件を書く紙（`KN.screens.archive.pen`）。4b の二つめ（11月16日）から今日を書く口はここだけ（席1 の線・＋は外した）。
-  頁の頭（`headPage`）は今日の問い（`archive.ask`）と「いま」より上の頁（`midPage`）。線の右端は進んでいる札と丸に重なるので、
+- **札の右に日記の筆**（`.tl-now-pen`・構4c）：日記の一件を書く紙（`KN.screens.archive.pen`）。席1 の今日の机の「日記に書く」も同じ紙（11月16日）。
+  頁の頭（`headPage`）は「いま」より上の頁（`midPage`。日記は「時刻 日記追記」の一行だけ。問いは席1 の机）。線の右端は進んでいる札と丸に重なるので、
   時刻の列と背骨のあいだ。`.tl-now` は高さ0の flex（札の幅は測らない）。層は押せない作りなので筆だけ `pointer-events: auto`。
 - **「いま」は太字の時刻ひとつ**（`.tl-now`）。点（`.tl-now-dot`）と右へ
   流れる線（`.tl-now-line`）は外した——塗りの境目がすでに「いま」を

@@ -3037,6 +3037,29 @@ a.btn { text-decoration: none; }
 /* ---- 今日の問い（docs/thinking.md）。ノート・思考の札は notes の＋へ（構4b）。 ---- */
 .think-home { display: flex; flex-direction: column; gap: var(--sp-3); }
 .think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+/* 今日の机（席1 の今日・候の札のすぐ下）：日記に書く＝朱の塗り｜コピー、その下に今日の問い。電話は 60px の帯。 */
+.arc-desk { display: flex; flex-direction: column; gap: var(--sp-3); }
+.arc-desk-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.think-card {
+  position: relative; min-width: 0; height: 96px; padding: 10px 12px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
+}
+.think-card.is-main { background: var(--c-primary); border-color: transparent; }
+.think-card:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.think-card-art { position: absolute; right: -6px; top: -2px; width: 84px; height: 70px; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.think-card-t { position: relative; color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.35; word-break: keep-all; }
+.think-card.is-main .think-card-t { color: var(--c-text-on); }
+.arc-desk-copy { min-width: 88px; align-items: center; justify-content: center; gap: var(--sp-1); color: var(--c-text-2); }
+.arc-desk-copy svg { width: var(--ico); height: var(--ico); flex: none; }
+.arc-desk-copy .think-card-t { font-size: var(--fs-sm); color: var(--c-text-2); }
+@media (max-width: 639.98px) {
+  .think-card { height: 60px; justify-content: center; }
+  .think-card-t { z-index: 1; }
+  .think-card-art { top: 50%; right: -8px; translate: 0 -50%; width: 46px; height: 46px; }
+  .arc-desk-copy { flex-direction: row; }
+}
 /* 章の扉（構4b・README 8）：候の絵を地に、名は縦書きの明朝（モダンは横組み）。押すと季節のひとこと（行は候の札と同じ）。 */
 .arc-season.arc-door { display: flex; flex-direction: column; gap: var(--sp-3); padding: 0; }
 .arc-door .arc-door-face { position: relative; display: block; width: 100%; height: clamp(220px, 34svh, 300px); margin: 0; padding: 0; overflow: hidden;
@@ -3150,8 +3173,8 @@ a.btn { text-decoration: none; }
 .pg-row .pg-body > svg { flex: none; width: 1em; height: 1em; translate: 0 .15em; color: var(--c-take); }
 .pg-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pg-row.is-many .pg-title { white-space: normal; }
-.pg-row.is-times { cursor: pointer; transition: opacity var(--m-state) var(--ease); }
-.pg-row.is-times:active, .pg-row.is-done:active, .pg-row.is-bought:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.pg-row.is-times, .pg-row.is-diary-at { cursor: pointer; transition: opacity var(--m-state) var(--ease); }
+.pg-row.is-times:active, .pg-row.is-diary-at:active, .pg-row.is-done:active, .pg-row.is-bought:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .pg-foot { padding: var(--sp-3) 0 0 62px; font-size: calc(13.5px * var(--fs-k)); color: var(--c-text-2); }
 .arc-post.pg-row { padding: 10px 0; color: var(--c-text); }
 .arc-post-at { display: inline-flex; justify-content: flex-end; align-items: baseline; gap: 3px; }
@@ -6891,7 +6914,7 @@ button.note-when:active { opacity: var(--press-fade); }
     .day-slide.is-front > .arc-season { grid-column: 1; }
     .day-slide > .day-main { grid-column: 1; grid-row: 1 / -1; }
     .day-slide > .arc-then, .day-slide > .arc-any, .day-slide > .arc-shelf { grid-column: 2; }
-    .day-slide.is-front > .arc-shelf { grid-column: 1; }   /* 今日（構4b）：左に扉と棚、右にいまごろ */
+    .day-slide.is-front > .arc-shelf, .day-slide.is-front > .arc-desk { grid-column: 1; }   /* 今日（構4b）：左に扉・机・棚、右にいまごろ */
     .day-slide.is-front > .arc-then { grid-row: 1 / -1; }
   }
   @container seat (min-width: 1100px) {

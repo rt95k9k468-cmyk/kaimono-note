@@ -150,7 +150,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     window.__ear.observe(document.body, { childList: true, subtree: true });
   });
   const said = () => page.evaluate(() => (window.__said || []).join("|"));
-  /* 今日の頁は席3（tasks の頭の頁）、過ぎた日の頁は席1（構4b の二つめ）。R は頁の器、day は記録の日。 */
+  /* 今日の頁は席3（tasks の頭の頁。日記は「時刻 日記追記」の一行だけ・押すと直す紙。11月16日）、過ぎた日の頁は席1（構4b の二つめ）。R は頁の器、day は記録の日。 */
   const TODAY = day, YEST = "2026-10-05";
   let R = "#screen-todo .tk-page";
   const toToday = async () => { day = TODAY; R = "#screen-todo .tk-page";
@@ -159,49 +159,50 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await page.evaluate((d) => { KN.app.showScreen("archive"); KN.screens.archive.goDay(d); }, YEST); await page.waitForTimeout(400); };
   /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
   const tool = async (k, name) => {
+    if (R.startsWith("#screen-todo")) { if (name !== "edit") throw new Error("席3 の一行は直すだけ"); await page.click(`${R} .is-diary-at[data-k="${k}"]`); return; }
     const p = `${R} .arc-post[data-k="${k}"]`;
     if (!(await page.$(`${p}.is-tools`))) await page.click(`${p} .arc-post-text`);
     await page.click(`${p} .js-post-${name}`);
   };
-  const posts = () => page.evaluate((r) => [...document.querySelectorAll(`${r} .arc-log-row.is-chat .arc-post`)]
-    .map((p) => ({ at: (p.querySelector(".arc-post-at") || {}).textContent || null, text: p.querySelector(".arc-post-text").textContent })), R);
+  const posts = () => page.evaluate((r) => (r.startsWith("#screen-todo")
+    ? [...document.querySelectorAll(`${r} .is-diary-at`)].map((p) => ({ at: p.querySelector(".pg-at").textContent || null, text: p.querySelector(".pg-body").textContent }))
+    : [...document.querySelectorAll(`${r} .arc-log-row.is-chat .arc-post`)]
+      .map((p) => ({ at: (p.querySelector(".arc-post-at") || {}).textContent || null, text: p.querySelector(".arc-post-text").textContent }))), R);
+  const midText = () => page.evaluate(() => (document.querySelector("#screen-todo .tk-page") || {}).textContent || "");
 
-  await page.evaluate(() => KN.app.showScreen("todo"));
+  await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
 
-  /* ---- 冒頭：今日の問い（席3 の今日の頁の頭）。書く口は「いま」の筆 ---- */
+  /* ---- 席1 の今日：候の札のすぐ下に机（日記に書く・コピー・今日の問い）。席3 に問いは無く、筆はある（11月16日） ---- */
   /* 札の絵は読み終わるまで待つ（混んだ機械では 500ms で読み終わらず揺れた。2026年10月31日、-j 6）。 */
-  await page.waitForFunction(() => { const h = document.querySelector("#screen-todo .tk-page .think-home");
+  await page.waitForFunction(() => { const h = document.querySelector("#screen-archive .arc-desk .think-home");
     return !h || [...h.querySelectorAll("img")].every((im) => im.complete); }, null, { timeout: 8000 }).catch(() => {});
   const home = await page.evaluate(() => {
-    const root = document.getElementById("screen-todo"), arc = document.getElementById("screen-archive");
-    const h = root.querySelector(".tk-page .think-home");
-    return { home: !!h, first: !!(h && h.parentNode.firstElementChild === h),
-      write: !!(h && h.querySelector(".js-think-write, .is-main")), pen: !!root.querySelector(".tl-now-pen"),
-      think: !!(h && h.querySelector(".js-think-new")), arc: !!arc.querySelector(".think-home, .pg-now-pen, .arc-log"),
-      cards: h ? [...h.querySelectorAll(".think-card-t")].map((x) => x.textContent.trim()) : [],
-      cardIcons: h ? h.querySelectorAll(".think-card svg").length : -1,
+    const root = document.getElementById("screen-archive"), mid = document.getElementById("screen-todo");
+    const desk = root.querySelector(".day-slide > .arc-desk"), h = desk && desk.querySelector(".think-home");
+    return { home: !!h, after: !!(desk && desk.previousElementSibling && desk.previousElementSibling.classList.contains("arc-season")),
+      write: !!(desk && desk.querySelector(".js-desk-write.is-main")), copy: !!(desk && desk.querySelector(".js-desk-copy")), pen: !!mid.querySelector(".tl-now-pen"),
+      think: !!(h && h.querySelector(".js-think-new")), mid: !!mid.querySelector(".think-home"), log: !!root.querySelector(".day-slide:not(.is-peek) .arc-log"),
       q: h ? (h.querySelector(".js-think-q") || {}).textContent : "",
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
-  t.check("構4b：今日の問いは席3 の今日の頁の頭。ノート・思考の札と朱の「日記に書く」は無く、書く口は「いま」の筆", home.home && home.first && !home.write
-    && home.pen && !home.cards.length && home.cardIcons <= 0 && !home.think, JSON.stringify(home));
-  t.check("席1 の今日に問い・筆・Daily Log は無い", !home.arc);
+  t.check("席1 の今日：候の札のすぐ下に机（日記に書く・コピー・今日の問い）。思考の札は無い", home.home && home.after && home.write && home.copy && !home.think, JSON.stringify(home));
+  t.check("席1 の今日に Daily Log は無く、席3 に問いは無い・筆はある", !home.log && !home.mid && home.pen, JSON.stringify(home));
   t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 1 && home.arts.every(Boolean), JSON.stringify(home));
   t.check("絵文字なし", !home.emoji);
 
   /* ---- 書く口：種類を選ばずに書く紙。打った先から残る ---- */
   /* ---- 今日の問い：「別の問い」で替わる。この問いから考える＝答える紙（問いは欄の外）。打つまで書かない ---- */
   {
-    const q0 = await page.textContent("#screen-todo .js-think-q");
-    await page.click("#screen-todo .js-think-other");
-    const q1 = await page.textContent("#screen-todo .js-think-q");
+    const q0 = await page.textContent("#screen-archive .js-think-q");
+    await page.click("#screen-archive .js-think-other");
+    const q1 = await page.textContent("#screen-archive .js-think-q");
     t.check("別の問いで替わる", q0 && q1 && q0 !== q1, `${q0} → ${q1}`);
     const before0 = await memo();
     await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
     const notes0 = await page.evaluate(() => KN.notes.list().length);
-    await page.click("#screen-todo .js-think-today");
+    await page.click("#screen-archive .js-think-today");
     await page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 });
     const v = await page.evaluate(() => { const s = document.querySelector(".sheet.is-open"), a = s.querySelector(".js-a");
       return { q: s.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a }; });
@@ -263,7 +264,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("新しい一件を閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
   /* 席3 の頭の頁は日付だけの頭を出さない（日付は題が言う）。 */
-  t.check("一件が時刻つきで出る（席3 の今日の頁）", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "一件目の字", JSON.stringify(p1));
+  t.check("席3 の今日の頁は「12:34 日記追記」の一行だけ（本文は出さない）", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記追記" && !(await midText()).includes("一件目の字"), JSON.stringify(p1));
 
   /* ---- 席1 に＋は無い（構4b）。二件目も筆から ---- */
   await page.evaluate(() => KN.app.showScreen("archive"));
@@ -540,7 +541,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await setMemo(imported);
   await page.waitForTimeout(300);
   const ip = await posts();
-  t.check("印の無い時刻の行は分けず、時刻なしの吹き出し一つ", ip.length === 1 && ip[0].at === null && ip[0].text === imported, JSON.stringify(ip.map((x) => x.at)));
+  t.check("印の無い時刻の行は分けず、時刻なしの一行一つ（本文は出さない）", ip.length === 1 && ip[0].at === null && ip[0].text === "日記追記" && !(await midText()).includes("起きた"), JSON.stringify(ip));
   await tool(0, "edit");
   await sheetOpen();
   await closeSheet();
@@ -618,7 +619,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n13:00\nあとの一件"));
     await page.waitForTimeout(400);
     const head = await posts();
-    t.check("席3 の頭は「いま」より上の行だけ（13:00 の一件は出さない）", JSON.stringify(head.map((x) => x.at + x.text)) === JSON.stringify(["08:00朝の一件"]), JSON.stringify(head));
+    t.check("席3 の頭は「いま」より上の行だけ（13:00 の一件は出さない）", JSON.stringify(head.map((x) => x.at + x.text)) === JSON.stringify(["08:00日記追記"]), JSON.stringify(head));
     t.check("席1 に「いま」の線・二度押しは無い", await page.evaluate(() => !document.querySelector("#screen-archive .pg-now") && !KN.screens.archive.again));
     await pen(page);
     await sheetOpen();
@@ -665,16 +666,16 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- 今日の問い：読み込み直すと、出た問いを避けて替わる ---- */
   {
-    await page.evaluate(() => KN.app.showScreen("todo"));
-    await page.waitForSelector("#screen-todo .js-think-q", { timeout: 5000 });
-    const before = await page.textContent("#screen-todo .js-think-q");
+    await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("archive"); });
+    await page.waitForSelector("#screen-archive .js-think-q", { timeout: 5000 });
+    const before = await page.textContent("#screen-archive .js-think-q");
     await page.waitForTimeout(300);
     const seen = await page.evaluate(() => (KN.store.get().settings.askSeen || []).slice());
     await page.reload();
     await page.waitForFunction(() => window.KN && KN.app, null, { timeout: 5000 });
-    await page.evaluate(() => KN.app.showScreen("todo"));
-    await page.waitForSelector("#screen-todo .js-think-q", { timeout: 5000 });
-    const after = await page.textContent("#screen-todo .js-think-q");
+    await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("archive"); });
+    await page.waitForSelector("#screen-archive .js-think-q", { timeout: 5000 });
+    const after = await page.textContent("#screen-archive .js-think-q");
     t.check("読み込み直すと今日の問いが替わる（出た問いは避ける）", before && after && before !== after
       && seen.length >= 1 && !seen.includes(after.normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "")), JSON.stringify([before, after, seen.length]));
   }

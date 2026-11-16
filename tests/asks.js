@@ -9,7 +9,7 @@
      ノート（thinking へ）。同じ問いは同じノートの終わりに日付と時刻の行をはさんで。打たずに閉じれば書かない
    - 問いの面：続きから考える（最後に書いた順・前の答えを読んで続きを足す）・＋問いをつくる（同じ問いはつくらない）・
      一区切り（畳んだ段・消さない・読み込み直しても・再開）・空で閉じても変わらない
-   - 今日の問い（席3 の今日の頁の頭・構4b）：前の日に書いた問いは引かない・一区切りは引かない・ノートに書いた「？」の問いが「あなたの問い」で混ざり、押すとそのノートへ。日記の「？」は混ざらない
+   - 今日の問い（席1 の今日・候の札の下の机。11月16日）：前の日に書いた問いは引かない・一区切りは引かない・ノートに書いた「？」の問いが「あなたの問い」で混ざり、押すとそのノートへ。日記の「？」は混ざらない
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/asks.js */
 const { open, checker, ASKS } = require("./lib");
@@ -289,48 +289,48 @@ const { open, checker, ASKS } = require("./lib");
   const { left, past: pastNote } = await page.evaluate((y) => {
     const all = KN.store.get().asks.map((a) => a.q), N = KN.notes, n = N.draft(), at = `${y}T03:00:00.000Z`;
     n.title = "前の日の問い"; n.body = all.slice(1).map((q) => `？${q}`).join("\n"); n.createdAt = at; n.updatedAt = at; N.put(n);
-    KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("todo");
+    KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("archive");
     return { left: all[0], past: n.id };
   }, yest);
   await page.waitForTimeout(500);
   const qs = [];
   for (let i = 0; i < 3; i++) {
-    qs.push(await page.textContent("#screen-todo .js-think-q"));
-    await page.click("#screen-todo .js-think-other");
+    qs.push(await page.textContent("#screen-archive .js-think-q"));
+    await page.click("#screen-archive .js-think-other");
   }
   t.check("前の日に書いた問いは引かず、残りの問いだけ", qs.every((x) => x === left), JSON.stringify(qs));
   await page.evaluate((q) => { const k = String(q).normalize("NFKC").replace(/\s+/g, ""); KN.store.update((s) => { s.settings.askRest = { [k]: "x" }; }); }, left);
   await page.waitForTimeout(400);
   const qr = [];
   for (let i = 0; i < 3; i++) {
-    qr.push(await page.textContent("#screen-todo .js-think-q"));
-    await page.click("#screen-todo .js-think-other");
+    qr.push(await page.textContent("#screen-archive .js-think-q"));
+    await page.click("#screen-archive .js-think-other");
   }
   t.check("一区切りの問いは今日の問いに引かない", !qr.includes(left), JSON.stringify(qr));
   await page.evaluate(() => KN.store.update((s) => { s.settings.askRest = {}; }));
   await page.waitForTimeout(400);
   const ctx = await page.evaluate(() => {
-    const c = document.querySelector("#screen-todo .think-today .js-think-ctx"), it = KN.store.get().asks[0];
+    const c = document.querySelector("#screen-archive .think-today .js-think-ctx"), it = KN.store.get().asks[0];
     return { shown: !!c && !c.hidden && c.offsetHeight > 0, from: c && c.querySelector(".js-think-from").textContent === it.from,
       hint: c && c.querySelector(".js-think-hint").textContent === it.hint,
-      big: parseFloat(getComputedStyle(document.querySelector("#screen-todo .js-think-q")).fontWeight) >= 600 };
+      big: parseFloat(getComputedStyle(document.querySelector("#screen-archive .js-think-q")).fontWeight) >= 600 };
   });
   t.check("今日の問い：問いは太く、下に出典と文脈（畳まない）", ctx.shown && ctx.from && ctx.hint && ctx.big, JSON.stringify(ctx));
 
   /* 今日の問いの×（考えない）：別の問いに替わり、二度と引かない。元に戻せる（ほかを押すと「元に戻す」は下がる）。 */
-  const q0 = await page.textContent("#screen-todo .js-think-q");
+  const q0 = await page.textContent("#screen-archive .js-think-q");
   const noCount = () => page.evaluate(() => Object.keys(KN.store.get().settings.askNo || {}).length);
-  await page.click("#screen-todo .js-think-no");
+  await page.click("#screen-archive .js-think-no");
   await page.waitForTimeout(400);
   const n1 = await noCount();
   const undone = await page.evaluate(() => { const b = [...document.querySelectorAll(".toast .toast-action")].pop(); if (b) b.click(); return b ? b.textContent : null; });
   await page.waitForTimeout(300);
   t.check("今日の問いの×のあと「元に戻す」で外れる", n1 === 1 && (await noCount()) === 0, JSON.stringify([n1, undone]));
-  for (let i = 0; i < 20 && (await page.textContent("#screen-todo .js-think-q")) !== q0; i++) await page.click("#screen-todo .js-think-other");
-  await page.click("#screen-todo .js-think-no");
+  for (let i = 0; i < 20 && (await page.textContent("#screen-archive .js-think-q")) !== q0; i++) await page.click("#screen-archive .js-think-other");
+  await page.click("#screen-archive .js-think-no");
   await page.waitForTimeout(400);
-  const qn = [await page.textContent("#screen-todo .js-think-q")];
-  for (let i = 0; i < 6; i++) { await page.click("#screen-todo .js-think-other"); qn.push(await page.textContent("#screen-todo .js-think-q")); }
+  const qn = [await page.textContent("#screen-archive .js-think-q")];
+  for (let i = 0; i < 6; i++) { await page.click("#screen-archive .js-think-other"); qn.push(await page.textContent("#screen-archive .js-think-q")); }
   const noKeys = await page.evaluate(() => Object.values(KN.store.get().settings.askNo || {}).map((x) => x.q));
   t.check("今日の問いの×：その問いは二度と引かない（覚える）", q0 === left && !qn.includes(q0) && noKeys.join() === q0, JSON.stringify([q0, qn, noKeys]));
   /* 設定の「考えない問いをコピー」は、この考えない問いのまま確かめる（あとで）。 */
@@ -340,25 +340,25 @@ const { open, checker, ASKS } = require("./lib");
   await page.waitForTimeout(500);
   const fromDiary = [];
   for (let i = 0; i < 9; i++) {
-    fromDiary.push(await page.textContent("#screen-todo .js-think-q"));
-    await page.click("#screen-todo .js-think-other");
+    fromDiary.push(await page.textContent("#screen-archive .js-think-q"));
+    await page.click("#screen-archive .js-think-other");
   }
   t.check("日記の「？」の行は今日の問いに引かない", !fromDiary.includes("試験の日記の問い"), JSON.stringify(fromDiary));
   await page.evaluate((id) => { const n = KN.notes.get(id); KN.notes.edit(id, { body: `${n.body}\n？ 試験の自分の問い` }); }, pastNote);
-  await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("todo"); });
+  await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("archive"); });
   await page.waitForTimeout(500);
   let mine = null;
   for (let i = 0; i < 9 && !mine; i++) {
     const got = await page.evaluate(() => {
-      const h = document.querySelector("#screen-todo .think-today");
+      const h = document.querySelector("#screen-archive .think-today");
       return { t: h.querySelector(".js-think-t").textContent, q: h.querySelector(".js-think-q").textContent, ctx: !h.querySelector(".js-think-ctx").hidden };
     });
     if (got.t === "あなたの問い") mine = got;
-    else await page.click("#screen-todo .js-think-other");
+    else await page.click("#screen-archive .js-think-other");
   }
   t.check("自分で書いた問いが「あなたの問い」として出る（出典・文脈は無い）", !!mine && mine.q === "試験の自分の問い" && !mine.ctx, JSON.stringify(mine));
   const bodyBefore = await page.evaluate((id) => KN.notes.get(id).body, pastNote);
-  await page.click("#screen-todo .js-think-today");
+  await page.click("#screen-archive .js-think-today");
   await page.waitForTimeout(500);
   const after = await page.evaluate((id) => ({ body: KN.notes.get(id).body,
     screen: document.querySelector(".screen.is-active").dataset.screen }), pastNote);

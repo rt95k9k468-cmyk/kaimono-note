@@ -43,14 +43,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
   };
   const said = () => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((x) => x.textContent).join("|"));
   /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
-  const tool = async (k, name) => {
-    const p = `#screen-todo .tk-page .arc-post[data-k="${k}"]`;
-    if (!(await page.$(`${p}.is-tools`))) await page.click(`${p} .arc-post-text`);
-    await page.click(`${p} .js-post-${name}`);
-  };
-  const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .tk-page .arc-log-row.is-chat .arc-post")]
-    .map((p) => ({ good: p.classList.contains("is-good"), sun: !!p.querySelector(".arc-post-at svg"),
-      text: p.querySelector(".arc-post-text").textContent })));
+  /* 今日の日記は席3 の頭に「時刻 日記追記」の一行だけ（押すとその一件の直す紙）。全文のコピーは席1 の机（11月16日）。 */
+  const edit = (k) => page.click(`#screen-todo .tk-page .is-diary-at[data-k="${k}"]`);
+  const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .tk-page .is-diary-at")]
+    .map((p) => ({ at: p.querySelector(".pg-at").textContent, text: p.querySelector(".pg-body").textContent,
+      page: document.querySelector("#screen-todo .tk-page").textContent })));
 
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
@@ -85,8 +82,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await closeSheet();
   t.check("閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
-  /* 今日の頁は席3 の頭（頭の日付だけの一件は出さない）。 */
-  t.check("頁の行は温かい地・陽の絵、印は見せない", p1.length === 1 && p1[0].good && p1[0].sun && p1[0].text === "よい字", JSON.stringify(p1));
+  /* 今日の頁は席3 の頭（頭の日付だけの一件は出さない）。本文も印も見せない。 */
+  t.check("席3 の頁は「12:34 日記追記」の一行・本文と印は見せない", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記追記" && !/よい字|よかった/.test(p1[0].page), JSON.stringify(p1));
 
   /* ---- 書いてから札を押しても、その一件に印。押し直せば外れる ---- */
   await pen(page);
@@ -126,7 +123,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("空にした一件は外れ、前の本文のまま", m3 === m2, JSON.stringify(m3));
 
   /* ---- 直す紙：印は欄に見せず、札は押してある。直しても印は残る ---- */
-  await tool(1, "edit");
+  await edit(1);
   await sheetOpen();
   const s2 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
@@ -143,9 +140,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- コピー・書き出しの字にだけ「よかった：」 ---- */
   await page.evaluate(() => { KN.util.copy = (s) => { window.__copied = s; return Promise.resolve(true); }; });
-  await tool(1, "copy");
+  await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("archive"); });
+  await page.click("#screen-archive .day-slide:not(.is-peek) .js-desk-copy");
   await page.waitForTimeout(200);
-  t.check("一件のコピーは「よかった：」つき", (await page.evaluate(() => window.__copied)) === "よかった：よい字を直した", await page.evaluate(() => window.__copied));
+  const cp = await page.evaluate(() => window.__copied || "");
+  t.check("席1 の机の全文コピーは「よかった：」つき・印は残さない", cp.includes("よかった：よい字を直した") && cp.includes("よかった：二つめのよいこと") && !cp.includes(G), JSON.stringify(cp));
   const ex = await page.evaluate((d) => ({
     month: KN.store.exportMonth(d.slice(0, 7)).days.find((x) => x.date === d).memo,
     range: KN.store.exportRange(d, d).days[0].memo,

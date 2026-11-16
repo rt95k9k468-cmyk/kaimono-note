@@ -113,7 +113,8 @@ const WORD = "しおかぜ";
   t.check("開けると本文が出る", (await logText()).includes(WORD));
   t.check("開けると頁の事実も出る", /61\.5kg/.test(await logText()) && (await logText()).includes("はまなす"));
   await mid3();
-  t.check("開けるとまん中の頭に頁（本文）", (await mid()).text.includes(WORD));
+  const m1 = await mid();
+  t.check("開けるとまん中の頭に頁（日記は「時刻 日記追記」の一行だけ・本文は出さない）", m1.text.includes("日記追記") && !m1.text.includes(WORD), m1.text);
   await arc();
 
   /* 開けた紙は、鍵が閉じると閉じる。本文はそのまま。 */

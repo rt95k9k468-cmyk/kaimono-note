@@ -121,8 +121,8 @@ const DAY = "2026-10-28";
   await enter();
   r = await read();
   c.check("頁は紙のいちばん上", r.order.startsWith("tk-page>todo-day") && !!r.page && r.page.bottom <= r.list.top, JSON.stringify(r));
-  c.check("頁は起床・言葉。済ませた用事と「いま」より後は出さない", /起床/.test(r.pageText) && /朝の字/.test(r.pageText) && /昼の字/.test(r.pageText)
-    && !/朝の支度|見学|洗濯|おでん/.test(r.pageText), r.pageText);
+  c.check("頁は起床・「時刻 日記追記」の一行（本文は出さない）。済ませた用事と「いま」より後は出さない", /起床/.test(r.pageText) && /08:20\s*日記追記/.test(r.pageText) && /13:05\s*日記追記/.test(r.pageText)
+    && !/朝の字|昼の字|朝の支度|見学|洗濯|おでん/.test(r.pageText), r.pageText);
   c.check("入ると頁は帯の裏、物差しの頭が帯の下", r.top > 0 && near(r.page.bottom - r.pad, r.band, 2) && r.list.top >= r.band - 1, JSON.stringify(r));
   await page.evaluate(() => { KN.app.scrollerOf(document.getElementById("screen-todo")).scrollTop = 0; });
   await page.waitForTimeout(200);

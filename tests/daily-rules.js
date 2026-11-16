@@ -37,13 +37,13 @@ const FORBIDDEN = [
     return { today, yest, ym: today.slice(0, 7), blank: key(new Date(base.getFullYear(), base.getMonth(), base.getDate() - 2)) };
   });
   await page.waitForTimeout(400);
-  /* 席1 の今日は扉・棚・いまごろだけ（構4b の二つめ）。評価の言葉はそこにも出ない。 */
+  /* 席1 の今日は扉・机（日記に書く・コピー・問い）・棚・いまごろ（構4b の二つめ・11月16日）。評価の言葉はそこにも出ない。 */
   const front = await page.evaluate(() => {
     const root = document.getElementById("screen-archive");
-    return { kids: [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className),
+    return { kids: [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-desk", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className),
       text: root.innerText, add: !!document.querySelector("#dock .js-open-add") };
   });
-  t.check("席1 の今日は 扉（候の札）→ 棚 だけ・Daily Log も＋も無い（構4b）", front.kids.slice(0, 2).join() === "arc-season,arc-shelf" && !front.kids.includes("day-main") && !front.add, front.kids.join(","));
+  t.check("席1 の今日は 扉（候の札）→ 机 → 棚・Daily Log も＋も無い（構4b）", front.kids.slice(0, 3).join() === "arc-season,arc-desk,arc-shelf" && !front.kids.includes("day-main") && !front.add, front.kids.join(","));
   t.check("席1 の今日に評価の言葉が出ない", !FORBIDDEN.some((w) => front.text.includes(w)));
   /* ここから先の「空の日」は、書いていない過ぎた日（一昨日）の頁。 */
   await page.evaluate((d) => KN.screens.archive.goDay(d), days.blank);
@@ -106,7 +106,7 @@ const FORBIDDEN = [
   /* ---- 形（R6）：候の札 → Daily Log。空の日は点線（墨の線の色。責める色を当てない）。候の札は数を言わない ---- */
   const r6 = await page.evaluate((d) => {
     const root = document.getElementById("screen-archive");
-    const kids = [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className);
+    const kids = [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-desk", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className);
     const w = root.querySelector(`.arc-log-row[data-day="${d}"] :is(.is-write, .arc-post.is-blank .arc-post-text)`);
     const probe = document.createElement("i");
     probe.style.color = "var(--c-border-2)";

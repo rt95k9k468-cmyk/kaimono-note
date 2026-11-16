@@ -2969,12 +2969,12 @@
   }
 
   /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
-  /** 今日の頁の頭（無ければ null）：今日の問いと「いま」より上の頁（screen-archive の ask・midPage）。
-      時間割に「いま」の札が立たない日（まだの用事が無い・仕事だけで空）は、終わりに「いま」と筆の一行（構4b：今日を書く口はここだけ）。 */
+  /** 今日の頁の頭（無ければ null）：「いま」より上の頁（screen-archive の midPage。日記は「時刻 日記追記」の一行だけ）。
+      今日の問い・日記に書く・コピーは席1 の候の札の下（11月16日）。時間割に「いま」の札が立たない日は、終わりに「いま」と筆の一行。 */
   function headPage(day, pen) {
     const A = KN.screens.archive;
     if (!A) return null;
-    const parts = [A.ask && A.ask(day), A.midPage(day)].filter(Boolean);
+    const parts = [A.midPage(day)].filter(Boolean);
     if (pen && A.pen) {
       const row = node(html`<p class="tk-now"><b>いま</b><button type="button" class="tl-now-pen" aria-label="いまのことを書く">${icon("edit")}</button></p>`);
       row.querySelector(".tl-now-pen").addEventListener("click", (e) => { e.stopPropagation(); A.pen(day); });
@@ -2994,7 +2994,7 @@
        済ませたものは前は紙のいちばん上で、開くと帯の裏へ送っていた（doneRest）——いまは下の一枚なので送らない。 */
     open = open.filter(mineT);
     const el = node(html`<div class="day-slide tk-day"></div>`);
-    /* 今日は頭に今日の問い（構4b）と「いま」より上の頁（構4a。行は daily の頁と同じ——screen-archive の midPage）。 */
+    /* 今日は頭に「いま」より上の頁（構4a。行は daily の頁と同じ——screen-archive の midPage。日記は一行だけ）。 */
     const sec = daySection(day, open);
     const tl = sec.querySelector(".js-tl");
     const box = day === todayKey() && headPage(day, !(tl && tl.__in && tl.__in.length));

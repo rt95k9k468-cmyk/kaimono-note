@@ -218,7 +218,7 @@ async function openReview(page) {
   return true;
 }
 
-/* 今日の「いま」の筆を押す（構4b の二つめ：今日を書く口は席3 の今日の面だけ。時間割の「いま」の札の右か、札の立たない日は頭の一行）。 */
+/* 今日の「いま」の筆を押す（構4b の二つめ：今日を書く口は席3 の今日の面と席1 の机の「日記に書く」。時間割の「いま」の札の右か、札の立たない日は頭の一行）。 */
 async function pen(page) {
   await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("todo"); });
   const b = page.locator("#screen-todo .day-slide:not(.is-peek) .tl-now-pen, #screen-todo .tk-now .tl-now-pen").first();

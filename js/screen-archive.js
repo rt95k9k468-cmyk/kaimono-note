@@ -1446,6 +1446,8 @@
         </span>`;
     const post = (x, first) => {
       const p = x.post, good = KN.diaryPosts.isGood(p.text);
+      /* まん中（席3）は本文を出さず「時刻 日記追記」の一行（押すとその一件の直す紙。11月16日・利用者）。 */
+      if (mid) return html`<button type="button" class="pg-row is-fact is-diary-at ${x.brk ? "is-brk" : ""}" data-k="${x.k}" aria-label="${p.mark ? x.at : ""} 日記追記を直す"><span class="pg-at">${p.mark ? x.at : ""}</span><span class="pg-body">日記追記</span></button>`;
       const tools = !(!p.mark && stampOnly(p.text));
       return html`
         <span class="arc-post pg-row is-folded ${p.mark ? "" : "is-head"} ${good ? "is-good" : ""} ${x.brk ? "is-brk" : ""}" data-k="${x.k}" data-key="${d.date}|${p.start}"
@@ -1480,9 +1482,13 @@
       });
     });
     /* やること・買うものは、それぞれのタブが本体です。 */
-    row.querySelectorAll("button.pg-row").forEach((el) => el.addEventListener("click", () => {
+    row.querySelectorAll("button.pg-row[data-src]").forEach((el) => el.addEventListener("click", () => {
       KN.motion.fire("select");
       KN.app.showScreen(el.dataset.src === "todo" ? "todo" : "list");
+    }));
+    row.querySelectorAll("button.is-diary-at").forEach((el) => el.addEventListener("click", () => {
+      const x = items[Number(el.dataset.k)];
+      if (x) openPost(d.date, x);
     }));
     /* 選んでいるあいだは押したことにしない（選んだそばから選択が消えないように）。 */
     const selecting = (el) => {
@@ -2165,6 +2171,39 @@
     return any;
   }
 
+  /* 今日の机（11月16日・利用者）：候の札のすぐ下に、日記に書く・全文コピー・今日の問い。席3 は日記の中身を出さず「時刻 日記追記」の一行だけ。 */
+  const askOK = () => chatView() && !diaryShut() && !(KN.lock && KN.lock.hides("notes"));
+  function todayDesk(day) {
+    const el = node(html`
+      <div class="arc-desk">
+        <div class="arc-desk-row">
+          <button type="button" class="think-card is-main js-desk-write">
+            <img class="think-card-art" src="img/think/diary.webp" alt="" decoding="async" draggable="false">
+            <span class="think-card-t">日記に<wbr>書く</span>
+          </button>
+          <button type="button" class="think-card arc-desk-copy js-desk-copy" aria-label="今日の日記をコピー">${icon("copy")}<span class="think-card-t">コピー</span></button>
+        </div>
+      </div>
+    `);
+    el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => im.remove(), { once: true }));
+    el.querySelector(".js-desk-write").addEventListener("click", () => {
+      KN.motion.fire("select");
+      if (chatView()) openPost(day, null);
+      else openLogSheet(day);
+    });
+    el.querySelector(".js-desk-copy").addEventListener("click", () => {
+      if (diaryShut()) { askDiary(); return; }   // 開けたら、もう一度押して写す
+      if (bodyBlocked()) return;
+      copyText(dailyCopyText(day)).then((ok) => {
+        KN.motion.fire("select");
+        KN.ui.toast(ok ? "コピーしました" : "コピーできませんでした");
+      });
+    });
+    const ask = askOK() ? thinkHome(day) : null;
+    if (ask) el.append(ask);
+    return el;
+  }
+
   function daySlide(day) {
     const ym = day.slice(0, 7);
     const el = node(html`<div class="day-slide m-in"></div>`);
@@ -2174,7 +2213,7 @@
     const front = day === U.todayKey() && oneDayLog();
     const season = seasonCard(day);
     if (season) el.append(season);
-    if (front) { el.classList.add("is-front"); el.append(shelfOf(day)); }
+    if (front) { el.classList.add("is-front"); el.append(todayDesk(day), shelfOf(day)); }
     else { const main = node(html`<div class="day-main"></div>`); main.append(dailyLog(ym, day)); el.append(main); }
     const then = imaCard(day);
     if (then) el.append(then);
@@ -2310,9 +2349,7 @@
     midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
     facing,   // 見開きの右の頁の 年々・いまごろ（構6）
     shelf: (day) => { const el = shelfOf(day); el.querySelectorAll(".arc-any").forEach((x) => x.remove()); return el; },   // 左の列の棚（構6・app.js の railMini）
-    pen: (day) => openPost(day, null),   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
-    /* 今日の問い（構4b）：席3 の今日の頁の頭。時刻ごとのときだけ・日記かノートの鍵のあいだは出さない（問いの元はノートの字）。 */
-    ask: (day) => (chatView() && !diaryShut() && !(KN.lock && KN.lock.hides("notes")) ? thinkHome(day) : null) };
+    pen: (day) => openPost(day, null) };   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
 
   /* 開いたら一度、落ち着いてから（立ち上がりの一拍を重くしない）。 */
   window.addEventListener("load", () => setTimeout(() => {
