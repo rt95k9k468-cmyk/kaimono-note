@@ -83,13 +83,13 @@ const WORD = "しおかぜ";
     !KN.searchAll.find(w, "todo").groups.some((g) => g.id === "daily"), WORD));
   t.check("hides は daily・diary とも true、notes は false", await page.evaluate(() =>
     KN.lock.hides("diary") && KN.lock.hides("daily") && !KN.lock.hides("notes")));
-  /* まん中（tasks の今日の面）の頭の頁（構4a）：覆わず、頁と今日の問いを組まない。「いま」の筆は効く（README 6.6）。 */
+  /* まん中（tasks の今日の面）の頭の頁（構4a）：本文を出さない頁なので鍵が閉じていても組む（11月16日・利用者）。日記の字は出ない。 */
   const mid = () => page.evaluate(() => { const r = document.getElementById("screen-todo"), p = r.querySelector(".tk-page");
     return { page: !!(p && p.querySelector(".arc-log-row, .think-home")), text: p ? p.textContent : "", face: !!r.querySelector(".tl-sheet"),
       pen: !!r.querySelector(".tl-now-pen"), all: r.textContent }; });
   await mid3();
   const m0 = await mid();
-  t.check("まん中は覆わず、頭の頁を組まない・筆は出る", !(await veil()).on && m0.face && !m0.page && m0.pen && !/しおかぜ|61\.5|はまなす/.test(m0.all), JSON.stringify({ page: m0.page, face: m0.face, pen: m0.pen }));
+  t.check("まん中は覆わず、頭の頁は組む（本文は出さない）・筆も出る", !(await veil()).on && m0.face && m0.page && m0.pen && !/しおかぜ|はまなす/.test(m0.all), JSON.stringify({ page: m0.page, face: m0.face, pen: m0.pen }));
   await arc();
 
   /* コピーは開けてから。やめれば元のまま。 */
@@ -114,7 +114,7 @@ const WORD = "しおかぜ";
   t.check("開けると頁の事実も出る", /61\.5kg/.test(await logText()) && (await logText()).includes("はまなす"));
   await mid3();
   const m1 = await mid();
-  t.check("開けるとまん中の頭に頁（日記は「時刻 日記追記」の一行だけ・本文は出さない）", m1.text.includes("日記追記") && !m1.text.includes(WORD), m1.text);
+  t.check("開けるとまん中の頭に頁（日記は「時刻 日記」の一行だけ・本文は出さない）", m1.text.includes("日記") && !m1.text.includes(WORD), m1.text);
   await arc();
 
   /* 開けた紙は、鍵が閉じると閉じる。本文はそのまま。 */

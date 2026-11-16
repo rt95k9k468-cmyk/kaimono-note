@@ -609,6 +609,26 @@
     return { text: line, blank: false };
   }
 
+  /** 今日の日記の全文を読むだけの紙（いまごろの今年の頁を押すと。書き換えない・鍵が閉じたら閉じる）。 */
+  function openRead(day) {
+    if (diaryShut()) { askDiary(); return; }
+    if (bodyBlocked()) return;
+    const d = store.dayLog(day) || {};
+    const items = KN.diaryPosts.parse(d.memo || "").filter((x) => KN.diaryPosts.bare(x.text).trim());
+    const dt = U.dayDate(day);
+    const box = node(html`<div class="arc-read">${items.map((x) => html`<p class="arc-read-p">${x.mark ? html`<time>${x.at || ""}</time>` : ""}<span>${KN.diaryPosts.bare(x.text)}</span></p>`)}</div>`);
+    let unwatch = () => {};
+    const h = KN.ui.sheet({
+      title: `${dt.getMonth() + 1}月${dt.getDate()}日の日記`,
+      content: box,
+      cls: "is-card",
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">閉じる</button>`),
+      onClose: () => unwatch(),
+    });
+    if (KN.lock) unwatch = KN.lock.diarySheet(() => h.close());
+    h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });
+  }
+
   /** いまごろ：同じ候の、ほかの年の頁を年ごとに横へ。同じ月日の頁に朱の栞。下に、その候に した・買った を一行ずつ（あった順・数えない）。 */
   function imaCard(day, go) {
     if (!showYears(day, !!go) || !KN.dayPage || !KN.season) return null;
@@ -646,6 +666,8 @@
     `);
     sec.querySelectorAll(".ima-page").forEach((b) => b.addEventListener("click", () => {
       KN.motion.fire("select");
+      /* 今日の頁（席1 の頭・今年の一行）は、行き先が同じ日なので全文を読む紙。 */
+      if (!go && b.dataset.day === U.todayKey()) { openRead(b.dataset.day); return; }
       (go || goToDay)(b.dataset.day);
     }));
     return sec;
@@ -1414,7 +1436,7 @@
      daily と同じく頁を組まない（面は覆わない）。済ませた用事は面の下の「済ませたもの」が持つ（MID_DONE＝false。✓で戻す口が
      あるので。見比べ shots/vision/09-4a-compare.jpg の B）。 */
   const MID_DONE = false;
-  const midReadable = (d) => diaryBody() === "ok" && !diaryShut() && !outText(d);
+  const midReadable = (d) => diaryBody() === "ok" && !outText(d);   // 本文を出さない頁なので、日記の鍵では消さない（11月16日・利用者）
   const midDay = (day) => Object.assign({ date: day, memo: "" }, store.dayLog(day) || {});
   function midCut(list) {
     const m = nowMin();
@@ -1446,8 +1468,8 @@
         </span>`;
     const post = (x, first) => {
       const p = x.post, good = KN.diaryPosts.isGood(p.text);
-      /* まん中（席3）は本文を出さず「時刻 日記追記」の一行（押すとその一件の直す紙。11月16日・利用者）。 */
-      if (mid) return html`<button type="button" class="pg-row is-fact is-diary-at ${x.brk ? "is-brk" : ""}" data-k="${x.k}" aria-label="${p.mark ? x.at : ""} 日記追記を直す"><span class="pg-at">${p.mark ? x.at : ""}</span><span class="pg-body">日記追記</span></button>`;
+      /* まん中（席3）は本文を出さず「時刻 日記」の一行（押すとその一件の直す紙。11月16日・利用者）。 */
+      if (mid) return html`<button type="button" class="pg-row is-fact is-diary-at ${x.brk ? "is-brk" : ""}" data-k="${x.k}" aria-label="${p.mark ? x.at : ""} 日記を直す"><span class="pg-at">${p.mark ? x.at : ""}</span><span class="pg-body">日記</span></button>`;
       const tools = !(!p.mark && stampOnly(p.text));
       return html`
         <span class="arc-post pg-row is-folded ${p.mark ? "" : "is-head"} ${good ? "is-good" : ""} ${x.brk ? "is-brk" : ""}" data-k="${x.k}" data-key="${d.date}|${p.start}"
@@ -1488,6 +1510,7 @@
     }));
     row.querySelectorAll("button.is-diary-at").forEach((el) => el.addEventListener("click", () => {
       const x = items[Number(el.dataset.k)];
+      if (diaryShut()) { askDiary(); return; }   // 本文が開く紙なので、鍵が閉じていれば開けてから（もう一度押す）
       if (x) openPost(d.date, x);
     }));
     /* 選んでいるあいだは押したことにしない（選んだそばから選択が消えないように）。 */
@@ -2171,8 +2194,8 @@
     return any;
   }
 
-  /* 今日の机（11月16日・利用者）：候の札のすぐ下に、日記に書く・全文コピー・今日の問い。席3 は日記の中身を出さず「時刻 日記追記」の一行だけ。 */
-  const askOK = () => chatView() && !diaryShut() && !(KN.lock && KN.lock.hides("notes"));
+  /* 今日の机（11月16日・利用者）：候の札のすぐ下に、日記に書く・全文コピー・今日の問い。席3 は日記の中身を出さず「時刻 日記」の一行だけ。 */
+  const askOK = () => chatView();   // 今日の問いは鍵の対象ではない（11月16日・利用者）
   function todayDesk(day) {
     const el = node(html`
       <div class="arc-desk">

@@ -150,7 +150,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     window.__ear.observe(document.body, { childList: true, subtree: true });
   });
   const said = () => page.evaluate(() => (window.__said || []).join("|"));
-  /* 今日の頁は席3（tasks の頭の頁。日記は「時刻 日記追記」の一行だけ・押すと直す紙。11月16日）、過ぎた日の頁は席1（構4b の二つめ）。R は頁の器、day は記録の日。 */
+  /* 今日の頁は席3（tasks の頭の頁。日記は「時刻 日記」の一行だけ・押すと直す紙。11月16日）、過ぎた日の頁は席1（構4b の二つめ）。R は頁の器、day は記録の日。 */
   const TODAY = day, YEST = "2026-10-05";
   let R = "#screen-todo .tk-page";
   const toToday = async () => { day = TODAY; R = "#screen-todo .tk-page";
@@ -264,7 +264,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("新しい一件を閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
   /* 席3 の頭の頁は日付だけの頭を出さない（日付は題が言う）。 */
-  t.check("席3 の今日の頁は「12:34 日記追記」の一行だけ（本文は出さない）", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記追記" && !(await midText()).includes("一件目の字"), JSON.stringify(p1));
+  t.check("席3 の今日の頁は「12:34 日記」の一行だけ（本文は出さない）", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記" && !(await midText()).includes("一件目の字"), JSON.stringify(p1));
 
   /* ---- 席1 に＋は無い（構4b）。二件目も筆から ---- */
   await page.evaluate(() => KN.app.showScreen("archive"));
@@ -541,7 +541,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await setMemo(imported);
   await page.waitForTimeout(300);
   const ip = await posts();
-  t.check("印の無い時刻の行は分けず、時刻なしの一行一つ（本文は出さない）", ip.length === 1 && ip[0].at === null && ip[0].text === "日記追記" && !(await midText()).includes("起きた"), JSON.stringify(ip));
+  t.check("印の無い時刻の行は分けず、時刻なしの一行一つ（本文は出さない）", ip.length === 1 && ip[0].at === null && ip[0].text === "日記" && !(await midText()).includes("起きた"), JSON.stringify(ip));
   await tool(0, "edit");
   await sheetOpen();
   await closeSheet();
@@ -619,7 +619,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n13:00\nあとの一件"));
     await page.waitForTimeout(400);
     const head = await posts();
-    t.check("席3 の頭は「いま」より上の行だけ（13:00 の一件は出さない）", JSON.stringify(head.map((x) => x.at + x.text)) === JSON.stringify(["08:00日記追記"]), JSON.stringify(head));
+    t.check("席3 の頭は「いま」より上の行だけ（13:00 の一件は出さない）", JSON.stringify(head.map((x) => x.at + x.text)) === JSON.stringify(["08:00日記"]), JSON.stringify(head));
     t.check("席1 に「いま」の線・二度押しは無い", await page.evaluate(() => !document.querySelector("#screen-archive .pg-now") && !KN.screens.archive.again));
     await pen(page);
     await sheetOpen();

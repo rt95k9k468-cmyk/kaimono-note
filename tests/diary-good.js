@@ -43,7 +43,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   };
   const said = () => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((x) => x.textContent).join("|"));
   /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
-  /* 今日の日記は席3 の頭に「時刻 日記追記」の一行だけ（押すとその一件の直す紙）。全文のコピーは席1 の机（11月16日）。 */
+  /* 今日の日記は席3 の頭に「時刻 日記」の一行だけ（押すとその一件の直す紙）。全文のコピーは席1 の机（11月16日）。 */
   const edit = (k) => page.click(`#screen-todo .tk-page .is-diary-at[data-k="${k}"]`);
   const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .tk-page .is-diary-at")]
     .map((p) => ({ at: p.querySelector(".pg-at").textContent, text: p.querySelector(".pg-body").textContent,
@@ -83,7 +83,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
   /* 今日の頁は席3 の頭（頭の日付だけの一件は出さない）。本文も印も見せない。 */
-  t.check("席3 の頁は「12:34 日記追記」の一行・本文と印は見せない", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記追記" && !/よい字|よかった/.test(p1[0].page), JSON.stringify(p1));
+  t.check("席3 の頁は「12:34 日記」の一行・本文と印は見せない", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記" && !/よい字|よかった/.test(p1[0].page), JSON.stringify(p1));
 
   /* ---- 書いてから札を押しても、その一件に印。押し直せば外れる ---- */
   await pen(page);
