@@ -2804,7 +2804,7 @@
     /* 空の画面は紙の中に（外に出すと、白い紙が空のまま上に残る）。 */
     if (!all.length) {
       /* 用事が一件も無くても、今日の面の頭には「いま」より上の頁（構4a。送らない——下は空の一枚だけ）。 */
-      const box = sheet !== els.body && oneDay() && face === "today" && shownDay() === todayKey() && headPage(todayKey());
+      const box = sheet !== els.body && oneDay() && face === "today" && shownDay() === todayKey() && headPage(todayKey(), true);
       if (box) sheet.append(box);
       sheet.append(node(html`
         <div class="empty">
@@ -2968,10 +2968,17 @@
   }
 
   /** 一日ぶんの時間割。頭も見出しも持ちません——日付は画面の題が言います。 */
-  /** 今日の頁の頭（無ければ null）：今日の問いと「いま」より上の頁（screen-archive の ask・midPage）。 */
-  function headPage(day) {
+  /** 今日の頁の頭（無ければ null）：今日の問いと「いま」より上の頁（screen-archive の ask・midPage）。
+      時間割に「いま」の札が立たない日（まだの用事が無い・仕事だけで空）は、終わりに「いま」と筆の一行（構4b：今日を書く口はここだけ）。 */
+  function headPage(day, pen) {
     const A = KN.screens.archive;
-    const parts = A ? [A.ask && A.ask(day), A.midPage(day)].filter(Boolean) : [];
+    if (!A) return null;
+    const parts = [A.ask && A.ask(day), A.midPage(day)].filter(Boolean);
+    if (pen && A.pen) {
+      const row = node(html`<p class="tk-now"><b>いま</b><button type="button" class="tl-now-pen" aria-label="いまのことを書く">${icon("edit")}</button></p>`);
+      row.querySelector(".tl-now-pen").addEventListener("click", (e) => { e.stopPropagation(); A.pen(day); });
+      parts.push(row);
+    }
     if (!parts.length) return null;
     const box = node(html`<div class="tk-page"></div>`);
     box.append(...parts);
@@ -2987,9 +2994,10 @@
     open = open.filter(mineT);
     const el = node(html`<div class="day-slide tk-day"></div>`);
     /* 今日は頭に今日の問い（構4b）と「いま」より上の頁（構4a。行は daily の頁と同じ——screen-archive の midPage）。 */
-    const box = day === todayKey() && headPage(day);
-    if (box) el.append(box);
     const sec = daySection(day, open);
+    const tl = sec.querySelector(".js-tl");
+    const box = day === todayKey() && headPage(day, !(tl && tl.__in && tl.__in.length));
+    if (box) el.append(box);
     el.append(sec);
     const side = node(html`<div class="tk-side"></div>`);
     side.append(somedaySection(open, day === todayKey()));

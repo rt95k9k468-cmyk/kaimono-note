@@ -8,7 +8,7 @@
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-good.js */
 const path = require("path");
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 global.window = global;
 require(path.join(__dirname, "..", "js", "diary-posts.js"));
@@ -44,11 +44,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const said = () => page.evaluate(() => [...document.querySelectorAll(".toast-msg")].map((x) => x.textContent).join("|"));
   /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
   const tool = async (k, name) => {
-    const p = `#screen-archive .arc-post[data-k="${k}"]`;
+    const p = `#screen-todo .tk-page .arc-post[data-k="${k}"]`;
     if (!(await page.$(`${p}.is-tools`))) await page.click(`${p} .arc-post-text`);
     await page.click(`${p} .js-post-${name}`);
   };
-  const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")]
+  const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-todo .tk-page .arc-log-row.is-chat .arc-post")]
     .map((p) => ({ good: p.classList.contains("is-good"), sun: !!p.querySelector(".arc-post-at svg"),
       text: p.querySelector(".arc-post-text").textContent })));
 
@@ -61,7 +61,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return { on: s.querySelector(".wr-good").getAttribute("aria-pressed") === "true", row: s.querySelector(".wr-cur").classList.contains("is-good"),
       ph: s.querySelector(".js-memo").placeholder, focus: document.activeElement === s.querySelector(".js-memo") };
   });
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await sheetOpen();
   const s1 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open"), c = s.querySelector(".sheet-foot .wr-good");
@@ -85,10 +85,11 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await closeSheet();
   t.check("閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
-  t.check("頁の行は温かい地・陽の絵、印は見せない", p1.length === 2 && p1[1].good && p1[1].sun && p1[1].text === "よい字" && !p1[0].good, JSON.stringify(p1));
+  /* 今日の頁は席3 の頭（頭の日付だけの一件は出さない）。 */
+  t.check("頁の行は温かい地・陽の絵、印は見せない", p1.length === 1 && p1[0].good && p1[0].sun && p1[0].text === "よい字", JSON.stringify(p1));
 
   /* ---- 書いてから札を押しても、その一件に印。押し直せば外れる ---- */
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await sheetOpen();
   await page.keyboard.insertText("二つめ");
   await page.waitForTimeout(700);
@@ -98,7 +99,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.keyboard.insertText("のよいこと");
   await page.waitForTimeout(700);
   await closeSheet();
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await sheetOpen();
   await page.keyboard.insertText("いまのこと");
   await page.waitForTimeout(700);
@@ -113,7 +114,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     && m2.split("いまのこと").length === 2, JSON.stringify([c2, m2]));
 
   /* ---- 札を押して書いた字を空にすれば、黙って外れる ---- */
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await sheetOpen();
   await page.click(".sheet.is-open .wr-good");
   await page.keyboard.insertText("消すつもり");

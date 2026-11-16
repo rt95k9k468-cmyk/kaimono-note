@@ -3164,6 +3164,7 @@ a.btn { text-decoration: none; }
 .arc-post-act:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-post.is-blank .arc-post-text { color: var(--c-text-3); }
 .tl-now-pen:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+.tk-now { display: flex; align-items: center; gap: var(--sp-3); margin: 0; color: var(--c-now); font-size: var(--fs-sm); }   /* 札の立たない日の「いま」と筆（構4b） */
 
 /* ---- ④積み上げ項目 ---- */
 

@@ -4,7 +4,7 @@
    - 欄にいないときは持たない
    机の上の Chromium では、偽の `navigator.wakeLock` と進める時計で試す。日記の字は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/write-awake.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 const t = checker("write-awake");
 
@@ -48,7 +48,7 @@ const t = checker("write-awake");
   await page.waitForTimeout(500);
   t.check("欄にいないときは持たない", (await wl()).held === 0, JSON.stringify(await wl()));
 
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await page.waitForSelector(".sheet.is-open.is-card .js-memo", { timeout: 4000 });
   await tick();
   t.check("日記の書く紙の欄に入ると持つ", (await wl()).held === 1, JSON.stringify(await wl()));

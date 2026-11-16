@@ -218,6 +218,14 @@ async function openReview(page) {
   return true;
 }
 
+/* 今日の「いま」の筆を押す（構4b の二つめ：今日を書く口は席3 の今日の面だけ。時間割の「いま」の札の右か、札の立たない日は頭の一行）。 */
+async function pen(page) {
+  await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("todo"); });
+  const b = page.locator("#screen-todo .day-slide:not(.is-peek) .tl-now-pen, #screen-todo .tk-now .tl-now-pen").first();
+  await b.waitFor({ timeout: 5000 });
+  await b.click();
+}
+
 /** 偽の Dropbox（tests/restore-drill.js・desk-windows.js）。`on` は page か context（窓二つで分け合う）。
     files（path → 中身）は端末をまたいで一つ渡す。uploads に置いた path を足す。 */
 async function fakeDropbox(on, files, uploads) {
@@ -263,4 +271,4 @@ async function fakeDropbox(on, files, uploads) {
   });
 }
 
-module.exports = { fakeDropbox, open, checker, ensureServer, noFit, noAnchor, openReview, URL, ROOT, ASKS };
+module.exports = { fakeDropbox, open, checker, ensureServer, noFit, noAnchor, openReview, pen, URL, ROOT, ASKS };

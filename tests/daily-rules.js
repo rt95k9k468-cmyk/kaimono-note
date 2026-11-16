@@ -34,8 +34,19 @@ const FORBIDDEN = [
     const todo = S.addTodo({ title: "試験のやること", due: today });
     if (todo) S.toggleTodo(todo.id);
     KN.app.showScreen("archive");
-    return { today, yest, ym: today.slice(0, 7) };
+    return { today, yest, ym: today.slice(0, 7), blank: key(new Date(base.getFullYear(), base.getMonth(), base.getDate() - 2)) };
   });
+  await page.waitForTimeout(400);
+  /* 席1 の今日は扉・棚・いまごろだけ（構4b の二つめ）。評価の言葉はそこにも出ない。 */
+  const front = await page.evaluate(() => {
+    const root = document.getElementById("screen-archive");
+    return { kids: [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className),
+      text: root.innerText, add: !!document.querySelector("#dock .js-open-add") };
+  });
+  t.check("席1 の今日は 扉（候の札）→ 棚 だけ・Daily Log も＋も無い（構4b）", front.kids.slice(0, 2).join() === "arc-season,arc-shelf" && !front.kids.includes("day-main") && !front.add, front.kids.join(","));
+  t.check("席1 の今日に評価の言葉が出ない", !FORBIDDEN.some((w) => front.text.includes(w)));
+  /* ここから先の「空の日」は、書いていない過ぎた日（一昨日）の頁。 */
+  await page.evaluate((d) => KN.screens.archive.goDay(d), days.blank);
   await page.waitForTimeout(400);
 
   /* ---- 器：評価のための入れ物を持っていない ---- */
@@ -59,11 +70,11 @@ const FORBIDDEN = [
   const bad = shape.settings.filter((k) => /streak|goal|target|rate|compare/i.test(k));
   t.check("設定に daily の目標・連続・比較の鍵が無い", !bad.length, bad.join(","));
 
-  /* ---- 画面：一日ぶん（既定）で、今日は空 ---- */
-  const scr = await page.evaluate(() => {
+  /* ---- 画面：一日ぶん（既定）で、書いていない過ぎた日 ---- */
+  const scr = await page.evaluate((d) => {
     const root = document.getElementById("screen-archive");
     const log = root.querySelector(".arc-log");
-    const blank = root.querySelector(".arc-log-row.is-today .arc-log-memo");
+    const blank = root.querySelector(`.arc-log-row[data-day="${d}"] .arc-log-memo`);
     const row = blank && blank.closest(".arc-log-row");
     const probe = document.createElement("span");
     probe.style.color = "var(--c-text-3)";
@@ -81,22 +92,22 @@ const FORBIDDEN = [
       text3,
       blankTimes: !!(row && row.querySelector(".arc-log-times, .arc-log-meta")),
     };
-  });
+  }, days.blank);
   t.check("daily の画面が出ている", scr.visible && scr.hasLog);
   const hits = FORBIDDEN.filter((w) => scr.text.includes(w));
   t.check("評価の言葉が出ない（先月に10日・今月に1日でも比べない）", !hits.length, hits.join(","));
   t.check("割合（%）が出ない", !/\d\s*[%％]/.test(scr.text));
   t.check("「◯月のまとめ」の数の札は出さない（構2。外した）", !scr.hasDigest);
-  t.check("今日の空の一行は「この日のことを書く」", scr.blankText === "この日のことを書く", scr.blankText);
+  t.check("書いていない日の空の一行は「この日のことを書く」", scr.blankText === "この日のことを書く", scr.blankText);
   t.check("空の一行は薄い字（is-blank ＝ --c-text-3）で、責める色を当てない",
     scr.blankIsBlank && scr.blankColor === scr.text3, `${scr.blankColor} / ${scr.text3}`);
   t.check("空の日は起床・就寝も帳簿も出さない", !scr.blankTimes);
 
-  /* ---- 形（R6）：候の札 → 書く口・Daily Log。空の日は点線（墨の線の色。責める色を当てない）。候の札は数を言わない ---- */
-  const r6 = await page.evaluate(() => {
+  /* ---- 形（R6）：候の札 → Daily Log。空の日は点線（墨の線の色。責める色を当てない）。候の札は数を言わない ---- */
+  const r6 = await page.evaluate((d) => {
     const root = document.getElementById("screen-archive");
     const kids = [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className);
-    const w = root.querySelector(".arc-log-row.is-today .is-write, .arc-log-row.is-today .arc-post.is-blank .arc-post-text");
+    const w = root.querySelector(`.arc-log-row[data-day="${d}"] :is(.is-write, .arc-post.is-blank .arc-post-text)`);
     const probe = document.createElement("i");
     probe.style.color = "var(--c-border-2)";
     root.append(probe);
@@ -105,15 +116,16 @@ const FORBIDDEN = [
     const cs = w && getComputedStyle(w);
     return { kids, dash: cs ? cs.borderTopStyle : "", lineOk: !!cs && cs.borderTopColor === line,
       kou: (root.querySelector(".arc-season-main") || {}).textContent || "" };
-  });
-  t.check("今日の一枚は 扉（候の札）→ 棚 → 本体（書く口・Daily Log）の順（構4b）", r6.kids.slice(0, 3).join() === "arc-season,arc-shelf,day-main", r6.kids.join(","));
-  t.check("今日が空なら点線の「この日のことを書く」（線の色は --c-border-2）", r6.dash === "dashed" && r6.lineOk, JSON.stringify(r6));
+  }, days.blank);
+  t.check("過ぎた日の一枚は 候の札 → 本体（Daily Log）の順・棚は無い", r6.kids.slice(0, 2).join() === "arc-season,day-main", r6.kids.join(","));
+  t.check("過ぎた日が空なら点線の「この日のことを書く」（線の色は --c-border-2）", r6.dash === "dashed" && r6.lineOk, JSON.stringify(r6));
   t.check("候の札は暦の言葉だけ（評価の言葉なし）", !!r6.kou && !FORBIDDEN.some((x) => r6.kou.includes(x)), r6.kou);
 
   /* ---- 月ぜんぶ：書いていない日を並べない。開いて閉じただけの日は「—」 ---- */
   await page.evaluate((d) => {
     KN.store.ensureDayLog(d.today);   // 紙を開いて何も書かずに閉じた跡
     KN.store.update((s) => { s.settings.dailyScope = "month"; });
+    KN.screens.archive.goDay(d.today);
   }, days);
   await page.waitForTimeout(300);
   const month = await page.evaluate((d) => {
@@ -184,12 +196,13 @@ const FORBIDDEN = [
   });
   t.check("やることの席は点でなく数", !!td && !td.dot && /^\d+$/.test(td.text), JSON.stringify(td));
 
-  /* ---- コピー：先の予定・長期タスク（まだ済んでいないもの）は写さない ---- */
-  const copied = await page.evaluate(async () => {
+  /* ---- コピー：先の予定・長期タスク（まだ済んでいないもの）は写さない（今日の頁は席1 に無いので昨日の頁で） ---- */
+  const copied = await page.evaluate(async (y) => {
     const S = KN.store, U = KN.util;
     S.addTodo({ title: "試験の先の予定", due: U.shiftDay(U.todayKey(), 2) });
     S.addTodo({ title: "試験の長期タスク" });
     KN.app.showScreen("archive");
+    KN.screens.archive.goDay(y);
     await new Promise((r) => setTimeout(r, 400));
     let got = null;
     Object.defineProperty(navigator, "clipboard", { configurable: true,
@@ -199,7 +212,7 @@ const FORBIDDEN = [
     btn.click();
     await new Promise((r) => setTimeout(r, 200));
     return got;
-  });
+  }, days.yest);
   t.check("コピーに先の予定・長期タスクが入らない", copied != null
     && !copied.includes("試験の先の予定") && !copied.includes("試験の長期タスク") && !copied.includes("参考"), String(copied));
 
@@ -211,9 +224,10 @@ const FORBIDDEN = [
   t.check("配る器に問いの元（出典・文脈つきの問い）が無い", !shipped.length, shipped.join(" "));
   t.check("初めて開いた端末に問いの元は無い", await page.evaluate(() => KN.store.get().asks.length === 0 && !KN.askItems));
 
-  /* 頁の組み（構1）：書いた今日の頁にも評価の言葉・割合・赤い色が無い（体重・歩数・眠り・食事・済ませたことを引いても）。 */
-  const pg = await page.evaluate(async () => {
-    const S = KN.store, d = KN.util.todayKey(), W = KN.diaryPosts.TAG;
+  /* 頁の組み（構1）：書いた頁（席1 の過ぎた日）にも評価の言葉・割合・赤い色が無い（体重・歩数・眠り・食事・済ませたことを引いても）。 */
+  const pg = await page.evaluate(async (d) => {
+    const S = KN.store, W = KN.diaryPosts.TAG;
+    KN.app.showScreen("archive"); KN.screens.archive.goDay(d);
     S.setDayLog(d, { memo: `08:00${W}\n朝の字`, wake: "06:40", sleep: "23:10" });
     S.addWeight({ day: d, time: "06:50", kg: 60.2 });
     S.addMeal({ day: d, time: null, slot: "lunch", items: [], memo: "そば" });
@@ -222,13 +236,21 @@ const FORBIDDEN = [
     const log = document.querySelector("#screen-archive .arc-log");
     const red = [...log.querySelectorAll(".pg-row, .pg-row *")].filter((e) => !e.closest(".arc-log-day")).some((e) => /rgb\((2[0-5]\d|1[89]\d), ([0-6]?\d), ([0-6]?\d)\)/.test(getComputedStyle(e).color));
     return { text: log.innerText, rows: log.querySelectorAll(".pg-row").length, red };
-  });
+  }, days.yest);
   const hitsP = FORBIDDEN.filter((w) => pg.text.includes(w));
   t.check("頁の行に評価の言葉・割合が無い", pg.rows >= 5 && !hitsP.length && !/\d\s*[%％]/.test(pg.text), `${pg.rows} ${hitsP.join(",")}`);
   t.check("頁の行に赤い字が無い", !pg.red);
   /* まん中（tasks の今日の面）の頭の頁（構4a）にも同じ見張り。時計を今日の 23:50 に置き、どの行も「いま」より上に。 */
   await page.clock.setFixedTime(await page.evaluate(() => { const t = new Date(); t.setHours(23, 50, 0, 0); return t.getTime(); }));
-  await page.evaluate(() => KN.app.showScreen("todo"));
+  await page.evaluate(() => {
+    const S = KN.store, d = KN.util.todayKey(), W = KN.diaryPosts.TAG;
+    S.setDayLog(d, { memo: `08:00${W}\n朝の字`, wake: "06:40", sleep: "23:10" });
+    S.addWeight({ day: d, time: "06:50", kg: 60.2 });
+    S.addMeal({ day: d, time: null, slot: "lunch", items: [], memo: "そば" });
+    S.setHealth(d, "steps", 4321); S.setHealth(d, "sleep", 380);
+    KN.screens.archive.goDay(d);   // 見ている日は全部の席で一つ（昨日を見たまま移らない）
+    KN.app.showScreen("todo");
+  });
   await page.waitForTimeout(500);
   const md = await page.evaluate(() => {
     const p = document.querySelector("#screen-todo .tk-page");
