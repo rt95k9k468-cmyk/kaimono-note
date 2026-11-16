@@ -3046,14 +3046,13 @@ a.btn { text-decoration: none; }
 .arc-door .arc-door-face.arc-season-art { color: #fff; border-color: transparent;
   background: linear-gradient(180deg, rgb(10 8 6 / .28), transparent 30% 55%, rgb(10 8 6 / .5)), linear-gradient(270deg, rgb(10 8 6 / .46), transparent 46%),
     var(--season-img, none) center / cover no-repeat, var(--season-k); }
-.arc-door-ko { position: absolute; right: 22px; top: 22px; writing-mode: vertical-rl; font: var(--fw-bold) calc(34px * var(--fs-k))/1 var(--font-display); letter-spacing: .16em; }
-.arc-door-yomi { position: absolute; right: 68px; top: 24px; writing-mode: vertical-rl; font-size: var(--fs-xs); letter-spacing: .24em; }
+.arc-door-ko { position: absolute; right: var(--door-r, 22px); left: var(--door-l, auto); top: 22px; writing-mode: var(--door-wm, vertical-rl); font: var(--fw-bold) calc(34px * var(--fs-k))/1 var(--font-display); letter-spacing: .16em; }
+.arc-door-yomi { position: absolute; right: var(--door-r2, 68px); left: var(--door-l, auto); top: var(--door-yomi-t, 24px); writing-mode: var(--door-wm, vertical-rl); font-size: var(--fs-xs); letter-spacing: .24em; }
 .arc-door-sekki { position: absolute; left: 18px; bottom: 16px; font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .12em; }
 .arc-door-sekki b { display: block; font: var(--fw-bold) var(--fs-xl)/1.3 var(--font-display); letter-spacing: .08em; }
 .arc-door-ko, .arc-door-yomi { white-space: nowrap; }   /* 絶対配置の縦組みは長さが縮む */
 .arc-season-art :is(.arc-door-ko, .arc-door-yomi, .arc-door-sekki) { text-shadow: 0 1px 10px rgb(0 0 0 / .6); }
-[data-attire="modern"] :is(.arc-door-ko, .arc-door-yomi) { writing-mode: horizontal-tb; left: 18px; right: auto; top: 20px; }
-[data-attire="modern"] .arc-door-yomi { top: calc(30px + 34px * var(--fs-k)); }
+[data-attire="modern"] .arc-door { --door-wm: horizontal-tb; --door-r: auto; --door-r2: auto; --door-l: 18px; --door-yomi-t: calc(32px + 34px * var(--fs-k)); }   /* 装いは札だけ */
 .arc-door > .arc-season-main { display: none; padding-inline: var(--sp-2); }
 .arc-door.is-open > .arc-season-main { display: flex; }
 /* 棚（構4b）：年の背表紙。色は年ごとに決め打ち、幅と高さはどの年も同じ（年を比べない）。今年に栞。右の端に偶然の一日。 */
