@@ -19,7 +19,10 @@
   const arc = () => KN.screens.archive;
 
   /* その日から n 日ずらした日。暦の足し引きなので UTC で（夏時間に揺れない。season.js の shift と同じ）。 */
-  const shift = (day, n) => { const [y, m, d] = day.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+  const shift = (day, n) => {
+    const [y, m, d] = day.split("-").map(Number), t = new Date(Date.UTC(y, m - 1, d + n));
+    return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
+  };
 
   /* ---- 升：その年の中の候の続き ---- */
   const kept = {};
