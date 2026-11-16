@@ -355,12 +355,13 @@
      日を押せば閉じてその日へ。面を替えても小窓の大きさは変えない（升目の
      段が変わっても、帯の高さは一つ——CSS の `.mp-pane`）。先の日へも行けます
      （払う・暦と同じ。2026年10月10日）。 */
-  function openDayPicker() {
+  function openDayPicker(o) {
+    o = o || {};
     const today = U.todayKey();
     const here = focusDay();
     const at = U.dayDate(here) || new Date();
-    let level = "day";
-    let year = at.getFullYear();
+    let level = o.year ? "month" : "day";   // 棚の背表紙からは、その年の月ぜんぶ（構4b）
+    let year = o.year || at.getFullYear();
     let month = at.getMonth();
 
     const body = node(html`
@@ -375,7 +376,7 @@
     `);
 
     /* 一つを選ぶだけなので小窓。帯の暦より上に出す（lift）。 */
-    const handle = KN.ui.popOver(els.dayTitle, { side: "left", label: "日を選ぶ", cls: "is-month", lift: true });
+    const handle = KN.ui.popOver(o.anchor || els.dayTitle, { side: "left", label: "日を選ぶ", cls: "is-month", lift: true });
     handle.el.append(body);
 
     const pane = body.querySelector(".js-pane");
@@ -1201,17 +1202,9 @@
 
   /** daily の冒頭：ノート・思考 の小さな札と、今日の問い。説明は書かない。日記を書く口は線の筆と＋（構3④。朱の札は外した）。 */
   function thinkHome(day) {
-    const card = (cls, img, a, b) => html`
-      <button type="button" class="think-card ${cls}">
-        <img class="think-card-art" src="img/think/${img}.webp" alt="" decoding="async" draggable="false">
-        <span class="think-card-t">${a}<wbr>${b}</span>
-      </button>`;
+    if (day !== U.todayKey()) return null;
     const el = node(html`
       <div class="think-home">
-        <div class="think-cards">
-          ${card("js-think-note", "note", "ノート", "")}
-          ${card("js-think-new", "think", "思考", "")}
-        </div>
         <section class="think-today">
           <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
           <div class="think-today-head">
@@ -1227,19 +1220,8 @@
         </section>
       </div>
     `);
-    /* 題は語の切れ目（<wbr>）でだけ折る。絵が届かない（一枚の書き出し・控えに無い）ときは、字だけの札にする。 */
+    /* 絵が届かない（一枚の書き出し・控えに無い）ときは、字だけ。今日の問いは今日だけ（利用者の頼み）。 */
     el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => im.remove(), { once: true }));
-    el.querySelector(".js-think-note").addEventListener("click", () => {
-      KN.motion.fire("select");
-      if (KN.screens.notes && KN.screens.notes.open) KN.screens.notes.open(null);
-    });
-    /* 思考：thinking に新しいノート（冊は決まっているので小窓を出さず本文へ）。問いの一覧はノートのホームから。 */
-    el.querySelector(".js-think-new").addEventListener("click", () => {
-      KN.motion.fire("select");
-      if (KN.screens.notes && KN.screens.notes.think) KN.screens.notes.think();
-    });
-    /* 今日の問いは今日だけ（利用者の頼み）。前の日・先の日は札だけ。 */
-    if (day !== U.todayKey()) { el.querySelector(".think-today").remove(); return el; }
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
     /* 開くたびに（読み込み・しばらく離れて戻る・日が替わる）でたらめに引き直す。同じ画面の組み直しでは替えない。 */
@@ -1260,7 +1242,7 @@
     if (fresh) askSaw(cur.text);
     askRepaint = () => { if (!el.isConnected) return; askTurns.set(day, askPick(day, past, cur.text)); paint(); askSaw(cur.text); };
     /* 問いの元が無い端末（取り込む前・ほかの人）で、自分の問いも無いときは、札ごと出さない。 */
-    if (!cur.text) el.querySelector(".think-today").remove();
+    if (!cur.text) return null;
     else el.querySelector(".js-think-other").addEventListener("click", () => {
       KN.motion.fire("select");
       askTurns.set(day, askPick(day, past, cur.text));
@@ -2145,14 +2127,16 @@
     if (!s) return null;
     const rows = KN.season.rows(day);
     const row = (i, inner) => html`<span class="arc-season-row${seasonTurn(day, i) ? " is-turn" : ""}">${inner}</span>`;
-    const card = node(html`
-      <section class="card arc-season" data-day="${day}">
-        ${S().seasonArt === false ? "" : html`<button type="button" class="arc-season-art" aria-label="候の絵を大きく"></button>`}
-        <p class="arc-season-main">
+    const main = html`<p class="arc-season-main">
           ${row(0, html`<span class="arc-season-k">${rows[0][0]}</span>${rows[0][1]}<span class="arc-season-span">${rows[0][2]}</span>`)}
           ${row(1, html`<span class="arc-season-k">${rows[1][0]}</span><b class="arc-season-name">${s.kou}</b><span class="arc-season-yomi">${s.kouYomi}</span><span class="arc-season-span">${rows[1][2]}</span>`)}
           ${rows.slice(2).map(([k, v], i) => row(i + 2, html`<span class="arc-season-k">${k}</span>${v}`))}
-        </p>
+        </p>`;
+    if (day === U.todayKey()) return seasonDoor(day, s, rows, main);
+    const card = node(html`
+      <section class="card arc-season" data-day="${day}">
+        ${S().seasonArt === false ? "" : html`<button type="button" class="arc-season-art" aria-label="候の絵を大きく"></button>`}
+        ${main}
       </section>
     `);
     /* 額の絵を押すと、額から全面へ膨らむ（日の一枚と同じ紙。RM） */
@@ -2162,6 +2146,68 @@
       if (u && KN.dayPhoto) KN.dayPhoto.show(u[1], art, `${s.kou}の絵`);
     });
     return card;
+  }
+
+  /** 章の扉（構4b・README 8）：今日の候の札を大きく。絵を地に、候の名は縦書きの明朝（モダンは横組み）・読み・節気と期間。
+      押すと季節のひとこと（候の札の行）が開く・閉じる。変わり目の日は開いたまま（一拍が見えるように）。 */
+  function seasonDoor(day, s, rows, main) {
+    const open = rows.some((_, i) => seasonTurn(day, i));
+    const el = node(html`
+      <section class="arc-season arc-door${open ? " is-open" : ""}" data-day="${day}">
+        <button type="button" class="arc-door-face${S().seasonArt === false ? "" : " arc-season-art"}" aria-expanded="${open}" aria-label="${s.kou}　季節のひとこと">
+          <b class="arc-door-ko">${s.kou}</b><span class="arc-door-yomi">${s.kouYomi}</span>
+          <span class="arc-door-sekki">${s.sekki}　${["初候", "次候", "末候"][s.part]}<b>${rows[1][2]}</b></span>
+        </button>
+        ${main}
+      </section>
+    `);
+    const face = el.querySelector(".arc-door-face");
+    face.addEventListener("click", () => {
+      KN.motion.fire("select");
+      face.setAttribute("aria-expanded", String(el.classList.toggle("is-open")));
+    });
+    return el;
+  }
+
+  /** 棚（構4b・README 8）：年の背表紙（記録のある年と今年。新しい年から）。色は年ごとに決め打ちで、幅と高さは
+      どの年も同じ（年を比べない）。今年に栞。押すと月ぜんぶ（日を選ぶ小窓の月の面）と年の本（構5 まで）。
+      日記の鍵のあいだは開ける前に聞く。右の端に偶然の一日。 */
+  let shelfSig = "", shelfYears = [];
+  function shelfOf(day) {
+    const now = day.slice(0, 4), st = store.get();
+    /* 年を数え直すのは日と買ったものの件数が変わったときだけ（years は買った記録を全部並べる。組み直しのたびには重い）。 */
+    const sig = `${((st.archive || {}).days || []).length}/${(st.items || []).length}`;
+    if (sig !== shelfSig && KN.yearbook) { shelfSig = sig; shelfYears = KN.yearbook.years(); }
+    const years = [...new Set([now].concat(shelfYears))].sort().reverse();
+    const el = node(html`
+      <section class="arc-shelf">
+        ${years.map((y) => html`<button type="button" class="arc-spine${y === now ? " is-now" : ""}" data-year="${y}" data-c="${String(+y % 6)}" aria-label="${y}年"><b>${y}</b></button>`)}
+      </section>
+    `);
+    el.querySelectorAll(".arc-spine").forEach((b) => b.addEventListener("click", () => {
+      const y = b.dataset.year;
+      const menu = () => KN.ui.popMenu(b, [
+        { label: "月ぜんぶ", icon: "calendar", onPick: () => openDayPicker({ anchor: b, year: +y }) },
+        { label: "年の本", icon: "book", onPick: () => KN.settingsParts.yearbook(y) },
+      ]);
+      KN.motion.fire("select");
+      if (diaryShut()) askDiary().then((ok) => { if (ok && b.isConnected) menu(); });
+      else menu();
+    }));
+    const any = anyDay(day);
+    if (any) el.append(any);
+    return el;
+  }
+
+  /* 偶然の一日（F6 の D1）：押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。今日は棚の右端、過ぎた日は頁の足もと。 */
+  function anyDay(day) {
+    if (day > U.todayKey() || S().showThen === false || diaryShut() || !store.archiveAny(day)) return null;
+    const any = node(html`<button type="button" class="btn btn-soft btn-sm arc-any">${icon("shuffle")}どこかの一日</button>`);
+    any.addEventListener("click", () => {
+      KN.motion.fire("select");
+      goToDay(store.archiveAny(focusDay()));
+    });
+    return any;
   }
 
   function daySlide(day) {
@@ -2178,25 +2224,21 @@
     if (body) body.before(tabs);
     const then = imaCard(day);
     const season = seasonCard(day);
+    /* 今日（一日ぶん）は頭に章の扉と棚（構4b）。今日の頁はその下に残す——外すのは 4c の答え（＋の役・筆の置き場）のあと。 */
+    const front = day === U.todayKey() && oneDayLog();
     main.append(log);
     if (season) el.append(season);
+    if (front) el.append(shelfOf(day));
     el.append(main);
     if (then) el.append(then);
-    /* 偶然の一日（F6 の D1）：いまごろの並びの端。押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。 */
-    if (day <= U.todayKey() && S().showThen !== false && !diaryShut() && store.archiveAny(day)) {
-      const any = node(html`<button type="button" class="btn btn-soft btn-sm arc-any">${icon("shuffle")}どこかの一日</button>`);
-      any.addEventListener("click", () => {
-        KN.motion.fire("select");
-        goToDay(store.archiveAny(focusDay()));
-      });
-      el.append(any);
-    }
+    const any = !front && anyDay(day);
+    if (any) el.append(any);
     /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている
        日は全タブで一つなので、やることで来週を見たまま移ってくると、ここに
        その日が来ます（docs/shared-header.md）。書き込む口は閉じておきます。 */
     if (day > U.todayKey()) { el.inert = true; el.classList.add("is-ahead"); }
-    /* 思考のホームは Daily Log の上に（時刻ごとのときだけ。一枚のときは今までの紙のまま）。まだ来ていない日は書けないので出さない。 */
-    else if (chatView()) main.prepend(thinkHome(day));
+    /* 今日の問いは今日の Daily Log の上に（時刻ごとのときだけ）。ノート・思考の札は notes の＋へ移した（構4b）。 */
+    else if (chatView() && day === U.todayKey()) { const h = thinkHome(day); if (h) main.prepend(h); }
     return el;
   }
 

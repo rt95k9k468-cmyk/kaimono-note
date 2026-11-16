@@ -197,7 +197,7 @@
   function dailyExportRows() {
     return [
       navRow({ title: "期間を選んで書き出す", onTap: openRangeExport }),
-      navRow({ title: "年の本", onTap: openYearbook }),
+      navRow({ title: "年の本", onTap: () => openYearbook() }),
     ].filter(Boolean);
   }
 
@@ -279,8 +279,8 @@
      一年ぶんを事実だけの一冊に。選べるのは記録のある年だけ（新しい順）。
      本文が入るので、月ぶんと同じ門（突き合わせの前・読めない日は断る）。
      紙に言うのは中身の種類だけで、数は言いません（daily は数えない）。 */
-  function openYearbook() {
-    if (monthExportBlocked("年の本", openYearbook)) return;
+  function openYearbook(pick) {
+    if (monthExportBlocked("年の本", () => openYearbook(pick))) return;
     const list = KN.yearbook.years();
     const body = node(html`
       <div class="stack">
@@ -293,7 +293,8 @@
       KN.ui.sheet({ title: "年の本", content: body });
       return;
     }
-    let year = list.includes(KN.util.todayKey().slice(0, 4)) ? KN.util.todayKey().slice(0, 4) : list[0];
+    /* 棚の背表紙から来たら、その年（構4b）。 */
+    let year = list.includes(pick) ? pick : list.includes(KN.util.todayKey().slice(0, 4)) ? KN.util.todayKey().slice(0, 4) : list[0];
     const paint = () => KN.ui.chipRow(body.querySelector(".js-years"),
       list.map((y) => ({ id: y, label: `${y}年` })),
       { activeId: year, onPick: (id) => { year = String(id); paint(); } });
@@ -346,5 +347,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  Object.assign(S, { dailyPageRows, dailyExportRows, lockRows });
+  Object.assign(S, { dailyPageRows, dailyExportRows, lockRows, yearbook: openYearbook });
 })();

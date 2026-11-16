@@ -371,7 +371,7 @@ const { open, checker, ASKS } = require("./lib");
     const s = [...document.querySelectorAll("#screen-archive .day-slide")].find((x) => { const r = x.getBoundingClientRect(); return r.width && Math.abs(r.left) < 5; });
     return s ? { home: !!s.querySelector(".think-home"), ask: !!s.querySelector(".think-today") } : null;
   });
-  t.check("前の日は三枚の札だけ（今日の問いは今日だけ）", !!past && past.home && !past.ask, JSON.stringify(past));
+  t.check("前の日は札も問いも出さない（今日の問いは今日だけ。ノート・思考の札は notes の＋へ・構4b）", !!past && !past.home && !past.ask, JSON.stringify(past));
 
   /* ---- 設定 → daily →「問いの元を取り込む」（2026年11月5日まで バックアップの一枚。同じ行が データ・同期 → 取り込み にも）：
      違うファイルは何も変えない・入れ替える前に聞く ---- */

@@ -1,4 +1,4 @@
-/* いまごろ・年々のつまみ（構2・shots/vision/README.md 6.1・8）と、出さない日（R9）・どこかの一日（F6 の D1）。
+/* いまごろ・年々のつまみ（構2・shots/vision/README.md 6.1・8）と、出さない日（R9）・どこかの一日（F6 の D1）・章の扉と棚（構4b）。
 
    時計を 2026年9月29日に止める。同じ月日の頁は 2024・2025（日記）、2022 は済ませた用事と買ったものだけ（同じ候の 9/30）、
    2023 は積み上げだけ（出ない）、2021 は体重だけ（からだは出ない）。
@@ -123,21 +123,21 @@ const FORBIDDEN = [
   const place = () => page.evaluate(() => {
     const root = document.getElementById("screen-archive");
     const r = (q) => { const e = root.querySelector(q); return e ? e.getBoundingClientRect() : null; };
-    const log = r(".arc-log"), then = r(".arc-then"), kou = r(".arc-season"), write = r(".think-cards");
-    return { log, then, kou, write, slide: r(".day-slide"), any: r(".arc-any") };
+    const log = r(".arc-log"), then = r(".arc-then"), kou = r(".arc-season"), main = r(".day-main"), shelf = r(".arc-shelf");
+    return { log, then, kou, main, shelf, slide: r(".day-slide"), any: r(".arc-any"), anyIn: !!root.querySelector(".arc-shelf .arc-any") };
   });
   let at = await place();
   t.check("電話：いまごろは Daily Log の下・同じ列", at.then && at.then.top > at.log.bottom && Math.abs(at.then.left - at.log.left) < 2, JSON.stringify(at));
-  t.check("D1：いまごろの並びの端に「どこかの一日」", at.any && at.any.top >= at.then.bottom && Math.abs(at.any.left - at.then.left) < 2, JSON.stringify(at.any));
+  t.check("構4b：今日は扉 → 棚 → Daily Log。どこかの一日は棚の右の端", at.shelf && at.shelf.top >= at.kou.bottom && at.log.top > at.shelf.bottom
+    && at.anyIn && at.any.right > at.shelf.right - 40, JSON.stringify({ shelf: at.shelf, any: at.any }));
   for (const [w, h] of [[820, 1180], [1440, 900]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(400);
     at = await place();
-    t.check(`${w}px：二段（右に候の札といまごろ、左に書く口と Daily Log）`, at.kou && at.then && at.kou.left > at.log.right
-      && at.then.left > at.log.right && at.write.left === at.log.left && Math.abs(at.kou.top - at.write.top) < 2
-      && at.then.top - at.kou.bottom < 20, JSON.stringify(at));
-    t.check(`${w}px：どこかの一日はいまごろのすぐ下（右の段）`, at.any && Math.abs(at.any.left - at.then.left) < 2
-      && at.any.top - at.then.bottom < 20 && at.any.top > at.then.bottom, JSON.stringify(at.any));
+    t.check(`${w}px：二段（右に扉・棚・いまごろ、左に Daily Log）`, at.kou && at.then && at.kou.left > at.log.right
+      && at.then.left > at.log.right && Math.abs(at.kou.top - at.main.top) < 2, JSON.stringify(at));
+    t.check(`${w}px：棚は扉のすぐ下、いまごろは棚の下（右の段）`, at.shelf && Math.abs(at.shelf.left - at.kou.left) < 2
+      && at.shelf.top - at.kou.bottom < 20 && at.then.top >= at.shelf.bottom && at.then.top - at.shelf.bottom < 40, JSON.stringify(at.shelf));
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(300);
@@ -158,6 +158,37 @@ const FORBIDDEN = [
   t.check("D1：行った先でもう一度押すと、別の書いてある日へ", ["2024-09-29", "2025-09-29"].includes(second) && second !== first, `${first} → ${second}`);
   await page.evaluate(() => { KN.util.dayShare.set(KN.util.todayKey()); KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
+
+  /* 構4b 棚と扉：背表紙は記録のある年と今年（新しい年から）・どれも同じ大きさ・今年に栞。押すと月ぜんぶ・年の本。扉を押すと季節のひとこと。 */
+  await page.evaluate(() => KN.screens.archive.goDay(KN.util.todayKey()));
+  await page.waitForTimeout(700);
+  const shelf = await page.evaluate(() => {
+    const sp = [...document.querySelectorAll("#screen-archive .arc-shelf .arc-spine")];
+    const sz = sp.map((b) => { const r = b.getBoundingClientRect(); return `${Math.round(r.width)}x${Math.round(r.height)}`; });
+    return { years: sp.map((b) => b.dataset.year), now: sp.filter((b) => b.classList.contains("is-now")).map((b) => b.dataset.year),
+      same: new Set(sz).size === 1, text: document.querySelector("#screen-archive .arc-shelf").innerText, want: KN.yearbook.years() };
+  });
+  t.check("構4b：棚は記録のある年と今年の背表紙（新しい年から）・今年に栞", shelf.years.join() === [...new Set([String(new Date().getFullYear())].concat(shelf.want))].sort().reverse().join()
+    && shelf.years.includes("2024") && shelf.now.join() === String(new Date().getFullYear()), JSON.stringify(shelf));
+  t.check("構4b：背表紙はどの年も同じ大きさ（年を比べない）・禁止語なし", shelf.same && !FORBIDDEN.some((w) => shelf.text.includes(w)), JSON.stringify(shelf));
+  await page.click('#screen-archive .arc-spine[data-year="2025"]');
+  await page.waitForTimeout(300);
+  const items = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.innerText.trim()));
+  t.check("構4b：背表紙を押すと「月ぜんぶ」「年の本」", items.join("|") === "月ぜんぶ|年の本", items.join("|"));
+  await page.locator(".note-pop-item", { hasText: "月ぜんぶ" }).click();
+  await page.waitForTimeout(400);
+  const pick = await page.evaluate(() => { const y = document.querySelector(".js-up-t"); return { y: y && y.textContent, cells: document.querySelectorAll(".mp-grid .mp-cell").length }; });
+  t.check("構4b：月ぜんぶはその年の十二の月", pick.y === "2025年" && pick.cells === 12, JSON.stringify(pick));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  const door = await page.evaluate(() => {
+    const d = document.querySelector("#screen-archive .arc-door"), m = d && d.querySelector(".arc-season-main");
+    if (!m) return null;
+    const before = m.offsetHeight > 0;
+    d.querySelector(".arc-door-face").click();
+    return { before, after: m.offsetHeight > 0, exp: d.querySelector(".arc-door-face").getAttribute("aria-expanded"), past: !!document.querySelector("#screen-archive .think-cards") };
+  });
+  t.check("構4b：扉を押すと季節のひとことが開く・閉じる（ノート・思考の札は無い）", door && door.after !== door.before && door.exp === String(door.after) && !door.past, JSON.stringify(door));
 
   /* 年をまたぐ候（雪下出麦）：2027年1月2日のいまごろに、前の年の12月31日が入る。年の札は続きが始まる年（2025）。 */
   await page.clock.setFixedTime(new Date(2027, 0, 2, 10, 0));

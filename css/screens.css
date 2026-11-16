@@ -4,18 +4,7 @@
 
 /* ================= LIST SCREEN ================= */
 
-/* The dock floats over the list, just above the tab bar, rather than being a
-   row of its own. As a row it was a 56px button in an 80px band with a rule
-   across the top — a strip of empty background the width of the screen, paid
-   for out of the list. Floating, it costs only what it covers.
-
-   It takes no clicks itself, so the list underneath stays draggable and
-   scrollable right up to the button's own edge.
-
-   (It used to be a text field, which is why this sat outside the scrolling
-   screens with nothing sticky about it: iOS painted the caret far above a
-   sticky field. Now that adding happens in a sheet, there is no caret here to
-   go wrong.) */
+/* ＋の器は帯の上に浮かせる（行にすると画面幅の空き地になる）。器そのものは押せない——下の一覧は＋の縁まで掴める。 */
 .dock {
   position: absolute;
   left: 0;
@@ -29,7 +18,11 @@
    rather than hovering over a gap that is no longer there. */
 .kb-open .dock { bottom: var(--sp-3); }
 
-.quick-add { display: flex; justify-content: center; }
+.quick-add { position: relative; display: flex; justify-content: center; }
+/* notes の＋の上の小さな丸：思考（構4b。前は daily の札）。 */
+.fab-sub { position: absolute; bottom: calc(100% + var(--sp-2)); right: 6px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
+  display: grid; place-items: center; background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-2); box-shadow: var(--shadow-1); }
+.fab-sub svg { width: 22px; height: 22px; }
 
 /* Room under the last card so the button is never sitting on top of the thing
    you are trying to read — one button's height plus the gap it floats by,
@@ -762,15 +755,7 @@
 .todo-head.is-empty .todo-head-dot { opacity: .5; width: 7px; height: 7px; }
 .todo-group.is-empty { margin-bottom: 0; }
 
-/* One shelf, one band.
-
-   Fifteen headings down a screen, most of them thin and empty, ran together
-   into a list of dates — you could not see where 明日 stopped and 明後日
-   started, which matters most in the moment you are carrying a row between
-   them. So each shelf is drawn as a band: a rule across the full width above
-   its heading, and the heading itself washed in that shelf's own colour. The
-   wash is faint (7%), but fifteen faint washes in a row from red to blue is
-   the ramp made visible rather than fifteen identical grey lines. */
+/* 棚は一つずつ帯に：見出しの上に幅いっぱいの線と、その棚の色を薄く（7%）。日の境目が読めるように。 */
 .tl-shelves > .todo-group { border-top: 1px solid var(--c-border); }
 .tl-shelves > .todo-group > .todo-head {
   background: color-mix(in srgb, var(--cat, var(--c-border)) 14%, transparent);
@@ -815,19 +800,8 @@
   outline-offset: -2px;
 }
 
-/* ---- a やること row, at two thirds ----
-
-   The shopping list's row carries a picture, a size, a price and a shop, and
-   is built to hold them. A todo is a line of text and, at most, a when — and
-   it was renting the same three-storey box: name on one floor, everything else
-   on a second, half of it empty most of the time.
-
-   So the *when* moves out of the middle and stacks around the circle instead —
-   19:30 above it, 火・金 under it — which is where it belongs anyway, since
-   ticking the circle is what those two facts are about. The title takes the
-   whole middle, vertically centred, and what is left over (the day, a memo,
-   「しまった」) sits beside it on the same line rather than under it. One line
-   instead of two, and about two thirds the height. */
+/* ---- やることの行（買うものの三段の三分の二） ----
+   「いつ」は丸の上下に、題はまん中に一行。日付・メモは題の横。 */
 /* `:not(.is-tile)` はタイルの名残（2026年11月7日に外した）。詳細度 0,3,0 を保つために残す。 */
 .item.todo:not(.is-tile) {
   align-items: center;
@@ -997,14 +971,7 @@
 
 /* ================= SWIPE PANELS (both screens) ================= */
 
-/* One gesture, two screens, two layouts: right is the tab's positive action,
-   left is always the archive. Both panels lie at inset:0 behind the card, and
-   only the one the card is heading for is made visible — showing both would
-   stack one on the other.
-
-   The right panel wears the row's own category colour rather than a fixed
-   green or amber. Under a swipe the panel is the row for a moment, and a row
-   that changes colour when you push it is a different row. */
+/* 払う手：右は席の前向きの手、左はいつも archive。裏の札は向かう側だけ見せる。右の札は行の色のまま。 */
 .swipe-yes,
 .swipe-arch {
   position: absolute;
@@ -1776,7 +1743,7 @@
   pointer-events: none;
 }
 /* 挿絵は丸い札に切り、水彩（img/think/）と色味を生成りへ寄せる（RI。docs/redesign.md 8節）。 */
-.set-art, .think-card-art, .think-today-art, .sheet-mark-art { filter: sepia(.22) saturate(.8); }
+.set-art, .think-today-art, .sheet-mark-art { filter: sepia(.22) saturate(.8); }
 .set-top:not(.is-page) .set-art { height: 104px; margin: var(--sp-1) -4px 0 0; }
 .set-top .set-hero { margin-bottom: var(--sp-3); }
 
@@ -3070,22 +3037,36 @@ a.btn { text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- 思考のホーム・時刻ごとの日記（docs/thinking.md） ----
-   二枚の札（ノート・思考）と今日の問い。水彩の絵は img/think/。字は要る一語だけ。
-   札の地は絵の色を面の色に混ぜた塗り（暗い面でも同じ式で沈む。透かさない・ぼかさない）。 */
+/* ---- 今日の問い（docs/thinking.md）。ノート・思考の札は notes の＋へ（構4b）。 ---- */
 .think-home { display: flex; flex-direction: column; gap: var(--sp-3); }
-/* 小さな札（構3④）：ノート｜思考。日記を書く口は線の筆と＋。絵は札の右、題は左。 */
-.think-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.think-card {
-  position: relative; min-width: 0; height: 52px; padding: 0 12px;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
-  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
-  transition: opacity var(--m-state) var(--ease);
-}
-.think-card:active, .think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.think-card-art { position: absolute; right: -6px; top: 50%; translate: 0 -50%; width: 44px; height: 44px; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-.think-card-t { position: relative; z-index: 1; color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.35; word-break: keep-all; }
+.think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
+/* 章の扉（構4b・README 8）：候の絵を地に、名は縦書きの明朝（モダンは横組み）。押すと季節のひとこと（行は候の札と同じ）。 */
+.arc-season.arc-door { display: flex; flex-direction: column; gap: var(--sp-3); padding: 0; }
+.arc-door .arc-door-face { position: relative; display: block; width: 100%; height: clamp(220px, 34svh, 300px); margin: 0; padding: 0; overflow: hidden;
+  border-radius: var(--r-lg); border: 1px solid var(--c-border); box-shadow: var(--shadow-1); background-color: var(--c-surface); color: var(--c-text); text-align: left; }
+.arc-door .arc-door-face.arc-season-art { color: #fff; border-color: transparent;
+  background: linear-gradient(180deg, rgb(10 8 6 / .28), transparent 30% 55%, rgb(10 8 6 / .5)), linear-gradient(270deg, rgb(10 8 6 / .46), transparent 46%),
+    var(--season-img, none) center / cover no-repeat, var(--season-k); }
+.arc-door-ko { position: absolute; right: 22px; top: 22px; writing-mode: vertical-rl; font: var(--fw-bold) calc(34px * var(--fs-k))/1 var(--font-display); letter-spacing: .16em; }
+.arc-door-yomi { position: absolute; right: 68px; top: 24px; writing-mode: vertical-rl; font-size: var(--fs-xs); letter-spacing: .24em; }
+.arc-door-sekki { position: absolute; left: 18px; bottom: 16px; font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .12em; }
+.arc-door-sekki b { display: block; font: var(--fw-bold) calc(19px * var(--fs-k))/1.3 var(--font-display); letter-spacing: .08em; }
+.arc-door-ko, .arc-door-yomi { white-space: nowrap; }   /* 絶対配置の縦組みは長さが縮む */
+.arc-season-art :is(.arc-door-ko, .arc-door-yomi, .arc-door-sekki) { text-shadow: 0 1px 10px rgb(0 0 0 / .6); }
+[data-attire="modern"] :is(.arc-door-ko, .arc-door-yomi) { writing-mode: horizontal-tb; left: 18px; right: auto; top: 20px; }
+[data-attire="modern"] .arc-door-yomi { top: calc(30px + 34px * var(--fs-k)); }
+.arc-door > .arc-season-main { display: none; padding-inline: var(--sp-2); }
+.arc-door.is-open > .arc-season-main { display: flex; }
+/* 棚（構4b）：年の背表紙。色は年ごとに決め打ち、幅と高さはどの年も同じ（年を比べない）。今年に栞。右の端に偶然の一日。 */
+.arc-shelf { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; min-height: 100px; padding: 0 var(--sp-2); border-bottom: 3px solid var(--c-border-2); }
+.arc-spine { position: relative; width: 36px; height: 88px; padding: 0; border: 0; border-radius: 4px 4px 1px 1px; display: grid; place-items: center;
+  color: #fff; background: var(--spine); box-shadow: inset -5px 0 0 rgb(0 0 0 / .1), inset 2px 0 0 rgb(255 255 255 / .14); transition: opacity var(--m-state) var(--ease); }
+.arc-spine:active { opacity: var(--press-fade); }
+.arc-spine b { writing-mode: vertical-rl; font: var(--fw-bold) calc(14px * var(--fs-k))/1 var(--font-display); letter-spacing: .1em; }
+.arc-spine.is-now::before { content: ""; position: absolute; top: -8px; right: 6px; width: 7px; height: 28px; background: #f1d9a6; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
+.arc-spine[data-c="0"] { --spine: #2f4d6b; } .arc-spine[data-c="1"] { --spine: #2f6149; } .arc-spine[data-c="2"] { --spine: #6a4a2c; }
+.arc-spine[data-c="3"] { --spine: #54446e; } .arc-spine[data-c="4"] { --spine: #9a3b2c; } .arc-spine[data-c="5"] { --spine: #3e5a5f; }
+.arc-shelf .arc-any { margin: 0 0 var(--sp-3) auto; align-self: flex-end; }
 /* 電話の最初の一画面は記録へ（W1・docs/redesign.md 2節）：候の札は額 58px・名 22px の一段。順は変えない（daily-rules）。 */
 @media (max-width: 639.98px) {
   .arc-season { gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); }
@@ -6904,7 +6885,7 @@ button.note-when:active { opacity: var(--press-fade); }
     }
     .day-slide > .arc-season { grid-column: 2; grid-row: 1; }
     .day-slide > .day-main { grid-column: 1; grid-row: 1 / -1; }
-    .day-slide > .arc-then, .day-slide > .arc-any { grid-column: 2; }
+    .day-slide > .arc-then, .day-slide > .arc-any, .day-slide > .arc-shelf { grid-column: 2; }
   }
   @container seat (min-width: 1100px) {
     .arc-season-art { width: 128px; }
@@ -6996,7 +6977,6 @@ button.note-when:active { opacity: var(--press-fade); }
     --tint: color-mix(in srgb, var(--c-text) 6%, transparent);
     background-image: linear-gradient(var(--tint), var(--tint));
   }
-  .think-card:hover { background-color: color-mix(in srgb, var(--c-text) 6%, transparent); }
 }
 
 /* 強制配色（Windows のハイコントラスト。P4）：地と影で形を言っている押せるものに縁を、選んでいるものは Highlight で。

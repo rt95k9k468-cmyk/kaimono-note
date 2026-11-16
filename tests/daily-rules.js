@@ -95,7 +95,7 @@ const FORBIDDEN = [
   /* ---- 形（R6）：候の札 → 書く口・Daily Log。空の日は点線（墨の線の色。責める色を当てない）。候の札は数を言わない ---- */
   const r6 = await page.evaluate(() => {
     const root = document.getElementById("screen-archive");
-    const kids = [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className);
+    const kids = [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className);
     const w = root.querySelector(".arc-log-row.is-today .is-write, .arc-log-row.is-today .arc-post.is-blank .arc-post-text");
     const probe = document.createElement("i");
     probe.style.color = "var(--c-border-2)";
@@ -106,7 +106,7 @@ const FORBIDDEN = [
     return { kids, dash: cs ? cs.borderTopStyle : "", lineOk: !!cs && cs.borderTopColor === line,
       kou: (root.querySelector(".arc-season-main") || {}).textContent || "" };
   });
-  t.check("日の一枚は 候の札 → 本体（書く口・Daily Log）の順", r6.kids[0] === "arc-season" && r6.kids[1] === "day-main", r6.kids.join(","));
+  t.check("今日の一枚は 扉（候の札）→ 棚 → 本体（書く口・Daily Log）の順（構4b）", r6.kids.slice(0, 3).join() === "arc-season,arc-shelf,day-main", r6.kids.join(","));
   t.check("今日が空なら点線の「この日のことを書く」（線の色は --c-border-2）", r6.dash === "dashed" && r6.lineOk, JSON.stringify(r6));
   t.check("候の札は暦の言葉だけ（評価の言葉なし）", !!r6.kou && !FORBIDDEN.some((x) => r6.kou.includes(x)), r6.kou);
 

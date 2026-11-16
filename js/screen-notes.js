@@ -2987,6 +2987,7 @@
     if (N().state() === "off") return null;
     const fab = node(html`
       <div class="quick-add">
+        <button type="button" class="fab-sub js-open-think" aria-label="思考">${icon("thought")}</button>
         <button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button>
       </div>
     `);
@@ -2995,6 +2996,12 @@
       /* ノートブックに書くのは、木のノートブックの行の＋から（③）。 */
       openNote(null, null, null);
     });
+    /* ＋の上の小さな丸：思考（構4b。前は daily の札）。 */
+    fab.querySelector(".js-open-think").addEventListener("click", (e) => {
+      e.stopPropagation();
+      KN.motion.fire("select");
+      think();
+    });
     return fab;
   }
 
@@ -3002,7 +3009,7 @@
   /** ほかの席・設定へ移る。右の段に据えたノートは、その画面の上に残さず閉じる（保存は閉じる道のまま）。 */
   function onLeave() { if (document.documentElement.classList.contains("notes-dock")) closePapers(); }
 
-  /** daily の「思考」の札：thinking に新しいノート。冊は決まっているので小窓を出さずに本文へ。 */
+  /** ＋の上の「思考」：thinking に新しいノート。冊は決まっているので小窓を出さずに本文へ。 */
   const think = () => openNote(null, null, { nb: THINK });
 
   KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
