@@ -139,7 +139,7 @@ let browser;
   t.check("アプリで CSP の違反が出ない", !violations.length && !errors.length, [...violations, ...errors].join(" / "));
   t.check("天気：場所を選ぶまでは取りに行かない", !wx.length, wx.map(String).join(" "));
 
-  /* 天気（D3）：場所を選ぶと一度だけ。送るのは丸めた緯度経度と日数。daily の今日の行に絵と「14°／6°」。 */
+  /* 天気（D3）：場所を選ぶと一度だけ。送るのは丸めた緯度経度と日数。daily の日の行（席1 の今日は扉だけなので昨日）に絵と「14°／6°」。 */
   await page.evaluate(() => KN.weather.setPlace({ lat: 35.6895, lon: 139.6917, name: "東京都" }));
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(600);
@@ -147,11 +147,14 @@ let browser;
   t.check("天気：選ぶと一度だけ、0.1度に丸めた緯度経度で", wx.length === 1 && wx[0].searchParams.get("latitude") === "35.7"
     && wx[0].searchParams.get("longitude") === "139.7" && wx[0].searchParams.get("past_days") === "92", wx.map(String).join(" "));
   t.check("天気：送るのは場所と日数と欲しい欄だけ", sent === "daily,forecast_days,latitude,longitude,past_days,timezone", sent);
-  const wxRow = await page.evaluate(() => {
-    const e = document.querySelector(`#screen-archive .arc-log-row[data-day="${KN.util.todayKey()}"] .arc-log-wx`);
+  const wxRow = await page.evaluate(async () => {
+    const y = KN.util.shiftDay(KN.util.todayKey(), -1);
+    KN.screens.archive.goDay(y);
+    await new Promise((r) => setTimeout(r, 300));
+    const e = document.querySelector(`#screen-archive .arc-log-row[data-day="${y}"] .arc-log-wx`);
     return e ? { text: e.innerText.trim(), label: e.getAttribute("aria-label"), ico: !!e.querySelector('[data-ico="cloud-sun"]') } : null;
   });
-  t.check("天気：今日の行の頭に絵と「14°／6°」", wxRow && wxRow.text === "14°／6°" && wxRow.ico && /最高14度 最低6度/.test(wxRow.label), JSON.stringify(wxRow));
+  t.check("天気：日の行の頭に絵と「14°／6°」", wxRow && wxRow.text === "14°／6°" && wxRow.ico && /最高14度 最低6度/.test(wxRow.label), JSON.stringify(wxRow));
   const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("kn-weather-place")));
   t.check("天気：場所は丸めて端末だけに（記録には入らない）", kept && kept.lat === 35.7 && kept.lon === 139.7
     && !JSON.stringify(await page.evaluate(() => KN.store.get())).includes("139.7"), JSON.stringify(kept));

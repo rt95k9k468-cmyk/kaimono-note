@@ -5,19 +5,20 @@
      一件は頁の行。長い一件は頭と終わりの三行ずつで畳み「全文を読む」で伸び縮み。押すと道具（直す・写す・ノートへ移す。
      日付と育休の行だけの頭には出さない）。作成は Daily Log の ⋯
    - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
-   - daily の冒頭に書く口と問いの札。＋も書く口も、種類を選ばずに書く紙（新しい一件）
+   - 今日の頁は席3（頭に今日の問いと「いま」より上の行・「いま」の筆）、過ぎた日の頁は席1（構4b の二つめ）。席1 に＋・線・二度押しは無い。
+     筆は種類を選ばずに書く紙（新しい一件）
    - 今日の問いは開くたびにでたらめに引き、最近出た問い（askSeen）を避ける（読み込み直すと替わる）
    - 打った先から残る（時刻は打ち始めた時）。直しても時刻の行は変わらない。空にすると外れ、元に戻せる
    - 開いて閉じただけでは本文の形を変えない（空行の多い一件でも）
    - ノートへ移す：新しいノート（作った日＝その一件の時刻）・前からのノートの終わり（日付と時刻の行）。
      書けたと確かめてから日記から外し、元に戻すで両方戻る
    - コピーは前のまま（本文はそのまま・完了したことなど）
-   - 設定「一枚」で前の紙（行を押すと日記の紙、＋も日記の紙）
+   - 設定「一枚」で前の紙（過ぎた日の行を押すと日記の紙）
    - 本文を読めない日は書く紙を開かない。達成・変化の札は新しくは出ない
    日記の本文は試験用の無難な字だけ。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/diary-chat.js */
 const path = require("path");
-const { open, checker, ASKS } = require("./lib");
+const { open, checker, pen, ASKS } = require("./lib");
 
 global.window = global;
 require(path.join(__dirname, "..", "js", "diary-posts.js"));
@@ -126,7 +127,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     before: async (cx, p) => { await p.clock.setFixedTime(AT); },
   });
   await page.evaluate((a) => KN.store.setAsks(a), ASKS);   // 問いの元は端末の記録にだけある
-  const day = await page.evaluate(() => KN.util.todayKey());
+  let day = await page.evaluate(() => KN.util.todayKey());
   const memo = () => page.evaluate((d) => (KN.store.dayLog(d) || {}).memo || "", day);
   const setMemo = (m) => page.evaluate(([d, v]) => KN.store.setDayLog(d, { memo: v }), [day, m]);
   const sheetOpen = () => page.waitForSelector(".sheet.is-open.is-card .js-memo", { timeout: 4000 });
@@ -149,54 +150,58 @@ const AT = new Date(2026, 9, 6, 12, 34);
     window.__ear.observe(document.body, { childList: true, subtree: true });
   });
   const said = () => page.evaluate(() => (window.__said || []).join("|"));
+  /* 今日の頁は席3（tasks の頭の頁）、過ぎた日の頁は席1（構4b の二つめ）。R は頁の器、day は記録の日。 */
+  const TODAY = day, YEST = "2026-10-05";
+  let R = "#screen-todo .tk-page";
+  const toToday = async () => { day = TODAY; R = "#screen-todo .tk-page";
+    await page.evaluate(() => { KN.screens.archive.goDay(KN.util.todayKey()); KN.app.showScreen("todo"); }); await page.waitForTimeout(400); };
+  const toPast = async () => { day = YEST; R = "#screen-archive";
+    await page.evaluate((d) => { KN.app.showScreen("archive"); KN.screens.archive.goDay(d); }, YEST); await page.waitForTimeout(400); };
   /* 直す・写す・ノートへ移すは、言葉の行を押すと出る道具（構1）。開いていれば押し直さない。 */
   const tool = async (k, name) => {
-    const p = `#screen-archive .arc-post[data-k="${k}"]`;
+    const p = `${R} .arc-post[data-k="${k}"]`;
     if (!(await page.$(`${p}.is-tools`))) await page.click(`${p} .arc-post-text`);
     await page.click(`${p} .js-post-${name}`);
   };
-  const posts = () => page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")]
-    .map((p) => ({ at: (p.querySelector(".arc-post-at") || {}).textContent || null, text: p.querySelector(".arc-post-text").textContent })));
+  const posts = () => page.evaluate((r) => [...document.querySelectorAll(`${r} .arc-log-row.is-chat .arc-post`)]
+    .map((p) => ({ at: (p.querySelector(".arc-post-at") || {}).textContent || null, text: p.querySelector(".arc-post-text").textContent })), R);
 
-  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.evaluate(() => KN.app.showScreen("todo"));
   await page.waitForTimeout(500);
 
-  /* ---- 冒頭：書く口と問いの札。空の日の一行は前のまま ---- */
+  /* ---- 冒頭：今日の問い（席3 の今日の頁の頭）。書く口は「いま」の筆 ---- */
   /* 札の絵は読み終わるまで待つ（混んだ機械では 500ms で読み終わらず揺れた。2026年10月31日、-j 6）。 */
-  await page.waitForFunction(() => { const h = document.querySelector("#screen-archive .think-home");
+  await page.waitForFunction(() => { const h = document.querySelector("#screen-todo .tk-page .think-home");
     return !h || [...h.querySelectorAll("img")].every((im) => im.complete); }, null, { timeout: 8000 }).catch(() => {});
   const home = await page.evaluate(() => {
-    const root = document.getElementById("screen-archive");
-    const h = root.querySelector(".think-home");
-    const slide = root.querySelector(".day-slide");
-    const blank = root.querySelector(".arc-log-row.is-today .arc-log-memo");
-    const main = root.querySelector(".day-slide > .day-main");
-    return { home: !!h, first: !!(h && main && main.firstElementChild === h && slide.contains(main)),
-      write: !!(h && h.querySelector(".js-think-write, .is-main")), pen: !!root.querySelector(".day-slide:not(.is-peek) .pg-now-pen"),
-      think: !!(h && h.querySelector(".js-think-new")), blank: blank ? blank.textContent.trim() : null,
+    const root = document.getElementById("screen-todo"), arc = document.getElementById("screen-archive");
+    const h = root.querySelector(".tk-page .think-home");
+    return { home: !!h, first: !!(h && h.parentNode.firstElementChild === h),
+      write: !!(h && h.querySelector(".js-think-write, .is-main")), pen: !!root.querySelector(".tl-now-pen"),
+      think: !!(h && h.querySelector(".js-think-new")), arc: !!arc.querySelector(".think-home, .pg-now-pen, .arc-log"),
       cards: h ? [...h.querySelectorAll(".think-card-t")].map((x) => x.textContent.trim()) : [],
       cardIcons: h ? h.querySelectorAll(".think-card svg").length : -1,
       q: h ? (h.querySelector(".js-think-q") || {}).textContent : "",
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
       emoji: /\p{Extended_Pictographic}/u.test(root.innerText) };
   });
-  t.check("構4b：冒頭（扉・棚の次）は今日の問いだけ。ノート・思考の札と朱の「日記に書く」は無く、書く口は線の筆", home.home && home.first && !home.write
+  t.check("構4b：今日の問いは席3 の今日の頁の頭。ノート・思考の札と朱の「日記に書く」は無く、書く口は「いま」の筆", home.home && home.first && !home.write
     && home.pen && !home.cards.length && home.cardIcons <= 0 && !home.think, JSON.stringify(home));
+  t.check("席1 の今日に問い・筆・Daily Log は無い", !home.arc);
   t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 1 && home.arts.every(Boolean), JSON.stringify(home));
-  t.check("空の日の一行は「この日のことを書く」のまま", home.blank === "この日のことを書く", String(home.blank));
   t.check("絵文字なし", !home.emoji);
 
   /* ---- 書く口：種類を選ばずに書く紙。打った先から残る ---- */
   /* ---- 今日の問い：「別の問い」で替わる。この問いから考える＝答える紙（問いは欄の外）。打つまで書かない ---- */
   {
-    const q0 = await page.textContent("#screen-archive .js-think-q");
-    await page.click("#screen-archive .js-think-other");
-    const q1 = await page.textContent("#screen-archive .js-think-q");
+    const q0 = await page.textContent("#screen-todo .js-think-q");
+    await page.click("#screen-todo .js-think-other");
+    const q1 = await page.textContent("#screen-todo .js-think-q");
     t.check("別の問いで替わる", q0 && q1 && q0 !== q1, `${q0} → ${q1}`);
     const before0 = await memo();
     await page.waitForFunction(() => KN.notes && KN.notes.state() === "on", null, { timeout: 5000 });
     const notes0 = await page.evaluate(() => KN.notes.list().length);
-    await page.click("#screen-archive .js-think-today");
+    await page.click("#screen-todo .js-think-today");
     await page.waitForSelector(".sheet.is-open .ask-sheet-q", { timeout: 4000 });
     const v = await page.evaluate(() => { const s = document.querySelector(".sheet.is-open"), a = s.querySelector(".js-a");
       return { q: s.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a }; });
@@ -238,7 +243,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     await page.waitForTimeout(500);
   }
 
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await sheetOpen();
   const s1 = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-open");
@@ -257,13 +262,15 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await closeSheet();
   t.check("新しい一件を閉じたら「保存しました」", /保存しました/.test(await said()), await said());
   const p1 = await posts();
-  t.check("一件が時刻つきで出る", p1.length === 2 && p1[1].at === "12:34" && p1[1].text === "一件目の字" && p1[0].at === null, JSON.stringify(p1));
+  /* 席3 の頭の頁は日付だけの頭を出さない（日付は題が言う）。 */
+  t.check("一件が時刻つきで出る（席3 の今日の頁）", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "一件目の字", JSON.stringify(p1));
 
-  /* ---- ＋も同じ書く紙。二件目 ---- */
-  await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
+  /* ---- 席1 に＋は無い（構4b）。二件目も筆から ---- */
+  await page.evaluate(() => KN.app.showScreen("archive"));
+  await page.waitForTimeout(300);
+  t.check("席1 に＋（書く）は無い", await page.evaluate(() => !document.querySelector("#dock .add-fab")));
+  await pen(page);
   await sheetOpen();
-  const plus = await page.evaluate(() => !!document.querySelector(".sheet.is-open .arc-pick-b") || /記録を書く/.test(document.querySelector(".sheet.is-open").textContent));
-  t.check("＋で記録の紙（種類の札）は出ない", !plus);
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("二件目の字");
   await closeSheet();
@@ -302,7 +309,8 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const m3 = await memo();
   t.check("直したのはその一件だけ", m3 === m2.replace(tag("12:34\n一件目の字"), tag("12:34\n一件目の字を直した")), JSON.stringify(m3));
 
-  /* ---- 開いて閉じただけでは形を変えない（空行の多い一件） ---- */
+  /* ---- ここから過ぎた日の頁（席1）：開いて閉じただけでは形を変えない（空行の多い一件） ---- */
+  await toPast();
   const odd = tag("前からの地の文。\n\n\n12:00\n\n空行のある一件\n\n\n13:00\nもう一件");
   await setMemo(odd);
   await page.waitForTimeout(300);
@@ -334,10 +342,9 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- コピーは前のまま（本文はそのまま、済んだやること） ---- */
   await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件"));
-  const copied = await page.evaluate(async () => {
-    const S = KN.store;
-    const todo = S.addTodo({ title: "試験のやること", due: KN.util.todayKey() });
-    if (todo) S.toggleTodo(todo.id);
+  const copied = await page.evaluate(async (d) => {
+    const at = KN.util.dayDate(d); at.setHours(12, 0, 0, 0);
+    KN.store.update((s) => { s.todos.push({ id: "cp-done", title: "試験のやること", createdAt: at.toISOString(), due: d, time: null, done: true, doneAt: at.toISOString(), order: 998 }); });
     await new Promise((r) => setTimeout(r, 400));
     let got = null;
     Object.defineProperty(navigator, "clipboard", { configurable: true,
@@ -345,7 +352,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     document.querySelector("#screen-archive .js-log-copy").click();
     await new Promise((r) => setTimeout(r, 200));
     return got;
-  });
+  }, day);
   t.check("コピーは本文そのまま＋完了したこと", copied != null
     && copied.startsWith(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:34\n昼の一件\n\n"))
     && /完了したこと（この日にやり終えたもの）\n・試験のやること/.test(copied), JSON.stringify(copied));
@@ -396,7 +403,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await page.click(`.sheet.is-open .note-ver[data-id="${nid}"]`);
   await page.waitForFunction(() => [...document.querySelectorAll(".toast-msg")].some((x) => x.textContent === "ノートへ移しました"), null, { timeout: 4000 }).catch(() => {});
   const app = await page.evaluate(([d, id]) => ({ body: KN.notes.get(id).body, memo: (KN.store.dayLog(d) || {}).memo }), [day, nid]);
-  t.check("前からのノートの終わりに日付と時刻の行と字", app.body === "前からの本文\n\n10月6日(火) 12:34\n昼の一件", JSON.stringify(app.body));
+  t.check("前からのノートの終わりに日付と時刻の行と字", app.body === "前からの本文\n\n10月5日(月) 12:34\n昼の一件", JSON.stringify(app.body));
   t.check("日記からは外れる（頭と一件目は残る）", app.memo === tag("2026.10.06（火）\n\n08:00\n朝の一件"), JSON.stringify(app.memo));
 
   /* ---- 起床・就寝の行（時刻の行）・「一枚で開く」は一枚の紙へ（時刻の欄と本文ぜんぶ） ---- */
@@ -426,8 +433,10 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await closeSheet();
   t.check("開いて閉じただけなら本文は同じ", (await memo()) === base);
 
-  /* ---- 書いたばかりの一件も「消す」で外れ、元に戻せる ---- */
-  await page.click("#screen-archive .pg-now-pen");
+  /* ---- 書いたばかりの一件も「消す」で外れ、元に戻せる（今日・席3 の筆） ---- */
+  await toToday();
+  await setMemo(base);
+  await pen(page);
   await sheetOpen();
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("すぐ消す一件");
@@ -443,6 +452,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   t.check("…元に戻せる", (await memo()) === withNew, JSON.stringify(await memo()));
   await setMemo(base);
   await page.waitForTimeout(200);
+  await toPast();
 
   /* ---- 頁の行：長い一件は頭と終わりの三行ずつで畳み「全文を読む」で伸び縮み。押すと道具 ---- */
   const long = "長い一件の字です。".repeat(80);
@@ -526,6 +536,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
 
   /* ---- 前からの本文・取り込んだ本文は分けない ---- */
   const imported = "2025.03.02（日）\n\n08:30\n起きた。\n\n\n１２：００\n昼。\n\n10/12 08:52\n前の版の一件\n" + "長い段落".repeat(60);
+  await toToday();
   await setMemo(imported);
   await page.waitForTimeout(300);
   const ip = await posts();
@@ -534,7 +545,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   await sheetOpen();
   await closeSheet();
   t.check("開いて閉じても一字も変わらない", (await memo()) === imported);
-  await page.click("#screen-archive .pg-now-pen");
+  await pen(page);
   await sheetOpen();
   await page.focus(".sheet.is-open .js-memo");
   await page.keyboard.insertText("取り込んだ日に足す");
@@ -560,13 +571,15 @@ const AT = new Date(2026, 9, 6, 12, 34);
   /* ---- 本文を読めない日：書く紙を開かない ---- */
   const before = await memo();
   await page.evaluate(() => { window.__body = KN.diaryIdb.body; KN.diaryIdb.body = () => "loading"; });
-  await page.click("#screen-archive .pg-now-pen").catch(() => {});
+  await pen(page).catch(() => {});
   await page.waitForTimeout(300);
   const blocked = await page.evaluate(() => !document.querySelector(".sheet.is-open"));
   await page.evaluate(() => { KN.diaryIdb.body = window.__body; });
   t.check("読み込み中は書く紙を開かない・本文はそのまま", blocked && (await memo()) === before);
 
-  /* ---- 設定「一枚」：前の紙 ---- */
+  /* ---- 設定「一枚」：前の紙（過ぎた日の頁・席1） ---- */
+  await toPast();
+  await setMemo(base);
   await page.evaluate(() => KN.store.update((s) => { s.settings.diaryView = "page"; }));
   await page.waitForTimeout(400);
   const pg = await page.evaluate(() => {
@@ -575,10 +588,10 @@ const AT = new Date(2026, 9, 6, 12, 34);
     return { home: !!root.querySelector(".think-home"), chat: !!root.querySelector(".arc-log-row.is-chat"), memo: m ? m.textContent : null };
   });
   t.check("一枚：冒頭の口は出さず、本文は一枚のまま（時刻の行も字のまま）", !pg.home && !pg.chat && pg.memo === tag("2026.10.06（火）\n\n08:00\n朝の一件"), JSON.stringify(pg));
-  await page.evaluate(() => document.querySelector('#dock button[aria-label="書く"]').click());
+  await page.click(`#screen-archive .arc-log-row[data-day="${YEST}"]`);
   await sheetOpen();
   const pgSheet = await page.evaluate(() => ({ v: document.querySelector(".sheet.is-open .js-memo").value, t: document.querySelector(".sheet.is-open .sheet-title").textContent }));
-  t.check("一枚：＋はその日の日記の紙（本文ぜんぶ）", pgSheet.v === tag("2026.10.06（火）\n\n08:00\n朝の一件") && / の log/.test(pgSheet.t), JSON.stringify(pgSheet));
+  t.check("一枚：行を押すとその日の日記の紙（本文ぜんぶ）", pgSheet.v === tag("2026.10.06（火）\n\n08:00\n朝の一件") && / の log/.test(pgSheet.t), JSON.stringify(pgSheet));
   await closeSheet();
   t.check("一枚の紙を開いて閉じても本文は同じ", (await memo()) === tag("2026.10.06（火）\n\n08:00\n朝の一件"));
 
@@ -599,72 +612,33 @@ const AT = new Date(2026, 9, 6, 12, 34);
   const gone = await page.evaluate(() => ({ open: typeof KN.screens.archive.openEntry, seed: typeof KN.screens.archive.seedFromNote }));
   t.check("記録の紙を開く口は無い", gone.open === "undefined" && gone.seed === "undefined", JSON.stringify(gone));
 
-  /* ---- 「いま」の線（構3②③）：時刻の丸薬・線・筆。線の下は今の時間割と同じ並びの札（時刻なしは「ごろ」）。
-     過ぎてもまだの用事も線の下。線の下の言葉（時計より後の時刻）とは時刻の順に混ざる。筆は書く紙 ---- */
+  /* ---- 「いま」の線は席1 から外した（構4b の二つめ）：今日の頁は席3 の頭で「いま」より上の行だけ・筆は書く紙。席1 は二度押しを受けない ---- */
   {
+    await toToday();
     await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n13:00\nあとの一件"));
-    await page.evaluate((d) => {
-      KN.store.addTodo({ title: "線の過ぎた用事", due: d, time: "10:00", minutes: 30 });
-      KN.store.addTodo({ title: "線の夕方", due: d, time: "17:00" });
-      KN.store.addTodo({ title: "線の時刻なし", due: d });
-    }, day);
     await page.waitForTimeout(400);
-    const seq = await page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-posts > :not(.pg-ahead), #screen-archive .pg-ahead > *")]
-      .map((e) => (e.matches(".pg-now") ? `いま${(e.querySelector(".pg-now-pill") || {}).textContent}${e.querySelector(".pg-now-pen") ? "筆" : ""}`
-        : e.matches(".arc-post") ? e.querySelector(".pg-at").textContent + e.querySelector(".arc-post-text").textContent : e.textContent.replace(/\s+/g, "")))
-      .filter((s) => /^いま|線の|一件/.test(s)));
-    t.check("線は時計の所・下は時間割の並び（過ぎてもまだも下・時刻なしは「ごろ」・言葉と時刻の順）", JSON.stringify(seq)
-      === JSON.stringify(["08:00朝の一件", "いま12:34筆", "10:00線の過ぎた用事", "12:34ごろ線の時刻なし", "13:00あとの一件", "17:00線の夕方"]), JSON.stringify(seq));
-    await page.click("#screen-archive .pg-now-pen");
+    const head = await posts();
+    t.check("席3 の頭は「いま」より上の行だけ（13:00 の一件は出さない）", JSON.stringify(head.map((x) => x.at + x.text)) === JSON.stringify(["08:00朝の一件"]), JSON.stringify(head));
+    t.check("席1 に「いま」の線・二度押しは無い", await page.evaluate(() => !document.querySelector("#screen-archive .pg-now") && !KN.screens.archive.again));
+    await pen(page);
     await sheetOpen();
-    const pen = await page.evaluate(() => document.querySelector(".sheet.is-open .js-memo").value);
-    t.check("筆は書く紙（新しい一件）", pen === "", JSON.stringify(pen));
+    const fresh = await page.evaluate(() => document.querySelector(".sheet.is-open .js-memo").value);
+    t.check("筆は書く紙（新しい一件）", fresh === "", JSON.stringify(fresh));
     await closeSheet();
-    await page.evaluate(() => KN.store.update((s) => { s.todos = s.todos.filter((x) => !/^線の/.test(x.title)); }));
-  }
-
-  /* ---- 構3⑤：ひらいたとき線が見える所まで送る（上に余りがあれば送らない）・席の二度押しで線へ戻る ---- */
-  {
-    const reopen = async () => {
-      await page.evaluate(() => KN.app.showScreen("todo")); await page.waitForTimeout(300);
-      await page.evaluate(() => KN.app.showScreen("archive")); await page.waitForTimeout(500);
-    };
-    const where = () => page.evaluate(() => {
-      const l = document.querySelector("#screen-archive .day-slide:not(.is-peek) .pg-now"), sc = KN.app.scrollerOf(document.getElementById("screen-archive"));
-      return { at: Math.round(l.getBoundingClientRect().top - sc.getBoundingClientRect().top), h: sc.clientHeight, top: Math.round(sc.scrollTop) };
-    });
-    await page.evaluate(() => { const sc = KN.app.scrollerOf(document.getElementById("screen-archive")),
-      l = document.querySelector("#screen-archive .day-slide:not(.is-peek) .pg-now");
-      sc.scrollTop += l.getBoundingClientRect().top - sc.getBoundingClientRect().top - sc.clientHeight * 0.5; });
-    const was = await where();
-    await reopen();
-    const short = await where();
-    t.check("席を移って戻るのは送らない（読んでいた位置のまま）", short.top === was.top && short.at >= 0 && short.at <= short.h * 0.6, JSON.stringify([was, short]));
-    await setMemo(tag("2026.10.06（火）\n\n" + Array.from({ length: 24 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}\n朝の${i + 1}`).join("\n\n")));
-    await page.reload();
-    await page.waitForFunction(() => window.KN && KN.app, null, { timeout: 5000 });
-    await page.evaluate(() => KN.app.showScreen("archive"));
-    await page.waitForSelector("#screen-archive .pg-now", { timeout: 5000 });
-    await page.waitForTimeout(500);
-    const long = await where();
-    t.check("長い日：読み込んで開くと線が見える所まで送る", long.top > 0 && long.at >= 0 && long.at <= long.h * 0.6, JSON.stringify(long));
-    await page.evaluate(() => { KN.app.scrollerOf(document.getElementById("screen-archive")).scrollTop = 0; });
-    const took = await page.evaluate(() => KN.screens.archive.again());
-    await page.waitForTimeout(900);
-    const back = await where();
-    t.check("daily の席を二度押すと線へ戻る", took === true && back.top > 0 && back.at >= 0 && back.at <= back.h * 0.6, JSON.stringify([took, back]));
   }
 
   /* ---- 書く紙は頁の組み（構3）：直前の二行が薄く・鍵盤が出ても帯は鍵盤の上・書き終えると下へ帰らずその場で薄れる ---- */
   {
     await setMemo(tag("2026.10.06（火）\n\n08:00\n朝の一件\n\n12:30\n三つめ\n\n13:00\nあとの一件"));
+    await page.evaluate((d) => { const at = new Date(2026, 9, 6, 12, 34).toISOString();
+      KN.store.update((s) => { s.todos.push({ id: "wr-done", title: "試験のやること", createdAt: at, due: d, time: null, done: true, doneAt: at, order: 997 }); }); }, day);
     await page.waitForTimeout(300);
-    await page.click("#screen-archive .pg-now-pen");
+    await pen(page);
     await sheetOpen();
     await page.waitForTimeout(500);
     const g = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-open .wr-prev .pg-row")]
       .map((r) => r.textContent.replace(/\s+/g, " ").trim()));
-    /* 12:34 には済ませた用事がある（上の試験）。13:00 の一件は書く時刻より後なので出さない。 */
+    /* 12:34 には済ませた用事がある（すぐ上で足した）。13:00 の一件は書く時刻より後なので出さない。 */
     t.check("直前の二行（書く時刻までの、いちばん近い二つ。言葉も事実も）", JSON.stringify(g) === JSON.stringify(["12:30三つめ", "12:34試験のやること"]), JSON.stringify(g));
     await page.keyboard.insertText(Array.from({ length: 30 }, (_, i) => `行${i + 1}`).join("\n"));
     await page.evaluate(() => {
@@ -685,30 +659,24 @@ const AT = new Date(2026, 9, 6, 12, 34);
     t.check("書き終えた紙は下へ帰らず、その場で薄れる", !!melt && Math.abs(melt.top - top0) < 1 && melt.op < 1, JSON.stringify([top0, melt]));
     await page.waitForFunction(() => !document.querySelector("#sheet-root .sheet"), null, { timeout: 4000 }).catch(() => {});
     await page.waitForTimeout(200);
-    const landed = await page.evaluate(() => {
-      const p = [...document.querySelectorAll("#screen-archive .arc-post")].find((e) => e.querySelector(".arc-post-text").textContent.startsWith("行1"));
-      const sc = p && KN.app.scrollerOf(p);
-      return p && { top: Math.round(p.querySelector(".arc-post-text").getBoundingClientRect().top), scroll: Math.round(sc.scrollTop), max: Math.round(sc.scrollHeight - sc.clientHeight) };
-    });
-    t.check("書き終えた一件の字は、欄のあった高さに（線の下のぶん頁が送れる）", !!landed && Math.abs(landed.top - field0) <= 2, JSON.stringify([field0, landed]));
     const m9 = await memo();
     t.check("書いた一件は終わりに", m9.includes(tag("\n\n13:00\nあとの一件\n\n12:34\n行1\n行2\n")) && m9.endsWith("行30"), JSON.stringify(m9.slice(-40)));
   }
 
   /* ---- 今日の問い：読み込み直すと、出た問いを避けて替わる ---- */
   {
-    await page.evaluate(() => KN.app.showScreen("archive"));
-    await page.waitForSelector("#screen-archive .js-think-q", { timeout: 5000 });
-    const before = await page.textContent("#screen-archive .js-think-q");
+    await page.evaluate(() => KN.app.showScreen("todo"));
+    await page.waitForSelector("#screen-todo .js-think-q", { timeout: 5000 });
+    const before = await page.textContent("#screen-todo .js-think-q");
     await page.waitForTimeout(300);
     const seen = await page.evaluate(() => (KN.store.get().settings.askSeen || []).slice());
     await page.reload();
     await page.waitForFunction(() => window.KN && KN.app, null, { timeout: 5000 });
-    await page.evaluate(() => KN.app.showScreen("archive"));
-    await page.waitForSelector("#screen-archive .js-think-q", { timeout: 5000 });
-    const after = await page.textContent("#screen-archive .js-think-q");
+    await page.evaluate(() => KN.app.showScreen("todo"));
+    await page.waitForSelector("#screen-todo .js-think-q", { timeout: 5000 });
+    const after = await page.textContent("#screen-todo .js-think-q");
     t.check("読み込み直すと今日の問いが替わる（出た問いは避ける）", before && after && before !== after
-      && seen.length >= 2 && !seen.includes(after.normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "")), JSON.stringify([before, after, seen.length]));
+      && seen.length >= 1 && !seen.includes(after.normalize("NFKC").replace(/\s+/g, "").replace(/\?+$/, "")), JSON.stringify([before, after, seen.length]));
   }
 
   t.check("ページのエラーなし", errors.length === 0, errors.join(" | "));

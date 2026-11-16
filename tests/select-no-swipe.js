@@ -1,6 +1,6 @@
 /* 字を選んでいる指は送らない（KN.util.selecting、docs/traps.md「選んでいる指は送らない」）。どれも本物のタッチ。
 
-   時計を 2026年10月6日(火) 12:34 に止め、daily に時刻ごとの日記の一件（吹き出し）を置く。
+   時計を 2026年10月6日(火) 12:34 に止め、daily の昨日の頁（席1 の今日は扉だけ・構4b）に時刻ごとの日記の一件（吹き出し）を置く。
    - 吹き出しの字を選んだまま払っても日は動かない（選択も残る）
    - 払いの途中で選びはじめたら、紙は元の位置へ戻り、日は動かない
    - カーソルを持った打つ欄の上から払っても日は動かない
@@ -14,10 +14,11 @@ const { open, checker } = require("./lib");
     before: async (cx, pg) => { await pg.clock.setFixedTime(new Date(2026, 9, 6, 12, 34)); },
   });
   await page.evaluate(() => {
-    const P = KN.diaryPosts, d = KN.util.todayKey();
-    KN.store.setDayLog(d, { memo: P.add("", "選ぶ字のための一件です。", P.mark(new Date(2026, 9, 6, 9, 5), d)).memo });
+    const P = KN.diaryPosts, d = "2026-10-05";
+    KN.store.setDayLog(d, { memo: P.add("", "選ぶ字のための一件です。", P.mark(new Date(2026, 9, 5, 9, 5), d)).memo });
     KN.store.setCalPref(null, { shown: true, open: false });
     KN.app.showScreen("archive");
+    KN.screens.archive.goDay(d);
   });
   await page.waitForTimeout(900);
 
@@ -98,7 +99,7 @@ const { open, checker } = require("./lib");
   p = await at(BUBBLE);
   await swipe(p, -200);
   const day1 = await title();
-  c.check("選択を解けば払える（次の日）", day1 !== day0 && day1.includes("7日"), day1);
+  c.check("選択を解けば払える（次の日）", day1 !== day0 && day1.includes("6日"), day1);
 
   await swipe(p, 200);                     // 吹き出しのある日へ戻る
   c.check("前の日へ戻れる", (await title()) === day0, await title());

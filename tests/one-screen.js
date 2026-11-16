@@ -41,7 +41,7 @@ const { open, checker } = require("./lib");
     const out = { id, active: scr.id, headBottom: head.bottom, barTop: bar.top, first: box(first),
       scTop: sc.getBoundingClientRect().top, scroll: sc.scrollTop };
     if (id === "archive") {
-      out.today = box(scr.querySelector(".arc-log-row.is-today"));
+      out.today = box(scr.querySelector(".arc-door-face"));   // 席1 の今日は扉・棚・いまごろだけ（構4b）
       out.digests = scr.querySelectorAll(".arc-counts").length;
     }
     if (id === "todo") out.face = scr.querySelector('.wk-faces .seg-btn[aria-pressed="true"], .wk-faces .seg-btn.is-on')?.textContent.trim() || null;
@@ -70,7 +70,7 @@ const { open, checker } = require("./lib");
     t.check(`③ ${id}：中身は頭の帯の下から始まる`, r.first && r.first.top + r.scroll >= under && r.scTop >= under, JSON.stringify(r));
 
     /* ② 最初の一画面 */
-    if (id === "archive") t.check("② daily：今日の行が最初の一画面に（下の帯より上）", r.today && r.today.top >= r.headBottom && r.today.bottom <= r.barTop, JSON.stringify(r.today));
+    if (id === "archive") t.check("② archive：今日の扉が最初の一画面に（盆の上端から下の帯より上）", r.today && r.today.top >= under && r.today.bottom <= r.barTop, JSON.stringify(r.today));
     if (id === "todo") {
       t.check("② やること：開くと今日の面", r.face === "今日", r.face);
       t.check("② やること：今日の面の頭は帯のすぐ下", r.first && r.first.top - r.headBottom < 80, JSON.stringify(r.first));
@@ -85,7 +85,8 @@ const { open, checker } = require("./lib");
         [...r.body, ...r.meal].every((b) => b.top >= r.headBottom && b.bottom <= r.barTop), JSON.stringify([r.body, r.meal]));
     }
 
-    /* ③ ＋は、末尾まで送ったとき最後の中身より下 */
+    /* ③ ＋は、末尾まで送ったとき最後の中身より下（archive に＋は無い・構4b） */
+    if (id === "archive") { t.check("③ archive：＋は無い", await page.evaluate(() => !document.querySelector("#dock .add-fab"))); continue; }
     const end = await page.evaluate(() => {
       const sc = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
       sc.scrollTop = sc.scrollHeight;

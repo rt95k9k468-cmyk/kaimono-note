@@ -115,13 +115,13 @@ t.check("日付でないものには何も言わない", SE.of("") === null && S
       first: !!(el && slide && slide.firstElementChild === el && (el.classList.contains("card") || el.classList.contains("arc-door"))),
       name: el ? (el.querySelector(".arc-season-name") || {}).textContent : "",
       kou: KN.season.of(KN.util.todayKey()).kou,
-      aboveRow: !!(el && row && (el.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      aboveRow: !!(el && row && (el.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING)), noRow: !row,
       weight: el ? getComputedStyle(el).fontWeight : null,
       all: root.innerText,
     };
   });
   t.check("daily の一日ぶんに、二十四節気と七十二候が名前つきの二行", !!scr.text && scr.text === scr.want, `${scr.text} / ${scr.want}`);
-  t.check("置き場所は日の一枚の頭の候の札（R6。今日は扉・構4b）・日の行の上", scr.first && scr.aboveRow);
+  t.check("置き場所は日の一枚の頭の候の札（R6。今日は扉で、日の行は席1 の今日に無い・構4b）", scr.first && scr.noRow);
   t.check("候の名は札の見出し（明朝の大きな字）", scr.name === scr.kou, `${scr.name} / ${scr.kou}`);
   t.check("字の太さは 400", scr.weight === "400", scr.weight);
   const hits2 = FORBIDDEN.filter((w) => scr.all.includes(w));
