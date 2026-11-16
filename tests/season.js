@@ -143,6 +143,24 @@ t.check("日付でないものには何も言わない", SE.of("") === null && S
   const back = await page.evaluate(() => !!document.querySelector("#screen-archive .arc-season"));
   t.check("戻すとまた出る", back);
 
+  /* 構5：一年の一冊の升（暦年。2025年は73・2026年は72。年をまたぐ候は両方の年に、自分の年の日だけ） */
+  const yb = await page.evaluate(() => {
+    const out = {};
+    [2025, 2026].forEach((y) => {
+      const m = KN.seasonBook.masu(y), f = (x) => `${x.kou} ${x.from.slice(5)}〜${x.to.slice(5)}`;
+      const per = {}; m.forEach((x) => { per[x.month] = (per[x.month] || 0) + 1; });
+      out[y] = { n: m.length, first: f(m[0]), last: f(m[m.length - 1]), per: Object.values(per).join(","),
+        days: m.reduce((a, x) => a + x.days, 0), inYear: m.every((x) => x.from.startsWith(String(y)) && x.to.startsWith(String(y))) };
+    });
+    return out;
+  });
+  t.check("2025年は73升（頭 雪下出麦 01-01〜01-04・終わり 雪下出麦 12-31・1月7／6月5／12月7）",
+    yb[2025].n === 73 && yb[2025].first === "雪下出麦 01-01〜01-04" && yb[2025].last === "雪下出麦 12-31〜12-31"
+    && yb[2025].per === "7,6,6,6,6,5,6,6,6,6,6,7" && yb[2025].days === 365 && yb[2025].inYear, JSON.stringify(yb[2025]));
+  t.check("2026年は72升（頭 雪下出麦 01-01〜01-04・終わり 麋角解 12-27〜12-31）・日は365",
+    yb[2026].n === 72 && yb[2026].first === "雪下出麦 01-01〜01-04" && yb[2026].last === "麋角解 12-27〜12-31"
+    && yb[2026].days === 365 && yb[2026].inYear, JSON.stringify(yb[2026]));
+
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();

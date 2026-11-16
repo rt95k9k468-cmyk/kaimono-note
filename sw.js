@@ -32,6 +32,7 @@ const ASSETS = [
   "js/season.js",
   "js/holiday.js",
   "js/season-art.js",
+  "js/season-book.js",
   "js/icons-v2-keys.js",
   "js/product-icons.js",
   "js/shun.js",
@@ -234,11 +235,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  /* 季節の絵（3.0 の E1・js/season-art.js。daily の写真 img/season-photo/・ノートの広重 img/season/）と帯の空の写真（js/sky.js・img/sky/）。
+  /* 季節の絵（3.0 の E1・js/season-art.js。daily の写真 img/season-photo/・ノートの広重 img/season/・一年の一冊の写し img/season-thumb/）と帯の空の写真（js/sky.js・img/sky/）。
      **別の名前のキャッシュ**に覚える（`kaimono-note-` で始めない）
      ——版のキャッシュに入れると、activate が古い版ごと消し、出すたびに見た絵が消えてオフラインで色だけに戻る。
      絵は変わらないので、先にキャッシュ、無ければ取りに行って覚える（裏で取り直さない）。 */
-  if (url.pathname.includes("/img/season/") || url.pathname.includes("/img/season-photo/") || url.pathname.includes("/img/sky/")) {
+  if (url.pathname.includes("/img/season/") || url.pathname.includes("/img/season-photo/") || url.pathname.includes("/img/season-thumb/") || url.pathname.includes("/img/sky/")) {
     event.respondWith(
       caches.open(SEASON_CACHE).then((c) => c.match(req).then((hit) => hit || fetch(req).then((res) => {
         if (res && res.status === 200) c.put(req, res.clone());

@@ -169,12 +169,48 @@ const FORBIDDEN = [
   await page.waitForTimeout(300);
   const items = await page.evaluate(() => [...document.querySelectorAll(".note-pop-item")].map((b) => b.innerText.trim()));
   t.check("構4b：背表紙を押すと「月ぜんぶ」「年の本」", items.join("|") === "月ぜんぶ|年の本", items.join("|"));
+  /* 構5：月ぜんぶ＝月の頁（日記のあった最後の月）・年の本＝一年の一冊。何も無い日は並べない・「—」の行を作らない。 */
   await page.locator(".note-pop-item", { hasText: "月ぜんぶ" }).click();
   await page.waitForTimeout(400);
-  const pick = await page.evaluate(() => { const y = document.querySelector(".js-up-t"); return { y: y && y.textContent, cells: document.querySelectorAll(".mp-grid .mp-cell").length }; });
-  t.check("構4b：月ぜんぶはその年の十二の月", pick.y === "2025年" && pick.cells === 12, JSON.stringify(pick));
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(400);
+  const mp = await page.evaluate(() => {
+    const sh = document.querySelector(".sb-sheet");
+    return { title: sh && sh.querySelector(".sheet-title").textContent, days: [...document.querySelectorAll(".sb-mpage .ima-page")].map((b) => b.dataset.day),
+      kou: [...document.querySelectorAll(".sb-kh b")].map((b) => b.textContent), text: sh ? sh.innerText : "", dash: /(^|\n)—(\n|$)/.test(sh ? sh.innerText : "—") };
+  });
+  t.check("構5：月ぜんぶは月の頁（2025年9月・日記のある日だけ・候ごとの見出し）", mp.title === "2025年9月" && mp.days.join() === "2025-09-29"
+    && mp.kou.length >= 2 && !mp.dash && !FORBIDDEN.some((w) => mp.text.includes(w)), JSON.stringify(mp));
+  await page.locator(".sb-nav .js-next").click();
+  await page.waitForTimeout(200);
+  t.check("構5：月の頁を次の月へ送る（頁の無い月は見出しだけ・「—」なし）", await page.evaluate(() =>
+    document.querySelector(".sb-sheet .sheet-title").textContent === "2025年10月" && !document.querySelector(".sb-mpage .ima-page")), "");
+  await page.locator(".sb-nav .js-book").click();
+  await page.waitForTimeout(500);
+  const bk = await page.evaluate(() => {
+    const m = [...document.querySelectorAll(".sb-masu")];
+    const mon = [...document.querySelectorAll(".sb-month")].map((s) => s.querySelectorAll(".sb-masu").length);
+    return { title: document.querySelector(".sb-sheet .sheet-title").textContent, n: m.length, mon,
+      first: m[0].querySelector(".sb-name").innerText.replace(/\s+/g, " "), last: m[m.length - 1].querySelector(".sb-name").innerText.replace(/\s+/g, " "),
+      lines: [...document.querySelectorAll(".sb-masu .ima-text")].map((x) => x.textContent), edge: document.querySelectorAll(".sb-edge > i").length,
+      img: document.querySelector(".sb-masu .sb-pic").getAttribute("src") };
+  });
+  t.check("構5：年の本は一年の一冊（2025年は73升・頭は雪下出麦 1/1–1/4・終わりは雪下出麦 12/31・1月7／6月5／12月7）",
+    bk.title === "2025年" && bk.n === 73 && bk.first === "雪下出麦 1/1–1/4" && bk.last === "雪下出麦 12/31"
+    && bk.mon.join() === "7,6,6,6,6,5,6,6,6,6,6,7", JSON.stringify(bk));
+  t.check("構5：升の一行は日記の最初の一行だけ（その候に書いた分）・小口は升と同じ数・写真は小さい写し", bk.lines.length === 1 && bk.edge === 73
+    && /^img\/season-thumb\/k\d\d\.webp$/.test(bk.img), JSON.stringify([bk.lines.length, bk.edge, bk.img]));
+  /* 小口をなぞって離すと、そこの日へ（書いた日があるときはその日） */
+  const eg = await page.evaluate(() => { const r = document.querySelector(".sb-edge").getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top, h: r.height }; });
+  const dayOfSep29 = 271 / 365;   // 2025-09-29 は年の 272 日目
+  await page.mouse.move(eg.x, eg.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(eg.x, eg.y + eg.h * dayOfSep29, { steps: 6 });
+  const tip = await page.evaluate(() => document.querySelector(".sb-tip").textContent);
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  const went = await page.evaluate(() => ({ sheet: !!document.querySelector(".sb-sheet"), day: KN.screens.archive.day() }));
+  t.check("構5：小口をなぞると候の名が出て、離すとその候の日へ（紙は閉じる）", !went.sheet && went.day.slice(0, 7) === "2025-09" && /　/.test(tip), JSON.stringify([tip, went]));
+  await page.evaluate(() => KN.screens.archive.goDay(KN.util.todayKey()));   // 小口で飛んだ先から今日へ戻る
+  await page.waitForTimeout(500);
   const door = await page.evaluate(() => {
     const d = document.querySelector("#screen-archive .arc-door"), m = d && d.querySelector(".arc-season-main");
     if (!m) return null;

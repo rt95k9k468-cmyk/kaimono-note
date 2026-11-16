@@ -2896,7 +2896,7 @@ a.btn { text-decoration: none; }
   transition: opacity var(--m-state) var(--ease);
 }
 .ima-page:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.ima-page.is-same::before {   /* 朱の栞 */
+.ima-page.is-same::before, .sb-masu.is-now::before {   /* 朱の栞（いまの升にも） */
   content: ""; position: absolute; top: 0; right: var(--sp-3); width: 6px; height: 14px;
   background: var(--c-primary); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
 }
@@ -3061,6 +3061,27 @@ a.btn { text-decoration: none; }
 .arc-spine[data-c="0"] { --spine: #2f4d6b; } .arc-spine[data-c="1"] { --spine: #2f6149; } .arc-spine[data-c="2"] { --spine: #6a4a2c; }
 .arc-spine[data-c="3"] { --spine: #54446e; } .arc-spine[data-c="4"] { --spine: #9a3b2c; } .arc-spine[data-c="5"] { --spine: #3e5a5f; }
 .arc-shelf .arc-any { margin: 0 0 var(--sp-3) auto; align-self: flex-end; }
+/* 一年の一冊・月の頁・小口（構5・js/season-book.js）。升と頁の写しは .ima-page を使い回す。小口は送る器の中で留まる（sticky）。 */
+.sb { display: flex; align-items: flex-start; gap: var(--sp-2); }
+.sb-pages { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.sb-month { display: flex; flex-direction: column; gap: var(--sp-2); }
+.sb-mh { display: inline-flex; align-items: center; align-self: flex-start; gap: 2px; padding: 0; border: 0; background: none; color: var(--c-text);
+  font: var(--fw-bold) calc(18px * var(--fs-k))/1.4 var(--font-display); }
+.sb-mh svg { width: 16px; height: 16px; color: var(--c-text-3); }
+.sb-pic { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: var(--r-sm); background: var(--c-border); }
+.sb-pic.is-s { width: 48px; flex: none; }
+.sb-name { display: flex; align-items: baseline; gap: var(--sp-2); font: var(--fw-bold) calc(14px * var(--fs-k))/1.4 var(--font-display); }
+.sb-name small, .sb-kh small { font: var(--fw-regular) var(--fs-xs)/1 var(--font-num); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.sb-edge { position: sticky; top: 0; flex: none; width: 14px; height: min(68svh, 520px); display: flex; flex-direction: column; touch-action: none; }
+.sb-edge > i { display: block; box-shadow: inset 0 -1px 0 rgb(255 255 255 / .55); }
+.sb-edge > i:first-child { border-radius: 3px 3px 0 0; } .sb-edge > i:nth-last-child(2) { border-radius: 0 0 3px 3px; }
+.sb-tip { position: absolute; right: calc(100% + 6px); z-index: 1; padding: 4px var(--sp-2); border-radius: var(--r-sm); white-space: nowrap;
+  background: var(--c-text); color: var(--c-bg); font-size: var(--fs-xs); pointer-events: none; }
+.sb-out { display: flex; margin-inline: auto; }
+.sb-mpage { display: flex; flex-direction: column; gap: var(--sp-4); }
+.sb-kou { display: flex; flex-direction: column; gap: var(--sp-2); }
+.sb-kh { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font: var(--fw-bold) calc(16px * var(--fs-k))/1.4 var(--font-display); }
+.sb-nav { display: flex; align-items: center; justify-content: space-between; }
 /* 電話の最初の一画面は記録へ（W1・docs/redesign.md 2節）：候の札は額 58px・名 22px の一段。順は変えない（daily-rules）。 */
 @media (max-width: 639.98px) {
   .arc-season { gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); }

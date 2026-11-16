@@ -2091,7 +2091,7 @@
   }
 
   /** 棚（構4b・README 8）：年の背表紙（記録のある年と今年。新しい年から）。色は年ごとに決め打ちで、幅と高さは
-      どの年も同じ（年を比べない）。今年に栞。押すと月ぜんぶ（日を選ぶ小窓の月の面）と年の本（構5 まで）。
+      どの年も同じ（年を比べない）。今年に栞。押すと月ぜんぶ（月の頁）と年の本（一年の一冊）。どちらも js/season-book.js（構5）。
       日記の鍵のあいだは開ける前に聞く。右の端に偶然の一日。 */
   let shelfSig = "", shelfYears = [];
   function shelfOf(day) {
@@ -2108,8 +2108,8 @@
     el.querySelectorAll(".arc-spine").forEach((b) => b.addEventListener("click", () => {
       const y = b.dataset.year;
       const menu = () => KN.ui.popMenu(b, [
-        { label: "月ぜんぶ", icon: "calendar", onPick: () => openDayPicker({ anchor: b, year: +y }) },
-        { label: "年の本", icon: "book", onPick: () => KN.settingsParts.yearbook(y) },
+        { label: "月ぜんぶ", icon: "calendar", onPick: () => KN.seasonBook.openMonth(y, KN.seasonBook.monthFor(y)) },
+        { label: "年の本", icon: "book", onPick: () => KN.seasonBook.openBook(y) },
       ]);
       KN.motion.fire("select");
       if (diaryShut()) askDiary().then((ok) => { if (ok && b.isConnected) menu(); });
@@ -2272,7 +2272,8 @@
 
   /* ＋は無い（構4b：書くのは席3 の「いま」の筆と、過ぎた日の頁の終わりの一行）。二度押しは受けない。 */
   KN.screens.archive = { mount, render, prepare, onEnter, day: () => focusDay(),
-    goDay: (d) => goDayTo(d), recountLeave, midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
+    goDay: (d) => goDayTo(d), lead: (d) => (hasDiary(d) ? leadOf(d) : null), recountLeave,   // lead：一年の一冊・月の頁の一行（season-book.js）
+    midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
     pen: (day) => openPost(day, null),   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
     /* 今日の問い（構4b）：席3 の今日の頁の頭。時刻ごとのときだけ・日記かノートの鍵のあいだは出さない（問いの元はノートの字）。 */
     ask: (day) => (chatView() && !diaryShut() && !(KN.lock && KN.lock.hides("notes")) ? thinkHome(day) : null) };

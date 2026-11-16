@@ -52,6 +52,8 @@
 4. `tests/season-art.js`（大きさ・字の濃さの比）と `daily-rules.js`・`offline.js` を回す。iPhone で濃さ（6〜10%）を決める。
 
 
+- 一年の一冊の写し（構5）：`img/season-thumb/kNN.webp`（写真から長辺 240px・72枚・合計約 440KB・1枚12KBまで）。`node tools/season-art.js thumb`。出典は写真と同じ（設定 → daily →「写真の出典」）。sw は絵と同じ名前のキャッシュ。
+
 ## 写真（Wikimedia Commons・2026年10月7日）
 
 daily の紙の後ろの一揃い（`img/season-photo/kNN.webp`・`KN.seasonArt.PHOTO`。72枚・合計 5.6MB。10/8 までは 1513KB）。2026年10月7日に

@@ -154,6 +154,22 @@ const WORD = "しおかぜ";
   await page.waitForTimeout(600);
   t.check("開けるとそのまま年の本の紙", (await layers()) > n0, `${n0} → ${await layers()}`);
 
+  /* 構5：開いた一年の一冊・月の頁は、鍵が閉じたら閉じる。閉じているあいだに開けば、升の一行も頁の写しも組まない。 */
+  await show("archive");   // 設定が出ているあいだ、紙は一枚として押しのけて出る（棚は archive にある）
+  await page.evaluate(() => { KN.seasonBook.openBook(2025); });
+  await page.waitForTimeout(400);
+  t.check("構5：一年の一冊が開く", await page.evaluate(() => !!document.querySelector(".sb-sheet .sb-masu")));
+  await page.evaluate(() => KN.lock.close());
+  await page.waitForTimeout(600);
+  t.check("構5：鍵が閉じたら一年の一冊も閉じる", await page.evaluate(() => !document.querySelector(".sb-sheet")));
+  await page.evaluate(() => { KN.seasonBook.openBook(2025); });
+  await page.waitForTimeout(400);
+  t.check("構5：鍵のあいだは升の一行を組まない（写真と名だけ）", await page.evaluate(() =>
+    document.querySelectorAll(".sb-masu").length > 0 && !document.querySelector(".sb-masu .ima-text")));
+  await page.evaluate(() => { KN.seasonBook.openMonth(2025, 9); });
+  await page.waitForTimeout(400);
+  t.check("構5：鍵のあいだは月の頁の写しを組まない", await page.evaluate(() => !!document.querySelector(".sb-mpage") && !document.querySelector(".sb-mpage .ima-page")));
+
   t.check("記録は一つも変わらない", (await plain()) === before);
   t.check("エラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

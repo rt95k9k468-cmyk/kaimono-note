@@ -3,6 +3,7 @@
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js        （浮世絵）
              NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js photo  （写真：tools/season-photo-src → img/season-photo）
              NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js sky    （帯の空：tools/sky-src → img/sky。docs/sky.md）
+             NODE_PATH=/opt/node22/lib/node_modules node tools/season-art.js thumb  （一年の一冊の升の写し：img/season-photo → img/season-thumb。長辺 240px・1枚 12KBまで。構5）
 
    読む：tools/season-src/kNN.{jpg,jpeg,png,webp,tif}
          NN は春分の初候から数えた候の番号 00〜71（js/season.js の `k`）。元の絵は大きいのでコミットしない
@@ -24,22 +25,24 @@ const { chromium } = require("playwright");
 
 const ROOT = path.resolve(__dirname, "..");
 const SKY = process.argv[2] === "sky";
+const THUMB = process.argv[2] === "thumb";
 const PHOTO = process.argv[2] === "photo" || SKY;
-const SRC = path.join(ROOT, "tools", SKY ? "sky-src" : PHOTO ? "season-photo-src" : "season-src");
-const OUT = path.join(ROOT, "img", SKY ? "sky" : PHOTO ? "season-photo" : "season");
+/* thumb は元をコミット済みの写真（img/season-photo）にする——元の大きな絵は手元に無くても作り直せる */
+const SRC = THUMB ? path.join(ROOT, "img", "season-photo") : path.join(ROOT, "tools", SKY ? "sky-src" : PHOTO ? "season-photo-src" : "season-src");
+const OUT = path.join(ROOT, "img", THUMB ? "season-thumb" : SKY ? "sky" : PHOTO ? "season-photo" : "season");
 /* 2026年10月8日、空と写真の画質を上げた（利用者「上限がまだ先なら画質を上げたい」）。元は Commons の 1920px 版。
    空は短い辺 1170px（iPhone の幅 390 の3倍）・ぼかし 0.4px・彩度 115%・1枚 180KB まで。
    写真は短い辺 860px（横長で幅 1290px）・ぼかし 0.5px・1枚 120KB まで。前の 25KB は強くぼかして質を下げて収めていた。
    質は 0.5 より下げず、収まらない細かい絵だけぼかしを足す（10/8：空 3枚が 0.9px、写真 29枚が 1px）。
    浮世絵（広重）は前のまま（透けたカードの後ろなので上げても見えない）。上限は tests/season-art.js・tests/sky.js と同じ値に */
-const MAX_ONE = (SKY ? 180 : PHOTO ? 120 : 25) * 1024;
-const MAX_ALL = (SKY ? 4 : PHOTO ? 9 : 3) * 1024 * 1024;
-const SHORT = SKY ? 1170 : PHOTO ? 860 : 720;
-const BLUR = SKY ? 0.4 : PHOTO ? 0.5 : 1.2;
-const SATURATE = SKY ? 115 : 55;
-const Q = PHOTO ? 0.76 : 0.72;   // 質の始まり（上限に入るまで 0.06 ずつ下げる）
-const QMIN = PHOTO ? 0.5 : 0.2;  // 質の下限（空と写真。浮世絵は前のまま）
-const BLUR_MAX = PHOTO ? 2 : BLUR;
+const MAX_ONE = (THUMB ? 12 : SKY ? 180 : PHOTO ? 120 : 25) * 1024;
+const MAX_ALL = (THUMB ? 1 : SKY ? 4 : PHOTO ? 9 : 3) * 1024 * 1024;
+const SHORT = THUMB ? 240 : SKY ? 1170 : PHOTO ? 860 : 720;   // thumb だけ「長辺」（下の k）
+const BLUR = THUMB ? 0 : SKY ? 0.4 : PHOTO ? 0.5 : 1.2;
+const SATURATE = THUMB ? 100 : SKY ? 115 : 55;
+const Q = THUMB ? 0.7 : PHOTO ? 0.76 : 0.72;   // 質の始まり（上限に入るまで 0.06 ずつ下げる）
+const QMIN = THUMB ? 0.3 : PHOTO ? 0.5 : 0.2;  // 質の下限（空と写真。浮世絵は前のまま）
+const BLUR_MAX = THUMB ? 0 : PHOTO ? 2 : BLUR;
 /* 空：正方形に切るとき、左右のどこを中心に残すか（写真の札ごと。無ければ真ん中）。元の写真に合わせて決めた（docs/sky.md の表） */
 const CROP = { "spring-day": 0.45, "spring-evening": 0.4, "spring-night": 0.55, "summer-dawn": 0.45, "summer-evening": 0.6, "autumn-dawn": 0.55 };
 const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|webp|tiff?)$/i : /^(k(\d{2})[bc]?)\.(jpe?g|png|webp|tiff?)$/i;
@@ -60,7 +63,7 @@ const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|
     const crop = SKY ? (CROP[name.toLowerCase()] ?? 0.5) : null;
     const mime = /png$/i.test(f) ? "image/png" : /webp$/i.test(f) ? "image/webp" : /tiff?$/i.test(f) ? "image/tiff" : "image/jpeg";
     const data = `data:${mime};base64,${fs.readFileSync(path.join(SRC, f)).toString("base64")}`;
-    const r = await page.evaluate(async ([src, SHORT, MAX_ONE, BLUR, BLUR_MAX, SATURATE, Q, QMIN, crop]) => {
+    const r = await page.evaluate(async ([src, SHORT, MAX_ONE, BLUR, BLUR_MAX, SATURATE, Q, QMIN, crop, THUMB]) => {
       const img = new Image();
       img.src = src;
       await img.decode();
@@ -69,7 +72,7 @@ const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|
       const sw = crop == null ? iw : side, sh = crop == null ? ih : side;
       const cx = crop == null ? 0 : Math.max(0, Math.min(iw - side, Math.round(iw * crop - side / 2)));
       const cy = crop == null ? 0 : Math.round((ih - side) / 2);
-      const k = Math.min(1, SHORT / Math.min(sw, sh));
+      const k = Math.min(1, SHORT / (THUMB ? Math.max(sw, sh) : Math.min(sw, sh)));
       const w = Math.round(sw * k), h = Math.round(sh * k);
       const cv = document.createElement("canvas");
       cv.width = w; cv.height = h;
@@ -104,7 +107,7 @@ const NAME = SKY ? /^((?:[a-z]+-)?(dawn|morning|day|evening|night))\.(jpe?g|png|
       let bin = "";
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
       return { w, h, q: Math.round(q * 100) / 100, blur, size: blob.size, color, b64: btoa(bin) };
-    }, [data, SHORT, MAX_ONE, BLUR, BLUR_MAX, SATURATE, Q, QMIN, crop]);
+    }, [data, SHORT, MAX_ONE, BLUR, BLUR_MAX, SATURATE, Q, QMIN, crop, THUMB]);
     if (r.size > MAX_ONE) { console.log(`${name}：${MAX_ONE / 1024}KB に収まりません（${r.size}B）。切り抜いてから置いてください`); continue; }
     const out = path.join(OUT, `${name}.webp`);
     fs.writeFileSync(out, Buffer.from(r.b64, "base64"));

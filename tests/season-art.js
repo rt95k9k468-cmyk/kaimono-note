@@ -36,6 +36,9 @@ const ROOT = path.resolve(__dirname, "..");
   };
   const files = filesOf("season", 25, 3, /^k([0-6]\d|7[01])[bc]?\.webp$/);
   const photos = filesOf("season-photo", 120, 9);
+  /* 構5：一年の一冊の升の写し（img/season-thumb・長辺 240px ほど。tools/season-art.js thumb）。72枚・1枚12KB・合計1MB */
+  const thumbs = filesOf("season-thumb", 12, 1);
+  c.check("season-thumb：写真と同じ72枚（k00〜k71）", thumbs.length === 72 && thumbs.every((f) => photos.includes(f)), String(thumbs.length));
   /* img/ 全体：新しい置き場を足しても、うっかり大きな PNG/JPG を置いても門で止まる（空は tests/sky.js も見る） */
   const all = [];
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => e.isDirectory() ? walk(path.join(d, e.name)) : all.push(path.join(d, e.name)));
@@ -46,7 +49,7 @@ const ROOT = path.resolve(__dirname, "..");
   const sw = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
   const m = /const SEASON_CACHE = "([^"]+)"/.exec(sw);
   c.check("sw.js：絵と写真は別の名前のキャッシュ（kaimono-note- で始めない）", !!m && !m[1].startsWith("kaimono-note-")
-    && /\/img\/season\//.test(sw) && /\/img\/season-photo\//.test(sw));
+    && /\/img\/season\//.test(sw) && /\/img\/season-photo\//.test(sw) && /\/img\/season-thumb\//.test(sw));
   /* 絵を同じ名前で描き直したら SEASON_CACHE の数を上げる。activate が前の置き場を消さないと、端末は古い絵を出し続ける */
   c.check("sw.js：activate が前の絵の置き場（kurashi-season- の別の名前）を消す", !!m && m[1].startsWith("kurashi-season-")
     && /k\.startsWith\("kurashi-season-"\) && k !== SEASON_CACHE/.test(sw));
