@@ -14,13 +14,12 @@
   pointer-events: none;
 }
 
-/* With the keyboard up the tab bar steps out, so the button follows it down
-   rather than hovering over a gap that is no longer there. */
+/* 鍵盤が出て帯が退くと、＋も一緒に下がる。 */
 .kb-open .dock { bottom: var(--sp-3); }
 
 .quick-add { position: relative; display: flex; justify-content: center; }
 /* notes の＋の上の小さな丸：思考（構4b。前は daily の札）。 */
-.fab-sub { position: absolute; bottom: calc(100% + var(--sp-2)); right: 6px; width: 44px; height: 44px; padding: 0; border-radius: 50%;
+.fab-sub { position: absolute; bottom: calc(100% + var(--sp-2)); right: 6px; width: 44px; height: 44px; padding: 0; border-radius: 50%; pointer-events: auto;
   display: grid; place-items: center; background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-2); box-shadow: var(--shadow-1); }
 .fab-sub svg { width: 22px; height: 22px; }
 
