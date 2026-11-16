@@ -18,7 +18,7 @@
      トラックパッドの横払い（wheel の deltaX）は紙の上で日、暦の上で週を送る
    - 段8：設定は 1280px〜 見出しごとに二段（電話・1280px 未満はまとめない）。「›」は 32px ずらして薄く入れ替える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 (async () => {
   const t = checker("desk");
@@ -335,7 +335,7 @@ const { open, checker } = require("./lib");
   /* 書く紙（日記）は広い幅では読む幅の大きな一枚。 */
   await page.click(".tab-archive");
   await wait(800);
-  await page.evaluate(() => document.querySelector("#screen-archive .pg-now-pen").click());
+  await pen(page);
   await page.waitForSelector(".sheet.is-card.is-open");
   await wait(600);
   const card = await box(".sheet.is-card.is-open");

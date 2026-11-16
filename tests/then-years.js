@@ -2,7 +2,7 @@
 
    時計を 2026年9月29日に止める。同じ月日の頁は 2024・2025（日記）、2022 は済ませた用事と買ったものだけ（同じ候の 9/30）、
    2023 は積み上げだけ（出ない）、2021 は体重だけ（からだは出ない）。
-   - 年々のつまみ：頁の上の縁に、同じ月日に頁がある年だけ（2024・2025）。押すとその年の同じ日。
+   - 年々のつまみ：読む関数（KN.dayPage.yearTabs）だけ。席1 の今日は扉・棚・いまごろだけで、つまみは出さない（構4b の二つめ）。
    - いまごろ：同じ候の、ほかの年の頁を年ごとに。日記の無い年は した／買った だけで出る。何も無い年・からだだけの年は出ない。
      同じ月日の頁に栞。数を言わない・禁止語に当たらない。空の升が無い。
    - 1月2日（2027年）：いまごろに前の年の12月31日が入る（年の札は続きが始まる年＝2025）。
@@ -61,23 +61,18 @@ const FORBIDDEN = [
   const card = () => page.evaluate(() => {
     const root = document.getElementById("screen-archive");
     const ima = root.querySelector(".arc-then.is-ima");
-    const tabs = root.querySelector(".arc-tabs");
-    const body = root.querySelector(".arc-log-body");
     return {
       ima: !!ima,
       years: ima ? [...ima.querySelectorAll(".ima-y")].map((e) => e.textContent) : [],
       pages: ima ? [...ima.querySelectorAll(".ima-page")].map((e) => e.dataset.day + (e.classList.contains("is-same") ? "*" : "")) : [],
       empty: ima ? [...ima.querySelectorAll(".ima-year")].filter((y) => !y.querySelector(".ima-page, .ima-line")).length : 0,
       text: ima ? ima.innerText : "",
-      tabs: tabs ? [...tabs.querySelectorAll(".arc-tab")].map((e) => e.dataset.day) : [],
-      onEdge: !!(tabs && body && tabs.nextElementSibling === body
-        && Math.abs(tabs.getBoundingClientRect().bottom - body.getBoundingClientRect().top) < 2),
+      log: !!root.querySelector(".arc-log"),
       html: root.innerHTML,
     };
   });
   let c = await card();
-  t.check("つまみは頁の上の縁に、頁がある年だけ（2024・2025）", JSON.stringify(c.tabs) === JSON.stringify(["2024-09-29", "2025-09-29"]) && c.onEdge,
-    JSON.stringify([c.tabs, c.onEdge]));
+  t.check("席1 の今日に Daily Log もつまみも無い（構4b の二つめ）", !c.log && !c.html.includes("arc-tab"));
   t.check("いまごろが出る", c.ima);
   t.check("年は 2022・2024・2025（積み上げだけの 2023・からだだけの 2021 は出ない）",
     JSON.stringify(c.years) === JSON.stringify(["2022", "2024", "2025"]), c.years.join(","));
@@ -90,18 +85,18 @@ const FORBIDDEN = [
   t.check("daily の禁止語に当たらない", !hits.length, hits.join(","));
   t.check("月のまとめは出ない", !c.html.includes("arc-counts") && !/のまとめ/.test(c.html));
 
-  /* つまみを押す → その年の同じ日。過ぎた日の紙にはつまみもいまごろも出さない。 */
-  await page.click("#screen-archive .arc-tab[data-day='2024-09-29']");
+  /* いまごろの頁を押す → その日の頁（席1）。過ぎた日の紙にはいまごろを出さない。 */
+  await page.click("#screen-archive .ima-page[data-day='2024-09-29']");
   await page.waitForTimeout(500);
   const rowText = await page.evaluate(() => (document.querySelector("#screen-archive .arc-log") || {}).innerText || "");
-  t.check("つまみを押すと、その年の同じ日の頁へ", rowText.includes("試験の一行（その一）"), rowText.slice(0, 60));
-  t.check("過ぎた日の紙には、つまみもいまごろも出さない",
-    await page.evaluate(() => !document.querySelector("#screen-archive .arc-then, #screen-archive .arc-tabs")));
+  t.check("いまごろの頁を押すと、その日の頁へ", rowText.includes("試験の一行（その一）"), rowText.slice(0, 60));
+  t.check("過ぎた日の紙には、いまごろを出さない",
+    await page.evaluate(() => !document.querySelector("#screen-archive .arc-then")));
   await page.evaluate(() => { KN.store.setQuietDay("2023-09-29", true); KN.store.setQuietDay("2024-09-29", true); });
   await page.evaluate(() => { KN.util.dayShare.set("2026-09-28"); KN.util.dayShare.set(KN.util.todayKey()); KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
   c = await card();
-  t.check("前に付いた印は効かない", c.years.length === 3 && c.tabs.length === 2, c.years.join(","));
+  t.check("前に付いた印は効かない", c.years.length === 3, c.years.join(","));
   t.check("isQuietDay はいつも出す", await page.evaluate(() => KN.store.isQuietDay("2024-09-29")) === false);
   await page.reload();
   await page.waitForFunction(() => window.KN && KN.store && KN.app);
@@ -114,12 +109,11 @@ const FORBIDDEN = [
   await page.evaluate(() => { window.__hides = KN.lock.hides; KN.lock.hides = (w) => w === "diary"; KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
   c = await card();
-  t.check("鍵のあいだ、つまみもいまごろも組まない", !c.ima && !c.tabs.length && !c.html.includes("試験の一行"), JSON.stringify(c.tabs));
+  t.check("鍵のあいだ、いまごろを組まない", !c.ima && !c.html.includes("試験の一行"));
   await page.evaluate(() => { KN.lock.hides = window.__hides; KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
 
-  /* 置き場（R6）：電話は一列（Daily Log の下）。iPad の縦（820px）と広い幅（1440px）は二段——左に書く口と Daily Log、
-     右に候の札といまごろ。右の段は左の背に引かれず、候の札のすぐ下にいまごろ。 */
+  /* 置き場（構4b）：電話は一列（扉 → 棚 → いまごろ）。iPad の縦（820px）と広い幅（1440px）は二段——左に扉と棚、右にいまごろ。 */
   const place = () => page.evaluate(() => {
     const root = document.getElementById("screen-archive");
     const r = (q) => { const e = root.querySelector(q); return e ? e.getBoundingClientRect() : null; };
@@ -127,17 +121,17 @@ const FORBIDDEN = [
     return { log, then, kou, main, shelf, slide: r(".day-slide"), any: r(".arc-any"), anyIn: !!root.querySelector(".arc-shelf .arc-any") };
   });
   let at = await place();
-  t.check("電話：いまごろは Daily Log の下・同じ列", at.then && at.then.top > at.log.bottom && Math.abs(at.then.left - at.log.left) < 2, JSON.stringify(at));
-  t.check("構4b：今日は扉 → 棚 → Daily Log。どこかの一日は棚の右の端", at.shelf && at.shelf.top >= at.kou.bottom && at.log.top > at.shelf.bottom
+  t.check("電話：いまごろは棚の下・同じ列", at.then && at.shelf && at.then.top > at.shelf.bottom && Math.abs(at.then.left - at.kou.left) < 2, JSON.stringify(at));
+  t.check("構4b：今日は扉 → 棚 → いまごろ（Daily Log は無い）。どこかの一日は棚の右の端", at.shelf && at.shelf.top >= at.kou.bottom && !at.log
     && at.anyIn && at.any.right > at.shelf.right - 40, JSON.stringify({ shelf: at.shelf, any: at.any }));
   for (const [w, h] of [[820, 1180], [1440, 900]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(400);
     at = await place();
-    t.check(`${w}px：二段（右に扉・棚・いまごろ、左に Daily Log）`, at.kou && at.then && at.kou.left > at.log.right
-      && at.then.left > at.log.right && Math.abs(at.kou.top - at.main.top) < 2, JSON.stringify(at));
-    t.check(`${w}px：棚は扉のすぐ下、いまごろは棚の下（右の段）`, at.shelf && Math.abs(at.shelf.left - at.kou.left) < 2
-      && at.shelf.top - at.kou.bottom < 20 && at.then.top >= at.shelf.bottom && at.then.top - at.shelf.bottom < 40, JSON.stringify(at.shelf));
+    t.check(`${w}px：二段（左に扉と棚、右にいまごろ。上を揃える）`, at.kou && at.then && at.then.left > at.kou.right
+      && Math.abs(at.kou.top - at.then.top) < 2, JSON.stringify(at));
+    t.check(`${w}px：棚は扉のすぐ下（左の段）`, at.shelf && Math.abs(at.shelf.left - at.kou.left) < 2
+      && at.shelf.top >= at.kou.bottom && at.shelf.top - at.kou.bottom < 20, JSON.stringify(at.shelf));
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(300);
@@ -203,13 +197,12 @@ const FORBIDDEN = [
   t.check("1月2日：いまごろに前の年の12月31日が入り、年の札は 2025 の一つ",
     JSON.stringify(c.years) === JSON.stringify(["2025"]) && JSON.stringify(c.pages) === JSON.stringify(["2025-12-31", "2026-01-02*"]),
     JSON.stringify([c.years, c.pages]));
-  t.check("1月2日：つまみは 2026 だけ", JSON.stringify(c.tabs) === JSON.stringify(["2026-01-02"]), c.tabs.join(","));
 
   /* 設定「いまごろ・年々」を切ると、どれも出ない。 */
   await page.evaluate(() => { KN.store.update((s) => { s.settings.showThen = false; }); });
   await page.waitForTimeout(400);
   c = await card();
-  t.check("切ると、いまごろもつまみも出ない", !c.ima && !c.tabs.length);
+  t.check("切ると、いまごろは出ない", !c.ima);
   t.check("切ると、どこかの一日も出ない", await page.evaluate(() => !document.querySelector("#screen-archive .arc-any")));
 
   t.check("ページのエラーが無い", !errors.length, errors.join("\n"));

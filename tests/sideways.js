@@ -7,7 +7,7 @@
    - ＋は列の底・今日は時間割｜時刻なし・月は右に立てて紙は題の下の左・棚のカードは段で割れない
    - ＋の紙は頭が左・中身が右（窓に収まる）・ノートのホームは二段（左に本棚、右に札と最近直した）・日記の「保存する」は開いてすぐ見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/sideways.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 const SAFE = 59, HOME = 21;
 const SIZES = [[852, 393], [956, 440]];
@@ -232,9 +232,7 @@ function under(safe) {
       JSON.stringify({ l0, l1, still, e0: e0.slice(0, 4), e1: e1.slice(0, 4) }));
 
     /* 7. 日記の書く紙：「保存する」は開いてすぐ見える（送らない）。 */
-    await page.evaluate(() => KN.app.showScreen("archive"));
-    await wait(600);
-    await page.locator("#screen-archive .day-slide:not(.is-peek) .pg-now-pen").first().click();
+    await pen(page);
     await page.waitForSelector(".sheet.is-card.is-open", { timeout: 3000 }).catch(() => {});
     await wait(600);
     const ok = await page.evaluate(() => {

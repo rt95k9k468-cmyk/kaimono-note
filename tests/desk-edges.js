@@ -9,7 +9,7 @@
    - どの幅でも、どの席も頁が横に伸びない（はみ出して横に送れる頁にならない）
    - 背の低い窓（1024×768・1280×720）：日記の書く紙は窓に収まり、ボタンが窓の外に出ない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-edges.js */
-const { open, checker } = require("./lib");
+const { open, checker, pen } = require("./lib");
 
 (async () => {
   const t = checker("desk-edges");
@@ -151,7 +151,7 @@ const { open, checker } = require("./lib");
     await page.setViewportSize({ width: w, height: h });
     await wait(500);
     await go("archive");
-    await page.evaluate(() => document.querySelector("#screen-archive .pg-now-pen").click());
+    await pen(page);
     await page.waitForSelector(".sheet.is-card.is-open", { timeout: 4000 }).catch(() => {});
     await wait(600);
     const fit = await page.evaluate(() => {

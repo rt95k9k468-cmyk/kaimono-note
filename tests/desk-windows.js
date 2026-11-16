@@ -7,7 +7,7 @@
    - 主の一台の窓二つがノートだけ直して Dropbox へ送り合っても、送る役を降りない（P6d）
    - 同じノートを窓二つで直す：書いた窓の合図でほかの窓が読み直し、両方の直しが残る・往復しない（P6d）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-windows.js */
-const { open, checker, URL, fakeDropbox } = require("./lib");
+const { open, checker, URL, fakeDropbox, pen } = require("./lib");
 
 (async () => {
   const t = checker("desk-windows");
@@ -77,7 +77,7 @@ const { open, checker, URL, fakeDropbox } = require("./lib");
   /* 日記の書く紙の打ちかけ。 */
   await A.click(".tab-archive");
   await A.waitForTimeout(600);
-  await A.evaluate(() => document.querySelector("#screen-archive .pg-now-pen").click());
+  await pen(A);
   await A.waitForSelector(".sheet.is-card.is-open", { timeout: 4000 });
   await A.waitForTimeout(500);
   await A.evaluate(() => {
