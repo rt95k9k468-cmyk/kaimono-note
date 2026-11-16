@@ -113,12 +113,12 @@ const FORBIDDEN = [
   await page.evaluate(() => { KN.lock.hides = window.__hides; KN.app.showScreen("archive"); });
   await page.waitForTimeout(400);
 
-  /* 置き場（構4b）：電話は一列（扉 → 棚 → いまごろ）。iPad の縦（820px）と広い幅（1440px）は二段——左に扉と棚、右にいまごろ。 */
+  /* 置き場（構4b）：電話は一列（扉 → 机 → 棚 → いまごろ）。iPad の縦（820px）と広い幅（1440px）は二段——左に扉・机・棚、右にいまごろ。 */
   const place = () => page.evaluate(() => {
     const root = document.getElementById("screen-archive");
     const r = (q) => { const e = root.querySelector(q); return e ? e.getBoundingClientRect() : null; };
-    const log = r(".arc-log"), then = r(".arc-then"), kou = r(".arc-season"), main = r(".day-main"), shelf = r(".arc-shelf");
-    return { log, then, kou, main, shelf, slide: r(".day-slide"), any: r(".arc-any"), anyIn: !!root.querySelector(".arc-shelf .arc-any") };
+    const log = r(".arc-log"), then = r(".arc-then"), kou = r(".arc-season"), main = r(".day-main"), shelf = r(".arc-shelf"), desk = r(".arc-desk");
+    return { log, then, kou, main, shelf, desk, slide: r(".day-slide"), any: r(".arc-any"), anyIn: !!root.querySelector(".arc-shelf .arc-any") };
   });
   let at = await place();
   t.check("電話：いまごろは棚の下・同じ列", at.then && at.shelf && at.then.top > at.shelf.bottom && Math.abs(at.then.left - at.kou.left) < 2, JSON.stringify(at));
@@ -130,8 +130,9 @@ const FORBIDDEN = [
     at = await place();
     t.check(`${w}px：二段（左に扉と棚、右にいまごろ。上を揃える）`, at.kou && at.then && at.then.left > at.kou.right
       && Math.abs(at.kou.top - at.then.top) < 2, JSON.stringify(at));
-    t.check(`${w}px：棚は扉のすぐ下（左の段）`, at.shelf && Math.abs(at.shelf.left - at.kou.left) < 2
-      && at.shelf.top >= at.kou.bottom && at.shelf.top - at.kou.bottom < 20, JSON.stringify(at.shelf));
+    /* 扉のすぐ下に机（日記に書く・コピー・問い。11月16日）、その下に棚。 */
+    const below = (a, b) => a && b && Math.abs(a.left - b.left) < 2 && a.top >= b.bottom && a.top - b.bottom < 20;
+    t.check(`${w}px：扉 → 机 → 棚（左の段）`, below(at.desk, at.kou) && below(at.shelf, at.desk), JSON.stringify({ desk: at.desk, shelf: at.shelf }));
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(300);

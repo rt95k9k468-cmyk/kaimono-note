@@ -2902,7 +2902,7 @@ a.btn { text-decoration: none; }
   content: ""; position: absolute; top: 0; right: var(--sp-3); width: 6px; height: 14px;
   background: var(--c-primary); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
 }
-.ima-d { font-size: var(--fs-xs); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.ima-d { font-size: var(--fs-xs); color: var(--c-text-2); font-variant-numeric: tabular-nums; }   /* text-3 は頁の地（modern）で 4.5:1 に届かない */
 .ima-d small { margin-left: var(--sp-1); font-size: inherit; }
 .ima-text {
   min-width: 0; font: var(--fw-regular) calc(14px * var(--fs-k))/1.7 var(--font-display); color: var(--c-text);
