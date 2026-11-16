@@ -6912,7 +6912,6 @@ button.note-when:active { opacity: var(--press-fade); }
     #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 2; }
     #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 2 / span 2; }
     #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 3; }
-    #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
   }
 }
 @media (min-width: 1200px) {
@@ -7085,6 +7084,17 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .tk-side { min-width: 0; }
 .tk-week { display: none; margin: var(--sp-5) var(--sp-4) 0; }
 .tk-week > .tk-h { padding: 0 var(--sp-1) var(--sp-2); }
+/* 見開きの右の頁（構6・docs/desk.md「見開き」）。中身は いまごろ の型（.arc-then・.ima-*）を使い回す。 */
+.tk-facing { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); margin: var(--sp-4) var(--sp-4) 0; }
+.tk-side > .sb-edge { top: var(--sp-4); margin-top: var(--sp-4); }   /* 右の縁の小口 */
+.tk-facing > .seg { align-self: flex-start; }
+.tk-facing .tk-week { display: block; margin: var(--sp-2) 0 0; }
+.fc-year { text-align: left; color: inherit; }
+.ima-y small { margin-left: var(--sp-1); font-weight: var(--fw-regular); }
+.fc-line, .fc-row { display: flex; gap: var(--sp-3); align-items: baseline; min-width: 0; text-align: left; color: inherit; }
+.fc-line time, .fc-row time { flex: none; min-width: 3em; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.fc-day, .fc-notes { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3) var(--sp-4); }
+.fc-row { min-height: 40px; }
 .tk-week > .wk-week { margin: 0; }
 /* 窓 768〜839px（iPad の縦。左の列が無いので窓＝中身）も二列。840px からは desk の器（中身 768px）。 */
 @media (min-width: 768px) and (max-width: 839.98px) {
@@ -7096,7 +7106,6 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 2; }
   #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 2 / span 2; }
   #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 3; }
-  #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
 }
 
 /* ---- 一日の帯（畳んだ道。js の dayStrip・KN.tlLayout.strip） ----

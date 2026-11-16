@@ -209,7 +209,8 @@ async function roundTrip(page, sel, same) {
     t.check("やることの紙を Esc で閉じると、カーソルは押した行へ", r.ok && r.opened && r.back, JSON.stringify(r));
     /* 3 Tab の順：帯 → 中身 → ＋ → 左の列（電話と同じ DOM の順）。 */
     const seq = [];
-    for (let i = 0; i < 70; i++) {
+    // 一巡りの数：見開きの右の頁と左の列の棚（構6）で止まる所が増えたので 100 まで。
+    for (let i = 0; i < 100; i++) {
       await page.keyboard.press("Tab");
       seq.push(await page.evaluate(() => { const e = document.activeElement;
         return e.closest("#head") ? "帯" : e.closest("#dock .add-fab") ? "＋" : e.closest("#tabbar") ? "列" : e.closest(".screen") ? "中身" : null; }));

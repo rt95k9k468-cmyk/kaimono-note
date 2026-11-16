@@ -597,7 +597,7 @@
      （空いた年を置くと、書かなかった年の一覧になる）。頁＝日記か、した・買った（からだ・食事は数えない）。
      出すのは今日の紙だけ、「いまごろ・年々」（showThen）と日記の鍵が効く。日の鍵から引くだけ（KN.dayPage）。 */
   const hasDiary = (d) => !!(d && (String(d.memo || "").trim() || store.memoOut(d)));
-  const showYears = (day) => day === U.todayKey() && S().showThen !== false && !diaryShut();
+  const showYears = (day, any) => (any ? day <= U.todayKey() : day === U.todayKey()) && S().showThen !== false && !diaryShut();
 
   /** 頁の小さな写しの一行：日記の最初の一行（頭の日付・育休の行は飛ばす）。読めなければその旨。 */
   function leadOf(d) {
@@ -610,8 +610,8 @@
   }
 
   /** いまごろ：同じ候の、ほかの年の頁を年ごとに横へ。同じ月日の頁に朱の栞。下に、その候に した・買った を一行ずつ（あった順・数えない）。 */
-  function imaCard(day) {
-    if (!showYears(day) || !KN.dayPage || !KN.season) return null;
+  function imaCard(day, go) {
+    if (!showYears(day, !!go) || !KN.dayPage || !KN.season) return null;
     const kouOf = (d) => { const r = KN.season.of(d); return r ? r.k : null; };
     const once = (list) => [...new Set(list.filter(Boolean))];
     const years = KN.dayPage.kouYears(day, kouOf).map((g) => {
@@ -643,10 +643,41 @@
     `);
     sec.querySelectorAll(".ima-page").forEach((b) => b.addEventListener("click", () => {
       KN.motion.fire("select");
-      goToDay(b.dataset.day);
+      (go || goToDay)(b.dataset.day);
     }));
     return sec;
   }
+
+  /* 見開きの右の頁（構6・shots/vision/README.md 10。席3 の今日の面の右の段）。年々＝同じ月日のほかの年の頁を新しい順に三つまで、
+     いまごろ＝imaCard。押すと席1 のその日（過ぎた日の頁は席1）。頁の無い年は出さない・showThen と日記の鍵が効く・先の日は組まない。 */
+  const goHere = (day) => {
+    if (KN.app.activeScreen && KN.app.activeScreen() !== "archive") KN.app.showScreen("archive");
+    goDayTo(day);
+    if (root) root.scrollTo({ top: 0 });
+  };
+  const firstLine = (t) => String(t || "").split("\n").map((l) => l.trim()).find((l) => l && !isStampLine(l)) || "";
+  function yearsCard(day) {
+    if (!showYears(day, true) || !KN.dayPage) return null;
+    const did = (d) => store.dayFeed(d).filter((f) => f.src === "todo" || f.src === "item");
+    const days = KN.dayPage.yearTabs(day, (d) => hasDiary(store.dayLog(d)) || did(d).length > 0, 3).reverse();
+    if (!days.length) return null;
+    const once = (list) => [...new Set(list.filter(Boolean))];
+    const block = (k) => {
+      const d = Object.assign({ date: k, memo: "" }, store.dayLog(k) || {});
+      const lines = !hasDiary(d) ? []
+        : outText(d) != null || diaryBody() !== "ok" || !KN.diaryPosts ? [{ at: "", text: leadOf(d).text, blank: true }]
+          : KN.diaryPosts.parse(d.memo || "").map((p) => ({ at: p.date ? "" : p.at || "", text: firstLine(p.text) })).filter((p) => p.text).slice(0, 4);
+      const feed = did(k);
+      const tag = (label, src) => { const l = once(feed.filter((f) => f.src === src).map((f) => f.title)); return l.length ? `<p class="ima-line"><b>${label}</b><span>${U.escapeHtml(l.join("・"))}</span></p>` : ""; };
+      return `<button type="button" class="ima-year fc-year" data-day="${U.escapeHtml(k)}"><span class="ima-y">${k.slice(0, 4)}<small>${U.escapeHtml(U.weekdayJa(k))}曜日</small></span>`
+        + lines.map((l) => `<span class="fc-line">${l.at ? `<time>${U.escapeHtml(l.at)}</time>` : ""}<span class="ima-text${l.blank ? " is-blank" : ""}">${U.escapeHtml(l.text)}</span></span>`).join("")
+        + tag("した", "todo") + tag("買った", "item") + "</button>";
+    };
+    const sec = node(html`<section class="card arc-then is-years">${U.raw(days.map(block).join(""))}</section>`);
+    sec.querySelectorAll(".fc-year").forEach((b) => b.addEventListener("click", () => { KN.motion.fire("select"); goHere(b.dataset.day); }));
+    return sec;
+  }
+  const facing = (day) => ({ years: yearsCard(day), ima: imaCard(day, goHere) });
 
   /* 「◯月の積み上がり」の一行は、ここにありました。
 
@@ -2274,6 +2305,8 @@
   KN.screens.archive = { mount, render, prepare, onEnter, day: () => focusDay(),
     goDay: (d) => goDayTo(d), lead: (d) => (hasDiary(d) ? leadOf(d) : null), recountLeave,   // lead：一年の一冊・月の頁の一行（season-book.js）
     midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
+    facing,   // 見開きの右の頁の 年々・いまごろ（構6）
+    shelf: (day) => { const el = shelfOf(day); el.querySelectorAll(".arc-any").forEach((x) => x.remove()); return el; },   // 左の列の棚（構6・app.js の railMini）
     pen: (day) => openPost(day, null),   // tasks の今日の「いま」の筆（構4c）：線の筆と同じ紙
     /* 今日の問い（構4b）：席3 の今日の頁の頭。時刻ごとのときだけ・日記かノートの鍵のあいだは出さない（問いの元はノートの字）。 */
     ask: (day) => (chatView() && !diaryShut() && !(KN.lock && KN.lock.hides("notes")) ? thinkHome(day) : null) };

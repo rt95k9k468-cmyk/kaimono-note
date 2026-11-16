@@ -2686,6 +2686,7 @@
     const st = store.get();
     return JSON.stringify([
       day, todayKey(), face, weekMore, workOnly, marksOn, laterOpen, pastOpen, roadOpen, TWO_COL.matches,
+      TWO_COL.matches ? [facingPick, !!(KN.lock && KN.lock.hides("diary")), !!(KN.lock && KN.lock.hides("notes"))] : "",   // 見開き（構6）
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? planNow() : "",
       day === todayKey() && KN.screens.archive ? KN.screens.archive.midSig(day) : "",   // 頭の頁（構4a）
@@ -3000,8 +3001,14 @@
     if (box) el.append(box);
     el.append(sec);
     const side = node(html`<div class="tk-side"></div>`);
-    side.append(somedaySection(open, day === todayKey()));
-    if (TWO_COL.matches) side.append(weekCard(day, open));
+    /* 見開き（構6）：二列の幅では時刻なしを左の頁（時間割の下）へ、右の段は相手を選ぶ頁（年々・いまごろ・あした・ノート）。 */
+    if (TWO_COL.matches) {
+      sec.append(somedaySection(open, day === todayKey()));
+      side.classList.add("sb");
+      side.append(facingPage(day, open));
+      /* 右の縁に小口（その日の年。なぞると席1 のその日へ）。 */
+      if (KN.seasonBook && KN.seasonBook.edgeOf) side.append(KN.seasonBook.edgeOf(day.slice(0, 4)));
+    } else side.append(somedaySection(open, day === todayKey()));
     el.append(side);
     if (sec.__done) el.append(doneSection(sec.__done));
     return el;
@@ -3016,6 +3023,55 @@
   }
 
   /** 右の段の「今週」（中身 768px から。電話では組まない）。七日の行は週の面と同じ組み（weekDays）、日を押せばその日。 */
+  /* ---- 見開きの右の頁（構6・shots/vision/README.md 10・docs/desk.md「見開き」） ----
+     相手は 年々・いまごろ（screen-archive の facing）・あした（次の日の予定とやること・今週）・ノート（最近直した）。
+     中身の無い相手は札ごと出さない（無い過去は言わない）。選んだ相手はこの窓のあいだだけ（sessionStorage・記録に入れない）。 */
+  const FACING = [["years", "年々"], ["ima", "いまごろ"], ["next", "あした"], ["notes", "ノート"]];
+  let facingPick = (() => { try { return sessionStorage.getItem("kn-facing") || "years"; } catch (_) { return "years"; } })();
+  function facingNext(day, open) {
+    const k = KN.util.shiftDay(day, 1), today = todayKey();
+    const rows = itemsOn(k, open, store.get().todos.filter(mineT), today);
+    const box = node(html`<div class="fc-next"></div>`);
+    const d = KN.util.dayDate(k);
+    const list = node(html`<section class="card fc-day" data-day="${k}">
+      <h2 class="tk-h">${d.getMonth() + 1}月${d.getDate()}日<span class="tk-h-n">${KN.util.weekdayJa(k)}</span></h2>
+      ${rows.map((t) => html`<button type="button" class="fc-row js-open" data-id="${t.id}"><time>${t.time ? tlClock(t.time) : ""}</time><span>${t.title || ""}</span></button>`)}
+    </section>`);
+    list.addEventListener("click", (e) => { const b = e.target.closest(".js-open"); if (b) { haptic(); openSheet(b.dataset.id, null); } });
+    box.append(list, weekCard(day, open));
+    return box;
+  }
+  function facingNotes() {
+    const NS = KN.screens.notes, list = NS && NS.recent ? NS.recent(6) : [];
+    if (!list.length) return null;
+    const sec = node(html`<section class="card fc-notes">
+      ${list.map((n) => html`<button type="button" class="fc-row" data-note="${n.id}"><span>${NS.headOf(n) || "ノート"}</span></button>`)}
+    </section>`);
+    sec.addEventListener("click", (e) => { const b = e.target.closest("[data-note]"); if (b) { haptic(); NS.open(b.dataset.note); } });
+    return sec;
+  }
+  function facingPage(day, open) {
+    const A = KN.screens.archive, f = A && A.facing ? A.facing(day) : {};
+    const parts = { years: f.years || null, ima: f.ima || null, next: true, notes: facingNotes() };
+    const have = FACING.filter(([id]) => parts[id]);
+    const pick = parts[facingPick] ? facingPick : have[0][0];
+    const el = node(html`<div class="tk-facing">
+      <div class="seg" role="group" aria-label="となりの頁">
+        ${have.map(([id, label]) => html`<button type="button" class="seg-btn" data-facing="${id}" aria-pressed="${String(id === pick)}">${label}</button>`)}
+      </div>
+    </div>`);
+    el.append(pick === "next" ? facingNext(day, open) : parts[pick]);
+    el.querySelector(".seg").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-facing]");
+      if (!b || b.dataset.facing === pick) return;
+      haptic();
+      facingPick = b.dataset.facing;
+      try { sessionStorage.setItem("kn-facing", facingPick); } catch (_) {}
+      render();
+    });
+    return el;
+  }
+
   function weekCard(day, open) {
     const U = KN.util, today = todayKey(), w = U.weekOf(day);
     const span = `${mdJa(w.from)}〜${U.dayDate(w.from).getMonth() === U.dayDate(w.to).getMonth() ? `${U.dayDate(w.to).getDate()}日` : mdJa(w.to)}`;

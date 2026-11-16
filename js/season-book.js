@@ -53,6 +53,8 @@
   function jump(day) {
     KN.motion.fire("select");
     open.slice().reverse().forEach((h) => h.close());
+    /* 頁は席1。ほかの席（G の一冊・見開きの小口）からはまず席1 へ。 */
+    if (KN.app.activeScreen && KN.app.activeScreen() !== "archive") KN.app.showScreen("archive");
     arc().goDay(day);
   }
 
@@ -62,6 +64,39 @@
     if (shut()) return map;
     ((KN.store.get().archive || {}).days || []).forEach((d) => { if (String(d.date).startsWith(year) && arc().lead(d)) map.set(d.date, d); });
     return map;
+  }
+
+  /** 小口：頁の束の縁に節気の色。高さは日の数に比例。なぞると日へ（離したところの候の、日記のある最初の日。無ければ候の初日）。
+      一冊の右の縁と、広い幅の見開きの右の縁（構6・screen-todo の facingPage）。 */
+  function edgeOf(year, rows) {
+    year = String(year);
+    const list = masu(year), today = U.todayKey(), total = list.reduce((n, m) => n + m.days, 0);
+    rows = rows || diaryRows(year);
+    const target = (m) => { for (let d = m.from; d <= m.to && d <= today; d = shift(d, 1)) if (rows.has(d)) return d; return m.from; };
+    const edge = node(html`<div class="sb-edge" aria-hidden="true"></div>`);
+    const tip = node(html`<span class="sb-tip" hidden></span>`);
+    list.forEach((m) => {
+      const seg = document.createElement("i");
+      seg.style.flex = String(m.days);
+      seg.style.background = KN.seasonArt ? KN.seasonArt.SEKKI_C[Math.floor(m.k / 3)] : "";
+      edge.append(seg);
+    });
+    edge.append(tip);
+    let hit = null;
+    const at = (e) => {
+      const r = edge.getBoundingClientRect();
+      let n = Math.max(0, Math.min(total - 1, Math.floor((e.clientY - r.top) / r.height * total)));
+      const m = list.find((x) => (n -= x.days) < 0) || list[list.length - 1];
+      tip.hidden = false;
+      tip.textContent = `${m.kou}　${spanOf(m)}`;
+      tip.style.top = `${Math.max(0, Math.min(r.height - 28, e.clientY - r.top - 14))}px`;
+      return m;
+    };
+    edge.addEventListener("pointerdown", (e) => { edge.setPointerCapture(e.pointerId); hit = at(e); });
+    edge.addEventListener("pointermove", (e) => { if (hit) hit = at(e); });
+    edge.addEventListener("pointerup", () => { tip.hidden = true; const m = hit; hit = null; if (m) jump(target(m)); });
+    edge.addEventListener("pointercancel", () => { tip.hidden = true; hit = null; });
+    return edge;
   }
 
   /* ---- 一年の一冊 ---- */
@@ -91,12 +126,11 @@
         ? html`<button type="button" class="ima-page sb-masu${now ? " is-now" : ""}" data-k="${m.k}">${body}</button>`
         : html`<div class="ima-page sb-masu is-still${now ? " is-now" : ""}" data-k="${m.k}">${body}</div>`);
       if (day) el.addEventListener("click", () => jump(day));
-      m.jump = day || m.from;
       return el;
     };
 
-    const body = node(html`<div class="sb"><div class="sb-pages"></div><div class="sb-edge" aria-hidden="true"></div></div>`);
-    const pages = body.querySelector(".sb-pages"), edge = body.querySelector(".sb-edge");
+    const body = node(html`<div class="sb"><div class="sb-pages"></div><i class="sb-edge"></i></div>`);
+    const pages = body.querySelector(".sb-pages");
     ml.forEach((ms, mo) => {
       const sec = node(html`<section class="sb-month">
         <button type="button" class="sb-mh" aria-label="${mo}月の頁">${mo}月${icon("chevron")}</button>
@@ -107,30 +141,7 @@
       pages.append(sec);
     });
 
-    /* 小口：頁の束の縁に節気の色。高さは日の数に比例。なぞると日へ（離したところ）。 */
-    const total = list.reduce((n, m) => n + m.days, 0);
-    const tip = node(html`<span class="sb-tip" hidden></span>`);
-    list.forEach((m) => {
-      const seg = document.createElement("i");
-      seg.style.flex = String(m.days);
-      seg.style.background = KN.seasonArt ? KN.seasonArt.SEKKI_C[Math.floor(m.k / 3)] : "";
-      edge.append(seg);
-    });
-    edge.append(tip);
-    let hit = null;
-    const at = (e) => {
-      const r = edge.getBoundingClientRect();
-      let n = Math.max(0, Math.min(total - 1, Math.floor((e.clientY - r.top) / r.height * total)));
-      const m = list.find((x) => (n -= x.days) < 0) || list[list.length - 1];
-      tip.hidden = false;
-      tip.textContent = `${m.kou}　${spanOf(m)}`;
-      tip.style.top = `${Math.max(0, Math.min(r.height - 28, e.clientY - r.top - 14))}px`;
-      return m;
-    };
-    edge.addEventListener("pointerdown", (e) => { edge.setPointerCapture(e.pointerId); hit = at(e); });
-    edge.addEventListener("pointermove", (e) => { if (hit) hit = at(e); });
-    edge.addEventListener("pointerup", () => { tip.hidden = true; const m = hit; hit = null; if (m) jump(m.jump || m.from); });
-    edge.addEventListener("pointercancel", () => { tip.hidden = true; hit = null; });
+    body.querySelector(".sb-edge").replaceWith(edgeOf(year, rows));
 
     const foot = node(html`<button type="button" class="btn btn-soft btn-sm sb-out">${icon("download")}書き出し</button>`);
     foot.addEventListener("click", () => { if (KN.settingsParts) KN.settingsParts.yearbook(year); });
@@ -208,5 +219,5 @@
     return m;
   }
 
-  KN.seasonBook = { masu, openBook, openMonth, monthFor };
+  KN.seasonBook = { masu, openBook, openMonth, monthFor, edgeOf };
 })();

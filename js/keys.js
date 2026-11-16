@@ -41,8 +41,9 @@
     const mod = MAC ? "⌘" : "Ctrl";
     /* 並びは使う順（X2）。畳まず、短く。 */
     const rows = [
-      [["1〜5"], "席"], [["n"], "足す"], [["↑", "↓"], "行"], [["Space"], "済ませる"], [["Enter"], "開く"],
-      [["/"], "さがす"], [[mod, "K"], "さがす"], [["←", "→"], "前・次の日"], [["Shift", "←", "→"], "前・次の週"], [["t"], "今日"],
+      [["1〜5"], "席"], [["n"], "書く（daily）・足す"], [["↑", "↓"], "行"], [["Space"], "済ませる"], [["Enter"], "開く"],
+      [["/"], "さがす"], [[mod, "K"], "さがす"], [["←", "→"], "前・次の日"], [["k", "j"], "前・次の頁"], [["Shift", "←", "→"], "前・次の週"], [["t"], "今日"],
+      [["g"], "一年の一冊"],
       [[","], "設定"], [[mod, "\\"], "左の列を畳む"], [["?"], "この一覧"],
     ];
     const body = node(html`<dl class="keys-list">${rows.map(([ks, what]) =>
@@ -74,7 +75,7 @@
     return !!(head && !head.hidden && KN.calSwipe && KN.calSwipe.flipIn(head, dir));
   }
   /* ---- 行（X2）：↑↓ で移り、Space で済ませる。開くのは行のボタン・押せる行の Enter がそのまま ---- */
-  const ROWS = ".item-body, .tl-open, .note-open, [role=button][tabindex='0']";
+  const ROWS = ".item-body, .tl-open, .note-open, .fc-row, .fc-year, [role=button][tabindex='0']";   // .fc-*：見開きの右の頁（構6）
   const rowsHere = () => {
     const scr = activeScreen();
     return scr ? [...scr.querySelectorAll(ROWS)].filter(shown) : [];
@@ -101,6 +102,21 @@
     return !!(it && scr && scr.contains(it) && press(it.querySelector(".check")));
   }
 
+  /* 構6：daily の席（席1・席3）の N は書く（今日の「いま」の筆と同じ紙）。ほかの席は＋。 */
+  function write() {
+    const id = KN.app.activeScreen(), A = KN.screens && KN.screens.archive;
+    if ((id !== "todo" && id !== "archive") || !A || !A.pen) return false;
+    A.pen(KN.util.todayKey());
+    return true;
+  }
+  /* 構6：G で今年の一冊（一年は一画面）。日記の鍵のあいだは開ける前に聞く（棚の背表紙と同じ）。 */
+  function book() {
+    if (!KN.seasonBook) return false;
+    const y = KN.util.todayKey().slice(0, 4), go = () => KN.seasonBook.openBook(y);
+    if (KN.lock && KN.lock.hides("diary")) KN.lock.ask().then((ok) => { if (ok) go(); });
+    else go();
+    return true;
+  }
   const press = (el) => { if (shown(el) && !el.disabled) { el.click(); return true; } return false; };
   /** 席にカーソルを置いたのがマウス・指か（下の ←→ の分かれ目）。Tab キーで動けば偽に戻る。 */
   let seatByPointer = false;
@@ -180,12 +196,18 @@
       done = help();
     } else if (e.shiftKey) {
       return;
+    } else if (k === "j" || k === "k") {
+      // 構6：J K で頁をめくる（← → と同じ。日を持たない画面は暦）。
+      const dir = k === "k" ? -1 : 1;
+      done = day(dir) || cal(dir);
+    } else if (k === "g") {
+      done = book();
     } else if (k === "t") {
       done = press(document.querySelector("#head .js-go-today"));
     } else if (k === "/") {
       done = (press(document.querySelector("#head .js-search-btn")) || press(document.querySelector("#tabbar .rail-find")));
     } else if (k === "n") {
-      done = press(document.querySelector("#dock .add-fab"));
+      done = write() || press(document.querySelector("#dock .add-fab"));
     } else if (k === ",") {
       done = press(document.querySelector("#head .js-settings"));
     }

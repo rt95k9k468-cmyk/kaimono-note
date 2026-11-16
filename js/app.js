@@ -219,6 +219,7 @@
           <button type="button" class="js-prev" aria-label="前の月">${icon("chevron-left")}</button>
           <button type="button" class="js-next" aria-label="次の月">${icon("chevron")}</button></div>
         <div class="rail-mini-g"></div>
+        <div class="rail-shelf"></div>
       </div>
     `);
     const grid = el.querySelector(".rail-mini-g");
@@ -255,6 +256,9 @@
         if (first) first.tabIndex = 0;
       }
       grid.replaceChildren(...out);
+      /* 棚（構6・パソコンの左の列）：年の背表紙。出すのは daily の席（席3）だけ（css。席1 は頁の中に棚がある）。 */
+      const A = KN.screens && KN.screens.archive;
+      if (A && A.shelf) el.querySelector(".rail-shelf").replaceChildren(A.shelf(today));
     }
     const turn = (d) => {
       const [y, m] = (ym || cur().slice(0, 7)).split("-").map(Number);

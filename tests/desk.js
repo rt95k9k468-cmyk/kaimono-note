@@ -427,6 +427,32 @@ const { open, checker, pen } = require("./lib");
   await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
   await wait(300);
 
+  /* 構6：見開き（右の頁の札・右の縁の小口）と J K・N・G。 */
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  const fc = await page.evaluate(() => ({ segs: [...document.querySelectorAll("#screen-todo .tk-facing .seg-btn")].map((b) => b.dataset.facing),
+    edge: !!document.querySelector("#screen-todo .tk-side > .sb-edge"), shelf: document.querySelectorAll("#tabbar .rail-shelf .arc-spine").length }));
+  t.check("見開き：右の頁に あした の札・右の縁に小口・左の列に棚", fc.segs.includes("next") && fc.edge && fc.shelf >= 1, JSON.stringify(fc));
+  await page.click('#screen-todo .tk-facing [data-facing="next"]');
+  await wait(400);
+  t.check("あした の札で次の日の頁と今週", await page.evaluate(() => !!document.querySelector("#screen-todo .tk-facing .fc-day") && !!document.querySelector("#screen-todo .tk-facing .tk-week")));
+  const dk = () => page.evaluate(() => { const r = document.querySelector("#head .topbar-dayrow"); return r ? r.dataset.dayKey : ""; });
+  const j0 = await dk();
+  await page.keyboard.press("j");
+  await wait(700);
+  const j1 = await dk();
+  await page.keyboard.press("k");
+  await wait(700);
+  const j2 = await dk();
+  t.check("j で次の頁・k で戻る", !!j0 && !!j1 && j1 !== j0 && j2 === j0, JSON.stringify({ j0, j1, j2 }));
+  for (const [key, sel, what] of [["g", ".sheet.is-open .sb-edge", "g で今年の一冊"], ["n", ".sheet.is-open textarea", "n（daily の席）で書く紙"]]) {
+    await page.keyboard.press(key);
+    await page.waitForSelector(sel, { timeout: 3000 }).catch(() => {});
+    t.check(what, !!(await page.$(sel)));
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+    await wait(300);
+  }
+
   /* 段11：? で近道の一覧。一文字の近道は切れる（切っても ⌘K・⌘\\ は効く）。 */
   await page.click(".tab-todo");
   await wait(500);

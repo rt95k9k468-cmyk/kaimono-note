@@ -3013,5 +3013,7 @@
   const think = () => openNote(null, null, { nb: THINK });
 
   KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
-    pick: pickNote, asks, answer, newBook, think };
+    pick: pickNote, asks, answer, newBook, think,
+    /** 最近直したノート（見開きの右の頁・構6）。鍵のあいだ・読めないあいだは空。 */
+    recent: (k) => (N().state() === "on" && !(KN.lock && KN.lock.hides("notes")) ? recentOf(N().list(), k) : []), headOf };
 })();
