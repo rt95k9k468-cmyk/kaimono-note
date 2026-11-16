@@ -2890,6 +2890,8 @@ a.btn { text-decoration: none; }
   background: var(--c-ai-soft); color: var(--c-ai); font-size: var(--fs-sm); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
 }
 .ima-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: var(--sp-2); }
+.is-ima .ima-pages { grid-template-columns: 1fr; }   /* いまごろは各年一日だけ。横いっぱいに */
+.is-ima .ima-text { -webkit-line-clamp: 3; }
 .ima-page {
   position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--sp-2) var(--sp-3);
   text-align: left; color: inherit; font: inherit; background: var(--c-surface-2); border: 0; border-radius: var(--r-md);

@@ -36,9 +36,9 @@ const FORBIDDEN = [
               { date: "2025-09-29", memo: "試験の一行（その二）", createdAt: "2025-09-29" },
             ],
           },
-          todos: [{ id: "t2022", title: "試験の用事", done: true, doneAt: "2022-09-30T03:00:00.000Z", createdAt: "2022-09-30T01:00:00.000Z" }],
+          todos: [{ id: "t2022", title: "試験の用事", done: true, doneAt: "2022-09-29T03:00:00.000Z", createdAt: "2022-09-29T01:00:00.000Z" }],
           products: [{ id: "p1", name: "試験の品" }],
-          items: [{ id: "i2022", productId: "p1", checked: true, checkedAt: "2022-09-30T04:00:00.000Z" }],
+          items: [{ id: "i2022", productId: "p1", checked: true, checkedAt: "2022-09-29T04:00:00.000Z" }],
         }));
       });
     },
@@ -74,8 +74,8 @@ const FORBIDDEN = [
   let c = await card();
   t.check("席1 の今日に Daily Log もつまみも無い（構4b の二つめ）", !c.log && !c.html.includes("arc-tab"));
   t.check("いまごろが出る", c.ima);
-  t.check("年は 2022・2024・2025（積み上げだけの 2023・からだだけの 2021 は出ない）",
-    JSON.stringify(c.years) === JSON.stringify(["2022", "2024", "2025"]), c.years.join(","));
+  t.check("年は新しい順に 2025・2024・2022・各年その一日だけ（積み上げだけの 2023・からだだけの 2021 は出ない）",
+    JSON.stringify(c.years) === JSON.stringify(["2025", "2024", "2022"]), c.years.join(","));
   t.check("同じ月日の頁に栞", c.pages.includes("2024-09-29*") && c.pages.includes("2025-09-29*"), c.pages.join(","));
   t.check("日記の無い年は した／買った だけで出る", /した\s*試験の用事/.test(c.text) && /買った\s*試験の品/.test(c.text), c.text);
   t.check("空の升が無い", c.empty === 0);
@@ -230,8 +230,8 @@ const FORBIDDEN = [
   });
   await page.waitForTimeout(500);
   c = await card();
-  t.check("1月2日：いまごろに前の年の12月31日が入り、年の札は 2025 の一つ",
-    JSON.stringify(c.years) === JSON.stringify(["2025"]) && JSON.stringify(c.pages) === JSON.stringify(["2025-12-31", "2026-01-02*"]),
+  t.check("1月2日：いまごろは前の年の同じ月日（1月2日）だけ・12月31日は入らない",
+    JSON.stringify(c.years) === JSON.stringify(["2026"]) && JSON.stringify(c.pages) === JSON.stringify(["2026-01-02*"]),
     JSON.stringify([c.years, c.pages]));
 
   /* 設定「いまごろ・年々」を切ると、どれも出ない。 */

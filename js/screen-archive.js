@@ -614,9 +614,12 @@
     if (!showYears(day, !!go) || !KN.dayPage || !KN.season) return null;
     const kouOf = (d) => { const r = KN.season.of(d); return r ? r.k : null; };
     const once = (list) => [...new Set(list.filter(Boolean))];
-    const years = KN.dayPage.kouYears(day, kouOf).map((g) => {
-      const pages = g.days.map((d) => store.dayLog(d)).filter(hasDiary);
-      const feed = g.days.flatMap((d) => store.dayFeed(d));
+    /* 各年の「同じ月日」の一日だけ。新しい年から（今年＝この頁の日は、archive の頭では一番上。見開きの右では左の頁が今日なので出さない）。 */
+    const sameDays = KN.dayPage.kouYears(day, kouOf).filter((g) => g.same).map((g) => ({ year: Number(g.same.slice(0, 4)), same: g.same })).reverse();
+    if (!go) sameDays.unshift({ year: Number(String(day).slice(0, 4)), same: day });
+    const years = sameDays.map((g) => {
+      const pages = [store.dayLog(g.same)].filter(hasDiary);
+      const feed = store.dayFeed(g.same);
       const did = once(feed.filter((f) => f.src === "todo").map((f) => f.title));
       const got = once(feed.filter((f) => f.src === "item").map((f) => f.title));
       return pages.length || did.length || got.length ? { year: g.year, same: g.same, pages, did, got } : null;
