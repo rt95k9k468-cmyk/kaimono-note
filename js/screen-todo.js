@@ -2688,6 +2688,7 @@
       day, todayKey(), face, weekMore, workOnly, marksOn, laterOpen, pastOpen, roadOpen, TWO_COL.matches,
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? planNow() : "",
+      day === todayKey() && KN.screens.archive ? KN.screens.archive.midSig(day) : "",   // 頭の頁（構4a）
       st.settings,
       (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
       [...openSubs].sort(),
@@ -2802,6 +2803,10 @@
 
     /* 空の画面は紙の中に（外に出すと、白い紙が空のまま上に残る）。 */
     if (!all.length) {
+      /* 用事が一件も無くても、今日の面の頭には「いま」より上の頁（構4a。送らない——下は空の一枚だけ）。 */
+      const page = sheet !== els.body && oneDay() && face === "today" && shownDay() === todayKey()
+        && KN.screens.archive && KN.screens.archive.midPage(todayKey());
+      if (page) { const box = node(html`<div class="tk-page"></div>`); box.append(page); sheet.append(box); }
       sheet.append(node(html`
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
@@ -2972,6 +2977,9 @@
        済ませたものは前は紙のいちばん上で、開くと帯の裏へ送っていた（doneRest）——いまは下の一枚なので送らない。 */
     open = open.filter(mineT);
     const el = node(html`<div class="day-slide tk-day"></div>`);
+    /* 今日は頭に「いま」より上の頁（構4a。行は daily の頁と同じ——screen-archive の midPage）。開くと帯の裏へ送る（doneRest）。 */
+    const page = day === todayKey() && KN.screens.archive && KN.screens.archive.midPage(day);
+    if (page) { const box = node(html`<div class="tk-page"></div>`); box.append(page); el.append(box); }
     const sec = daySection(day, open);
     el.append(sec);
     const side = node(html`<div class="tk-side"></div>`);
@@ -7136,11 +7144,15 @@
       いつもこの下（2026年10月28日、利用者「タスクが多い日には圧迫する」「ただ畳むというのもな」）。畳まない——
       上へ戻せば出る（月の面の過ぎた日と同じ。hidePastDays）。 */
   function doneRest(sc) {
-    const done = root && root.querySelector(".day-slide:not(.is-peek) > .tl-done");
+    /* 構4a からは「いま」より上の頁（.tk-page）を同じ形で送る（済ませたものの一覧は R3 から下の一枚で、送らない）。 */
+    const done = root && root.querySelector(".day-slide:not(.is-peek) > .tk-page");
     if (!done || !sc) return 0;
-    /* 測るのは一覧の箱（下の余白を引く）。行は開いた一拍に下から滑ってくる（translate）ので、行を測ると数px ずれる。 */
+    /* 測るのは箱の組みの位置（下の余白を引く）。箱は開いた一拍に下から滑ってくる（.m-in-i の translate）ので、
+       箱の rect は使わず、紙（滑らない）の頭からの offset で。 */
     const pad = parseFloat(getComputedStyle(done).paddingBottom) || 0;
-    return Math.max(0, Math.round(sc.scrollTop + done.getBoundingClientRect().bottom - pad
+    const slide = done.parentElement;
+    const at = done.offsetParent === slide ? done.offsetTop : done.offsetTop - slide.offsetTop;
+    return Math.max(0, Math.round(sc.scrollTop + slide.getBoundingClientRect().top + at + done.offsetHeight - pad
       - sc.getBoundingClientRect().top - sc.clientTop - faceFloor()));
   }
 

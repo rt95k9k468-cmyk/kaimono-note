@@ -226,6 +226,18 @@ const FORBIDDEN = [
   const hitsP = FORBIDDEN.filter((w) => pg.text.includes(w));
   t.check("頁の行に評価の言葉・割合が無い", pg.rows >= 5 && !hitsP.length && !/\d\s*[%％]/.test(pg.text), `${pg.rows} ${hitsP.join(",")}`);
   t.check("頁の行に赤い字が無い", !pg.red);
+  /* まん中（tasks の今日の面）の頭の頁（構4a）にも同じ見張り。時計を今日の 23:50 に置き、どの行も「いま」より上に。 */
+  await page.clock.setFixedTime(await page.evaluate(() => { const t = new Date(); t.setHours(23, 50, 0, 0); return t.getTime(); }));
+  await page.evaluate(() => KN.app.showScreen("todo"));
+  await page.waitForTimeout(500);
+  const md = await page.evaluate(() => {
+    const p = document.querySelector("#screen-todo .tk-page");
+    if (!p) return null;
+    const red = [...p.querySelectorAll(".pg-row, .pg-row *")].some((e) => /rgb\((2[0-5]\d|1[89]\d), ([0-6]?\d), ([0-6]?\d)\)/.test(getComputedStyle(e).color));
+    return { text: p.innerText, rows: p.querySelectorAll(".pg-row").length, red };
+  });
+  const hitsM = md ? FORBIDDEN.filter((w) => md.text.includes(w)) : [];
+  t.check("まん中の頁にも評価の言葉・割合・赤い字が無い", !!md && md.rows >= 4 && !hitsM.length && !/\d\s*[%％]/.test(md.text) && !md.red, JSON.stringify(md && { rows: md.rows, hitsM, red: md.red }));
 
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();

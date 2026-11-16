@@ -81,6 +81,13 @@ const WORD = "しおかぜ";
     !KN.searchAll.find(w, "todo").groups.some((g) => g.id === "daily"), WORD));
   t.check("hides は daily・diary とも true、notes は false", await page.evaluate(() =>
     KN.lock.hides("diary") && KN.lock.hides("daily") && !KN.lock.hides("notes")));
+  /* まん中（tasks の今日の面）の頭の頁（構4a）：覆わず、頁を組まない。 */
+  const mid = () => page.evaluate(() => { const r = document.getElementById("screen-todo"), p = r.querySelector(".tk-page");
+    return { page: !!p, text: p ? p.textContent : "", face: !!r.querySelector(".tl-sheet"), all: r.textContent }; });
+  await show("todo");
+  const m0 = await mid();
+  t.check("まん中は覆わず、頭の頁を組まない", !(await veil()).on && m0.face && !m0.page && !/しおかぜ|61\.5|はまなす/.test(m0.all), JSON.stringify({ page: m0.page, face: m0.face }));
+  await show("archive");
 
   /* コピーは開けてから。やめれば元のまま。 */
   await page.click("#screen-archive .js-log-copy");
@@ -102,6 +109,9 @@ const WORD = "しおかぜ";
   t.check("番号で開くと覆いが消える", !(await veil()).on);
   t.check("開けると本文が出る", (await logText()).includes(WORD));
   t.check("開けると頁の事実も出る", /61\.5kg/.test(await logText()) && (await logText()).includes("はまなす"));
+  await show("todo");
+  t.check("開けるとまん中の頭に頁（本文）", (await mid()).text.includes(WORD));
+  await show("archive");
 
   /* 開けた紙は、鍵が閉じると閉じる。本文はそのまま。 */
   await page.evaluate(() => {

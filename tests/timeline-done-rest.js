@@ -5,6 +5,7 @@
    - 一覧で ✓ を外すと物差しへ帰る。送りは動かない
    - 帯で 週 → 今日 と戻っても紙の頭から
    - 「前の日から」は時刻なしのカードの頭
+   - 「いま」より上の頁（構4a）は紙の頭。入ると帯の裏へ送る。済ませた用事・「いま」より後は頁に出さない
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/timeline-done-rest.js */
 const { open, checker } = require("./lib");
@@ -50,11 +51,13 @@ const DAY = "2026-10-28";
     const any = scr.querySelector(".tl-any");
     return {
       top: sc.scrollTop, band: box(".wk-faces").bottom,
-      done: box(".tl-done"), list: box(".tl-list"), road: box(".day-strip"), prev: box(".tl-prev-sec"),
+      done: box(".tl-done"), list: box(".tl-list"), road: box(".day-strip"), prev: box(".tl-prev-sec"), page: box(".tk-page"),
+      pad: scr.querySelector(".tk-page") ? parseFloat(getComputedStyle(scr.querySelector(".tk-page")).paddingBottom) : 0,
+      pageText: (scr.querySelector(".tk-page") || {}).innerText || "",
       rows: scr.querySelectorAll(".tl-done-row").length,
       prevFirst: !!(any && any.firstElementChild && any.firstElementChild.classList.contains("tl-prev-sec")),
       order: [...scr.querySelector(".day-slide").children]
-        .map((x) => ["tl-done-sec", "todo-day", "tk-side"].find((k) => x.classList.contains(k)) || "?").join(">"),
+        .map((x) => ["tk-page", "tl-done-sec", "todo-day", "tk-side"].find((k) => x.classList.contains(k)) || "?").join(">"),
     };
   });
   const near = (a, b, tol = 1.5) => a != null && b != null && Math.abs(a - b) <= tol;
@@ -109,6 +112,22 @@ const DAY = "2026-10-28";
   await enter();
   r = await read();
   c.check("「前の日から」は時刻なしのカードの頭（時間割の下）", r.prevFirst && r.prev.top > r.list.bottom && r.top === 0, JSON.stringify(r));
+
+  /* ---- 「いま」より上の頁（構4a）：日記・事実がある今日は紙の頭に頁。入ると頁を帯の裏へ送り、物差しの頭が帯の下。
+     済ませた用事は頁に引かず下の一覧のまま（見比べの B）。「いま」より後の行（枠だけの夕食 19 時）は出さない。 ---- */
+  await page.evaluate((day) => { const s = KN.store, W = KN.diaryPosts.TAG;
+    s.setDayLog(day, { wake: "07:10", memo: `08:20${W}\n朝の字\n\n13:05${W}\n昼の字` });
+    s.addMeal({ day, time: null, slot: "dinner", items: [], memo: "おでん" }); }, DAY);
+  await enter();
+  r = await read();
+  c.check("頁は紙のいちばん上", r.order.startsWith("tk-page>todo-day") && !!r.page && r.page.bottom <= r.list.top, JSON.stringify(r));
+  c.check("頁は起床・言葉。済ませた用事と「いま」より後は出さない", /起床/.test(r.pageText) && /朝の字/.test(r.pageText) && /昼の字/.test(r.pageText)
+    && !/朝の支度|見学|洗濯|おでん/.test(r.pageText), r.pageText);
+  c.check("入ると頁は帯の裏、物差しの頭が帯の下", r.top > 0 && near(r.page.bottom - r.pad, r.band, 2) && r.list.top >= r.band - 1, JSON.stringify(r));
+  await page.evaluate(() => { KN.app.scrollerOf(document.getElementById("screen-todo")).scrollTop = 0; });
+  await page.waitForTimeout(200);
+  r = await read();
+  c.check("上へ戻すと頁が出る（畳まない）", r.page.top >= r.band - 1 && r.page.top - r.band < 40, JSON.stringify(r));
 
   c.check("ページのエラーなし", errors.length === 0, errors.join(" / "));
   await browser.close();

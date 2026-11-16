@@ -4061,11 +4061,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-rest.is-fresh .tl-rest-title, .tl-rest.is-fresh .tl-rest-say { animation: m-add var(--m-add) var(--ease-out) both; animation-delay: calc(var(--m-fill) * .3); }
 .tl-rest.is-fresh .tl-rest-say { animation-delay: calc(var(--m-fill) * .3 + var(--m-stagger)); }
 
-/* 今日の済ませたもの（物差しの上の一覧。js の doneList・2026年10月28日、利用者）。一行ずつ、灰に取り消し線。札にはしない
-   ——まだのもの（札）と形で分かれる。時刻は目盛りの列（44px）、✓は札の左端の列（--tl-gut の 48px）から。
-   紙のいちばん上に居て、開くと帯の裏へ送ってある（js の doneRest は最後の行を帯の下のきわへ）。下の余白は帯の溶かし
-   （.wk-faces::after）と同じ高さ（--faces-edge）——溶かしは一覧の余白にかかり、物差しの頭の字にかからない。 */
+/* 今日の済ませたもの（js の doneList）。一行ずつ、灰に取り消し線。札にはしない——まだのもの（札）と形で分かれる。
+   「いま」より上の頁（.tk-page・構4a）は開くと帯の裏（js の doneRest）。下の余白は帯の溶かしと同じ（--faces-edge）。 */
 .tl-done { list-style: none; margin: 0; padding: var(--sp-2) var(--sp-4) var(--faces-edge) 0; }
+.tk-page { grid-column: 1; grid-row: 1; padding: var(--sp-3) var(--sp-4) var(--faces-edge); }
 .tl-done-row { display: flex; align-items: center; min-height: 34px; }
 .tl-done-row > .tl-doneat {
   flex: none; width: 44px; box-sizing: border-box; justify-content: flex-end;
@@ -6921,12 +6920,12 @@ button.note-when:active { opacity: var(--press-fade); }
     #screen-todo[data-face="today"] .wk-faces { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2 + var(--sp-4))); }
     /* 今日の面の二列（R3）：左に帯と時間割・済ませたもの、右に時刻なしと今週。境目 768px は窓 1024px の中身（左の列 256px）。 */
     #screen-todo[data-face="today"] .tk-day {
-      display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); grid-template-rows: auto 1fr;
+      display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr); grid-template-rows: auto auto 1fr;
       column-gap: var(--sp-5); align-items: start;
     }
-    #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
-    #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
-    #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
+    #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 2; }
+    #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 2 / span 2; }
+    #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 3; }
     #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
   }
 }
@@ -7042,11 +7041,11 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   /* やることの今日（R3）：左に帯と時間割、右に時刻なしと今週。段組みはどれも、月を右に立てて紙が細い
      あいだ（.head.is-month。base.css）は電話と同じ一列。 */
   .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day {
-    display: grid; grid-template-columns: minmax(340px, 1.3fr) minmax(240px, 1fr); grid-template-rows: auto 1fr; column-gap: var(--sp-3); align-items: start;
+    display: grid; grid-template-columns: minmax(340px, 1.3fr) minmax(240px, 1fr); grid-template-rows: auto auto 1fr; column-gap: var(--sp-3); align-items: start;
   }
-  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
-  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
-  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 2; }
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 2 / span 2; }
+  .head:not(.is-month) ~ .panes #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 3; }
   /* 価格：売り場ごとのまとまりを二段に流す（並べ替えはまとまりの中だけなので段をまたがない）。見出しなどは段をまたぐ。
      買うものは左にリスト・右に選んだ品の値段（下の R5 の節）。 */
   .head:not(.is-month) ~ .panes #screen-prices .prices-ground { columns: 2; column-gap: var(--sp-4); }
@@ -7105,13 +7104,13 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* 窓 768〜839px（iPad の縦。左の列が無いので窓＝中身）も二列。840px からは desk の器（中身 768px）。 */
 @media (min-width: 768px) and (max-width: 839.98px) {
   #screen-todo[data-face="today"] .tk-day {
-    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); grid-template-rows: auto 1fr;
+    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, 1fr); grid-template-rows: auto auto 1fr;
     column-gap: var(--sp-3); align-items: start; padding-inline: var(--sp-3);
   }
   #screen-todo[data-face="today"] .wk-faces { padding-inline: var(--sp-6); }
-  #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 1; }
-  #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 1 / span 2; }
-  #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 2; }
+  #screen-todo[data-face="today"] .tk-day > .todo-day { grid-column: 1; grid-row: 2; }
+  #screen-todo[data-face="today"] .tk-day > .tk-side { grid-column: 2; grid-row: 2 / span 2; }
+  #screen-todo[data-face="today"] .tk-day > .tl-done-sec { grid-column: 1; grid-row: 3; }
   #screen-todo[data-face="today"] .tk-day .tk-week { display: block; }
 }
 

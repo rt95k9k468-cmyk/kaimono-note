@@ -1374,9 +1374,9 @@
     const t = new Date(iso);
     return isNaN(t) ? {} : { day: U.dayKey(t), clock: `${pad2(t.getHours())}:${pad2(t.getMinutes())}` };
   }
-  function pageOf(d, items) {
+  function pageOf(d, items, noDone) {
     const day = d.date;
-    const feed = store.dayFeed(day);
+    const feed = store.dayFeed(day).filter((f) => !noDone || f.src !== "todo");
     const byId = new Map(store.get().todos.map((t) => [t.id, t]));
     const times = S().showDayTimes !== false;
     const w = store.weightOfDay(day);
@@ -1460,6 +1460,30 @@
       r.querySelector(".pg-plan-t").addEventListener("click", () => { KN.motion.fire("select"); KN.screens.todo.open(id); });
     });
   }
+  /* まん中の頁（構4a・shots/vision/stages.md 構4）：tasks の今日の面の頭に、「いま」より上を daily の頁と同じ行で（組み・道具も同じ）。
+     切り目は withNow と同じ。頭の日付と育休だけの一件・足もとは出さない（日付は題が言う）。鍵のあいだ・本文を読めない日は
+     daily と同じく頁を組まない（面は覆わない）。済ませた用事は面の下の「済ませたもの」が持つ（MID_DONE＝false。✓で戻す口が
+     あるので。見比べ shots/vision/09-4a-compare.jpg の B）。 */
+  const MID_DONE = false;
+  const midReadable = (d) => diaryBody() === "ok" && !diaryShut() && !outText(d);
+  const midDay = (day) => Object.assign({ date: day, memo: "" }, store.dayLog(day) || {});
+  function midCut(list) {
+    const m = nowMin();
+    const rows = list.filter((x) => x.zone !== "foot" && !(x.kind === "head" && stampOnly(x.post.text)));
+    const cut = rows.findIndex((x) => x.zone === "end" || (x.zone === "time" && rankOf(x) > m));
+    return cut < 0 ? rows : rows.slice(0, cut);
+  }
+  /** まん中の頁の行（無ければ null）。 */
+  function midPage(day) {
+    const d = midDay(day);
+    const row = midReadable(d) && chatRow(d, true, true);
+    return row && row.querySelector(".pg-row") ? row : null;
+  }
+  /** まん中の頁の組み直しの印（tasks の sheetDigest が足す）。 */
+  function midSig(day) {
+    const d = midDay(day);
+    return midReadable(d) ? JSON.stringify(midCut(pageOf(d, KN.diaryPosts.parse(d.memo || ""), !MID_DONE))) : "";
+  }
   /* 拍は分の変わり目（screen-todo の nowTick と同じ）。丸薬の字を替えるだけ。並びが替わる分なら組み直す。戻ってきたときにも一度。 */
   function paintNow() {
     if (!root || document.hidden) return;
@@ -1476,9 +1500,9 @@
   /** 時刻ごとの日記を頁の行に（構1・README 6.1・6.4）。朱の細い縦線の左に時刻、右に中身。言葉は明朝、
       よかったことは山吹の面、済ませたこと・事実は一行。箱は持たない。言葉の行を押すと道具（直す・写す・ノートへ移す）。
       本文の字は足し引きせず、切って並べるだけ。本文がまだ無い日も、一日ぶんなら頭の日付と育休の行。 */
-  function chatRow(d, one) {
+  function chatRow(d, one, mid) {
     const items = KN.diaryPosts.parse(d.memo || "");
-    const list = pageOf(d, items);
+    const list = pageOf(d, items, mid && !MID_DONE);
     const dayCell = html`<span class="arc-log-day">
           <b>${String((U.dayDate(d.date) || { getDate: () => "" }).getDate())}</b>
           <i>${U.dayDate(d.date) ? U.weekdayJa(d.date) : ""}</i>${wxOf(d.date)}
@@ -1497,15 +1521,15 @@
               ><button type="button" class="arc-post-act js-post-copy">${icon("copy")}<span>写す</span></button
               ><button type="button" class="arc-post-act js-post-move">${icon("notes")}<span>ノートへ移す</span></button></span>` : ""}</span></span>`;
     };
-    const rows = list.filter((x) => x.zone !== "foot");
-    const foot = list.filter((x) => x.zone === "foot").map((x) => x.kind === "steps" ? `歩数 ${Math.round(x.steps).toLocaleString()}歩`
+    const rows = mid ? midCut(list) : list.filter((x) => x.zone !== "foot");
+    const foot = list.filter((x) => !mid && x.zone === "foot").map((x) => x.kind === "steps" ? `歩数 ${Math.round(x.steps).toLocaleString()}歩`
       : x.kind === "weight" ? `体重 ${x.kg}kg` : `眠り ${sleepLabel(x.sleepMin)}`);
     const hasPost = items.length > 0;
-    const firstHead = rows.length && rows[0].kind === "head";
+    const firstHead = !mid && rows.length && rows[0].kind === "head";
     const row = node(html`
-      <div class="arc-log-row is-chat is-page ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
+      <div class="arc-log-row is-chat is-page ${mid ? "is-mid" : ""} ${d.date === U.todayKey() ? "is-today" : ""}" data-day="${d.date}">
         <span class="arc-log-text">
-          <span class="arc-posts">${firstHead ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${withNow(rows, rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x))), one ? d.date : "")}</span>
+          <span class="arc-posts">${firstHead || mid ? "" : html`<span class="pg-row is-day"><span class="pg-at">${dayCell}</span>${hasPost ? html`<span class="pg-body"></span>` : html`<span class="pg-body">${one ? html`<span class="arc-log-stamp">${dailyStamp(d.date).trim()}</span>` : ""}<span class="arc-post is-blank" data-k="-1"><span class="arc-post-body"><span class="arc-post-text" role="button" tabindex="0">${icon("edit")}この日のことを書く</span></span></span></span>`}</span>`}${withNow(rows, rows.map((x, i) => (x.post ? post(x, i === 0 && firstHead) : pgFact(x))), one && !mid ? d.date : "")}</span>
           ${foot.length ? html`<span class="pg-foot">${foot.join("　")}</span>` : ""}
         </span>
       </div>
@@ -2339,7 +2363,7 @@
   });
 
   KN.screens.archive = { mount, render, dockButton, prepare, onEnter, again, day: () => focusDay(),
-    goDay: (d) => goDayTo(d), recountLeave };
+    goDay: (d) => goDayTo(d), recountLeave, midPage, midSig };   // midPage・midSig：tasks の今日の面の頭（構4a）
 
   /* 開いたら一度、落ち着いてから（立ち上がりの一拍を重くしない）。 */
   window.addEventListener("load", () => setTimeout(() => {
