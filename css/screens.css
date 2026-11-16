@@ -7094,7 +7094,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .fc-line, .fc-row { display: flex; gap: var(--sp-3); align-items: baseline; min-width: 0; text-align: left; color: inherit; }
 .fc-line time, .fc-row time { flex: none; min-width: 3em; font-size: var(--fs-sm); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .fc-day, .fc-notes { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3) var(--sp-4); }
-.fc-row { min-height: 40px; }
+.fc-row { min-height: var(--row-h-compact); }
 .tk-week > .wk-week { margin: 0; }
 /* 窓 768〜839px（iPad の縦。左の列が無いので窓＝中身）も二列。840px からは desk の器（中身 768px）。 */
 @media (min-width: 768px) and (max-width: 839.98px) {
