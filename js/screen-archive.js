@@ -1440,7 +1440,10 @@
   const midDay = (day) => Object.assign({ date: day, memo: "" }, store.dayLog(day) || {});
   function midCut(list) {
     const m = nowMin();
-    const rows = list.filter((x) => x.zone !== "foot" && !(x.kind === "head" && stampOnly(x.post.text)));
+    /* 鍵が閉じているあいだは、食事のメモと体重の行も組まない（11月19日・利用者。日記の頁と同じ）。 */
+    const shut = diaryShut();
+    const rows = list.filter((x) => x.zone !== "foot" && !(x.kind === "head" && stampOnly(x.post.text))
+      && !(shut && (x.kind === "meal" || x.kind === "weight")));
     const cut = rows.findIndex((x) => x.zone === "end" || (x.zone === "time" && rankOf(x) > m));
     return cut < 0 ? rows : rows.slice(0, cut);
   }
