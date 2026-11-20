@@ -144,6 +144,8 @@
     /* よかったことの印は、ここで「よかった：」の字に（本文には書かない。KN.diaryPosts.outText）。 */
     const memo = KN.diaryPosts.outText((cur.memo || "").trim());
     if (memo) blocks.push(memo);
+    const wx = KN.weather && KN.weather.of(day);
+    if (wx) blocks.push(`気温 最高${wx.max}度 ・ 最低${wx.min}度（${wx.label}）`);
     if (cur.wake || cur.sleep) blocks.push(`起床 ${orDash(cur.wake)} ・ 就寝 ${orDash(cur.sleep)}`);
     const feed = store.dayFeed(day);
     const todos = feed.filter((f) => f.src === "todo");

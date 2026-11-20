@@ -2497,8 +2497,6 @@
                   （細かい数と根拠はAIの返事の原文に残っている）。 */""}
             ${ai && ai.ai ? html`
               <span class="diet-memo-body">${(ai.ai.kcal == null ? "—" : ai.ai.kcal.toLocaleString())}kcal ・ 食品 ${foods.length}件${ai.ai.at ? `（${U.formatStamp(ai.ai.at)}）` : ""}${ai.ai.cost ? ` ・ ${costLabel(ai.ai.cost)}` : ""}</span>` : ""}
-            ${ai && ai.ai && ai.ai.analysis ? html`
-              <p class="diet-note diet-ai-note">${ai.ai.analysis}</p>` : ""}
             <div class="diet-ai-btns">
               <button type="button" class="btn btn-sm js-ai-prompt">${icon("copy")}プロンプトをコピー</button>
               <button type="button" class="btn btn-sm js-ai-paste">${icon("download")}貼り付け</button>
@@ -2886,6 +2884,8 @@
     const c = ctx || {};
     const lines = [
       "次の「食事メモ」から、その日に食べたものの栄養を推定してください。",
+      "適当に概算で済ませず、必ず先に調べて（Web検索・公式の栄養成分表示・標準成分表で確認して）から答えてください。"
+        + "調べずに思いつきで数字を出すことはしないでください。",
       "",
       "【条件】",
       /* お酒は「見なかったこと」にしていましたが、その日のエネルギーの

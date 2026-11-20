@@ -7281,7 +7281,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .shelf-n { margin-left: auto; font-family: var(--font-num); font-weight: var(--fw-regular); color: var(--c-text-3); }
 /* 行（買うもの・価格）：60px、絵は種類の色を 13% 敷いた 46px の台に、絵は札の色そのまま。 */
 #screen-list .item-wrap .item:not(.todo), #screen-prices .product-wrap .product { min-height: var(--row-h-card); padding: var(--sp-2) 14px; gap: var(--sp-3); }
-#screen-list .item-wrap .item-emoji, #screen-prices .product-emoji, #screen-list .day-bought-toggle > .item-emoji {
+#screen-list .item-wrap .item-emoji, #screen-prices .product-emoji {
   display: grid; place-items: center; flex: none; align-self: center; width: 46px; height: 46px; margin: 0;
   border-radius: var(--r-md); background: color-mix(in srgb, var(--cat, var(--c-text-3)) 13%, var(--c-surface)); color: var(--cat, var(--c-text-2));
 }
@@ -7317,17 +7317,15 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 #screen-prices .pbar { font-size: calc(13px * var(--fs-k)); }
 #screen-prices .pbar-b { height: 6px; }
 /* 今日買ったもの：一枚の行（絵の台・題・品数・＞）。ひらくと下に買った行のカード。 */
-#screen-list .day-bought-head { padding: 0 var(--sp-3); }
 #screen-list .day-bought-head.tk-h { padding: var(--sp-2) calc(var(--sp-3) + var(--sp-1)) var(--sp-2); }
 #screen-list .day-bought-toggle {
-  width: 100%; min-height: var(--row-h-card); gap: var(--sp-3); padding: 7px var(--sp-4) 7px 7px; text-align: left;
-  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: 44px; padding: 0; text-align: left;
+  background: none; border: 0; box-shadow: none;
   transition: scale var(--m-press) var(--ease);
 }
-#screen-list .day-bought-toggle > .item-emoji svg { width: 22px; height: 22px; }  /* 入れもの：46の台 */
-#screen-list .day-bought-toggle > svg { margin-left: auto; color: var(--c-text-3); }
+#screen-list .day-bought-toggle > svg { color: var(--c-text-3); }
 .got-main { display: flex; flex-direction: column; min-width: 0; }
-.got-t { font-size: var(--fs-lg); color: var(--c-text); }
+.got-t { font-size: var(--fs-xl); color: var(--c-text); }
 .got-n { font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-regular); color: var(--c-text-2); }
 .got-n .cat-head-count { display: inline-block; color: inherit; font-weight: inherit; }
 #screen-list .day-bought.is-today > .item-list { margin-top: var(--sp-2); }

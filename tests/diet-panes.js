@@ -80,7 +80,7 @@ const { open, checker } = require("./lib");
       aiInk: q(".diet-goal-line") ? getComputedStyle(q(".diet-goal-line")).stroke : "",
       chartW: (q(".diet-chart") || { getBoundingClientRect: () => ({ width: 0 }) }).getBoundingClientRect().width,
       chartInner: q(".hl-chart").clientWidth,
-      noteIn: !!(memo && memo.querySelector(".diet-ai-note") && memo.querySelector(".js-ai-paste") && memo.closest(".hl-list")),
+      noteIn: !!(memo && memo.querySelector(".js-ai-paste") && memo.closest(".hl-list")),
       aiOpen: !!q(".hl-meals .hl-list .js-ai-open"),
       text: day.textContent,
     };

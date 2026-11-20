@@ -1090,9 +1090,9 @@
     const open = !isToday || store.get().settings.showChecked !== false;
     const section = node(html`
       <section class="day-bought ${isToday ? "is-today" : ""}" aria-label="${label}">
-        ${/* 今日は一枚のカードの行（絵の台・題・品数・＞。docs/redesign.md R5）。ひらくと下に買った行のカード。 */""}
+        ${/* 今日は地の文の小見出し（題・品数・＞。行のカードにしない：ほかの品の枠と紛らわしい・11月20日 利用者）。押すと下に開く。 */""}
         ${isToday
-          ? html`<h2 class="day-bought-head"><button type="button" class="day-bought-toggle" aria-expanded="${String(open)}"><span class="item-emoji">${icon("check")}</span><span class="got-main"><span class="got-t">${label}</span><span class="got-n"><span class="cat-head-count">${bought.length}</span>品</span></span>${icon("chevron")}</button></h2>`
+          ? html`<h2 class="day-bought-head tk-h"><button type="button" class="day-bought-toggle" aria-expanded="${String(open)}"><span class="got-t">${label}</span><span class="got-n"><span class="cat-head-count">${bought.length}</span>品</span>${icon("chevron")}</button></h2>`
           : html`<h2 class="day-bought-head tk-h">${label} <span class="cat-head-count tk-h-n">${bought.length}</span></h2>`}
         <div class="item-list" ${open ? "" : KN.util.raw("hidden")}></div>
       </section>
