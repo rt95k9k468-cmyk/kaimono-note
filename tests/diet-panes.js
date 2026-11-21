@@ -81,7 +81,7 @@ const { open, checker } = require("./lib");
       chartW: (q(".diet-chart") || { getBoundingClientRect: () => ({ width: 0 }) }).getBoundingClientRect().width,
       chartInner: q(".hl-chart").clientWidth,
       noteIn: !!(memo && memo.querySelector(".js-ai-paste") && memo.closest(".hl-list")),
-      aiOpen: !!q(".hl-meals .hl-list .js-ai-open"),
+      aiOpen: !q(".hl-meals .hl-list .js-ai-open"),
       text: day.textContent,
     };
   });
@@ -106,7 +106,7 @@ const { open, checker } = require("./lib");
   t.check("画面に「飲みたくなった」・週の一行は無い（お酒の紙の中）", r.urgeBg === null && !r.urge && !r.wk, JSON.stringify([r.urge, r.wk]));
   t.check("目標は藍の点線（下の札も藍）", r.goalDash && r.goalDash !== "none" && r.goalInk === r.aiInk, `${r.goalDash} ${r.goalInk} ${r.aiInk}`);
   t.check("グラフはカードの幅いっぱい", r.chartW > r.chartInner - 40, `${r.chartW} / ${r.chartInner}`);
-  t.check("AI推計のひと言と二つのボタンはカードの底、小見出しの右に AI推計", r.noteIn && r.aiOpen);
+  t.check("AI推計のひと言と二つのボタンはカードの底、「AI推計」の札は無い", r.noteIn && r.aiOpen);
   t.check("お酒を足した合計・PFC・熱量比は出さない", !/お酒を足すと|熱量比|繊維/.test(r.text) && !r.text.includes("diet-pfc"));
   t.check("評価の言葉・絵文字なし", !/\p{Extended_Pictographic}/u.test(r.text));
 

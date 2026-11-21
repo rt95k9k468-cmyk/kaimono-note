@@ -828,16 +828,14 @@
     const tw = sum.trendPerWeek, goal = sum.goal.targetKg, now = sum.ma7Now;
     const toward = goal != null && tw != null && now != null && Math.abs(now - goal) >= 0.1
       && (now > goal ? tw < -0.03 : tw > 0.03);
-    const extra = [w && w.source === "health" ? "ヘルスケア" : "", w && w.fat != null ? `体脂肪 ${w.fat.toFixed(1)}%` : "", condText(w)].filter(Boolean).join("・");
-    /* H1 見通し：今日の一枚だけ（過ぎた日の「ごろ」は話が合わない）。 */
-    const ol = card.day === U.todayKey() ? D.outlook(sum, card.day) : null;
+    const extra = [w && w.source === "health" ? "ヘルスケア" : "", w && w.fat != null ? `体脂肪 ${w.fat.toFixed(1)}%` : ""].filter(Boolean).join("・");
+    /* 「この傾きなら◯kg は◯月◯日ごろ」は出さない（11月21日 利用者。目標の紙の「その日はおよそ◯kg」は残す）。 */
     const sec = node(html`
       <span class="hl-hero-in">
         <span class="hl-hero-h diet-hero-label">${icon("scale")}${when === "今日" ? "" : when + "の"}体重</span>
         <span class="hl-hero-v diet-hero-value"><b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small></span>
         <span class="hl-hero-s"><span>${sum.avgWindowDays}日平均 <b>${now == null ? "—" : now.toFixed(1)}</b></span>・<span><b class="${toward ? "is-toward" : ""}">${tw == null ? "—" : signed(tw, 1)}</b> /週</span></span>
         ${extra ? html`<span class="hl-hero-s is-sub">${extra}</span>` : ""}
-        ${ol && ol.goalDay ? html`<span class="hl-hero-s is-outlook">この傾きなら ${ol.goalKg.toFixed(1)}kg は${longDay(ol.goalDay)}ごろ</span>` : ""}
         ${KN.util.raw(spark(card.day, sum.avgWindowDays))}
       </span>
     `);
@@ -2492,7 +2490,6 @@
         <div class="card hl-list">
           <div class="diet-slots js-slots"></div>
           <div class="diet-memo ${ai && ai.ai ? "" : "is-blank"}">
-            <div class="diet-memo-h"><button type="button" class="hl-sec-a js-ai-open">${icon("sparkles")}AI推計</button></div>
             ${/* AIの評価の文も、この枠の中に（10月5日）。お酒を足した合計・PFC の数は出さない
                   （細かい数と根拠はAIの返事の原文に残っている）。 */""}
             ${ai && ai.ai ? html`
@@ -2508,7 +2505,6 @@
 
     buildSlotBoxes(sec.querySelector(".js-slots"), card.day, st, { peek });
 
-    sec.querySelector(".js-ai-open").addEventListener("click", () => openAiSheet(card.day));
     sec.querySelector(".js-ai-prompt").addEventListener("click", () => copyAiPrompt(card.day));
     sec.querySelector(".js-ai-paste").addEventListener("click", () => pasteAiResult(card.day));
     host.append(sec);

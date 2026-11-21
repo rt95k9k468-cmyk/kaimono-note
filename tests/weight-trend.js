@@ -148,17 +148,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     });
   };
   await seed(down, { targetKg: 68 });
-  const want = await page.evaluate(() => {
-    const o = KN.diet.outlook(KN.diet.weightSummary(30));
-    const d = o && KN.util.dayDate(o.goalDay);
-    return o ? { text: `この傾きなら 68.0kg は${d.getMonth() + 1}月${d.getDate()}日ごろ`, ahead: KN.util.daysUntil(o.goalDay) } : null;
-  });
-  const line = await outlookLine();
-  t.check("下る傾きで目標 68kg の日を言う", want && line === want.text && want.ahead > 7 && want.ahead < 120, `${line} / ${JSON.stringify(want)}`);
-  await seed(down, { targetKg: 72 });
-  t.check("傾きが目標と逆なら出さない", (await outlookLine()) === null);
-  await seed(down.filter((r, i) => i % 3 === 0), { targetKg: 68 });
-  t.check("21日に量った日が8日未満なら出さない", (await outlookLine()) === null);
+  t.check("下る傾きでも体重のカードに「この傾きなら」は出さない", (await outlookLine()) === null);
   await seed(down, { targetKg: 68 });
   await outlookLine();
   const est = await page.evaluate(async () => {
