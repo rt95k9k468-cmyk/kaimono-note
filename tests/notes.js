@@ -362,7 +362,7 @@ const { open, checker } = require("./lib");
   /* ---- 書き出しに noteBook が入る（「バックアップを保存」そのもの） ---- */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.click(".set-row:has-text('バックアップ')");
+  await page.evaluate(() => KN.settingsParts.go("keep"));   // 根っこの「控え」の一枚（意7b）
   await page.waitForTimeout(500);
   const [dl] = await Promise.all([
     page.waitForEvent("download", { timeout: 5000 }),
