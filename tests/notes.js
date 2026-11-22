@@ -132,7 +132,7 @@ const { open, checker } = require("./lib");
   t.check("ノートの歯車：入口だけの根っこ（notes の入口がある・ノートの行は先の一枚）", await page.evaluate(() => {
     const titles = [...document.querySelectorAll("#screen-settings .set-layer:last-child .set-row.has-lead .set-title")].map((x) => x.firstChild.textContent.trim());
     const t = document.getElementById("screen-settings").innerText;
-    return titles.length === 9 && titles.includes("notes") && !/目次をコピー/.test(t) && !/「あの日」を出す/.test(t);
+    return titles.length === 13 && titles.includes("notes") && !/目次をコピー/.test(t) && !/「あの日」を出す/.test(t);
   }));
   await page.evaluate(() => KN.app.backScreen());
   await settled("notes");
