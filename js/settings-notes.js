@@ -36,7 +36,7 @@
      数は出しません——ノートも daily と同じく評価しない（tests/daily-rules.js）。
 
      notes の一枚（根っこの入口「notes」の先。2026年11月5日）：表示 → 整理（ノートブック・タグ・分け直し）→
-     書き出しと取り込み。同期は「データ・同期」へ、ロックは「通知・プライバシー」へ（鍵の番号は daily と一つ）。 */
+     書き出しと取り込み。同期は「同期」の一枚へ、ロックは「通知・プライバシー」へ（鍵の番号は daily と一つ）。 */
   function notesPageRows() {
     const created = store.get().settings.notesOrder === "created";
     const organize = [
@@ -204,7 +204,7 @@
   /* ---------------- 同期（js/notes-sync.js。docs/notes-unify.md「同期」） ----------------
      既定は切り。入れた端末だけ合わせる。合わせている最中は、取る・送るの数だけを値に（`onStep`）。
      Dropbox につないでいなければ、つなぐ紙へ。 */
-  /** ノートの同期の行（「データ・同期」の「同期」の束に、同期の部屋と並べる）。 */
+  /** ノートの同期の行（「同期」の一枚に、同期の部屋と並べる）。 */
   function syncRowList() {
     const Y = KN.notesSync;
     if (!Y || !KN.dropbox) return [];

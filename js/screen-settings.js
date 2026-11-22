@@ -629,7 +629,11 @@
     tasks:    { title: "daily",    art: "tasks", build: () => S.tasksPageRows() },
     shopping: { title: "shopping", art: "shopping", build: () => S.shoppingPageRows() },
     health:   { title: "health",   art: "health", build: () => S.healthPageRows() },
-    data:     { title: "データ・同期", art: "data", build: () => S.dataRows() },
+    /* 記録を守る の四枚（意7b。前は「データ・同期」の一枚）。同期の部屋は `sync` なので、この一枚は `syncing`。 */
+    keep:     { title: "控え",     art: "data", build: () => S.keepRows() },
+    syncing:  { title: "同期",     build: () => S.syncingRows() },
+    io:       { title: "出し入れ", build: () => S.ioRows() },
+    device:   { title: "この端末", build: () => S.deviceRows() },
     dataOut:  { title: "書き出し",     build: () => S.dataOutRows() },
     dataIn:   { title: "取り込み",     build: () => S.dataInRows() },
     help:     { title: "連携・ヘルプ", art: "help", build: () => helpRows() },
@@ -731,7 +735,7 @@
     if (doubt) L.body.append(card(
       doubt.record ? navRow({
         ico: "undo", tint: TINT.warn, title: "記録が控えより少なくなっています", alert: true,
-        value: stampOf(doubt.record.at), onTap: () => go("data"),
+        value: stampOf(doubt.record.at), onTap: () => go("keep"),
       }) : null,
       doubt.notes ? navRow({
         ico: "undo", tint: TINT.warn, title: "ノートが控えより少なくなっています", alert: true,
@@ -742,7 +746,7 @@
        戻すのはバックアップ（Dropbox の控え・ファイル）から。 */
     const P = KN.todoPast;
     if (P && P.settled() && store.todoOut().length) L.body.append(card(navRow({
-      ico: "undo", tint: TINT.warn, alert: true, onTap: () => go("data"),
+      ico: "undo", tint: TINT.warn, alert: true, onTap: () => go("keep"),
       title: P.status().phase === "off" ? "過去のやることを読めません" : "過去のやることが見つかりませんでした",
     })));
     put(rootRows());
@@ -779,7 +783,7 @@
 
   /** 根っこの入口。どの歯車から開いても同じ並び（意7a、見本 06・07）：控えの一行／見た目と操作／席／記録を守る／連携・ヘルプ。
       右の値は、入口を開かずに分かる「いま」だけ（控えの日・基調色の粒・オンのもの・エラーの数）。
-      下の一行は電話の幅で一行に収まる長さ（16字まで）。記録を守るの四つは、7b で一枚ずつに分けるまで データ・同期 の一枚へ。 */
+      下の一行は電話の幅で一行に収まる長さ（16字まで）。記録を守るの四つは一枚ずつ（7b）。 */
   function rootRows() {
     const s = store.get();
     const look = KN.app.lookOf(s.settings);
@@ -787,7 +791,7 @@
     const entry = (o) => navRow({ lead: "icon", entry: true, ...o });
     const keep = keepNow();
     return [
-      card(entry({ ico: "download", tint: "var(--c-text-2)", title: "端末の外の控え", ...keep, onTap: () => go("data") })),
+      card(entry({ ico: "download", tint: "var(--c-text-2)", title: "端末の外の控え", ...keep, onTap: () => go("keep") })),
       head("見た目と操作"),
       card(
         entry({
@@ -802,10 +806,10 @@
       card(...SEATS.map((t) => entry({ ico: t.icon, title: t.label, sub: t.sub, onTap: () => go(t.id) }))),
       head("記録を守る"),
       card(
-        entry({ ico: "download", title: "控え", sub: "保存・Dropbox・戻す", onTap: () => go("data") }),
-        entry({ ico: "repeat", title: "同期", sub: "部屋・ノートの同期", onTap: () => go("data") }),
-        entry({ ico: "upload", title: "出し入れ", sub: "書き出し・取り込み", onTap: () => go("data") }),
-        entry({ ico: "rows", title: "この端末", sub: "中身・点検・外す", onTap: () => go("data") })
+        entry({ ico: "download", title: "控え", sub: "保存・Dropbox・戻す", onTap: () => go("keep") }),
+        entry({ ico: "repeat", title: "同期", sub: "部屋・ノートの同期", onTap: () => go("syncing") }),
+        entry({ ico: "upload", title: "出し入れ", sub: "書き出し・取り込み", onTap: () => go("io") }),
+        entry({ ico: "rows", title: "この端末", sub: "中身・点検・外す", onTap: () => go("device") })
       ),
       card(entry({
         ico: "route", title: "連携・ヘルプ", sub: "ショートカット・中継所・エラー",

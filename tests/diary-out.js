@@ -56,11 +56,11 @@ const dialog = (page, text) => page.locator(".sheet, [role=dialog]", { hasText: 
 const rowTexts = (page) => page.locator(".set-layer:last-child .set-row").allTextContents();
 const tapRow = (page, text) => page.locator(".set-layer:last-child .set-row", { hasText: text }).first().click();
 
-async function openBackup(page) {
+async function openBackup(page, entry = "この端末") {
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await tapRow(page, "控え");
+  await tapRow(page, entry);
   await page.waitForTimeout(400);
 }
 
@@ -139,8 +139,8 @@ const bigDays = (tag) => Array.from({ length: BIG_DAYS }, (_, i) => [bigDate(i),
       for (let i = 0; i < 60; i++) s.archive.days.push({ date: `2018-0${1 + (i % 9)}-${String(1 + (i % 28)).padStart(2, "0")}`, memo: "y".repeat(10000), wake: null, sleep: null });
       return JSON.stringify(s);
     }, { days: bigDays("復元") });
-    /* 日記の取り込みは daily の一枚、復元と「日記を記録から外す」は データ・同期 の一枚（2026年11月5日）。 */
-    await openBackup(page);
+    /* 日記の取り込みは daily の一枚、復元は「控え」、「日記を記録から外す」は「この端末」の一枚（意7b）。 */
+    await openBackup(page, "控え");
     await page.locator(".js-file").setInputFiles({ name: "big.json", mimeType: "application/json", buffer: Buffer.from(bigFile) });
     const refuse2 = dialog(page, "入りきりません");
     await refuse2.waitFor();
@@ -291,7 +291,7 @@ const bigDays = (tag) => Array.from({ length: BIG_DAYS }, (_, i) => [bigDate(i),
     t.check("読めない日", await page.evaluate(() => KN.diaryIdb.body()) === "off");
     const exp0 = await page.evaluate(() => KN.backup.lastExportAt());
 
-    await openBackup(page);
+    await openBackup(page, "控え");
     await tapRow(page, "バックアップを保存");
     const warn = dialog(page, "日記の本文は入りません");
     await warn.waitFor();

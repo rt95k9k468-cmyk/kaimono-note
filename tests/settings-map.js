@@ -114,7 +114,7 @@ const ENTRIES = ["端末の外の控え", "表示・操作", "通知・ロック
   /* ---- 開いて閉じる・潜って戻るを繰り返す ---- */
   for (let i = 0; i < 6; i++) {
     await openSettings(["todo", "notes", "diet"][i % 3]);
-    await go(["daily", "data", "privacy"][i % 3]);
+    await go(["daily", "keep", "privacy"][i % 3]);
     await page.evaluate(() => KN.store.update((s) => { s.settings.showThen = !s.settings.showThen; }));   // 組み直しを起こす
     await page.waitForTimeout(100);
     await page.evaluate(() => KN.app.backScreen());

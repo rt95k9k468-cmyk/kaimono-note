@@ -823,11 +823,11 @@
     const st = D.status();
     if (st.out) {
       if (st.phase !== "on" || JSON.stringify(store.get()).length > DIARY_LIVE_LIMIT) return [];
-      return [navRow({ ico: "undo", tint: TINT.sub, title: "日記を記録に戻す", act: true, onTap: putBackDiary })];
+      return [inkRow({ ico: "undo", title: "日記を記録に戻す", onTap: putBackDiary })];
     }
     if (st.phase !== "on") return [];
-    if (outReadyNow()) return [navRow({ ico: "download", tint: TINT.data, title: "書き出して外す", act: true, onTap: exportAndOut })];
-    return [navRow({ ico: "book", tint: TINT.sub, title: "日記を記録から外す", act: true, onTap: prepareOut })];
+    if (outReadyNow()) return [inkRow({ ico: "download", title: "書き出して外す", onTap: exportAndOut })];
+    return [inkRow({ ico: "book", title: "日記を記録から外す", onTap: prepareOut })];
   }
 
   async function prepareOut() {
@@ -924,10 +924,10 @@
     if (!P || !P.isOut || P.status().phase !== "on") return [];
     if (P.isOut()) {
       if (!pastFits()) return [];
-      return [navRow({ ico: "undo", tint: TINT.sub, title: "過去のやることを記録に戻す", act: true, onTap: putBackTodos })];
+      return [inkRow({ ico: "undo", title: "過去のやることを記録に戻す", onTap: putBackTodos })];
     }
-    if (pastReadyNow()) return [navRow({ ico: "download", tint: TINT.data, title: "書き出して外す", act: true, onTap: exportAndOutTodos })];
-    return [navRow({ ico: "check", tint: TINT.sub, title: "過去のやることを記録から外す", act: true, onTap: prepareTodoOut })];
+    if (pastReadyNow()) return [inkRow({ ico: "download", title: "書き出して外す", onTap: exportAndOutTodos })];
+    return [inkRow({ ico: "check", title: "過去のやることを記録から外す", onTap: prepareTodoOut })];
   }
 
   async function prepareTodoOut() {
@@ -1008,25 +1008,29 @@
     render();
   }
 
-  /** データ・同期（根っこの入口。2026年11月5日に組み直した）。五つを**別の束**に分け、それぞれ一言で
-      何をするかを言う（利用者が取り違えやすい五つ）：バックアップ＝複製を残す／復元＝それで戻す／
-      同期＝ほかの端末と同じ記録／書き出し＝ファイルで取り出す／取り込み＝外のデータを入れる。
-      書き出しと取り込みは「›」の先の一枚ずつ（タブごとに並ぶ。同じ行は各タブの一枚にもある）。
-      保存・復元・点検の中身（saveBackup・restoreText・openAudit…）は一つも変えていない。 */
-  function dataRows() {
-    /* 写しの端末（js/replica.js）：この端末の記録は隠れているので、控えの行は出さない。切る口だけ。 */
-    if (KN.replica && KN.replica.on()) {
-      return [card(navRow({ title: "Dropbox", value: "iPhone の写し", onTap: () => go("dropbox") }))];
-    }
+  /* 置きかえる操作（戻す・記録から外す）の行（意7b、見本 06）。朱の字は「その場で済む」保存・確かめるだけにし、
+     いまの記録を置きかえるものは墨の字と絵で、一枚のいちばん下の束に分ける（P2-5：同じ朱で色でも場所でも分かれなかった）。 */
+  function inkRow(o) {
+    return navRow({ ...o, lead: "icon", tint: "var(--c-text-2)" });
+  }
+
+  /* 写しの端末（js/replica.js）：この端末の記録は隠れているので、四枚とも控えの行は出さない。切る口だけ。 */
+  const replicaRows = () => (KN.replica && KN.replica.on()
+    ? [card(navRow({ title: "Dropbox", value: "iPhone の写し", onTap: () => go("dropbox") }))] : null);
+
+  /** 記録を守る の四枚（意7b。前は「データ・同期」の一枚に六つの束）。束は**そのまま振り分けた**だけで、
+      保存・復元・点検の中身（saveBackup・restoreText・openAudit…）は一つも変えていない。
+      一言ずつ違いを言う（利用者が取り違えやすい五つ）：控え＝複製を残す／戻す＝それで置きかえる／
+      同期＝ほかの端末と同じ記録／書き出し＝ファイルで取り出す／取り込み＝外のデータを入れる。 */
+  function keepRows() {
+    const rep = replicaRows();
+    if (rep) return rep;
     const file = importInput();
     const verify = verifyInput();
     const snaps = KN.backup.list();
     const gone = store.goneList();
-    const room = !!(KN.sync && KN.sync.status().phase !== "off");
-    const notesSync = S.notesSyncRowList ? S.notesSyncRowList() : [];
     const last = exportSub();
     return [
-      head("バックアップ"),
       card(
         navRow({ title: "バックアップを保存", act: true, onTap: saveBackup }),
         KN.dropbox ? navRow({
@@ -1035,51 +1039,66 @@
         navRow({ title: "バックアップを確かめる", act: true, onTap: () => verify.click() })
       ),
       foot(`記録の複製を残します。${last ? `${last}。` : ""}`),
-      head("復元"),
+      head("戻す——いまの記録を置きかえる"),
       card(
-        navRow({ title: "バックアップから復元", act: true, onTap: () => file.click() }),
+        inkRow({ ico: "undo", title: "控えから戻す", onTap: () => file.click() }),
         /* この端末の中の控え（自動）。一覧の紙から、選んで戻す。 */
-        navRow({
-          title: "自動バックアップから戻す", off: !snaps.length,
+        inkRow({
+          ico: "undo", title: "自動の控えから戻す", off: !snaps.length,
           value: snaps.length ? `${snaps.length}件` : "なし", onTap: openSnapshots,
         }),
-        gone.length ? navRow({ title: "さっき消したもの", value: `${gone.length}件`, onTap: openGone }) : null
+        gone.length ? inkRow({ ico: "undo", title: "さっき消したもの", value: `${gone.length}件`, onTap: openGone }) : null
       ),
-      foot("いまの記録を、バックアップの中身に戻します。"),
-      ...(notesSync.length || room ? [
-        head("同期"),
-        card(
-          ...notesSync,
-          /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
-          room ? navRow({ title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync") }) : null
-        ),
-        foot("ほかの端末と、同じ記録を使います。"),
-      ] : []),
-      head("書き出しと取り込み"),
-      card(
-        navRow({ title: "書き出し", sub: "ファイルとして取り出す", onTap: () => go("dataOut") }),
-        navRow({ title: "取り込み", sub: "外のデータを入れる", onTap: () => go("dataIn") })
-      ),
-      head("この端末の中"),
-      ...usageRows(KN.backup.usage()),
-      /* 点検（数えるだけ）と、記録を軽くする二つ（日記・過去のやることを記録から外す。段2の2b・R26）。 */
-      card(
-        navRow({ title: "記録を点検する", act: true, onTap: openAudit }),
-        ...diaryOutRows(),
-        ...todoOutRows()
-      ),
-      outReadyNow() || pastReadyNow() ? foot("書き出せたら外します。") : null,
       file,
       verify,
     ];
   }
 
-  /** 書き出し（データ・同期の「›」の先）：タブごとに。どの行も、そのタブの一枚にもある同じもの。 */
+  function syncingRows() {
+    const rep = replicaRows();
+    if (rep) return rep;
+    const room = !!(KN.sync && KN.sync.status().phase !== "off");
+    const notesSync = S.notesSyncRowList ? S.notesSyncRowList() : [];
+    return [
+      notesSync.length || room ? card(
+        ...notesSync,
+        /* 3台の同期の部屋（js/sync.js。段2は影：つないだ一台が送るだけ）。 */
+        room ? navRow({ title: "同期の部屋", value: S.syncValue(), onTap: () => go("sync") }) : null
+      ) : null,
+      foot("ほかの端末と、同じ記録を使います。"),
+    ];
+  }
+
+  function ioRows() {
+    const rep = replicaRows();
+    if (rep) return rep;
+    return [
+      card(
+        navRow({ title: "書き出し", sub: "ファイルとして取り出す", onTap: () => go("dataOut") }),
+        navRow({ title: "取り込み", sub: "外のデータを入れる", onTap: () => go("dataIn") })
+      ),
+    ];
+  }
+
+  function deviceRows() {
+    const rep = replicaRows();
+    if (rep) return rep;
+    const out = [...diaryOutRows(), ...todoOutRows()];
+    return [
+      ...usageRows(KN.backup.usage()),
+      /* 点検（数えるだけ）と、記録を軽くする二つ（日記・過去のやることを記録から外す。段2の2b・R26）。 */
+      card(navRow({ title: "記録を点検する", act: true, onTap: openAudit })),
+      ...(out.length ? [head("記録から外す"), card(...out)] : []),
+      outReadyNow() || pastReadyNow() ? foot("書き出せたら外します。") : null,
+    ];
+  }
+
+  /** 書き出し（出し入れの「›」の先）：タブごとに。どの行も、そのタブの一枚にもある同じもの。 */
   function dataOutRows() {
     return [
       head("すべての記録"),
       card(navRow({ title: "バックアップを保存", act: true, onTap: saveBackup })),
-      head("daily"),
+      head("archive"),
       card(...S.dailyExportRows()),
       head("notes"),
       card(...S.notesExportRows()),
@@ -1088,22 +1107,22 @@
     ];
   }
 
-  /** 取り込み（データ・同期の「›」の先）：タブごとに。 */
+  /** 取り込み（出し入れの「›」の先）：タブごとに。 */
   function dataInRows() {
     const tasks = S.tasksImportRows();
     const notes = S.notesImportRows();
     return [
-      head("daily"),
+      head("archive"),
       card(...dailyImportRows()),
       foot(DIARY_IN_NOTE),
       ...(notes.length ? [head("notes"), card(...notes)] : []),
-      ...(tasks.length ? [head("tasks"), card(...tasks)] : []),
+      ...(tasks.length ? [head("daily"), card(...tasks)] : []),
       head("health"),
       card(...S.healthImportRows()),
     ];
   }
 
-  /* 日記の取り込み（D7）。取り込み道具の README が「設定 → データ・同期 → 取り込み → 日記を取り込む」と
+  /* 日記の取り込み（D7）。取り込み道具の README が「設定 → データ・同期 → 取り込み → 日記を取り込む」と（いまは 出し入れ → 取り込み）
      案内している口。daily の一枚と「取り込み」の一枚の両方に出す。ファイルを選ぶ欄は行のあと（行どうしの
      仕切りを切らないように）。 */
   const DIARY_IN_NOTE = "日記は、本文の無い日と書き足した日に入れます。";
@@ -1357,5 +1376,5 @@
     if (document.visibilityState === "visible") soon(2);
   });
 
-  Object.assign(S, { dataRows, dataOutRows, dataInRows, dailyImportRows, DIARY_IN_NOTE, dropboxRows, nudge });
+  Object.assign(S, { keepRows, syncingRows, ioRows, deviceRows, dataOutRows, dataInRows, dailyImportRows, DIARY_IN_NOTE, dropboxRows, nudge });
 })();

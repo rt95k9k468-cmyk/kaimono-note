@@ -83,12 +83,12 @@ const { open, checker, URL } = require("./lib");
   /* 5 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(400);
-  /* 根っこの入口「控え」の先（7b まではデータ・同期の一枚）の「復元」の束（2026年11月5日まで「バックアップ」の一枚）。 */
+  /* 根っこの入口「控え」の先の「戻す」の束（意7b）（2026年11月5日まで「バックアップ」の一枚）。 */
   await page.evaluate(() => [...document.querySelectorAll(".screen.is-active .set-row.is-nav")]
     .find((b) => b.textContent.trim().startsWith("控え")).click());
   await page.waitForTimeout(500);
   const row = page.locator(".screen.is-active .set-row", { hasText: "さっき消したもの" });
-  t.check("5 設定のデータ・同期に「さっき消したもの」と件数", (await row.count()) === 1 && /1件/.test(await row.first().textContent()));
+  t.check("5 設定の控えに「さっき消したもの」と件数", (await row.count()) === 1 && /1件/.test(await row.first().textContent()));
   await row.first().click();
   await page.waitForSelector(".js-gone .row");
   const title = await page.textContent(".js-gone .row");

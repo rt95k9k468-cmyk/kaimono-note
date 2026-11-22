@@ -98,8 +98,8 @@ async function fakeRoom() {
   });
   await page.click(".js-settings");
   await page.waitForTimeout(600);
-  await page.evaluate(() => KN.settingsParts.go("data")); await page.waitForTimeout(600);
-  t.check("バックアップに「同期の部屋」の行", (await topText()).includes("同期の部屋"));
+  await page.evaluate(() => KN.settingsParts.go("syncing")); await page.waitForTimeout(600);
+  t.check("同期の一枚に「同期の部屋」の行", (await topText()).includes("同期の部屋"));
   await page.evaluate(() => KN.settingsParts.go("sync")); await page.waitForTimeout(600);
   const paper = await topText();
   t.check("つなぐ前の紙：URL・合言葉をコピー・つなぐ", /部屋のURL/.test(paper) && /合言葉をコピー/.test(paper) && /つなぐ/.test(paper), paper.slice(0, 200));

@@ -74,7 +74,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     has(r.list, "todo") && has(r.list, "daily") && has(r.list, "body") && !has(r.list, "shop"), JSON.stringify(r.list));
   t.check("いまの席（買うもの）が先頭に", JSON.stringify(r.first) === '["shop",true]', JSON.stringify(r.first));
   t.check("並びは いまの席 → 帯の順（daily・tasks・shopping・health）", r.order.join() === "todo,daily,shop,body", r.order.join());
-  t.check("設定の入口：バックアップ → データ・同期", r.set.join() === "data", r.set.join());
+  t.check("設定の入口：バックアップ → 控え", r.set.join() === "keep", r.set.join());
   t.check("やることは済んだものも（と日付の無いもの）", r.done.length === 2 && r.done.some((x) => x.includes("済"))
     && r.done.some((x) => x.includes("日付なし")), JSON.stringify(r.done));
   t.check("やることから：やることは数えない・品物は2つ・かなの違いも拾う",
@@ -182,7 +182,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await page.click("#screen-list .sa-set");
   await page.waitForTimeout(600);
   const st = await page.evaluate(() => ({ a: KN.app.activeScreen(), w: KN.screens.settings.where().map((x) => x.id).join("/") }));
-  t.check("設定の札でデータ・同期の一枚へ", st.a === "settings" && st.w === "/data", JSON.stringify(st));
+  t.check("設定の札で控えの一枚へ", st.a === "settings" && st.w === "/keep", JSON.stringify(st));
 
   t.check("ページのエラーなし", !errors.length, errors.join(" / "));
   await browser.close();

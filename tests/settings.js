@@ -53,7 +53,7 @@ const { open, checker } = require("./lib");
     rootText.slice(0, 160));
   t.check("入口の絵は基調色の線の絵だけ（色の四角は無い）",
     (await page.locator(`${top} .set-tile`).count()) === 0 && (await page.locator(`${top} .set-row.has-lead .set-lead svg`).count()) === 13);
-  /* 意7a：入口の背は 60px に揃う。端末の外の控えは値で言う（まだ）。記録を守るの四つは、7b までデータ・同期の一枚へ。 */
+  /* 意7a：入口の背は 60px に揃う。端末の外の控えは値で言う（まだ）。 */
   const hs = await page.$$eval(`${top} .set-row.is-entry`, (rs) => rs.map((r) => Math.round(r.getBoundingClientRect().height)));
   t.check("入口の背は 60px に揃う", hs.length === 13 && hs.every((h) => h === 60), hs.join());
   t.check("控えの一行：まだ", (await rowOf("端末の外の控え").locator(".set-val").innerText()).trim() === "まだ");
@@ -182,13 +182,30 @@ const { open, checker } = require("./lib");
     ["目標", "「気づいたこと」を出す", "開いたら自動で取り込む", "ヘルスケアから取り込む", "中継所", "記録を書き出す", "AIに分析してもらう"]
       .every((x) => H1.includes(x)) && !H1.includes("AIの窓口") && !H1.includes("日ごとの表"), H1.slice(0, 300));
   await back();
+  /* 意7b：記録を守るの四枚。束はそのまま振り分け、置きかえる操作は一番下の束で墨の字と絵。 */
   const B0 = await into("控え");
-  t.check("データ・同期：バックアップ・復元・書き出しと取り込みが別の束（消す口は無い）",
-    ["バックアップを保存", "バックアップを確かめる", "バックアップから復元", "自動バックアップから戻す", "書き出し", "取り込み", "この端末の中"]
-      .every((x) => B0.includes(x)) && !B0.includes("データを消す"), B0.slice(0, 300));
-  t.check("帯の題は「データ・同期」", (await page.locator(`${top} .js-nav-title`).innerText()).trim() === "データ・同期");
+  t.check("控え：保存・確かめる・戻す（消す口は無い）",
+    ["バックアップを保存", "Dropbox へ自動で送る", "バックアップを確かめる", "戻す——いまの記録を置きかえる", "控えから戻す", "自動の控えから戻す"]
+      .every((x) => B0.includes(x)) && !B0.includes("データを消す") && !B0.includes("この端末の中"), B0.slice(0, 300));
+  t.check("帯の題は「控え」", (await page.locator(`${top} .js-nav-title`).innerText()).trim() === "控え");
+  const ink = await page.$$eval(`${top} .set-card`, (cs) => {
+    const last = cs[cs.length - 1];
+    const rows = [...last.querySelectorAll(".set-row")];
+    const act = document.querySelector(".set-layer:last-child .set-row.is-act .set-title");
+    return { n: rows.length, lead: rows.every((r) => r.querySelector(".set-lead svg") && !r.classList.contains("is-act")),
+      same: act && rows.every((r) => getComputedStyle(r.querySelector(".set-title")).color !== getComputedStyle(act).color) };
+  });
+  t.check("戻すは一番下の束・墨の字と絵（朱の字は保存と確かめるだけ）", ink.n >= 2 && ink.lead && ink.same, JSON.stringify(ink));
+  await back();
+  const SY = await into("同期");
+  t.check("同期：ノートの同期", SY.includes("ノートの同期") && !SY.includes("バックアップを保存"), SY.slice(0, 200));
+  await back();
+  const DV = await into("この端末");
+  t.check("この端末：中身・点検", DV.includes("iPhone の枠") && DV.includes("記録を点検する") && !DV.includes("バックアップを保存"), DV.slice(0, 200));
+  await back();
+  await into("出し入れ");
   const BO = await into("書き出し");
-  t.check("書き出しの一枚はタブごと（daily・notes・health）。同じ行がタブの一枚にもある",
+  t.check("書き出しの一枚はタブごと（archive・notes・health）。同じ行がタブの一枚にもある",
     ["バックアップを保存", "期間を選んで書き出す", "年の本", "ノートを書き出す", "目次をコピー", "記録を書き出す", "AIに分析してもらう"]
       .every((x) => BO.includes(x)), BO.slice(0, 300));
   await back();
@@ -304,10 +321,10 @@ const { open, checker } = require("./lib");
       ai: { kcal: 500, raw: "あ".repeat(3000), analysis: "い".repeat(1500) } });
   });
   await openSettings("list");
-  await rowOf("控え").click();
-  await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
+  await rowOf("この端末").click();
+  await page.waitForFunction(() => /iPhone の枠/.test(document.querySelector(".set-layer:last-child").innerText));
   const U1 = await page.locator(top).innerText();
-  t.check("使用量に AI の原文の字数が並ぶ", /AI の原文/.test(U1), (U1.match(/この端末の中[^\n]*/) || [""])[0]);
+  t.check("使用量に AI の原文の字数が並ぶ", /AI の原文/.test(U1), U1.slice(0, 120));
   t.check("iPhone の枠の何割か（目安）を言う", /iPhone の枠（約260万字）の(1割未満|約\d+割)/.test(U1));
   t.check("6割に届かなければ「大きくなってきました」は出ない", !U1.includes("記録が大きくなってきました"));
   await back();
@@ -316,8 +333,8 @@ const { open, checker } = require("./lib");
     KN.backup.usage = () => ({ ...real(), liveChars: 1700000, where: "idb" });
     return true;
   });
-  await rowOf("控え").click();
-  await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
+  await rowOf("この端末").click();
+  await page.waitForFunction(() => /iPhone の枠/.test(document.querySelector(".set-layer:last-child").innerText));
   const U2 = await page.locator(top).innerText();
   const warnColor = await page.evaluate(() => {
     const f = [...document.querySelectorAll(".set-layer:last-child .set-foot")].find((x) => x.textContent.includes("大きくなってきました"));

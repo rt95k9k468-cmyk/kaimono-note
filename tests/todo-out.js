@@ -67,7 +67,7 @@ const NOW = new Date(2026, 9, 15, 12, 30);   // 過去の線は 2026-09-15
     await page.evaluate(() => KN.app.showScreen("settings"));
     await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
     await page.waitForTimeout(250);
-    await tapRow("控え");
+    await tapRow("この端末");
     await page.waitForTimeout(400);
   };
   const rootTexts = async () => {
@@ -197,9 +197,11 @@ const NOW = new Date(2026, 9, 15, 12, 30);   // 過去の線は 2026-09-15
     await page.evaluate(() => KN.store.saveNow());
     t.check("読めない日も印は持ち越す", (await marks()).split(",").length >= 43 && !(await liveIds()).includes("p1"));
     t.check("設定の頭に一行", (await rootTexts()).some((x) => x.includes("過去のやることを読めません")));
-    await tapRow("控え");
+    await tapRow("この端末");
     await page.waitForTimeout(400);
     t.check("読めない日は外す・戻すを出さない", !(await rowTexts()).some((x) => x.includes("過去のやることを記録")));
+    await page.evaluate(() => KN.settingsParts.go("keep"));
+    await page.waitForTimeout(400);
     await tapRow("バックアップを保存");
     const bare = dialog("一部が入りません");
     await bare.waitFor();
@@ -228,7 +230,7 @@ const NOW = new Date(2026, 9, 15, 12, 30);   // 過去の線は 2026-09-15
   await reopen();
   await openBackup();
   t.check("読めた日は頭の一行が消える", !(await rootTexts()).some((x) => x.includes("過去のやること")));
-  await tapRow("控え");
+  await tapRow("この端末");
   await page.waitForTimeout(400);
   await tapRow("過去のやることを記録に戻す");
   const back = dialog("過去のやることを記録に戻しますか");

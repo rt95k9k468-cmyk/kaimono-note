@@ -78,7 +78,7 @@ const { open, checker } = require("./lib");
 
   /* 二枚めくれば二枚進む（バックアップ → Dropbox へ送る）。 */
   await side(3); await page.waitForTimeout(800);
-  await page.evaluate(() => KN.settingsParts.go("data")); await page.waitForTimeout(800);
+  await page.evaluate(() => KN.settingsParts.go("keep")); await page.waitForTimeout(800);
   await page.evaluate(() => KN.settingsParts.go("dropbox")); await page.waitForTimeout(800);
   const deep3 = { n: await layers(), name: await title() };
   await side(3); await page.waitForTimeout(800);
