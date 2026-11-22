@@ -41,8 +41,13 @@ const { open, checker } = require("./lib");
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => !document.querySelector(".sheet.is-note.is-open"), null, { timeout: 3000 });
   };
+  /* ＋は小窓（意4b）。隠れた拍の試しのあとは帯が組み直されて小窓が消えることがある——消えたら押し直す。 */
   const plus = async () => {
-    await page.click("#dock .add-fab");
+    for (let i = 0; i < 3 && !(await sheetOpen()); i++) {
+      if (!(await page.$(".fab-menu.is-on"))) await page.click("#dock .add-fab");
+      await page.click('.fab-menu [data-k="note"]', { timeout: 2000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
     await page.waitForSelector(".sheet.is-note.is-open");
   };
   /* 読み直す前に、入れ物を一度読みます。閉じた拍に始まった書き込みは、
@@ -90,6 +95,12 @@ const { open, checker } = require("./lib");
   t.check("notes の席を押すとノートが出る（daily の紙は留まらない）", (await active()) === "notes" && !(await parked()));
   t.check("archive の席は archive のまま", (await label()) === "archive", await label());
   t.check("ノートの＋が出ている", !!(await page.$("#dock .add-fab")));
+  /* 意4b：＋は一つ。押すと 問いをつくる・考える・ノート の小窓、名札の無い丸は無い。 */
+  await page.click("#dock .add-fab");
+  const fm = await page.evaluate(() => [...document.querySelectorAll(".fab-menu .fab-menu-b")].map((b) => b.textContent.trim()).join(","));
+  t.check("＋は一つ・押すと 問いをつくる・考える・ノート", fm === "問いをつくる,考える,ノート" && !(await page.$("#dock .fab-sub")), fm);
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".fab-menu"), null, { timeout: 3000 });
   /* 二週間の絵は既定で畳んである（3.1 の S4）。ノートで消えるのを見るために出す。 */
   await page.evaluate(() => KN.store.update((s) => { s.settings.showUpcoming = true; }));
   const headLook = () => page.evaluate(() => {

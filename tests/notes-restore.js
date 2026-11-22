@@ -55,7 +55,7 @@ const { open, checker } = require("./lib");
   await toNotes();
 
   /* ---- 書く紙に、作った日時 ---- */
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.keyboard.insertText("一つ目");
   const when = await page.$eval(".sheet.is-note .note-when", (e) => e.textContent);

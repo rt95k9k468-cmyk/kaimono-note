@@ -104,7 +104,7 @@ const { open, checker } = require("./lib");
 
   /* ---- ＋：帯のすぐ下からのカード・書く欄と道具の帯 ---- */
   await toNotes();
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.waitForTimeout(700);
   const box = await page.$eval(".sheet.is-note", (e) => {
@@ -282,7 +282,7 @@ const { open, checker } = require("./lib");
   /* ---- 押した字にカーソル：長い段落の途中を押しても、段落の終わりへ飛ばない・字は同じ高さのまま ---- */
   {
     const longP = `・${"あ".repeat(60)}**太い**${"い".repeat(40)}目${"う".repeat(120)}`;
-    await page.click("#dock .add-fab");
+    await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
     await page.waitForSelector(".sheet.is-note.is-open");
     await page.waitForTimeout(400);
     await page.fill(".sheet.is-note .js-text", `${Array.from({ length: 30 }, (_, i) => `本文${i}`).join("\n")}\n${longP}\nおわり`);
@@ -337,7 +337,7 @@ const { open, checker } = require("./lib");
   /* ---- 長いノートの見出しへ飛ぶ（R32）：三つ以上で出る・二つで出ない・押すと紙の上に来る ---- */
   const filler = Array.from({ length: 30 }, (_, i) => `本文${i}`).join("\n");
   const headItems = async (body) => {
-    await page.click("#dock .add-fab");
+    await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
     await page.waitForSelector(".sheet.is-note.is-open");
     /* 開いて 0.32 秒の、カーソルを入れ直す拍（ui.js の focusNow）を越えてから。 */
     await page.waitForTimeout(400);
@@ -370,7 +370,7 @@ const { open, checker } = require("./lib");
   /* ---- 短いノート：キーボードで見える高さが縮んでも、題は飛ばない（段4.2のあと） ----
      本文の欄は短くても 38vh ある。欄の底を「最後の行」と読んで見せようとすると、
      空いたところを押しただけで題ごと上へ送っていた（2026年10月1日、iPhone）。 */
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.keyboard.insertText("短い本文");
   await page.fill(".sheet.is-note .js-title", "短い題");
@@ -414,7 +414,7 @@ const { open, checker } = require("./lib");
   await closeSheet();
 
   /* ---- 長いノート：押して書き始めても題は飛ばない・下へ送ると頭に題（段4.2） ---- */
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.keyboard.insertText(Array.from({ length: 60 }, (_, i) => `行${i + 1}`).join("\n"));
   await page.fill(".sheet.is-note .js-title", "長い題");
@@ -485,7 +485,7 @@ const { open, checker } = require("./lib");
   const firstSel = ".notes-list .note-row";
 
   /* ＋から書いた新しいノートは、閉じたら先頭にできたカードへ収まる。 */
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.waitForTimeout(600);
   await page.keyboard.insertText("段4.3 一つ目");

@@ -18,10 +18,6 @@
 .kb-open .dock { bottom: var(--sp-3); }
 
 .quick-add { position: relative; display: flex; justify-content: center; }
-/* notes の＋の上の小さな丸：思考（構4b。前は daily の札）。 */
-.fab-sub { position: absolute; bottom: calc(100% + var(--sp-2)); right: 6px; width: 44px; height: 44px; padding: 0; border-radius: 50%; pointer-events: auto;
-  display: grid; place-items: center; background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-2); box-shadow: var(--shadow-1); }
-.fab-sub svg { width: 22px; height: 22px; }   /* 入れもの：小さな丸ボタン */
 
 /* Room under the last card so the button is never sitting on top of the thing
    you are trying to read — one button's height plus the gap it floats by,

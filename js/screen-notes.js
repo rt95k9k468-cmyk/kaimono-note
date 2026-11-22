@@ -3033,24 +3033,18 @@
 
   /* ---------------- ＋ ---------------- */
 
+  /* ＋は一つ（意4b・答え4）：押すと 問いをつくる・考える・ノート（＋に近いほど多い順）。前の名札の無い丸（思考）はやめた。 */
   function dockButton() {
     if (N().state() === "off") return null;
-    const fab = node(html`
-      <div class="quick-add">
-        <button type="button" class="fab-sub js-open-think" aria-label="思考">${icon("thought")}</button>
-        <button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button>
-      </div>
-    `);
+    const fab = node(html`<div class="quick-add"><button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button></div>`);
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
-      /* ノートブックに書くのは、木のノートブックの行の＋から（③）。 */
-      openNote(null, null, null);
-    });
-    /* ＋の上の小さな丸：思考（構4b。前は daily の札）。 */
-    fab.querySelector(".js-open-think").addEventListener("click", (e) => {
-      e.stopPropagation();
-      KN.motion.fire("select");
-      think();
+      KN.app.fabMenu(e.currentTarget, [
+        { k: "ask", label: "問いをつくる", icon: "thought", onPick: () => makeAsk(null) },
+        { k: "think", label: "考える", icon: "sparkles", onPick: think },
+        /* ノートブックに書くのは、木のノートブックの行の＋から（③）。 */
+        { k: "note", label: "ノート", icon: "edit", onPick: () => openNote(null, null, null) },
+      ]);
     });
     return fab;
   }

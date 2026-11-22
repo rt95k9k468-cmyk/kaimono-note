@@ -90,7 +90,7 @@ async function measure(fit) {
   await page.click('.tab[data-tab="notes"]');
   await page.waitForFunction(() => document.querySelector(".screen.is-active").dataset.screen === "notes", null, { timeout: 4000 });
   await wait(300);
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await wait(600);
   /* ＋から紙が育つ動き（--m-sheet-grow）が終わるまで待つ。途中で測ると縮んだ高さになる（WebKit の毎朝の列で

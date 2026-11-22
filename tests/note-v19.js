@@ -24,7 +24,7 @@ const { open, checker } = require("./lib");
   const gone = () => page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
   const isOpen = () => page.evaluate(() => !!document.querySelector(".sheet.is-note.is-open"));
   const write = async (text) => {
-    await page.click("#dock .add-fab");
+    await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
     await page.waitForSelector(".sheet.is-note.is-open");
     await page.waitForTimeout(600);
     await page.keyboard.insertText(text);

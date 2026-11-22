@@ -78,6 +78,7 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.app.showScreen("notes"));
   await settled("notes");
   await page.evaluate(() => document.querySelector("#dock .add-fab").click());
+  await page.evaluate(() => document.querySelector('.fab-menu [data-k="note"]').click());
   await page.waitForSelector(".sheet.is-note.is-open", { timeout: 5000 });
   await page.fill(".sheet.is-note .js-text", Array.from({ length: 120 }, (_, i) => `行${i}`).join("\n"));
   await page.evaluate(() => document.querySelector(".sheet.is-note .js-text").blur());

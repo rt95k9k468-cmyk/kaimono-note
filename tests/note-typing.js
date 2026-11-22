@@ -24,7 +24,7 @@ const { open, checker } = require("./lib");
   const gone = () => page.waitForFunction(() => !document.querySelector(".sheet.is-note"), null, { timeout: 3000 });
 
   /* 折り返さない短い行だけ：N 行目の上下は「欄の上端 + (N-1) × 行の高さ」。 */
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.waitForTimeout(600);
   await page.keyboard.insertText(Array.from({ length: 80 }, (_, i) => `行${i + 1}`).join("\n"));

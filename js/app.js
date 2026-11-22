@@ -1870,7 +1870,7 @@
     const menu = node(html`<div class="fab-menu" role="menu"></div>`);
     items.forEach((it, i) => {
       const b = node(html`
-        <button type="button" class="fab-menu-b" role="menuitem" style="--i:${String(i)}">
+        <button type="button" class="fab-menu-b" role="menuitem" style="--i:${String(i)}" ${it.k ? html`data-k="${it.k}"` : ""}>
           <span class="fab-menu-label">${it.label}</span>
           <span class="fab-menu-ico">${icon(it.icon)}</span>
         </button>

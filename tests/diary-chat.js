@@ -212,13 +212,14 @@ const AT = new Date(2026, 9, 6, 12, 34);
       && (await page.evaluate(() => KN.notes.list().length)) === notes0);
   }
 
-  /* ---- 思考（構4b から notes の＋の上の小さな丸）：thinking に新しいノート。冊の小窓は出さず本文へ。打たずに閉じれば残らない ---- */
+  /* ---- 思考（notes の＋の小窓「考える」。意4b）：thinking に新しいノート。冊の小窓は出さず本文へ。打たずに閉じれば残らない ---- */
   {
     const n0 = await page.evaluate(() => { sessionStorage.removeItem("kn-book-first"); return KN.notes.list().length; });
     await page.evaluate(() => KN.app.showScreen("notes"));
     await page.waitForTimeout(500);
     const openThink = async () => {
-      await page.click("#dock .js-open-think");
+      await page.click("#dock .add-fab");
+      await page.click('.fab-menu [data-k="think"]');
       await page.waitForSelector(".sheet.is-note.is-open", { timeout: 4000 });
       await page.waitForTimeout(700);   // 小窓が出るなら、紙が育ちきったところで出る
     };

@@ -274,7 +274,7 @@ const { open, checker } = require("./lib");
   t.check("タグ・ノートブックでは更新日が動かない", (await page.evaluate((i) => KN.notes.get(i.b).updatedAt, ids)) === bUpd);
 
   /* ---- 置く前の新しいノート ---- */
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.click(".sheet.is-note .note-tag-add");
   await popOpen();
@@ -287,7 +287,7 @@ const { open, checker } = require("./lib");
   await escTop();
   const fresh = await page.evaluate(() => KN.notes.list().find((n) => n.body === "あとで書く中身"));
   t.check("置く前に付けたタグも入る", fresh && JSON.stringify(fresh.tags) === '["予定"]', JSON.stringify(fresh));
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await page.click(".sheet.is-note .note-tag-add");
   await popOpen();
@@ -301,7 +301,7 @@ const { open, checker } = require("./lib");
     sessionStorage.removeItem("kn-book-first");
     for (const b of ["thinking", "reading", "teaching", "learning", "living", "archive"]) KN.notes.addBook(b);
   });
-  await page.click("#dock .add-fab");
+  await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
   await page.waitForSelector(".sheet.is-note.is-open");
   await popOpen();
   const bf = await page.evaluate(() => {

@@ -112,7 +112,7 @@ const SCENES = [
     setup: async (page) => {
       await page.click('.tab[data-tab="notes"]');
       await page.waitForTimeout(900);
-      await page.click("#dock .add-fab");
+      await page.click("#dock .add-fab"); await page.click('.fab-menu [data-k="note"]');
       await page.waitForSelector(".sheet.is-note.is-open");
       await page.waitForTimeout(600);
       await page.keyboard.insertText(Array.from({ length: 80 }, (_, i) => `行${i + 1}`).join("\n"));
