@@ -8,7 +8,7 @@
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/settings-map.js */
 const { open, checker } = require("./lib");
 
-const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "notes", "tasks", "shopping", "health", "データ・同期", "連携・ヘルプ"];
+const ENTRIES = ["表示・操作", "通知・プライバシー", "archive", "notes", "daily", "shopping", "health", "データ・同期", "連携・ヘルプ"];
 
 (async () => {
   const t = checker("settings-map");

@@ -613,9 +613,9 @@
      読み込んだ時点ではまだ居ないので、組むときに `S` から引きます。
      タブの入口の名前と絵は下の帯と同じ（app.js の FACES）——帯で毎日見ている字と絵で探せるように。 */
   const SEATS = [
-    { id: "daily",    label: "daily",    icon: "book",      sub: "日記・あの日・季節・月のまとめ" },
+    { id: "daily",    label: "archive",  icon: "book",      sub: "日記・いまごろ・季節" },
     { id: "notes",    label: "notes",    icon: "notes",     sub: "並び・季節の絵・ノートブック" },
-    { id: "tasks",    label: "tasks",    icon: "checklist", sub: "時間割・一日の道・見直す間隔" },
+    { id: "tasks",    label: "daily",    icon: "checklist", sub: "時間割・一日の道・見直す間隔" },
     { id: "shopping", label: "shopping", icon: "cart",      sub: "お店・カテゴリ・おぼえた振り分け" },
     { id: "health",   label: "health",   icon: "heart",     sub: "目標・取り込み・書き出し" },
   ];
@@ -624,9 +624,9 @@
   const PAGES = {
     look:     { title: "表示・操作",         art: "look", build: () => S.lookRows() },
     privacy:  { title: "通知・プライバシー", art: "privacy", build: () => privacyRows() },
-    daily:    { title: "daily",    art: "daily", build: () => S.dailyPageRows() },
+    daily:    { title: "archive",  art: "daily", build: () => S.dailyPageRows() },
     notes:    { title: "notes",    art: "notes", build: () => S.notesPageRows() },
-    tasks:    { title: "tasks",    art: "tasks", build: () => S.tasksPageRows() },
+    tasks:    { title: "daily",    art: "tasks", build: () => S.tasksPageRows() },
     shopping: { title: "shopping", art: "shopping", build: () => S.shoppingPageRows() },
     health:   { title: "health",   art: "health", build: () => S.healthPageRows() },
     data:     { title: "データ・同期", art: "data", build: () => S.dataRows() },

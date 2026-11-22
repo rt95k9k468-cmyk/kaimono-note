@@ -44,7 +44,7 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(300);
     return page.locator(top).innerText();
   };
-  const ENTRIES = ["表示・操作", "通知・プライバシー", "daily", "notes", "tasks", "shopping", "health", "データ・同期", "連携・ヘルプ"];
+  const ENTRIES = ["表示・操作", "通知・プライバシー", "archive", "notes", "daily", "shopping", "health", "データ・同期", "連携・ヘルプ"];
   const entries = () => page.$$eval(`${top} .set-row.has-lead .set-title`, (ts) => ts.map((x) => x.firstChild.textContent.trim()));
   await openSettings("todo");
   const rootText = await page.locator(top).innerText();
@@ -53,7 +53,7 @@ const { open, checker } = require("./lib");
     rootText.slice(0, 160));
   t.check("入口の絵は基調色の線の絵だけ（色の四角は無い）",
     (await page.locator(`${top} .set-tile`).count()) === 0 && (await page.locator(`${top} .set-row.has-lead .set-lead svg`).count()) === 9);
-  await into("tasks");
+  await into("daily");
 
   /* 一日の道は 上・下・出さない（2026年10月19日。前は「一日の道を出す」のスイッチ）。
      短い選択肢は一枚を重ねず、行の値のところに小窓（2026年10月24日。docs/settings.md の「その場で選ぶ」）。 */
@@ -137,7 +137,7 @@ const { open, checker } = require("./lib");
   t.check("通知・プライバシーの一枚に、通知のスイッチとロックが並ぶ（前は一、二行ずつの二枚）",
     T1.includes("やることの時刻を知らせる") && /ロック/.test(T1), T1.slice(0, 200));
   await back();
-  const TT = await into("tasks");
+  const TT = await into("daily");
   t.check("tasks の一枚に時間割・見直す間隔（その場で選ぶ）・置き直しの記録・取り込み",
     ["今日を時間割で見る", "一日の道", "一日の始まり", "これから", "待つ", "いつか", "置き直しの記録", "外部アプリから取り込む"]
       .every((x) => TT.includes(x)) && (await page.locator(`${top} .set-row.is-pick`, { hasText: "これから" }).count()) === 1, TT.slice(0, 240));
@@ -151,7 +151,7 @@ const { open, checker } = require("./lib");
 
   await openSettings("archive");
   t.check("daily の歯車からも同じ入口", (await entries()).join() === ENTRIES.join(), (await entries()).join());
-  const D1 = await into("daily");
+  const D1 = await into("archive");
   /* 構2：「「あの日」を出す」は「いまごろ・年々」に、「月のまとめ」の行は外した。 */
   t.check("daily の一枚に見え方の行（いまごろ・年々・出す範囲・季節。月のまとめは無い）",
     ["いまごろ・年々", "日記", "出す範囲", "起床・就寝の時刻", "作成・更新の時刻", "季節のひとこと", "季節の絵"]

@@ -208,9 +208,9 @@
 
   /* 並びは下の帯の席の順（X1。どの席でも同じ並びで、いまの席だけ先頭へ）。名前と印も帯と同じ。 */
   const PLACES = [
-    { id: "daily", label: "daily", ico: "book", find: findDaily },
+    { id: "daily", label: "archive", ico: "book", find: findDaily },
     { id: "notes", label: "notes", ico: "notes", find: findNotes },
-    { id: "todo", label: "tasks", ico: "checklist", find: findTodo },
+    { id: "todo", label: "daily", ico: "checklist", find: findTodo },
     { id: "shop", label: "shopping", ico: "cart", find: findShop },
     { id: "body", label: "health", ico: "heart", find: findBody },
   ];

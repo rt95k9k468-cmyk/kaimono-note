@@ -97,7 +97,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
   await typeIn("todo", "しおかぜ");
   const h = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .sa-hint .sa-link")]
     .filter((b) => b.offsetWidth).map((b) => b.textContent.trim() + (b.classList.contains("is-here") ? "*" : "")));
-  t.check("窓の下の札：いまの席 → ほかの席（品物2・daily1・からだ1）", h.join() === "tasks2*,daily1,shopping2,health1", h.join());
+  t.check("窓の下の札：いまの席 → ほかの席（品物2・daily1・からだ1）", h.join() === "daily2*,archive1,shopping2,health1", h.join());
   await page.click('#screen-todo .sa-seat[data-place="shop"]');
   await page.waitForSelector(".sheet .sa", { state: "visible" });
   await page.waitForTimeout(350);
@@ -107,7 +107,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
       heads: [...s.querySelectorAll(".sa-head")].map((e) => e.textContent.trim()), text: s.textContent };
   });
   t.check("紙の題", sh.title === "「しおかぜ」をぜんぶから", sh.title);
-  t.check("紙も同じ並び（いまの席が先頭）", sh.heads.join() === "tasks2,daily1,shopping2,health1", sh.heads.join());
+  t.check("紙も同じ並び（いまの席が先頭）", sh.heads.join() === "daily2,archive1,shopping2,health1", sh.heads.join());
   t.check("絵文字なし", !EMOJI.test(sh.text));
   await page.click('.sheet .sa-group[data-place="daily"] .sa-row');
   await page.waitForTimeout(700);
