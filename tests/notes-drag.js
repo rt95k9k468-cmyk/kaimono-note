@@ -271,7 +271,9 @@ const frames = (page) => page.evaluate(() => new Promise((r) => requestAnimation
   await page.evaluate(() => KN.app.foldRail());
   await page.waitForSelector(sideBook("庭"));
   const firstBook = await page.evaluate(() => KN.notes.notebooks()[0]);
-  await carry(sideBook("庭"), async (x) => { const b = await box(sideBook(firstBook)); return [x, b.y + 2]; });
+  /* 左の木は送る器（背 361px）。字の背が高い端末では「庭」が器の下にはみ出し、押しが木の外に落ちていた。 */
+  await page.locator(sideBook("庭")).first().scrollIntoViewIfNeeded();
+  await carry(sideBook("庭"),async (x) => { const b = await box(sideBook(firstBook)); return [x, b.y + 2]; });
   t.check("ノートブックの行を一番上へ", await page.evaluate(() => KN.notes.notebooks()[0]) === "庭", `${books0} → ${await page.evaluate(() => KN.notes.notebooks().join())}`);
   await page.focus(sideBook("庭"));
   await page.keyboard.press("Alt+ArrowDown");

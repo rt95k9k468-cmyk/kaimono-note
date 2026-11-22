@@ -209,6 +209,14 @@ const IMG_DB = "kaimono-note-images";
     return els.length && els.every((e) => e.classList.contains("is-pic") && /blob:/.test(getComputedStyle(e).backgroundImage)) && els.length;
   }, A, { timeout: 4000 }).then((h) => h.jsonValue()).catch(() => 0);
   t.check("画像のあるノートは一枚目が表紙（読めたら敷く）", cv > 0, String(cv));
+  /* 意3 ④：読む紙でも一枚目が題の上の口絵（表紙と同じ出どころ）。 */
+  const kuchi = await page.evaluate((id) => {
+    const s = document.querySelector(".sheet.is-note.is-open");
+    const c = s.querySelector(".js-cover"), r = c.getBoundingClientRect();
+    return { id: c.dataset.pic === id, on: c.classList.contains("is-pic") && /blob:/.test(getComputedStyle(c).backgroundImage),
+      above: r.height > 100 && r.bottom <= s.querySelector(".js-title").getBoundingClientRect().top };
+  }, A);
+  t.check("読む紙は一枚目が題の上の口絵", kuchi.id && kuchi.on && kuchi.above, JSON.stringify(kuchi));
   /* 押すと黒地の一枚で全体。 */
   await page.click(".sheet.is-note.is-open .js-view .nv-img.is-on");
   await page.waitForSelector(".sheet.is-pic.is-open .note-pic img", { timeout: 3000 }).catch(() => {});

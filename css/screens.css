@@ -5015,6 +5015,9 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   outline: none;
 }
 .note-title-in { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
+/* 口絵（意3 ④。screen-notes.js の paintCover）：一枚目の画像を題の上に。読めるまで出さない。 */
+.note-cover { display: none; }
+.note-cover.is-pic { display: block; aspect-ratio: 2 / 1; max-height: 240px; border-radius: var(--r-lg); background: var(--pic) center / cover no-repeat; }
 /* 書く紙の題は折り返す textarea（screen-notes.js の growTitle）。 */
 textarea.note-title-in {
   display: block;
@@ -5261,8 +5264,8 @@ textarea.note-title-in {
 /* 道具の帯（書いているあいだだけ）。キーボードのすぐ上に**浮く**ガラスの
    丸い一本（段4.2。貼りついた白い帯は「ダサい」と言われた）。材は下の帯と
    同じガラスの一組。中身はその下を通って送られる（透けて見える）。
-   ぜんぶを一列に詰めて出す（横へは流さない）。キーボードの無い底では
-   ホームの棒のぶんだけ上に。 */
+   的は 40px 以上、入らなければ横へ送る（意3 ⑤。送れる帯は払って戻るが取らない：edge-back.js の sidesOf）。
+   余れば両端の auto で真ん中に。キーボードの無い底ではホームの棒のぶんだけ上に。 */
 .note-tools {
   display: none;
   position: absolute;
@@ -5271,13 +5274,15 @@ textarea.note-title-in {
   bottom: calc(var(--sp-2) + var(--note-safe));
   height: var(--note-tools-h);
   align-items: center;
-  justify-content: space-around;
   padding: 0 var(--sp-2);
   border-radius: var(--r-full);
-  /* 塗った面（ぼかさない）。 */
   background: var(--c-surface);
   box-shadow: var(--shadow-2);
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
 }
+.note-tools::-webkit-scrollbar { display: none; }
+.note-tools > .note-tool:first-child { margin-inline-start: auto; }
+.note-tools > .note-tool:last-child { margin-inline-end: auto; }
 .sheet.is-note.is-writing .note-tools { display: flex; }
 /* 広い紙では本文の列（--note-measure）に少し足した幅で真ん中に（紙いっぱいだと道具が散らばる）。 */
 .sheet.is-note:not(.is-wide) .note-tools {
@@ -5308,8 +5313,7 @@ textarea.note-title-in {
 .note-to-end svg { width: var(--ico); height: var(--ico); }
 .sheet.is-note.is-writing .note-to-end { bottom: calc(var(--note-tools-h) + var(--sp-2) * 2 + var(--note-safe)); }
 .note-tool {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 0 40px;
   max-width: 48px;
   height: 44px;
   display: inline-flex;
@@ -5324,6 +5328,11 @@ textarea.note-title-in {
 .note-tool[aria-pressed="true"] { background: var(--c-primary-soft); color: var(--c-primary-ink); }
 .note-tool[aria-disabled="true"] { opacity: var(--press-off); }
 .note-tool:not([aria-disabled="true"]):active { scale: var(--press-dot); }
+.note-toc, .note-toc-in { display: none; }
+.note-toc-in { flex-direction: column; max-height: 100%; overflow-y: auto; pointer-events: auto; }
+@container (min-width: 160px) { .note-toc-in { display: flex; } }
+.note-toc-a { padding: var(--sp-1) var(--sp-2); border-radius: var(--r-sm); text-align: start; font-size: var(--fs-sm); color: var(--c-text-2); }
+.note-toc-a:hover { color: var(--c-text); }
 
 /* 「⋯」の小窓（押した ⋯ のすぐ下。js/screen-notes.js の popMenu）。 */
 .note-pop-cover { position: fixed; inset: 0; }
@@ -6970,6 +6979,11 @@ button.note-when:active { opacity: var(--press-fade); }
   :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide).is-open, :root.notes-dock .sheet.is-note.is-docked:not(.is-wide).is-open { transform: none; }
   :root.notes-dock[data-screen="notes"] .sheet-backdrop.is-note-cover { display: none; }
   :root.notes-dock :is([data-screen="notes"] .sheet.is-note, .sheet.is-note.is-docked):not(.is-wide) .sheet-body { padding-inline: max(var(--sp-6), calc((100% - var(--desk-read)) / 2)); }
+  /* 意3 ⑥：その右の余白に見出し（screen-notes.js の paintToc）。余白が狭ければ出さない（下の @container）。 */
+  :root.notes-dock :is([data-screen="notes"] .sheet.is-note, .sheet.is-note.is-docked):not(.is-wide) .note-toc {
+    display: block; position: absolute; top: calc(var(--sp-10) * 2); bottom: var(--sp-6); right: var(--sp-4);
+    width: calc((100% - var(--desk-read)) / 2 - var(--sp-8)); container-type: inline-size; pointer-events: none;
+  }
   /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }

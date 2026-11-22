@@ -13,7 +13,7 @@
    リンク（notes-unify 段4の一部）：読む姿は字だけ・中のノートは紙を重ねる・外は新しい窓・見つからなければ開かない・
    押した字にカーソル・題と冒頭は字だけ・探すときは中のノートの id を拾わない。
    F7：「[[」と帯の鎖で題から選ぶリンク・ここへのリンク／マーカー ==字==（読む姿・写し・印を外す）／⋯ の写して新しく／
-   ホームの一枚（去年の今ごろ・長く開いていない★）。意3：見出しの隣の空行は低く・電話の紙は端まで・iPad 縦の背は窓の9割以上。
+   ホームの一枚（去年の今ごろ・長く開いていない★）。意3：見出しの隣の空行は低く・電話の紙は端まで・iPad 縦の背は窓の9割以上・口絵・帯の的 40px・広い幅の右の見出し。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-format.js */
 const { open, checker } = require("./lib");
@@ -184,11 +184,11 @@ const { open, checker } = require("./lib");
   t.check("やり直す", (await field()).v.endsWith("\n---\n"));
   await page.keyboard.insertText("おわり");
 
-  /* ---- 道具の帯：ぜんぶが一列に見える・閉じる口は無い・紙の底に貼りつく ---- */
+  /* ---- 道具の帯：ぜんぶが一列（入らなければ横へ送る。意3 ⑤）・閉じる口は無い・紙の底に貼りつく ---- */
   const bar = await page.$eval(".sheet.is-note", (s) => {
-    const tb = s.querySelector(".note-tools").getBoundingClientRect();
+    const tb = s.querySelector(".note-tools").getBoundingClientRect(), sw = s.querySelector(".note-tools").scrollWidth;
     const bs = [...s.querySelectorAll(".note-tool")].map((b) => b.getBoundingClientRect());
-    return { n: bs.length, inside: bs.every((r) => r.left >= tb.left - 0.5 && r.right <= tb.right + 0.5),
+    return { n: bs.length, inside: bs.every((r) => r.left >= tb.left - 0.5 && r.right <= tb.left + sw + 0.5),
       oneRow: bs.every((r) => Math.abs(r.top - bs[0].top) < 1), done: !!s.querySelector('[data-k="done"]'),
       gap: Math.round(s.getBoundingClientRect().bottom - tb.bottom),
       side: Math.round(tb.left - s.getBoundingClientRect().left),
@@ -198,7 +198,7 @@ const { open, checker } = require("./lib");
   });
   /* 11 個：取り消す・やり直す・太字（10月7日）・見出し・点・番号・チェック・引用・区切り・上げる・下げる。 */
   /* 12 は段5の画像の絵を足した数（docs/image-design.md）。 */
-  t.check("道具の帯はぜんぶ一列に見え、閉じる口は無い", bar.n === 13 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
+  t.check("道具の帯はぜんぶ一列（送れば見える）、閉じる口は無い", bar.n === 13 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
   t.check("道具の帯は底から少し浮く、丸い塗った一本（ぼかさない）", bar.gap === 8 && bar.side === 8 && bar.round && bar.solid && bar.over, JSON.stringify(bar));
   t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
     !document.documentElement.classList.contains("is-note-full")
@@ -727,15 +727,26 @@ const { open, checker } = require("./lib");
   /* 意3：見出し・箇条書きの隣の空行は低く（段落→見出しの字 30px 以下）／電話の紙は左右と底まで／iPad 縦の紙の背は窓の 9割以上 */
   {
     const at = new Date().toISOString();
-    await page.evaluate((a) => KN.notes.addMany([{ id: "n-i3", title: "意3", body: "段落。\n\n## 見出し\n\n- 一\n\n段落。", notebook: "", tags: [], fav: false, createdAt: a, updatedAt: a, deletedAt: null }]).then(() => KN.notes.flush()), at);
+    await page.evaluate((a) => KN.notes.addMany([{ id: "n-i3", title: "意3", body: "段落。\n\n## 見出し\n\n- 一\n\n段落。\n\n## 二\n\n## 三", notebook: "", tags: [], fav: false, createdAt: a, updatedAt: a, deletedAt: null }]).then(() => KN.notes.flush()), at);
     const look = async () => {
       await page.evaluate(() => KN.screens.notes.open("n-i3"));
       await page.waitForSelector(".sheet.is-note.is-open .note-view .nv-h");
       await page.waitForTimeout(700);
       const r = await page.evaluate(() => {
         const s = document.querySelector(".sheet.is-note.is-open"), b = s.getBoundingClientRect(), v = s.querySelector(".note-view");
+        const toc = s.querySelector(".note-toc-in");
         return { x: b.x, w: b.width, h: b.height, bottom: b.bottom, win: [innerWidth, innerHeight],
-          gap: v.querySelector(".nv-h .nv-t").getBoundingClientRect().top - v.querySelector(".nv-p").getBoundingClientRect().bottom };
+          gap: v.querySelector(".nv-h .nv-t").getBoundingClientRect().top - v.querySelector(".nv-p").getBoundingClientRect().bottom,
+          cover: s.querySelector(".js-cover").getBoundingClientRect().height,
+          toc: getComputedStyle(toc).display === "none" ? 0 : toc.children.length };
+      });
+      /* ⑤ 書く姿の道具の帯：的は 40px 以上、入らなければ横へ送る。 */
+      await page.click(".sheet.is-note.is-open .note-view .nv-p");
+      await page.waitForSelector(".sheet.is-note.is-open.is-writing .note-tools", { state: "visible" });
+      r.tools = await page.evaluate(() => {
+        const bar = document.querySelector(".sheet.is-note.is-open .note-tools");
+        const bs = [...bar.querySelectorAll(".note-tool:not([hidden])")].map((e) => e.getBoundingClientRect());
+        return { n: bs.length, big: bs.filter((e) => e.width >= 40 && e.height >= 40).length, slides: bar.scrollWidth > bar.clientWidth };
       });
       await closeSheet();
       return r;
@@ -743,9 +754,16 @@ const { open, checker } = require("./lib");
     const ph = await look();
     t.check("意3：段落→見出しの空き 30px 以下", ph.gap <= 30, JSON.stringify(ph));
     t.check("意3：電話の紙は左右と底の端まで", ph.x === 0 && ph.w === ph.win[0] && Math.abs(ph.bottom - ph.win[1]) < 1, JSON.stringify(ph));
+    t.check("意3：画像の無いノートに口絵は無い・電話に右の見出しは無い", ph.cover === 0 && ph.toc === 0, JSON.stringify(ph));
+    t.check("意3：道具の帯は 40px 以上・電話では横へ送る", ph.tools.n >= 12 && ph.tools.big === ph.tools.n && ph.tools.slides, JSON.stringify(ph.tools));
     await page.setViewportSize({ width: 820, height: 1180 });
     const pad = await look();
     t.check("意3：iPad 縦の紙の背は窓の 9割以上・幅は読む列のまま", pad.h >= pad.win[1] * 0.9 && pad.w < pad.win[0], JSON.stringify(pad));
+    t.check("意3：iPad 縦は帯が送らずに入る（40px 以上）", pad.tools.big === pad.tools.n && !pad.tools.slides, JSON.stringify(pad.tools));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(300);
+    const desk = await look();
+    t.check("意3：広い幅は右の余白に見出し（「⋯」の目次と同じ三つ）", desk.toc === 3, JSON.stringify(desk));
     await page.setViewportSize({ width: 393, height: 852 });
   }
 

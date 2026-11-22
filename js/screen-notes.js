@@ -1178,6 +1178,7 @@
     const body = node(html`
       <div class="note-edit">
         <nav class="note-path js-path" aria-label="道すじ" hidden></nav>
+        <div class="note-cover js-cover" aria-hidden="true"></div>
         <textarea class="note-title-in grow-field js-title" placeholder="タイトル" aria-label="タイトル"
                   rows="1" autocomplete="off" enterkeyhint="next"></textarea>
         <div class="note-sub">
@@ -1399,7 +1400,19 @@
     /** 選んでいる範囲（本文の位置）。 */
     const selNow = () => (lv ? (live.sel() || lastSel) : [textIn.selectionStart, textIn.selectionEnd]);
     const setSel = (s, e) => { if (lv) live.place(s, e); else textIn.setSelectionRange(s, e); };
-    const paintView = () => { F.render(textIn.value, viewEl); paintPics(); };
+    const paintView = () => { F.render(textIn.value, viewEl); paintPics(); paintCover(); paintToc(); };
+    /* 口絵（意3 ④）：一枚目の画像を題の上に。一覧の表紙（picOf）と同じ出どころ・同じ塗り。鍵のあいだは組まない。 */
+    const coverEl = body.querySelector(".js-cover");
+    const paintCover = () => {
+      const I = KN.noteImg;
+      const id = (!(KN.lock && KN.lock.hides("notes")) && I && I.idsIn(textIn.value)[0]) || "";
+      if ((coverEl.dataset.pic || "") === id) return;
+      coverEl.classList.remove("is-pic");
+      coverEl.dataset.pic = id;
+      if (!id) return;
+      const put = (v) => { if (v && v.url && coverEl.dataset.pic === id) { U.setVar(coverEl, "--pic", `url("${v.url}")`); coverEl.classList.add("is-pic"); } };
+      if (I.known(id)) put(I.known(id)); else I.look(id).then(put);
+    };
     /* 画像の行（段5。docs/image-design.md）：幅いっぱいの画像。見つからない・入れ物が開かない日は、
        灰色の枠に絵だけ（行は残る）。読むのは開いたノートが参照するものだけ。 */
     const showPic = (el, v) => {
@@ -1807,8 +1820,8 @@
     /* ---- 道具の帯（キーボードの上） ----
 
        本文に居るあいだだけ出ます。押しても欄からカーソルを奪わないよう、
-       押し始めの既定を止めます（キーボードが下がらない）。ぜんぶを一列に
-       詰めて出し、横へは流さない。キーボードを閉じる口は置かない（iOS の
+       押し始めの既定を止めます（キーボードが下がらない）。的は 40px 以上で、
+       入らなければ横へ送る（意3 ⑤。順は同じ）。キーボードを閉じる口は置かない（iOS の
        キーボードの上の ✓ が閉じる。2026年10月1日、利用者）。 */
     const TOOLS = [
       { k: "undo", ico: "undo", label: "取り消す", run: () => hist.undo() },
@@ -2217,6 +2230,16 @@
         },
       }));
     };
+    /* 右の余白の見出し（意3 ⑥）。「⋯」の目次と同じ headingItems。出すのは広い幅の据えた紙だけ（screens.css の .note-toc）。 */
+    const tocEl = node(html`<nav class="note-toc" aria-label="見出し"><div class="note-toc-in"></div></nav>`);
+    const paintToc = () => {
+      const items = KN.lock && KN.lock.hides("notes") ? [] : headingItems();
+      tocEl.firstElementChild.replaceChildren(...items.map((x) => {
+        const b = node(html`<button type="button" class="note-toc-a">${x.label}</button>`);
+        b.addEventListener("click", x.onPick);
+        return b;
+      }));
+    };
 
     /* 電話の幅では、帯のすぐ下から始まるカード（段4.3）。一覧のカードから
        膨らみ、閉じると一覧のカードへ縮んで戻る（直したノートは先頭へ移る
@@ -2284,7 +2307,7 @@
     });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
-    h.el.append(tools);
+    h.el.append(tools, tocEl);
     /* 右下の薄い「一番下へ」（2026年10月26日、利用者）。下にまだ半画面より多く残っているときだけ。
        押しても欄から出ない（帯と同じ keep）。着き方は上へと同じ緩め（app.js の glideToTop）。 */
     const toEnd = node(html`<button type="button" class="note-to-end" aria-label="一番下へ" tabindex="-1">${icon("chevron-down")}</button>`);
