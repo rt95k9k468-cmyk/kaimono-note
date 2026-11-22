@@ -652,7 +652,7 @@
       ? `<p class="ima-line"><b>${label}</b><span>${U.escapeHtml(list.join("・"))}</span></p>` : "");
     const sec = node(html`
       <section class="card arc-then is-ima">
-        <span class="arc-then-head">
+        <span class="arc-then-head" role="heading" aria-level="2">
           <b>いまごろ</b>
           ${kou ? html`<i class="arc-then-when">${kou.kou}</i>` : ""}
         </span>

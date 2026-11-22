@@ -1732,7 +1732,7 @@
     (items || []).forEach((it) => {
       const label = typeof it.label === "function" ? it.label() : it.label;
       const b = node(html`
-        <button class="note-pop-item ${it.danger ? "is-danger" : ""}" role="menuitem">${it.icon ? icon(it.icon) : ""}<span class="note-pop-main"><span>${label}</span>${it.sub ? html`<small class="note-pop-sub">${it.sub}</small>` : ""}</span></button>`);
+        <button class="note-pop-item ${it.danger ? "is-danger" : ""} ${it.line ? "has-line" : ""}" role="menuitem">${it.icon ? icon(it.icon) : ""}<span class="note-pop-main"><span>${label}</span>${it.sub ? html`<small class="note-pop-sub">${it.sub}</small>` : ""}</span></button>`);
       b.addEventListener("click", () => {
         KN.motion.fire("select");
         p.close();

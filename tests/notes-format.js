@@ -121,11 +121,11 @@ const { open, checker } = require("./lib");
     return { tl: parseFloat(cs.borderTopLeftRadius), tr: parseFloat(cs.borderTopRightRadius),
       bl: parseFloat(cs.borderBottomLeftRadius),
       handle: !!hd && getComputedStyle(hd).display !== "none" && hd.getBoundingClientRect().height > 0,
-      clear: bd.classList.contains("sheet-backdrop") && getComputedStyle(bd).backgroundColor === "rgba(0, 0, 0, 0)"
+      scrim: bd.classList.contains("sheet-backdrop") && getComputedStyle(bd).backgroundColor !== "rgba(0, 0, 0, 0)"
         && getComputedStyle(bd).backdropFilter === "none" };
   });
   t.check("四隅が丸いカード・持ち手がある", look.tl > 0 && look.tr > 0 && look.bl > 0 && look.handle, JSON.stringify(look));
-  t.check("後ろは暗くしない", look.clear, JSON.stringify(look));
+  t.check("後ろは幕（ぼかさない。P2-6）", look.scrim, JSON.stringify(look));
   const head = await page.$eval(".sheet.is-note .sheet-head", (h) => {
     const b = h.querySelector(".js-close");
     const m = h.querySelector(".js-note-more");
@@ -274,7 +274,7 @@ const { open, checker } = require("./lib");
       sheets: document.querySelectorAll(".sheet.is-open").length,
       items: [...document.querySelectorAll(".note-pop-item")].map((x) => x.textContent.trim()).join(",") };
   });
-  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,中にノートを足す,移す,写して新しく,束ねる,消す,見たままで書く", JSON.stringify(pop));   // 見たままで書くは印で書く端末だけの戻り口（tests/lib.js は印で回す。js/note-live.js）。読んだところは外した（2026年11月7日）。道に置く（3.0 の A2）は既定で畳む（3.1 の S4）
+  t.check("「⋯」は押したところの小窓（紙を重ねない）", pop.near && pop.sheets === 1 && pop.items === "★を付ける,前の版,中にノートを足す,移す,写して新しく,束ねる,見たままで書く,消す", JSON.stringify(pop));   // 見たままで書くは印で書く端末だけの戻り口（tests/lib.js は印で回す。js/note-live.js）。読んだところは外した（2026年11月7日）。道に置く（3.0 の A2）は既定で畳む（3.1 の S4）
   await page.click(".note-pop-item:first-child");
   await page.waitForFunction(() => !document.querySelector(".note-pop"), null, { timeout: 3000 }).catch(() => {});   // 縮んで帰ってから消える
   t.check("小窓から★", (await page.evaluate((i) => KN.notes.get(i).fav, id)) && !(await page.$(".note-pop")));
@@ -350,11 +350,13 @@ const { open, checker } = require("./lib");
     return page.$$eval(".note-pop-item", (xs) => xs.map((x) => x.textContent.trim()));
   };
   const two = await headItems(`# 一\n${filler}\n## 二\n${filler}`);
-  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,中にノートを足す,移す,写して新しく,束ねる,消す,見たままで書く", two.join(","));
+  t.check("見出しが二つなら、小窓に見出しは出ない", two.join(",") === "★を付ける,前の版,中にノートを足す,移す,写して新しく,束ねる,見たままで書く,消す", two.join(","));
   await page.keyboard.press("Escape");
   await closeSheet();
   const three = await headItems(`# 一\n${filler}\n## 二\n${filler}\n### 三\n${filler}`);
   t.check("見出しが三つなら、小窓に見出しが並ぶ", three.slice(8).join(",") === "一,二,三", three.join(","));
+  const lined = await page.$$eval(".note-pop-item.has-line", (xs) => xs.map((x) => x.textContent.trim()).join(","));
+  t.check("消すは動作の最後、目次の前に線（P2-8）", three[7] === "消す" && lined === "一", lined);
   await page.click(".note-pop-item:last-child");
   await page.waitForTimeout(300);
   const jumped = await page.evaluate(() => {

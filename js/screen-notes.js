@@ -321,7 +321,7 @@
 
   /* ---------------- 面（段1） ---------------- */
 
-  const secTitle = (text) => node(html`<div class="notes-sec"><div class="section-title">${text}</div></div>`);
+  const secTitle = (text) => node(html`<div class="notes-sec"><div class="section-title" role="heading" aria-level="2">${text}</div></div>`);
 
   /** ホーム（R7、docs/redesign.md 6節）：さがす → 札（すべて・★・問い）→ 最近（表紙のカードを横へ送る）→ 本棚 → タグ。
       広い幅は二段：本棚とタグ｜札と最近直したの一覧。数は出しません（冊数も）。ノートブックの木は本棚の一冊の中
@@ -2221,7 +2221,7 @@
     /* 電話の幅では、帯のすぐ下から始まるカード（段4.3）。一覧のカードから
        膨らみ、閉じると一覧のカードへ縮んで戻る（直したノートは先頭へ移る
        ので、戻り先は毎フレーム探し直す）。＋からは＋から育ち、閉じたら
-       先頭にできたカードへ。後ろは暗くしない（角からのぞく灰を帯と同じに）。 */
+       先頭にできたカードへ。後ろは幕（screens.css の is-note-cover）。 */
     h = KN.ui.sheet({
       title: "",
       content: body,
@@ -2277,7 +2277,11 @@
     closeBtn.innerHTML = icon("chevron-left");
     closeBtn.setAttribute("aria-label", "戻る");
     const moreBtn = node(html`<button class="icon-btn js-note-more" aria-label="ほかの操作">${icon("more")}</button>`);
-    moreBtn.addEventListener("click", () => { U.haptic(); popMenu(moreBtn, menu.slice(0, 2).concat(menu.slice(2, 4), copyItem(), gatherItem(), bundleItem(), menu.slice(4), wideItem(), markItem(), headingItems())); });
+    moreBtn.addEventListener("click", () => { U.haptic(); /* 消すは動作の最後、目次は線の下（P2-8）。 */
+      const toc = headingItems();
+      if (toc.length) toc[0].line = true;
+      popMenu(moreBtn, menu.slice(0, 4).concat(copyItem(), gatherItem(), bundleItem(), wideItem(), markItem(), menu.slice(4), toc));
+    });
     h.el.querySelector(".sheet-head").append(moreBtn);
     closeBtn.after(mid);
     h.el.append(tools);

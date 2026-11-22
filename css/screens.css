@@ -4328,14 +4328,13 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 }
 .cal-name ~ .cal-name ~ .cal-name, .cal-name.is-over { display: none; }
 .cal-name b { display: block; min-width: 0; overflow: hidden; white-space: nowrap; font-weight: inherit;
-  mask-image: linear-gradient(to right, #000 calc(100% - 5px), transparent); }
+  mask-image: linear-gradient(to right, #000 calc(100% - 1em), transparent); }   /* 端は一字ぶん薄れる（月の面も。P2-9） */
 .cal-name.is-past { color: var(--c-text-3); background: var(--c-surface-2); }
-/* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。字は「…」で切らない（一字ぶん惜しい）。 */
+/* 月の面は背の高い暦（画面の65%・js の fitTall）。名前は入るだけ縦に、種類の色の札で。 */
 .cal.is-tall .cal-grid { grid-auto-rows: var(--cal-row); }
 .cal.is-tall .cal-dots { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2px; height: auto; flex: 1; min-height: 0; padding: 0 2px; }
 .cal.is-tall .cal-name { padding-right: 2px; }
 .cal.is-tall .cal-name ~ .cal-name { display: block; }
-.cal.is-tall .cal-name b { mask-image: none; }
 .cal.is-tall .cal-name.is-over { display: none; }
 .cal-rest { display: none; }
 .cal.is-tall .cal-rest { display: block; flex: none; padding-left: 4px; text-align: left; font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 13px; color: var(--c-text-2); }
@@ -5053,9 +5052,7 @@ textarea.note-title-in {
     max-height: none;
     box-shadow: none;
   }
-  .sheet-backdrop.is-clear {
-    background: transparent;
-  }
+  .sheet-backdrop.is-clear:not(.is-note-cover) { background: transparent; }  /* ノートの紙の後ろは幕（P2-6） */
   /* 2.0（V19）：四隅の丸いカード。左右・上下に同じだけ空けて浮かせる（真ん中は
      left:50% と translate(-50%) なので、左右の空きは揃う）。キーボードが出ている
      あいだは底を空けない（道具の帯がキーボードにつくように）。閉じた姿は空けたぶん
@@ -5473,17 +5470,9 @@ textarea.note-title-in {
 /* 時間の札。行の下に、折り返して全部見せる。 */
 .sheet .chip-row.tw-mins, .note-pop .chip-row.tw-mins { padding: 0 var(--sp-4) var(--sp-3); }
 .tw-sw { flex: none; display: grid; place-items: center; min-height: 38px; }
-.note-pop-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  min-height: var(--row-h-compact);
-  padding: 0 var(--sp-4);
-  font-size: var(--fs-lg);
-  color: var(--c-text);
-  text-align: left;
-}
+.note-pop-item { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--row-h-compact);
+  padding: 0 var(--sp-4); font-size: var(--fs-lg); color: var(--c-text); text-align: left; }
+.note-pop-item.has-line { border-top: 1px solid var(--c-border); }
 .note-pop-item svg { width: var(--ico); height: var(--ico); flex: none; }
 .note-pop-item.is-danger { color: var(--c-danger); }
 .note-pop-main { display: flex; flex-direction: column; min-width: 0; }
