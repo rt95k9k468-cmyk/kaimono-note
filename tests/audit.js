@@ -111,6 +111,9 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
 
   /* ---------------- 後半：復元・確かめで、ファイルの食い違い ---------------- */
+  /* 確かめ・復元のファイルの欄は「控え」の一枚（意7b。点検は「この端末」）。 */
+  await page.evaluate(() => KN.settingsParts.go("keep"));
+  await page.waitForTimeout(500);
   const fileText = await page.evaluate(() => {
     const raw = JSON.parse(KN.store.exportJSON("2026-09-29T00:00:00.000Z"));
     raw.archive.days.push({ memo: "日付なし" });

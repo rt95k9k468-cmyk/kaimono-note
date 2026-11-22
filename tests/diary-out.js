@@ -148,7 +148,9 @@ const bigDays = (tag) => Array.from({ length: BIG_DAYS }, (_, i) => [bigDate(i),
     await refuse2.locator(".js-ok").click();
     await page.waitForTimeout(300);
 
-    /* 外す：準備する → 書き出して外す。 */
+    /* 外す：準備する → 書き出して外す（この端末の一枚）。 */
+    await page.evaluate(() => KN.settingsParts.go("device"));
+    await page.waitForTimeout(400);
     await tapRow(page, "日記を記録から外す");
     const ask = dialog(page, "日記を記録から外しますか");
     await ask.waitFor();
