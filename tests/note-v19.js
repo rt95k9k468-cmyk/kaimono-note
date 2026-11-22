@@ -1,6 +1,6 @@
 /* ノートの開き閉じ・戻り方（docs/roadmap-2.0.md の V19・docs/notes.md の「2.0：四隅の丸いカード」）。
    V26（10月5日）で既定に：
-   - 書く紙は四隅の丸いカード・左右の空きが同じ・上下も空く
+   - 書く紙は左右と底の端まで・上だけ空けて丸角（意3。前は四隅の丸いカード）
    - カードから膨らみきった窓も四隅が丸い
    - 右へ少し払って離すと戻る／大きく払うと、その場所からカードへ縮んで閉じる
    - 払うのは左端でなくてもよい（V26）。横に送れる中身の上で始まった指は取らない
@@ -105,9 +105,10 @@ const { open, checker } = require("./lib");
   t.check("膨らむ動きは transform と opacity だけ", !!grownBy && grownBy.every((k) => /^(transform\+opacity|opacity\+transform|opacity|transform)$/.test(k)), JSON.stringify(grownBy));
   await page.waitForTimeout(700);
   const on = await box();
-  t.check("四隅の丸いカード", on.tl > 0 && on.br > 0 && on.bl > 0, JSON.stringify(on));
-  t.check("左右の空きが同じ（0 より大きい）", on.left > 0 && Math.abs(on.left - on.right) < 0.5, JSON.stringify(on));
-  t.check("上下も空く", on.top >= on.left - 0.5 && Math.abs(on.bottom - on.left) < 0.5, JSON.stringify(on));
+  /* 意3（11月22日）：左右と底は端まで、上だけ空けて丸角（前は四隅の丸いカード）。 */
+  t.check("上の角が丸く、底は角なし", on.tl > 0 && on.br === 0 && on.bl === 0, JSON.stringify(on));
+  t.check("左右と底は端まで", on.left === 0 && on.right === 0 && on.bottom === 0, JSON.stringify(on));
+  t.check("上だけ空く", on.top > 0, JSON.stringify(on));
 
   await fromEdge(40, 5, 30);
   await page.waitForTimeout(600);
