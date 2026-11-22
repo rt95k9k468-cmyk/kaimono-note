@@ -1124,20 +1124,27 @@
     return paintPics(el);
   }
 
-  /** 指の長押しで行の小窓（★・移す・消す）。動いたら送りに譲る。マウスは右クリック（rowMenu）。 */
+  /** 指の長押しで行の小窓（★・移す・消す）。押した長さは入力の時刻（timeStamp）で測り、離したときに開く——重い拍に
+      普通の押しが長押しに化けない。動いたら送りに譲る。マウスは右クリック（rowMenu）。 */
   function holdMenu(el) {
     const { HOLD, HOLD_SLOP } = KN.gesture;
-    let tm = 0, x0 = 0, y0 = 0;
-    const stop = () => { clearTimeout(tm); tm = 0; };
+    let d = null, tm = 0;
+    const stop = () => { clearTimeout(tm); d = null; };
     el.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "mouse" || !e.isPrimary) return;
-      x0 = e.clientX; y0 = e.clientY;
       stop();
-      tm = setTimeout(() => { tm = 0; if (!U.selecting(e) && KN.ui.openRowMenu(el)) U.haptic(); }, HOLD);
+      d = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+      tm = setTimeout(() => { if (d) U.haptic(); }, HOLD);
     });
-    el.addEventListener("pointermove", (e) => { if (tm && Math.hypot(e.clientX - x0, e.clientY - y0) > HOLD_SLOP) stop(); });
-    ["pointerup", "pointercancel", "pointerleave"].forEach((k) => el.addEventListener(k, stop));
+    el.addEventListener("pointermove", (e) => { if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HOLD_SLOP) stop(); });
+    el.addEventListener("pointerup", (e) => {
+      const held = d && e.timeStamp - d.t >= HOLD;
+      stop();
+      if (held && !U.selecting(e)) KN.ui.openRowMenu(el);
+    });
+    ["pointercancel", "pointerleave"].forEach((k) => el.addEventListener(k, stop));
   }
+
 
   /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの。開いているノートは★だけ
       （移す・消すは開いた紙の ⋯ から——書きかけと食い違わないように）。 */

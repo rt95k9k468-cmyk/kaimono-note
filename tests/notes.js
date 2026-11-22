@@ -99,7 +99,7 @@ const { open, checker } = require("./lib");
   await page.click("#dock .add-fab");
   const fm = await page.evaluate(() => [...document.querySelectorAll(".fab-menu .fab-menu-b")].map((b) => b.textContent.trim()).join(","));
   t.check("＋は一つ・押すと 問いをつくる・考える・ノート", fm === "問いをつくる,考える,ノート" && !(await page.$("#dock .fab-sub")), fm);
-  await page.keyboard.press("Escape");
+  await page.click("#dock .add-fab");   // もう一度押すと閉じる
   await page.waitForFunction(() => !document.querySelector(".fab-menu"), null, { timeout: 3000 });
   /* 二週間の絵は既定で畳んである（3.1 の S4）。ノートで消えるのを見るために出す。 */
   await page.evaluate(() => KN.store.update((s) => { s.settings.showUpcoming = true; }));
@@ -287,8 +287,13 @@ const { open, checker } = require("./lib");
       const r = el.getBoundingClientRect();
       el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch", isPrimary: true, clientX: r.x + 20, clientY: r.y + 20 }));
     }, id);
+    await page.waitForTimeout(500);
+    await page.evaluate((i) => {
+      const el = document.querySelector(`.note-row[data-id="${i}"] .js-open`);
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch", isPrimary: true, clientX: r.x + 20, clientY: r.y + 20 }));
+    }, id);
     await page.waitForSelector(".note-pop-item", { timeout: 3000 });
-    await page.evaluate((i) => document.querySelector(`.note-row[data-id="${i}"]`).dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" })), id);
     await page.click(".note-pop-item:first-child");
   };
   const firstBefore = await notes();
