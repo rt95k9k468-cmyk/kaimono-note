@@ -131,8 +131,8 @@ const { open, checker } = require("./lib");
       cover: !!e.querySelector(".nt-cv.is-mini"),
     };
   });
-  t.check("一覧はカード（地と違う面・丸角・端から離れる）・行の右に表紙の四角",
-    card.card && card.bg !== "rgba(0, 0, 0, 0)" && card.radius >= 8 && card.left >= 12 && card.cover, JSON.stringify(card));
+  t.check("一覧はカード（地と違う面・丸角・端から離れる）・画像の無いノートに四角は出さない（意4a）",
+    card.card && card.bg !== "rgba(0, 0, 0, 0)" && card.radius >= 8 && card.left >= 12 && !card.cover, JSON.stringify(card));
   t.check("カードの下にノートブックとタグ", (card.nb || "").trim() === "旅" && card.tags.join(",") === "京都,予定", JSON.stringify(card));
   t.check("タグは色の丸", /^rgb/.test(card.dot) && card.dot !== "rgba(0, 0, 0, 0)", card.dot);
   const dotSame = await page.evaluate(() => {

@@ -243,15 +243,14 @@ const { open, checker } = require("./lib");
   const stored = await page.evaluate((i) => KN.notes.get(i), id);
   t.check("本文は印のまま入れ物へ", stored.body === "# 買うもの\n- [x] 牛乳\n- [ ] 卵\n---\nおわり", JSON.stringify(stored.body));
 
-  /* ---- 一覧：題と冒頭は印を外す・★は縦の真ん中 ---- */
+  /* ---- 一覧：題と冒頭は印を外す・行の背は揃う（意4a） ---- */
   const card = await page.$eval(`#screen-notes .note-row[data-id="${id}"]`, (r) => {
     const c = r.getBoundingClientRect();
-    const s = r.querySelector(".fav").getBoundingClientRect();
-    return { t: r.querySelector(".note-t").textContent, x: r.querySelector(".note-x").textContent,
-      mid: Math.abs((s.top + s.bottom) / 2 - (c.top + c.bottom) / 2) };
+    return { t: r.querySelector(".note-t").textContent, x: r.querySelector(".note-x").textContent, h: c.height,
+      lines: [...r.querySelectorAll(".note-t, .note-x, .note-foot")].map((e) => Math.round(e.getBoundingClientRect().height)) };
   });
   t.check("一覧の題と冒頭は印を外す", card.t === "買うもの" && !/[#\[\]]|---/.test(card.x) && card.x.startsWith("牛乳"), JSON.stringify(card));
-  t.check("カードの★は縦の真ん中", card.mid <= 3, String(card.mid));
+  t.check("行は三行（題・抜粋・添え書き）がどれも一行・背は 94px から", card.h >= 94 && card.h < 120 && card.lines.length === 3 && card.lines.every((h) => h < 32), JSON.stringify(card));
 
   /* ---- 開いたノートは整えた姿・「⋯」はその場の小窓 ---- */
   await page.click(`#screen-notes .note-row[data-id="${id}"] .js-open`);

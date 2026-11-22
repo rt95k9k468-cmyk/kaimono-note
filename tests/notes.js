@@ -269,26 +269,33 @@ const { open, checker } = require("./lib");
   t.check("何も書かずに閉じた新しいノートは残らない（書いて消したものも）",
     afterEmpty.length === before && (await notes()).length === before, `${before} → ${afterEmpty.length}`);
 
-  /* ---- ★ ---- */
+  /* ---- ★（意4a：行には付いたものだけ印。付け外しは長押しの小窓） ---- */
+  const holdStar = async (id) => {
+    await page.evaluate((i) => {
+      const el = document.querySelector(`.note-row[data-id="${i}"] .js-open`);
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, pointerType: "touch", isPrimary: true, clientX: r.x + 20, clientY: r.y + 20 }));
+    }, id);
+    await page.waitForSelector(".note-pop-item", { timeout: 3000 });
+    await page.evaluate((i) => document.querySelector(`.note-row[data-id="${i}"]`).dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerType: "touch" })), id);
+    await page.click(".note-pop-item:first-child");
+  };
   const firstBefore = await notes();
   const target = firstBefore[1];
-  await page.click(`.note-row[data-id="${target.id}"] .fav`);
+  t.check("★の無い行に印も押す口も無い", !(await page.$(`.note-row[data-id="${target.id}"] :is(.note-star, .fav)`)));
+  await holdStar(target.id);
   await page.waitForTimeout(800);
-  const favState = await page.evaluate((id) => {
-    const r = document.querySelector(`.note-row[data-id="${id}"] .fav`);
-    return { on: r.classList.contains("is-on"), pressed: r.getAttribute("aria-pressed") };
-  }, target.id);
   const afterFav = await notes();
-  t.check("★を押すと付く", favState.on && favState.pressed === "true");
+  t.check("長押しの小窓で★が付き、題の横に印", !!(await page.$(`.note-row[data-id="${target.id}"] .note-hd .note-star`)));
   t.check("★では並びも更新日も動かない",
     afterFav.map((n) => n.id).join() === firstBefore.map((n) => n.id).join()
     && afterFav[1].updatedAt === target.updatedAt);
   await reload();
   t.check("★は読み直しても残る", (await notes()).find((n) => n.id === target.id).fav === true);
   await toNotes();
-  await page.click(`.note-row[data-id="${target.id}"] .fav`);
+  await holdStar(target.id);
   await page.waitForTimeout(300);
-  t.check("もう一度押すと外れる", (await notes()).find((n) => n.id === target.id).fav === false);
+  t.check("もう一度で外れる", (await notes()).find((n) => n.id === target.id).fav === false);
 
   /* ---- 消す → 最近削除した項目 → 戻す ---- */
   await page.click(`.note-row[data-id="${n1.id}"] .js-open`);

@@ -68,9 +68,9 @@ const { open, checker } = require("./lib");
   const before = await page.evaluate((i) => ({ ...KN.notes.get(i) }), id);
 
   /* ---- 一覧のノートブックの色 ---- */
-  const cardNb = await page.$eval(`#screen-notes .note-row[data-id="${id}"] .note-nb .nb-ico`,
-    (e) => ({ cat: e.style.getPropertyValue("--cat"), color: getComputedStyle(e).color }));
-  t.check("カードの本の絵に名前の色", /^#/.test(cardNb.cat) && cardNb.color !== "", JSON.stringify(cardNb));
+  const cardNb = await page.$eval(`#screen-notes .note-row[data-id="${id}"] .note-nb .note-mk`,
+    (e) => ({ cat: e.style.getPropertyValue("--cat"), color: getComputedStyle(e).backgroundColor }));
+  t.check("カードの冊の印に名前の色", /^#/.test(cardNb.cat) && /^(rgb|color)/.test(cardNb.color), JSON.stringify(cardNb));
   await page.click("#screen-notes .notes-chips .js-pick[data-k=nb]");
   await page.waitForSelector(".note-pop.is-pick .js-filter-pick .nb-ico");
   const chipNb = await page.$eval(".note-pop.is-pick .js-filter-pick .nb-ico",
@@ -172,11 +172,11 @@ const { open, checker } = require("./lib");
 
   /* ---- 段4.5：カードの日付は作った日（年月日、時刻ありなら時刻も）・題はテーマ色 ---- */
   const cardD = await page.$eval(`#screen-notes .note-row[data-id="${id}"] .note-d`, (e) => e.textContent.trim());
-  t.check("カードは作った日を年月日で、時刻なし", cardD === "2019年2月14日", cardD);
+  t.check("カードは作った日を短く（前の年は年から）、時刻なし", cardD === "2019年2月14日", cardD);
   const other = order1.find((x) => x !== id);
   if (other) {
     const od = await page.$eval(`#screen-notes .note-row[data-id="${other}"] .note-d`, (e) => e.textContent.trim());
-    t.check("時刻のあるノートは年月日と時刻", /^\d{4}年\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}$/.test(od), od);
+    t.check("今日のノートは「今日」と時刻（意4a）", /^今日 \d{1,2}:\d{2}$/.test(od), od);
   }
   /* 題は墨の明朝（R7、docs/redesign.md 6節。前はテーマ色）。 */
   const tc = await page.$eval("#screen-notes .note-t", (e) => [getComputedStyle(e).color, getComputedStyle(e).fontFamily,

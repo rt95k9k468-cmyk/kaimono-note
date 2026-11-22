@@ -227,7 +227,8 @@
       行頭の印（# - 1. - [ ] > ---）は外して見せます（段4）。 */
   function leadOf(n) {
     let lines = n.body.split("\n").map((l) => KN.noteFormat.plain(l)).filter(Boolean);
-    if (!n.title.trim()) lines = lines.slice(1);
+    /* 頭の行が題と同じ（題を借りた・見出しに題を書いた）なら飛ばす（意4a）。 */
+    if (!n.title.trim() || lines[0] === n.title.trim()) lines = lines.slice(1);
     return lines.join(" ").slice(0, 120);
   }
 
@@ -240,6 +241,19 @@
     if (isNaN(d.getTime())) return "";
     const ymd = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
     return n.noTime ? ymd : `${ymd} ${hm(d)}`;
+  }
+
+  /** 一覧の短い日付（意4a。作った日のまま）：今日は時刻、昨日、今年は月日、前の年は年から。noTime なら時刻なし。 */
+  function shortOf(n) {
+    const d = new Date(n.createdAt);
+    if (isNaN(d.getTime())) return "";
+    const k = U.dayKey(d);
+    if (k === U.todayKey()) return n.noTime ? "今日" : `今日 ${hm(d)}`;
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (k === U.dayKey(y)) return "昨日";
+    const md = `${d.getMonth() + 1}月${d.getDate()}日`;
+    return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
   }
 
   /** 書く紙と前の版の日時。「2026年10月1日(木) 9:05」。noTime なら時刻なし。 */
@@ -309,7 +323,7 @@
     const chips = chipRow(all);
     if (chips) { box.append(chips); chips.scrollLeft = keepX; }
 
-    box.append(cards(all.filter((n) => picked(n) && hit(n, query)), t));
+    months(box, all.filter((n) => picked(n) && hit(n, query)), t);
 
     /* 最近削除した項目は、探していないときだけ、いちばん下に一行。 */
     if (!query && N().trash().length) {
@@ -406,7 +420,8 @@
     };
     if (nb) bookRows(tree, t, o);
     else treeRows(tree, t.tops(""), 0, { ...o, kids: (n) => t.branch(n.id) });
-    box.append(tree);
+    /* 頭に冊の色の帯（意4a）。 */
+    box.append(node(html`<div class="nt-band note-mk" ${cover(nb)} aria-hidden="true"></div>`), tree);
     carry(tree, { scope: "books", one: !!nb, open: treeOpen, scroller: () => KN.app.scrollerOf(root),
       root: () => root && root.querySelector(TREE_ROW.replace(" .nt-row", "")) });
   }
@@ -1013,6 +1028,24 @@
     return box;
   }
 
+  /** 一覧を月の見出しで区切る（意4a）。月は並びの日（直した日・作った日）から。 */
+  function months(box, list, t) {
+    const key = byCreated() ? "createdAt" : "updatedAt";
+    let at = null, part = [];
+    const flush = () => { if (part.length) box.append(cards(part, t)); part = []; };
+    list.forEach((n) => {
+      const d = new Date(n[key]);
+      const m = isNaN(d.getTime()) ? "" : `${d.getFullYear()}年${d.getMonth() + 1}月`;
+      if (m !== at) {
+        flush();
+        at = m;
+        if (m) box.append(node(html`<div class="nt-month" role="heading" aria-level="3">${m}</div>`));
+      }
+      part.push(n);
+    });
+    flush();
+  }
+
   /* ---------------- 絞り込みのチップ（段3・roadmap-2.0 の V20） ----------------
 
      すべて・★・ノートブック ⌄・タグ ⌄。ノートブックとタグは名前を列に並べず、
@@ -1084,36 +1117,48 @@
     p.place();
   }
 
+  /* 一覧の行（意4a）：題（★は付いたものだけ）／抜粋一行／添え書き一行（冊の色の印・冊・短い日付・タグ。溢れたタグは切れる）。
+     右の四角は画像のあるノートだけ。★の付け外しは行の小窓（右クリック・長押し）と紙の「⋯」（shopping の R5 と同じ）。 */
   function row(n, t, o) {
     const head = headOf(n);
     const lead = leadOf(n);
     /* 中のノートには、親の題を小さく添えます（段1）。 */
     const up = t ? t.parentOf(n.id) : null;
     const where = [n.notebook, up && !t.isHead(up.id) ? headOf(up) : ""].filter(Boolean).join(" › ");
+    const pic = picOf(n);
     const el = node(html`
       <div class="note-row is-card" data-id="${n.id}">
         <button class="note-open js-open">
-          <span class="note-t">${head}</span>
+          <span class="note-hd"><span class="note-t">${head}</span>${n.fav ? html`<span class="note-star" aria-label="★">${icon("star")}</span>` : ""}</span>
           ${lead ? html`<span class="note-x">${lead}</span>` : ""}
           <span class="note-foot">
-            <span class="note-d">${whenOf(n)}</span>
-            ${where ? html`<span class="note-nb">${n.notebook ? book(n.notebook) : ""}<span>${where}</span></span>` : ""}
-            ${n.tags.map((t) => html`<span class="note-tag">${dot(t)}<span>${t}</span></span>`)}
+            ${where ? html`<span class="note-nb"><span class="note-mk" ${cover(n.notebook)}></span><span>${where}</span></span>` : ""}
+            <span class="note-d">${shortOf(n)}</span>
+            ${n.tags.map((g) => html`<span class="note-tag">${dot(g)}<span>${g}</span></span>`)}
           </span>
         </button>
-        <button class="fav ${n.fav ? "is-on" : ""}" aria-pressed="${String(n.fav)}"
-                aria-label="${head || "ノート"} に★を付ける">${icon("star")}</button>
-        <span class="nt-cv is-mini" ${cover(n.notebook)} ${picOf(n)} aria-hidden="true"></span>
+        ${pic ? html`<span class="nt-cv is-mini" ${cover(n.notebook)} ${pic} aria-hidden="true"></span>` : ""}
       </div>
     `);
     el.querySelector(".js-open").addEventListener("click", () => (o && o.open ? o.open(n, el) : openNote(n.id, el)));
-    el.querySelector(".fav").addEventListener("click", (e) => {
-      e.stopPropagation();
-      U.haptic();
-      N().setFav(n.id, !n.fav);
-    });
     KN.ui.rowMenu(el, () => rowMenuOf(n.id));
+    holdMenu(el);
     return paintPics(el);
+  }
+
+  /** 指の長押しで行の小窓（★・移す・消す）。動いたら送りに譲る。マウスは右クリック（rowMenu）。 */
+  function holdMenu(el) {
+    const { HOLD, HOLD_SLOP } = KN.gesture;
+    let tm = 0, x0 = 0, y0 = 0;
+    const stop = () => { clearTimeout(tm); tm = 0; };
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" || !e.isPrimary) return;
+      x0 = e.clientX; y0 = e.clientY;
+      stop();
+      tm = setTimeout(() => { tm = 0; if (!U.selecting(e) && KN.ui.openRowMenu(el)) U.haptic(); }, HOLD);
+    });
+    el.addEventListener("pointermove", (e) => { if (tm && Math.hypot(e.clientX - x0, e.clientY - y0) > HOLD_SLOP) stop(); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((k) => el.addEventListener(k, stop));
   }
 
   /** 行の右クリック（docs/desk.md「右クリック」）：紙の ⋯ のうち開かずに済むもの。開いているノートは★だけ

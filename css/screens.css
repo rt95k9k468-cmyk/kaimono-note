@@ -4644,35 +4644,25 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 引くあいだ後ろに見せる一つ上の面の写し（見えている高さだけ）。 */
 .notes-under { position: absolute; overflow: hidden; pointer-events: none; }
 .note-row { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-5) 0 var(--sp-4); }
-/* 一覧は一枚のカードに行（R7）：題・頭の一行・日付・★・表紙の四角。最近削除・前の版の紙の行は今のまま。 */
+/* 一覧は一枚のカードに行（意4a）：題（★は付いたものだけ）／抜粋一行／添え書き一行。四角は画像のあるノートだけ。月の見出しで区切る。 */
 .notes-list { margin: var(--sp-2) var(--sp-4) 0; border-radius: var(--r-lg); overflow: clip; }
-.note-row.is-card { align-items: center; gap: var(--sp-2); padding: 0 14px; transition: background var(--m-state) var(--ease); }
+.nt-month { padding: var(--sp-5) var(--sp-4) 0 calc(var(--sp-4) + 6px); font-size: var(--fs-sm); color: var(--c-text-2); }
+.note-row.is-card { align-items: center; gap: var(--sp-2); padding: 0 14px; min-height: 94px; transition: background var(--m-state) var(--ease); }
 .note-row.is-card + .note-row.is-card { border-top: 1px solid var(--c-border); }
 .note-row.is-card:has(> .note-open:active) { background: var(--press-sink); transition-delay: var(--m-press); }
 .note-row.is-card .note-x { -webkit-line-clamp: 1; font-size: var(--fs-sm); }
 .nt-cv.is-mini { flex: none; width: 56px; height: 56px; border-radius: var(--r-sm); }
-.note-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px var(--sp-3);
-  margin-top: 2px;
-  max-width: 100%;
-}
-.note-nb, .note-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  font-size: var(--fs-sm);
-  color: var(--c-text-2);
-}
-.note-nb svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
-.note-nb > span, .note-tag > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.note-hd { display: flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; }
+.note-star { flex: none; display: grid; color: var(--c-warn); }
+.note-star svg { width: var(--ico-sm); height: var(--ico-sm); fill: currentColor; }
+.note-foot { display: flex; align-items: center; gap: var(--sp-3); margin-top: 2px; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.note-nb, .note-tag { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
+.note-tag { flex: none; }
+.note-mk { flex: none; width: 8px; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--shelf, var(--cat, var(--c-text-3))) 80%, #000); }
+.note-mk[data-pt="none"] { background: var(--c-surface-3); }
+.note-mk.nt-band { display: block; width: auto; height: 6px; margin: var(--sp-2) var(--sp-4) 0; border-radius: 3px; }
+.note-nb > span:last-child, .note-tag > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.note-d { flex: none; }
 /* 木の箱は clip（hidden だと送る器になり、木の行が上に留まらない）。 */
 .notes-sec { padding: var(--sp-5) var(--sp-4) 0; }
 .notes-sec.is-sub { padding-top: var(--sp-3); }
@@ -4820,10 +4810,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-place-row[aria-current="true"] { background: var(--c-primary-soft); }
 .notes-place-row[aria-disabled="true"] { color: var(--c-text-3); }
 .notes-place-row:not([aria-disabled="true"]):active { background: var(--press-sink); }
-/* 左の木（段1b）。幅の広い画面（desk・840px〜。docs/desk.md）で、ノートの席が出ているときだけ、左の列の中の
-   席の行の下に（`--side-nav-h` から窓の底まで。段5で左の列へ入れた——前は左の帯の右に別の段を取っていた）。
-   左の列の線（border-right 1px）は覆わない。紙・覆い・鍵より下（--z-bar。帯より後ろの DOM なので帯の上に描かれる）。
-   js/screen-notes.js の paintTree。 */
+/* 左の木（段1b・desk 840px〜）：左の列の席の行の下（`--side-nav-h` から底まで）。列の線は覆わない。紙・鍵より下（--z-bar）。 */
 .notes-tree { display: none; }
 @media (min-width: 840px) {
   html:not(.is-locked)[data-screen="notes"] .notes-tree {
@@ -5044,11 +5031,7 @@ textarea.note-title-in {
   height: min(90dvh, 780px, calc(var(--vvh, 100dvh) - var(--pad, 0px)));
   background: var(--c-surface);
 }
-/* 電話では、上の帯（時刻・電池）のすぐ下から始まるカード（段4.3）。上が
-   丸角で持ち手があり、下へ払うと閉じる。帯の灰は直せなかった（docs/notes.md
-   「段4.3」）ので、帯は地として見せる——後ろの暗幕は付けず（`clear`）、角から
-   のぞくのは帯と同じ灰の地。底はいつもどおりキーボードの上端（--kb）。広い
-   画面は真ん中の一枚のまま。 */
+/* 電話は上の帯のすぐ下から始まるカード（段4.3。暗幕なし `clear`・底は --kb）。広い画面は真ん中の一枚。 */
 @media (max-width: 639.98px) {
   .sheet.is-note {
     height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t));
@@ -5091,10 +5074,7 @@ textarea.note-title-in {
   .sheet.is-note.is-wide:not(.is-open):not(.is-from-origin) { transform: translate(-50%, calc(100% + var(--note-gap))); }
 }
 .sheet.is-note .sheet-head { padding: var(--sp-1) var(--sp-2); }
-/* 底の安全域（ホームの棒のぶん）は、キーボードが出ているあいだは要らない
-   ——紙の底に残ると、道具の帯とキーボードの間に白い隙間が空く（2026年
-   10月1日、iPhone で「帯がキーボードにくっついていない」）。安全域は
-   キーボードの高さぶん差し引き、紙ではなく中身の側で持つ。 */
+/* 底の安全域はキーボードのあいだ要らない（帯との隙間になる）。紙でなく中身の側で、キーボードの高さぶん差し引く。 */
 .sheet.is-note { padding-bottom: 0; }
 /* 中身が短くても帯は底へ（中身の側が残りの高さを取る）。 */
 .sheet.is-note .sheet-body { flex: 1 1 auto; }

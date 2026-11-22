@@ -2,7 +2,7 @@
 
      NODE_PATH=/opt/node22/lib/node_modules node tools/shots.js [選び]
 
-     --screens todo,list      画面（todo・list・archive・diet・notes・prices・settings）。todo:week・todo:month で面も
+     --screens todo,list      画面（todo・list・archive・diet・notes・prices・settings）。todo:week・todo:month・notes:list・notes:nb で面も
      --theme light,dark       明暗（既定 light）
      --size std,xl            字の大きさ（既定 std。xl＝特大）
      --clock 21:30            その時刻から時計を進めて開く（既定は今）
@@ -167,7 +167,8 @@ async function shoot(browser, v, combo) {
   await page.evaluate((id) => KN.app.showScreen(id), combo.screen);
   await page.waitForTimeout(600);
   if (combo.face && combo.face !== "today") {
-    const b = page.locator(`#screen-todo .wk-faces .seg-btn[data-face="${combo.face}"]`).first();
+    /* notes:list ＝すべてのノート。notes:nb ＝本棚の一冊め。 */
+    const b = page.locator(combo.screen === "notes" ? (combo.face === "list" ? "#screen-notes .js-all" : "#screen-notes .nt-bk") : `#screen-todo .wk-faces .seg-btn[data-face="${combo.face}"]`).first();
     if (await b.count()) { await b.click(); await page.waitForTimeout(600); }
   }
   if (SCROLL) {
