@@ -43,7 +43,7 @@ const truth = (page) => page.evaluate(() => {
 async function restoreFromDropbox(page, rowText) {
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(400);
-  for (const label of ["バックアップ", "Dropbox へ自動で送る", "Dropbox の控えから戻す"]) {
+  for (const label of ["控え", "Dropbox へ自動で送る", "Dropbox の控えから戻す"]) {
     await page.locator(".set-layer:last-child .set-row", { hasText: label }).first().click();
     await page.waitForTimeout(450);
   }
