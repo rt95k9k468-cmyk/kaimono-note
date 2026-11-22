@@ -4658,7 +4658,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .note-foot { display: flex; align-items: center; gap: var(--sp-3); margin-top: 2px; max-width: 100%; overflow: hidden; white-space: nowrap; }
 .note-nb, .note-tag { display: inline-flex; align-items: center; gap: 5px; min-width: 0; font-size: var(--fs-sm); color: var(--c-text-2); }
 .note-tag { flex: none; }
-.note-mk { flex: none; width: 8px; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--shelf, var(--cat, var(--c-text-3))) 80%, #000); }
+.note-mk { flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--deep, var(--cat, var(--c-text-3))); }
 .note-mk[data-pt="none"] { background: var(--c-surface-3); }
 .note-mk.nt-band { display: block; width: auto; height: 6px; margin: var(--sp-2) var(--sp-4) 0; border-radius: 3px; }
 .note-nb > span:last-child, .note-tag > span:last-child { overflow: hidden; text-overflow: ellipsis; }
@@ -4696,7 +4696,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-bks.is-carrying > .nt-bk.is-lifted { position: relative; z-index: 2; transition: scale var(--m-press) var(--ease); scale: 1.06; }
 .nt-bks.is-carrying > .nt-bk.is-landing { position: relative; z-index: 2; }
 /* 表紙：冊の色を深くした面（棚は --shelf、ほかは名前の色 --cat）＋白い線の和柄を薄く＋題箋。 */
-.nt-cv { --cv: color-mix(in srgb, var(--shelf, var(--cat, var(--c-text-3))) 80%, #000); display: block; position: relative; overflow: hidden; background: var(--cv); }
+.nt-cv { --cv: var(--deep, var(--cat, var(--c-text-3))); display: block; position: relative; overflow: hidden; background: var(--cv); }
 .nt-cv[data-pt="none"] { --cv: var(--c-surface-3); }
 .nt-cv:not(.is-pic)::after { content: ""; position: absolute; inset: 0; opacity: .2; background: var(--pt, none); }
 .nt-cv.is-pic { background: var(--pic) center / cover, var(--cv); }
@@ -4724,6 +4724,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
 /* thinking は灰の archive と見分けるため濃いめ（10月16日）。 */
+[data-shelf] { --deep: color-mix(in srgb, var(--shelf) 80%, #000); }
 [data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
 [data-shelf="reading"] { --shelf: #007B43; }
 [data-shelf="teaching"] { --shelf: #ED6D3D; }

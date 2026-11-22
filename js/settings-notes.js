@@ -100,7 +100,7 @@
     const list = names(kind);
     /* 色の四角は残す（`lead: "tile"`）——ここでは色そのものが中身（一覧のカード・チップと同じ色）。 */
     const rows = card(list.map((name) => navRow({
-      lead: "tile", ico: KIND[kind].ico, tint: NS().colorOf(kind, name), title: name,
+      lead: "tile", ico: KIND[kind].ico, tint: NS().inkOf(kind, name), title: name,
       onTap: () => { editing = { kind, name }; go("noteLabel"); },
     })));
     if (kind !== "nb") return [rows];
@@ -294,7 +294,7 @@
       const b = node(html`
         <button type="button" class="accent-dot ${on ? "is-on" : ""}" role="radio"
                 aria-checked="${String(on)}" aria-label="${NS().COLOR_NAMES[i]}">
-          <span class="accent-swatch" style="background:${c}"></span>
+          <span class="accent-swatch" style="background:${NS().ink(c)}"></span>
         </button>
       `);
       b.addEventListener("click", () => {
@@ -390,12 +390,12 @@
       const chip = (k, v, inner, label) => html`
         <button type="button" class="chip js-scope-pick" data-k="${k}" data-v="${v || ""}"
                 aria-pressed="${String(on(k, v))}" ${label ? html`aria-label="${label}"` : ""}>${inner}</button>`;
-      const dotOf = (kind, name) => html`<span class="chip-dot" style="--cat:${NS().colorOf(kind, name)}"></span>`;
+      const dotOf = (kind, name) => html`<span class="chip-dot" style="--cat:${NS().inkOf(kind, name)}"></span>`;
       const row = node(html`
         <div class="chip-row notes-chips" role="group" aria-label="書き出すノート">
           ${chip("all", "", "すべて")}
           ${hasFav ? chip("fav", "", icon("star"), "★") : ""}
-          ${books.map((b) => chip("nb", b, html`<span class="nb-ico" style="--cat:${NS().colorOf("nb", b)}">${icon("book")}</span><span>${b}</span>`))}
+          ${books.map((b) => chip("nb", b, html`<span class="nb-ico" style="--cat:${NS().inkOf("nb", b)}">${icon("book")}</span><span>${b}</span>`))}
           ${tags.map((t) => chip("tag", t, html`${dotOf("tag", t)}<span>${t}</span>`))}
         </div>
       `);

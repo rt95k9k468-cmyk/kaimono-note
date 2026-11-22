@@ -138,10 +138,10 @@ print(json.dumps(out, ensure_ascii=False))
   t.check("ノートブックの一覧（消していないノートから）", books.join() === "仕事,旅", books.join());
   const tile = await page.evaluate(() => {
     const row = [...document.querySelectorAll(".set-layer:last-child .set-row")].find((r) => r.textContent.includes("旅"));
-    return { got: getComputedStyle(row.querySelector(".set-tile")).backgroundColor, want: KN.screens.notes.colorOf("nb", "旅") };
+    return { got: getComputedStyle(row.querySelector(".set-tile")).backgroundColor, want: KN.screens.notes.inkOf("nb", "旅") };
   });
   const hex = (rgb) => "#" + rgb.match(/\d+/g).slice(0, 3).map((x) => Number(x).toString(16).padStart(2, "0")).join("");
-  t.check("行の四角はそのノートブックの色", hex(tile.got) === tile.want, `${tile.got} ${tile.want}`);
+  t.check("行の四角はそのノートブックの色（深い八色へ読み替えて描く）", hex(tile.got) === tile.want, `${tile.got} ${tile.want}`);
 
   await into("旅");
   t.check("一枚の題は名前", (await navTitle()) === "旅");
@@ -165,7 +165,7 @@ print(json.dumps(out, ensure_ascii=False))
     on: document.querySelector(".set-layer:last-child .note-colors .accent-dot.is-on").getAttribute("aria-label"),
   }));
   t.check("色を選ぶとノートの入れ物の色に入る", col.saved.nb["旅行"] === "#5b9bd5" && col.now === "#5b9bd5", JSON.stringify(col.saved));
-  t.check("選んだ色に輪", col.on === "青", col.on);
+  t.check("選んだ色に輪（名は深い八色の名）", col.on === "藍", col.on);
 
   /* もうある名前へ → 訊いてからまとめる */
   await page.fill(`${top} .js-name`, "仕事");
@@ -204,11 +204,12 @@ print(json.dumps(out, ensure_ascii=False))
     KN.notes.setColors((all) => { all.nb = { "仕事": "#e07fa8" }; });
     KN.screens.notes.render();
   });
+  const KN_saved = await page.evaluate(() => KN.notes.colors().nb["仕事"]);
   const card = await page.evaluate(() => {
     const ico = document.querySelector('#screen-notes .nt-bk[data-nb="仕事"] .nt-cv');
     return ico ? ico.style.getPropertyValue("--cat") : "";
   });
-  t.check("本棚の表紙も選んだ色", card === "#e07fa8", card);
+  t.check("本棚の表紙も選んだ色（描くのは深い八色・記録は #e07fa8 のまま）", card === "#a8626f" && KN_saved === "#e07fa8", card);
 
   /* ---- 書き出し：中身 ---- */
   await page.evaluate((x) => KN.notes.setLabels(x.a, { tags: ["料理"] }), ids);

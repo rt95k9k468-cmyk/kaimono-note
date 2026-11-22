@@ -72,7 +72,10 @@
      しまわない）。色は買うもののカテゴリと同じ並び（灰の「その他」は外す
      ——丸が見えなくなるので）。 */
   const TAG_COLORS = ["#5ea55a", "#d4695f", "#d79a4a", "#5b9bd5", "#4fb3c4", "#9b7ede", "#48b39a", "#e07fa8"];
-  const COLOR_NAMES = ["緑", "赤", "橙", "青", "水色", "紫", "青緑", "桃"];
+  /* 描くときは年の背表紙と同じ深さの八色へ読み替える（意4b。記録の色＝上の八色はそのまま・知らない色もそのまま）。 */
+  const DEEP = ["#55704a", "#8f3b3b", "#a2582a", "#2f5d86", "#387682", "#5f4b8b", "#3f7565", "#a8626f"];
+  const COLOR_NAMES = ["松葉", "臙脂", "柿", "藍", "浅葱", "江戸紫", "千歳緑", "薄紅"];
+  const ink = (c) => DEEP[TAG_COLORS.indexOf(c)] || c;
   function hashOf(name) {
     let h = 0;
     for (const c of String(name)) h = (h * 31 + c.codePointAt(0)) >>> 0;
@@ -88,18 +91,19 @@
     const c = m && typeof m === "object" && Object.prototype.hasOwnProperty.call(m, name) ? m[name] : null;
     return TAG_COLORS.includes(c) ? c : hashColor(name);
   }
-  const dot = (t) => html`<span class="chip-dot" style="--cat:${colorOf("tag", t)}"></span>`;
+  const inkOf = (kind, name) => ink(colorOf(kind, name));
+  const dot = (t) => html`<span class="chip-dot" style="--cat:${inkOf("tag", t)}"></span>`;
   /* ノートブックの本の絵にも色（2026年10月1日、利用者が「それぞれに色が欲しい」）。 */
   /* 6つの棚は棚の絵と色（2026年10月15日、利用者の頼み）。 */
   const book = (b) => (SHELF[b] ? html`<span class="nb-ico" data-shelf="${b}">${shelfIcon(SHELF[b].ico)}</span>`
-    : html`<span class="nb-ico" style="--cat:${colorOf("nb", b)}">${icon("book")}</span>`);
+    : html`<span class="nb-ico" style="--cat:${inkOf("nb", b)}">${icon("book")}</span>`);
   /* 表紙（docs/redesign.md 4節）：ノートブックの色＋和柄（css の gradient）＋題箋。記録に欄を足さず、名前から引く。
      6つの棚は棚の色と決まった柄、ほかは名前から。冊の無いノートは無地。 */
   const PATTERNS = ["asa", "shima", "nami", "ichi", "ten"];
   const SHELF_PT = { thinking: "asa", reading: "nami", teaching: "shima", learning: "ichi", living: "ten", archive: "shima" };
   const cover = (nb) => (!nb ? html`data-pt="none"`
     : SHELF[nb] ? html`data-shelf="${nb}" data-pt="${SHELF_PT[nb]}"`
-      : html`style="--cat:${colorOf("nb", nb)}" data-pt="${PATTERNS[(hashOf(nb) >>> 3) % PATTERNS.length]}"`);
+      : html`style="--cat:${inkOf("nb", nb)}" data-pt="${PATTERNS[(hashOf(nb) >>> 3) % PATTERNS.length]}"`);
 
   /* 画像のあるノートは一枚目が表紙（RI・11月12日、利用者が選んだ）。画像は IndexedDB から非同期——読めるまで冊の色と柄、
      読めたら敷く。記録には何も足さない（本文の参照の一行から引く）。 */
@@ -2002,7 +2006,7 @@
     };
     const paintLabels = () => {
       nbBtn.querySelector(".js-nb-name").textContent = note.notebook || "ノートブック";
-      if (note.notebook) nbBtn.style.setProperty("--cat", colorOf("nb", note.notebook));
+      if (note.notebook) nbBtn.style.setProperty("--cat", inkOf("nb", note.notebook));
       else nbBtn.style.removeProperty("--cat");
       nbBtn.classList.toggle("is-empty", !note.notebook);
       nbBtn.querySelector(".nb-ico").replaceWith(note.notebook ? node(book(note.notebook)) : node(html`<span class="nb-ico">${icon("book")}</span>`));
@@ -3084,7 +3088,7 @@
   /** ＋の上の「思考」：thinking に新しいノート。冊は決まっているので小窓を出さずに本文へ。 */
   const think = () => openNote(null, null, { nb: THINK });
 
-  KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, COLORS: TAG_COLORS, COLOR_NAMES,
+  KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, inkOf, ink, COLORS: TAG_COLORS, COLOR_NAMES,
     pick: pickNote, asks, answer, newBook, think,
     /** 最近直したノート（見開きの右の頁・構6）。鍵のあいだ・読めないあいだは空。 */
     recent: (k) => (N().state() === "on" && !(KN.lock && KN.lock.hides("notes")) ? recentOf(N().list(), k) : []), headOf };
