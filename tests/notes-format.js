@@ -13,7 +13,7 @@
    リンク（notes-unify 段4の一部）：読む姿は字だけ・中のノートは紙を重ねる・外は新しい窓・見つからなければ開かない・
    押した字にカーソル・題と冒頭は字だけ・探すときは中のノートの id を拾わない。
    F7：「[[」と帯の鎖で題から選ぶリンク・ここへのリンク／マーカー ==字==（読む姿・写し・印を外す）／⋯ の写して新しく／
-   ホームの一枚（去年の今ごろ・長く開いていない★）。
+   ホームの一枚（去年の今ごろ・長く開いていない★）。意3：見出しの隣の空行は低く・電話の紙は端まで・iPad 縦の背は窓の9割以上。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/notes-format.js */
 const { open, checker } = require("./lib");
@@ -111,8 +111,8 @@ const { open, checker } = require("./lib");
     const r = e.getBoundingClientRect();
     return { top: r.top, h: r.height / innerHeight, w: r.width / innerWidth };
   });
-  /* V19・V26：四隅の丸いカード。上と左右に 8px 空けて浮かせる。 */
-  t.check("書く紙は帯のすぐ下から、左右に少し空けたカード", box.top <= 9 && box.h >= 0.95 && box.w >= 0.95 && box.w < 1, JSON.stringify(box));
+  /* 意3：上だけ 8px 空け、左右と底は端まで（前は四隅の丸いカード。V19・V26）。 */
+  t.check("書く紙は帯のすぐ下から、左右は端まで", box.top <= 9 && box.h >= 0.95 && box.w === 1, JSON.stringify(box));
   const look = await page.evaluate(() => {
     const s = document.querySelector(".sheet.is-note");
     const cs = getComputedStyle(s);
@@ -124,7 +124,7 @@ const { open, checker } = require("./lib");
       scrim: bd.classList.contains("sheet-backdrop") && getComputedStyle(bd).backgroundColor !== "rgba(0, 0, 0, 0)"
         && getComputedStyle(bd).backdropFilter === "none" };
   });
-  t.check("四隅が丸いカード・持ち手がある", look.tl > 0 && look.tr > 0 && look.bl > 0 && look.handle, JSON.stringify(look));
+  t.check("上の角が丸い・底は角なし・持ち手がある", look.tl > 0 && look.tr > 0 && look.bl === 0 && look.handle, JSON.stringify(look));
   t.check("後ろは幕（ぼかさない。P2-6）", look.scrim, JSON.stringify(look));
   const head = await page.$eval(".sheet.is-note .sheet-head", (h) => {
     const b = h.querySelector(".js-close");
@@ -722,6 +722,31 @@ const { open, checker } = require("./lib");
     t.check("N4：開いた★はもう出ない（開いた時刻は端末だけ。★のものだけ覚える）", (await meet()) === null && !!seen["n-meet-fav"]
       && (await page.evaluate((ks) => ks.every((k) => KN.notes.get(k).fav), Object.keys(seen)))
       && (await page.evaluate(() => KN.notes.get("n-meet-fav").updatedAt)) === old, JSON.stringify(seen));
+  }
+
+  /* 意3：見出し・箇条書きの隣の空行は低く（段落→見出しの字 30px 以下）／電話の紙は左右と底まで／iPad 縦の紙の背は窓の 9割以上 */
+  {
+    const at = new Date().toISOString();
+    await page.evaluate((a) => KN.notes.addMany([{ id: "n-i3", title: "意3", body: "段落。\n\n## 見出し\n\n- 一\n\n段落。", notebook: "", tags: [], fav: false, createdAt: a, updatedAt: a, deletedAt: null }]).then(() => KN.notes.flush()), at);
+    const look = async () => {
+      await page.evaluate(() => KN.screens.notes.open("n-i3"));
+      await page.waitForSelector(".sheet.is-note.is-open .note-view .nv-h");
+      await page.waitForTimeout(700);
+      const r = await page.evaluate(() => {
+        const s = document.querySelector(".sheet.is-note.is-open"), b = s.getBoundingClientRect(), v = s.querySelector(".note-view");
+        return { x: b.x, w: b.width, h: b.height, bottom: b.bottom, win: [innerWidth, innerHeight],
+          gap: v.querySelector(".nv-h .nv-t").getBoundingClientRect().top - v.querySelector(".nv-p").getBoundingClientRect().bottom };
+      });
+      await closeSheet();
+      return r;
+    };
+    const ph = await look();
+    t.check("意3：段落→見出しの空き 30px 以下", ph.gap <= 30, JSON.stringify(ph));
+    t.check("意3：電話の紙は左右と底の端まで", ph.x === 0 && ph.w === ph.win[0] && Math.abs(ph.bottom - ph.win[1]) < 1, JSON.stringify(ph));
+    await page.setViewportSize({ width: 820, height: 1180 });
+    const pad = await look();
+    t.check("意3：iPad 縦の紙の背は窓の 9割以上・幅は読む列のまま", pad.h >= pad.win[1] * 0.9 && pad.w < pad.win[0], JSON.stringify(pad));
+    await page.setViewportSize({ width: 393, height: 852 });
   }
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);

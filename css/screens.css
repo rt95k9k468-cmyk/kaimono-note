@@ -5053,35 +5053,30 @@ textarea.note-title-in {
     box-shadow: none;
   }
   .sheet-backdrop.is-clear:not(.is-note-cover) { background: transparent; }  /* ノートの紙の後ろは幕（P2-6） */
-  /* 2.0（V19）：四隅の丸いカード。左右・上下に同じだけ空けて浮かせる（真ん中は
-     left:50% と translate(-50%) なので、左右の空きは揃う）。キーボードが出ている
-     あいだは底を空けない（道具の帯がキーボードにつくように）。閉じた姿は空けたぶん
-     も下へ（でないと底に縁が残る）。払う・一番上で下へ引くのは js
-     （screen-notes.js）。底はホームの棒のぶん（--safe-b）も空ける——8px では
-     iPhone の画面の丸い角に下の角が切られた（V26、利用者 10月5日）。 */
+  /* 意3：紙は左右と底の端まで（四辺に 8px 覗いていた下の画面が読む邪魔。P2-3 の見本 02）。上だけ空けて丸角。
+     底の角は画面の丸い角が切るので、ホームの棒のぶんは中身の側（--note-safe）で持つ。払う・引くは js（screen-notes.js）。 */
   .sheet.is-note {
     --note-gap: var(--sp-2);
-    --note-safe: 0px;
-    --note-gap-b0: max(var(--note-gap), var(--safe-b));
-    --note-gap-b: clamp(0px, var(--note-gap-b0) - var(--kb, 0px) * 100, var(--note-gap-b0));
-    width: calc(100% - var(--note-gap) * 2);
-    bottom: calc(var(--kb, 0px) + var(--pad, 0px) + var(--note-gap-b));
-    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--note-gap) - var(--note-gap-b));
-    border-radius: var(--r-xl);
+    width: 100%;
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--note-gap));
     box-shadow: var(--shadow-2);
   }
   /* 横はブラウザに渡さない（払いを pointercancel で切られないように）。
      touch-action は送る器で途切れるので、器と書く欄にも。 */
   .sheet.is-note,
   .sheet.is-note :is(.sheet-body, textarea, .note-live) { touch-action: pan-y; }
-  .sheet.is-note:not(.is-open):not(.is-from-origin) {
-    transform: translate(-50%, calc(100% + var(--note-gap) + var(--note-gap-b0)));
-  }
+  .sheet.is-note:not(.is-open):not(.is-from-origin) { transform: translate(-50%, 100%); }
   /* 左端から払っているあいだは指につく（紙の transition を着たままだと遅れて追う）。 */
   .sheet.is-note.is-edge { transition: none; }
 }
 /* 広い画面で「画面いっぱい」（⋯ から。screen-notes.js の wideItem）。四方を同じだけ空けた一枚。 */
 @media (min-width: 640px) {
+  /* 意3：iPad の紙は背を窓いっぱいに。幅は読む列（--note-measure）に左右の余白を足しただけ（P1-2・見本 04）。 */
+  .sheet.is-note:not(.is-wide) {
+    width: min(100% - var(--sp-8) * 2, var(--note-measure) + var(--sp-8) * 2);
+    height: calc(var(--vvh, 100dvh) - var(--pad, 0px) - var(--safe-t) - var(--sp-8));
+    max-height: none;
+  }
   .sheet.is-note.is-wide {
     --note-gap: var(--sp-4);
     width: calc(100% - var(--note-gap) * 2);
@@ -5124,6 +5119,8 @@ textarea.note-title-in {
 .note-view > .nv-h:first-child { margin-top: 0; }
 /* 空の行は一行ぶん（読む姿も書く姿も。.7em だと底で改行しても少しずつしか下がらず、行も選びにくかった。2026年10月26日、利用者）。 */
 .nv-blank { height: 1lh; }
+/* 見出し・箇条書き・引用・区切りの隣は低く（それらが自分の余白を持つ。重ねると段落→見出しが 45px 空いた。P2-3） */
+.nv-blank:has(+ :is(.nv-h, .nv-li, .nv-q, .nv-hr)), :is(.nv-h, .nv-li, .nv-q, .nv-hr) + .nv-blank { height: .3lh; }
 /* 表（note-format.js の tablesOf）。はみ出せば表だけ横に送る。 */
 .note-view > .nv-table { white-space: normal; overflow-x: auto; touch-action: pan-x pan-y; margin: .4em 0; text-align: left; }
 .nv-table table { border-collapse: collapse; font-size: var(--fs-md); line-height: var(--lh-tight); }
