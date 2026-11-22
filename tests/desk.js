@@ -349,32 +349,32 @@ const { open, checker, pen } = require("./lib");
   const back = await box("#tabbar"), lens = await box(".tab-lens"), todo = await box(".tab-todo");
   t.check("電話の幅へ縮めると、帯と印は下へ戻る", back.b >= 843 && back.w === 390 && Math.abs(lens.t - todo.t) < 20, JSON.stringify({ back, lens, todo }));
 
-  /* 段8：設定。電話はまとめない。1280px からは見出しごとのまとまりを二段に（幅をまたげば組み直す）。
-     「›」は一面ぶん滑らせず、32px だけずらして薄く入れ替える。 */
+  /* 段8・意7c：設定。電話はまとめない。1024px からは二面（幅をまたげば組み直す）。「›」は一面ぶん滑らせず、32px だけずらして薄く入れ替える。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await wait(700);
   t.check("設定：電話の幅はまとめない（一列のまま）", await page.evaluate(() => !document.querySelector("#screen-settings .set-sec, #screen-settings .is-duo")));
   await page.setViewportSize({ width: 1440, height: 900 });
   await wait(500);
-  /* 根っこも二段（R8、11月12日）：左に 控え・見た目・記録を守る、右に 席（意7a）。右の段の頭は左の段の頭に揃う。 */
+  /* 意7c：1024px〜は二面。左に根っこ（一列）、右に選んだ一枚。根っこは伏せず、選んだ入口に印。根っこの別の入口は右を入れ替える。 */
   const rootLook = await page.evaluate(() => { const L = document.querySelector("#screen-settings .set-layer");
-    const r = (s) => { const e = L.querySelector(s); return e && e.getBoundingClientRect(); };
-    const a = r(".set-sec:nth-child(1)"), b = r(".set-sec:nth-child(3)"), c = r(".set-sec:nth-child(2)");
-    return { duo: L.classList.contains("is-duo"), right: !!(a && b && c) && b.left > a.right - 1 && Math.abs(b.top - a.top) < 2 && Math.abs(c.left - a.left) < 2 && c.top > a.bottom - 1,
-      tabs: (L.querySelector(".set-sec:nth-child(3) .set-head") || {}).textContent }; });
-  t.check("設定：根っこは 1280px〜で二段（右に席）", rootLook.duo && rootLook.right && /席/.test(rootLook.tabs), JSON.stringify(rootLook));
+    return { duo: L.classList.contains("is-duo"), two: L.parentNode.classList.contains("is-two"), w: Math.round(L.getBoundingClientRect().width) }; });
+  t.check("設定：1024px〜は二面の左に根っこ（一列）", !rootLook.duo && rootLook.two && rootLook.w >= 320 && rootLook.w <= 420, JSON.stringify(rootLook));
   await page.locator("#screen-settings .set-row", { hasText: "表示・操作" }).first().click();
   await wait(60);
   const mid = await page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();
     return { l: Math.round(L.getBoundingClientRect().left), o: +getComputedStyle(L).opacity, n: document.querySelectorAll("#screen-settings .set-layer").length }; });
-  t.check("設定：「›」は一面ぶん滑らせず、少しずらして薄く入れ替える", mid.n === 2 && mid.l >= 256 && mid.l <= 256 + 32 && mid.o < 1, JSON.stringify(mid));
+  t.check("設定：右の一枚は少しずらして薄く現れる", mid.n === 2 && mid.l >= 256 + rootLook.w && mid.l <= 256 + rootLook.w + 32 && mid.o < 1, JSON.stringify(mid));
   await wait(600);
-  const secs = await page.evaluate(() => [...document.querySelectorAll("#screen-settings .set-layer:last-child.is-duo .set-sec > .set-head")]
-    .map((h) => { const r = h.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top) }; }));
-  const rightSecs = secs.filter((x) => x.l > secs[0].l + 300);
-  t.check("設定：1280px〜は入口の先の一枚を見出しごとに二段（右の段の頭の見出しは左の段の頭に揃う）",
-    secs.length >= 2 && rightSecs.length >= 1 && rightSecs[0].t === secs[0].t
-      && secs.every((x) => x.l === secs[0].l || x.l === rightSecs[0].l), JSON.stringify(secs));
+  const pair = () => page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")];
+    return { n: L.length, inert: L[0].inert, tf: L[0].style.transform, on: (L[0].querySelector(".set-row.is-on") || {}).dataset?.page, top: L[L.length - 1].querySelector(".js-nav-title").textContent }; });
+  const p1 = await pair();
+  await page.locator("#screen-settings .set-row", { hasText: "この端末" }).first().click();
+  await wait(600);
+  const p2 = await pair();
+  await page.locator("#screen-settings .set-row", { hasText: "表示・操作" }).first().click();
+  await wait(600);
+  t.check("設定：二面の根っこは伏せず、選んだ入口に印。別の入口は右を入れ替える",
+    p1.n === 2 && !p1.inert && !p1.tf && p1.on === "look" && p2.n === 2 && p2.on === "device" && p2.top === "この端末", JSON.stringify({ p1, p2 }));
   t.check("設定の表示・操作に「一文字の近道」（指の細かい端末）", await page.locator("#screen-settings .set-layer:last-child .set-row", { hasText: "一文字の近道" }).count() === 1);
   await page.locator("#screen-settings .set-layer:last-child .set-back").click();
   await wait(600);
@@ -382,7 +382,7 @@ const { open, checker, pen } = require("./lib");
     return L.length === 1 && !L[0].style.transform && getComputedStyle(L[0]).opacity === "1"; }));
   await page.setViewportSize({ width: 1100, height: 800 });
   await wait(500);
-  t.check("設定：1280px より狭い desk は一列", await page.evaluate(() => !document.querySelector("#screen-settings .is-duo")));
+  t.check("設定：1280px より狭い desk も二面・まとめない", await page.evaluate(() => !document.querySelector("#screen-settings .is-duo") && document.querySelector("#screen-settings.is-two")));
 
   /* P2：1280px より狭い desk でも、ホームは札（前は左の木と同じ木を二度出していた）。列を畳むと木のホームへ。 */
   await page.click(".tab-notes");

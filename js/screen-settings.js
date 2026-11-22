@@ -37,6 +37,28 @@
 
   const top = () => stack[stack.length - 1];
 
+  /* 意7c：広い幅（iPad 横・パソコン）は二面——左に根っこ、右に重なりの上の一枚。重なり（stack）はそのまま、
+     根っこだけを伏せない・控えへ引かない（`behind`）。電話は一枚ずつ。式は screens.css の「二面」と同じ。 */
+  const TWO = window.matchMedia ? window.matchMedia("(min-width: 1024px)") : null;
+  const two = () => !!(TWO && TWO.matches);
+  /** 下の一枚として動かすもの。二面の根っこは動かさない（null）。 */
+  const behind = (L) => (two() && L === stack[0] ? null : L.el);
+  /** 根っこの行から押した一手か（二面では右の一枚を入れ替える）。click の捕まえで立て、その一手のあいだだけ。 */
+  let fromRoot = false;
+  /** 二面：右に出ている入口へ印（`is-on`。根っこの行は `data-page`）。 */
+  function mark() {
+    if (!stack.length) return;
+    const on = two() && stack[1] ? stack[1].id : "";
+    stack[0].body.querySelectorAll(".set-row[data-page]").forEach((r) => r.classList.toggle("is-on", r.dataset.page === on));
+  }
+  /** 幅をまたいだ：止まっている姿を置き直し、組み直す。 */
+  function reflow() {
+    if (root) root.classList.toggle("is-two", two());
+    stack.forEach((L, i) => { if (i < stack.length - 1 && behind(L)) KN.edgeBack.rest(L.el); else KN.edgeBack.clear(L.el); });
+    cover();
+    stack.forEach(paintLayer);
+  }
+
   /** 進む（マウスの「進む」ボタン・keys.js）：戻るでめくった「›」の先を、めくった逆の順に開き直す。
       覚えるのは PAGES の一枚だけ（押しのけた紙・noteLabel は中身が呼んだ側・選んだものなので開き直せない）。
       ほかへ進んだ・紙を押しのけた・設定に入り直したら忘れる。 */
@@ -109,7 +131,10 @@
     root.innerHTML = "";
     stack = [makeLayer(null)];
     root.append(stack[0].el);
+    root.classList.toggle("is-two", two());
+    stack[0].el.addEventListener("click", () => { fromRoot = true; setTimeout(() => { fromRoot = false; }); }, true);
     if (DUO) DUO.addEventListener("change", () => stack.forEach(paintLayer));
+    if (TWO) TWO.addEventListener("change", reflow);
     /* Dropbox へ送った・送れなかったは store の外で動くので、別に聞きます。 */
     if (KN.dropbox) KN.dropbox.onChange(render);
     /* ノート（js/notes-idb.js）も store の外。読み終えたらノートブック・タグの
@@ -139,7 +164,8 @@
 
   /** 左端を引きはじめた。上の一枚と、その下に出すものを答えます。 */
   function edgeBegin() {
-    if (stack.length > 1) {
+    /* 二面で右が一枚だけなら、左端は根っこの端——画面ごと戻る（下の枝）。 */
+    if (stack.length > (two() ? 2 : 1)) {
       const leaving = top();
       const under = stack[stack.length - 2];
       return {
@@ -183,7 +209,7 @@
   }
 
   /* 下に敷かれた一枚は、Tab も読み上げも通さない（B3。見えない行に止まっていた）。重なりを変えたら呼ぶ。 */
-  function cover() { stack.forEach((L, i) => { L.el.inert = i < stack.length - 1; }); }
+  function cover() { stack.forEach((L, i) => { L.el.inert = i < stack.length - 1 && !!behind(L); }); }
   const STOPS = "button, a[href], input, select, textarea, [tabindex]";
   /** 奥へ入る：カーソルが下の一枚に居たら、新しい一枚へ移す（押した口は覚えておく）。 */
   function carry(L, under) {
@@ -213,10 +239,12 @@
     if (at && parseFloat(at[1]) > 4) {
       L.el.remove();
       KN.edgeBack.clear(under.el);
+      mark();
       return;
     }
     moving = true;
-    KN.edgeBack.push(L.el, under.el, -1).then(() => { L.el.remove(); moving = false; });
+    mark();
+    KN.edgeBack.push(L.el, behind(under), -1).then(() => { L.el.remove(); moving = false; });
   }
 
   /** 戻る。紙を一枚めくるだけ——根っこまで来ていれば、呼んだ画面へ帰る。 */
@@ -251,14 +279,20 @@
   function go(id, keep) {
     if (moving || !PAGES[id]) return;
     if (!keep) ahead = [];
+    /* 二面で根っこの行から：右の一枚を入れ替える（押しのけた紙が上に居れば、閉じかたはその紙のものなので重ねる）。 */
+    if (two() && fromRoot && stack.length > 1 && !stack.some((x) => x.handle)) {
+      if (stack.length === 2 && stack[1].id === id) return;
+      while (stack.length > 1) stack.pop().el.remove();
+    }
     const under = top();
     const L = makeLayer(id);
     stack.push(L);
     root.append(L.el);
     paintLayer(L);
     carry(L, under);
+    mark();
     moving = true;
-    KN.edgeBack.push(L.el, under.el, +1).then(() => { moving = false; });
+    KN.edgeBack.push(L.el, behind(under), +1).then(() => { moving = false; });
   }
 
   /* 帯の題は、**大きな題が帯の下へ隠れてから**出します。二つ同時に
@@ -292,7 +326,7 @@
        見て素通りする）ので、ここで一度だけ。 */
     paintNav(L);
     moving = true;
-    KN.edgeBack.push(L.el, under.el, +1).then(() => { moving = false; });
+    KN.edgeBack.push(L.el, behind(under), +1).then(() => { moving = false; });
 
     let closed = false;
     const handle = {
@@ -360,16 +394,15 @@
     if (page) {
       if (typeof page.title === "function") L.navTitle.textContent = titleOf(page);
       page.build().flat().filter(Boolean).forEach((n) => L.body.append(n));
-    } else renderRoot(L);
+    } else { renderRoot(L); mark(); }
     duo(L);
     L.scroll.scrollTop = keep;
     paintNav(L);
   }
 
-  /* 広い幅（1280px〜。docs/desk.md）と横にした電話（840px〜の背の低い窓）は、見出しごとのまとまりを二段に組む。
-     まとまりが一つなら一列のまま。電話の DOM は今までどおり（まとめるのは広い幅のときだけ。幅をまたいだら組み直す）。
-     式は screens.css の「1280px から、見出しごとのまとまり」と同じ。 */
-  const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px), (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
+  /* 横にした電話（840px〜の背の低い窓）は、見出しごとのまとまりを二段に組む（1024px〜は二面＝`TWO` なので組まない）。
+     まとまりが一つなら一列のまま。縦の電話の DOM は今までどおり（幅をまたいだら組み直す）。式は screens.css の「見出しごとのまとまり」と同じ。 */
+  const DUO = window.matchMedia ? window.matchMedia("(min-width: 840px) and (max-width: 1023px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
   function duo(L) {
     const groups = [];
     /* 根っこ（入口だけの一枚）も二段（R8、11月12日に利用者が選んだ）：左に 控え・見た目・記録を守る、右に 席
@@ -669,6 +702,7 @@
       L.el.remove();
       if (L.handle) L.handle.abandon();
     }
+    if (root) root.classList.toggle("is-two", two());
     cover();
     KN.edgeBack.clear(stack[0].el);
     stack[0].scroll.scrollTop = 0;
@@ -701,7 +735,7 @@
         root.append(L.el);
         paintLayer(L);
         cover();
-        KN.edgeBack.rest(under.el);
+        if (behind(under)) KN.edgeBack.rest(under.el);
       }
       if (w.top > 0) L.scroll.scrollTop = w.top;
       paintNav(L);
@@ -788,7 +822,7 @@
     const s = store.get();
     const look = KN.app.lookOf(s.settings);
     const a = look.look === "modern" ? null : store.ACCENTS.find((x) => x.id === look.accent);
-    const entry = (o) => navRow({ lead: "icon", entry: true, ...o });
+    const entry = (o) => { const r = navRow({ lead: "icon", entry: true, ...o }); if (o.page) r.dataset.page = o.page; return r; };
     const keep = keepNow();
     return [
       card(entry({ ico: "download", tint: "var(--c-text-2)", title: "端末の外の控え", ...keep, onTap: () => go("keep") })),
@@ -798,22 +832,22 @@
           ico: "palette", title: "表示・操作", sub: "明るさ・装い・文字",
           /* 参考画面と同じで、いまの色をひと粒で。 */
           value: a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null,
-          onTap: () => go("look"),
+          page: "look", onTap: () => go("look"),
         }),
-        entry({ ico: "bell", title: "通知・ロック", value: privacyNow(), onTap: () => go("privacy") })
+        entry({ ico: "bell", title: "通知・ロック", value: privacyNow(), page: "privacy", onTap: () => go("privacy") })
       ),
       head("席"),
-      card(...SEATS.map((t) => entry({ ico: t.icon, title: t.label, sub: t.sub, onTap: () => go(t.id) }))),
+      card(...SEATS.map((t) => entry({ ico: t.icon, title: t.label, sub: t.sub, page: t.id, onTap: () => go(t.id) }))),
       head("記録を守る"),
       card(
-        entry({ ico: "download", title: "控え", sub: "保存・Dropbox・戻す", onTap: () => go("keep") }),
-        entry({ ico: "repeat", title: "同期", sub: "部屋・ノートの同期", onTap: () => go("syncing") }),
-        entry({ ico: "upload", title: "出し入れ", sub: "書き出し・取り込み", onTap: () => go("io") }),
-        entry({ ico: "rows", title: "この端末", sub: "中身・点検・外す", onTap: () => go("device") })
+        entry({ ico: "download", title: "控え", sub: "保存・Dropbox・戻す", page: "keep", onTap: () => go("keep") }),
+        entry({ ico: "repeat", title: "同期", sub: "部屋・ノートの同期", page: "syncing", onTap: () => go("syncing") }),
+        entry({ ico: "upload", title: "出し入れ", sub: "書き出し・取り込み", page: "io", onTap: () => go("io") }),
+        entry({ ico: "rows", title: "この端末", sub: "中身・点検・外す", page: "device", onTap: () => go("device") })
       ),
       card(entry({
         ico: "route", title: "連携・ヘルプ", sub: "ショートカット・中継所・エラー",
-        value: KN.errlog && S.errCount() ? `${S.errCount()}件` : "", onTap: () => go("help"),
+        value: KN.errlog && S.errCount() ? `${S.errCount()}件` : "", page: "help", onTap: () => go("help"),
       })),
     ];
   }

@@ -6795,13 +6795,11 @@ button.note-when:active { opacity: var(--press-fade); }
   :root { --desk-read: 760px; --desk-wide: 1180px; }
   /* 帯の暦の用事の札は 11px（W5。電話の 10px は七つ並べるマスの幅から。マスの背 27px＝行 13px×2 は変えない）。 */
 
-  /* 1280px から、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
-     まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。横にした電話も（式は
-     screen-settings.js の DUO と同じ）。 */
-  @media (min-width: 1280px), (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  /* 横にした電話は、見出しごとのまとまり（`.set-sec`、screen-settings.js の `duo`）を二段に。段の頭は揃える：
+     まとまりの空きは上の余白で持ち、一つ目は持たない（段の途中で切れた余白は消える）。式は DUO と同じ。 */
+  @media (max-width: 1023px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
     /* 端と段の間は、ほかの席の段組みと同じ 16px（カードの外の左右を 8px に。カードの中の --set-gut は電話と同じ）。 */
-    .set-layer.is-duo .set-scroll { padding-inline: max(var(--sp-2), calc((100% - var(--desk-wide)) / 2 + var(--sp-2))); }
-    .set-layer.is-duo .set-nav { padding-inline: max(var(--sp-4), calc((100% - var(--desk-wide)) / 2)); }
+    .set-layer.is-duo .set-scroll { padding-inline: var(--sp-2); }
     .set-layer.is-duo .js-body { columns: 2; column-gap: 0; padding-top: var(--sp-2); }
     .set-layer.is-duo .js-body .set-card { margin-inline: var(--sp-2); }
     .set-layer.is-duo .js-body :is(.set-head, .set-foot:not(.is-flush)) { padding-inline: calc(var(--sp-2) + var(--sp-5)); }
@@ -6813,6 +6811,14 @@ button.note-when:active { opacity: var(--press-fade); }
     /* 根っこ：左に 控え・見た目・記録を守る、右に 席（R8・意7a）。 */
     .set-layer.is-duo.is-root .js-body { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
     .is-root .set-sec:nth-child(3) { grid-area: 1 / 2 / span 3; margin-top: 0; }
+  }
+  /* 意7c 二面（式は screen-settings.js の TWO）：左に根っこ、右に重なりの上の一枚（読む幅に寄せる）。選んだ入口は淡い基調色。 */
+  @media (min-width: 1024px) {
+    #screen-settings.is-two { --set-l: clamp(320px, 36%, 420px); }
+    .is-two > .set-layer:first-child { right: auto; width: var(--set-l); border-right: 1px solid var(--set-line); z-index: 1; }
+    .is-two > .set-layer + .set-layer { left: var(--set-l); }
+    .is-two > .set-layer + .set-layer :is(.set-scroll, .set-nav) { padding-inline: max(var(--sp-4), (100% - 640px) / 2); }
+    #screen-settings.is-two .set-row.is-on { background: var(--c-primary-soft); }
   }
   /* からだの紙は地を持たない（`.is-bare`。中のカードの束が地）。広い幅ではカードが段に並んで束が短くなり、束の下で
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
