@@ -1,6 +1,6 @@
 /* 余白の物差し（docs/log/design-review.md 10節の P7）。席ごと・幅ごとに、窓の端からカードまで・段の間・カードの中を測る。
    - 電話（393）：今の値をそのまま見張る（一画素も変えない）。カードは窓の端から 16px（買うものの棚は 12px、設定は 20px）。
-   - 段を並べる席（840px〜：からだの段組み・ノートのホームの二段・設定の二段）：中身は --desk-wide 1180px まで。
+   - 段を並べる席（840px〜：からだの段組み・ノートのホームの二段）。設定は 1024px〜二面（右の一枚は読む幅に寄せる）：中身は --desk-wide 1180px まで。
      窓の端からカードまで＝ max(16, (席の幅 − 1180) / 2 + 16)、段の間 16px、札の行の間 16px。
    - カードの中は電話と同じ（からだのカードは R4 で 14px＝見本の #health）。角は札の5段のまま（ここでは見ない。look-tokens・shape-tokens）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/gutters.js */
@@ -85,15 +85,15 @@ const near = (a, b) => Math.abs(a - b) <= 1;
     if (w >= 1280) {
       await page.keyboard.press(",");
       await page.waitForTimeout(900);
-      /* 根っこは入口だけの一列（2026年11月5日）。二段に組むのは入口の先の一枚（表示・操作）。 */
+      /* 意7c：1024px〜は二面。右の一枚（表示・操作）は二段に組まず、読む幅に寄せて左右の余白がそろう（16px 以上）。 */
       await page.evaluate(() => KN.settingsParts.go("look"));
       await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
       await page.waitForTimeout(400);
-      const s = await M(".set-layer:last-child.is-duo .js-body .set-card", ".set-layer:last-child");
-      const se = s.length ? edgeOf(s[0].seat) : 0, sg = gaps(s);
-      t.check(`${w} 設定の二段：窓の端から ${se}px・段の間 16px`,
-        s.length > 1 && near(Math.min(...s.map((c) => c.l)), se) && near(Math.min(...s.map((c) => c.r)), se) && sg.h.length > 0 && sg.h.every((g) => near(g, 16)),
-        JSON.stringify({ l: Math.min(...s.map((c) => c.l)), r: Math.min(...s.map((c) => c.r)), se, h: sg.h }));
+      const s = await M(".set-layer:last-child .js-body .set-card", ".set-layer:last-child");
+      const sl = Math.min(...s.map((c) => c.l)), sr = Math.min(...s.map((c) => c.r));
+      t.check(`${w} 設定の右の一枚：二段に組まず、左右の余白がそろう`,
+        s.length > 1 && !(await page.evaluate(() => document.querySelector(".set-layer:last-child.is-duo"))) && sl >= 16 && near(sl, sr),
+        JSON.stringify({ l: sl, r: sr }));
       await page.keyboard.press("Escape");
       await page.waitForTimeout(600);
       await page.keyboard.press("Escape");
