@@ -98,7 +98,7 @@ const FORBIDDEN = [
   await page.waitForTimeout(400);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "archive" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "年の本" }).first().click();
   await page.waitForTimeout(500);

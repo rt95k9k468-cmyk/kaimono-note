@@ -61,7 +61,7 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
   /* 根っこの入口「daily」の先の一枚に、書き出しの行（2026年11月5日。前は daily →「書き出し ›」の一枚）。 */
-  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "archive" }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(400);
   const out = await page.locator(".set-layer:last-child").innerText();

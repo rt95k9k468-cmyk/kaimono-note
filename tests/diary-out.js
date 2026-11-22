@@ -87,7 +87,7 @@ async function pickDiary(page, text) {
       await page.locator(".set-layer:last-child .set-back").click();
       await page.waitForTimeout(400);
     }
-    await tapRow(page, "daily");
+    await tapRow(page, "archive");
     await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
     await page.waitForTimeout(300);
   }

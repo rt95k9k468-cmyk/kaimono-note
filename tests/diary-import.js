@@ -78,7 +78,7 @@ async function run(choice) {
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "archive" }).first().click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2 && !document.querySelector(".set-layer.is-edge-lift"));
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .js-diary-file").setInputFiles({ name: "kurashi-diary.json", mimeType: "application/json", buffer: Buffer.from(sealed) });

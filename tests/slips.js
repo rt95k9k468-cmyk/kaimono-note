@@ -95,7 +95,7 @@ const YEST = "2026-10-05";
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await wait(300);
   /* 置き直しの記録は tasks の一枚の「記録」の束（2026年11月5日。根っこは入口だけ）。 */
-  await page.locator(".set-layer:last-child .set-row", { hasText: "tasks" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
   await wait(600);
   await page.locator(".set-layer:last-child .set-row", { hasText: "置き直しの記録" }).first().click();
   await wait(600);

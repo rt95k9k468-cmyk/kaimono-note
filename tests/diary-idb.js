@@ -156,7 +156,7 @@ async function tapMonthExport(page) {
   await page.waitForTimeout(300);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "daily" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "archive" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "期間を選んで書き出す" }).first().click();
   await page.waitForTimeout(400);

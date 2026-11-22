@@ -141,8 +141,8 @@ const WORD = "しおかぜ";
   /* 書き出しの入口も、開けてから。 */
   await show("settings");
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
-  /* 書き出しの行は daily の一枚に（2026年11月5日。根っこは入口だけ）。 */
-  await page.locator(`${top} .set-row`, { hasText: "daily" }).first().click();
+  /* 書き出しの行は archive の一枚に（2026年11月5日。根っこは入口だけ）。 */
+  await page.locator(`${top} .set-row`, { hasText: "archive" }).first().click();
   await page.waitForTimeout(400);
   /* 設定の上では、紙は一枚として押しのけて出る（docs/traps.md）。 */
   const layers = () => page.evaluate(() => document.querySelectorAll(".set-layer, .sheet.is-open").length);
