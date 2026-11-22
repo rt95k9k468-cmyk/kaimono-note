@@ -1,5 +1,6 @@
 /* 右の段のノートが閉じるあいだ、段の形のまま（docs/log/design-review.md 10節の P7。docs/desk.md の P3b）。
-   - ホームで開いたまま「すべてのノート」：一覧が左に入って段の左端が 380px 動くが、閉じる紙は跳ばずにその場で閉じる
+   - 三面（意5）：入ると一覧といちばん新しいノート（焦点は奪わない）・＋は「新しいノート」・空いた段に額の広重
+   - 開いたまま「すべてのノート」：閉じる紙は跳ばずにその場で閉じる
    - 右の段に開いたまま席を移る：席の印が先に替わっても、閉じる紙が真ん中の大きな紙の姿にならない
    閉じる動きは今までの紙の閉じ方（右へ --desk-shift 滑って薄れる）。動きは足さない。
    - 段の紙がずれる幅は席の移り・「›」と同じ --desk-shift（P7）
@@ -35,15 +36,22 @@ const { open, checker } = require("./lib");
   };
   const inPlace = (f, at) => f.length > 0 && f.every((r) => r.t === at.t && r.w === at.w && r.l >= at.l - 1 && r.l <= at.l + 33);
 
-  /* 1. ホームの札から開いて、すべてのノートへ。 */
-  await page.click("#screen-notes .nt-recent .js-open >> nth=0");
+  /* 1. 三面（意5）：席に入るとホームを挟まず一覧、いちばん新しいノートが段に開く（焦点は奪わない）。そのまま「すべてのノート」へ。 */
   await page.waitForSelector(".sheet.is-note.is-open.is-docked");
   await page.waitForTimeout(500);
+  const in1 = await page.evaluate(() => ({ mid: document.documentElement.classList.contains("notes-mid"), home: !!document.querySelector("#screen-notes .nt-recent"),
+    t: document.querySelector(".sheet.is-note .js-title").value, focus: !!document.activeElement.closest(".sheet"),
+    fab: [...document.querySelectorAll("#dock .add-fab .fab-name, #dock .add-fab .fab-key")].map((e) => e.offsetWidth > 0) }));
+  t.check("三面：入ると一覧（ホームを挟まない）・いちばん新しいノートが段に・焦点は奪わない",
+    in1.mid && !in1.home && in1.t === "一つめ" && !in1.focus, JSON.stringify(in1));
+  t.check("三面：＋は左の列の「新しいノート」と N", in1.fab.length === 2 && in1.fab.every(Boolean), JSON.stringify(in1.fab));
   const a = await page.evaluate(() => { const r = document.querySelector(".sheet.is-note").getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), w: Math.round(r.width) }; });
   const r1 = await closing(() => page.click(".js-tree-all"));
   t.check("すべてのノートへ：閉じる紙は段の形のまま（一覧のぶん跳ばない）", inPlace(r1.f, a) && r1.left === 0,
     JSON.stringify({ a, f: r1.f.filter((x, i, s) => i === 0 || JSON.stringify(x) !== JSON.stringify(s[i - 1])).slice(0, 6), left: r1.left }));
   t.check("一覧が出ている", await page.evaluate(() => document.documentElement.classList.contains("notes-mid")));
+  const fr = await page.evaluate(() => { const f = document.querySelector(".notes-frame"); return { blank: f.classList.contains("is-blank"), d: getComputedStyle(f).display }; });
+  t.check("何も開いていない段には額の広重（絵が読めたとき）", fr.blank ? fr.d === "none" : fr.d === "grid", JSON.stringify(fr));
 
   /* 2. 一覧から開いて、席を移る。 */
   await page.click("#screen-notes .note-row.is-card >> nth=0");
@@ -57,8 +65,7 @@ const { open, checker } = require("./lib");
   t.check("席は移った", await page.evaluate(() => document.documentElement.dataset.screen === "todo"));
 
   /* 3. 段の紙が開く前のずれは desk のずらす幅（--desk-shift）と同じ。 */
-  await page.click(".tab-notes");
-  await page.waitForTimeout(600);
+  /* 席に入ると、いちばん新しいノートが段に開く（意5）——その紙の最初のずれを見る。 */
   await page.evaluate(() => {
     window.__x = null;
     const t0 = performance.now();
@@ -69,7 +76,7 @@ const { open, checker } = require("./lib");
     };
     requestAnimationFrame(tick);
   });
-  await page.click("#screen-notes .note-row.is-card .js-open >> nth=0");
+  await page.click(".tab-notes");
   await page.waitForSelector(".sheet.is-note.is-open.is-docked");
   const shift = await page.evaluate(() => ({
     want: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--desk-shift")), first: window.__x }));

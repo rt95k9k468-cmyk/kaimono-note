@@ -287,24 +287,24 @@ const { open, checker, pen } = require("./lib");
       quick: [...document.querySelectorAll(".notes-tree .nt-quick")].map((e) => e.getAttribute("aria-label")),
     };
   });
-  const home = await homeLook();
-  t.check("広い幅のホーム：最近は一覧の行を三つ（意4b）、本棚はその下で端を揃える、木は左の列だけ", home.n === 3 && home.side && home.l >= 256
-    && home.parts[0] === "一つめ" && /\d+:\d\d$/.test(home.parts[1]) && home.parts[2] === "" && home.tree === 0 && !home.mid
-    && await shown(".notes-tree .js-tree-asks") && !home.quick.includes("最近直した"), JSON.stringify(home));
-  await page.click('#screen-notes .nt-recent .note-row[data-id="n-desk0"] .js-open');
-  await page.waitForSelector(".sheet.is-note.is-open");
+  /* 意5：1440px は三面——ホームを挟まず一覧、いちばん新しいノートが一覧の右の段に。＋は左の列の「新しいノート」。 */
+  await page.waitForSelector(".sheet.is-note.is-open.is-docked");
   await wait(500);
+  const home = await homeLook();
   const pane0 = await box(".sheet.is-note.is-open"), fab0 = await box("#dock");
+  const first = await page.evaluate(() => document.querySelector(".sheet.is-note .note-title-in").value);
   const fabTop = await page.evaluate(() => { const r = document.getElementById("dock").getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!e && !!e.closest("#dock"); });
-  t.check("二列のホーム：開いたノートは木のすぐ右から・＋は木の右下（隠れない）", pane0 && pane0.l === 256 && pane0.r === 1440 && fab0.r <= 256 && fabTop,
-    JSON.stringify({ pane0, fab0, fabTop }));
+  t.check("三面：入るとホームを挟まず一覧・いちばん新しいノートが一覧の右に・木は左の列だけ", home.mid && home.n === 0 && home.tree === 0
+    && first === "一つめ" && pane0 && pane0.l === 256 + 380 && pane0.r === 1440 && await shown(".notes-tree .js-tree-asks") && !home.quick.includes("最近直した"),
+    JSON.stringify({ home, pane0, first }));
+  t.check("三面：＋は左の列の「新しいノート」（隠れない）", fab0.r <= 256 && fab0.w > 200 && fabTop, JSON.stringify({ fab0, fabTop }));
   await page.keyboard.press("Control+k");
   await wait(500);
   t.check("さがすと真ん中の一覧が出る・左の列は残る", (await homeLook()).mid && await shown("#screen-notes .search-wrap") && await shown(".tab-archive")
     && Math.round((await box(".sheet.is-note.is-open")).l) >= 256 + 380);
   await page.evaluate(() => document.activeElement.blur());
   await wait(400);
-  t.check("空のまま窓を離れると二列へ戻る", !(await homeLook()).mid && await shown("#screen-notes .nt-home-two"));
+  t.check("空のまま窓を離れても三面は一覧のまま", (await homeLook()).mid);
   await page.evaluate(() => document.querySelector(".notes-tree .js-tree-all").click());
   await wait(600);
 
@@ -394,7 +394,7 @@ const { open, checker, pen } = require("./lib");
   await page.keyboard.press("Control+Backslash");
   await wait(600);
   const homeF = await homeLook();
-  t.check("列を畳んでも（木が無い）ホームは同じ二段（木は本棚の一冊の中）", homeF.n === 3 && homeF.side && homeF.tree === 0, JSON.stringify(homeF));
+  t.check("列を畳んでも（木が無い）ホームは同じ二段（木は本棚の一冊の中。意5 でもホームを残す）", homeF.n === 3 && homeF.side && homeF.tree === 0, JSON.stringify(homeF));
   await page.keyboard.press("Control+Backslash");
   await wait(400);
 

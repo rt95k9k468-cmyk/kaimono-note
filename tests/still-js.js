@@ -65,7 +65,7 @@ const { open, checker } = require("./lib");
     if (w >= 840) {
       await page.click(".tab-notes");
       await page.waitForTimeout(400);
-      await page.locator("#screen-notes .nt-recent .note-row").first().click();
+      await page.locator("#screen-notes .note-row .js-open").first().click();   // 三面（意5）は一覧から
       await page.waitForTimeout(500);
       await page.keyboard.press("3");
       await page.waitForTimeout(500);

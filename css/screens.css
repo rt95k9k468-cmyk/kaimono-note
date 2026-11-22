@@ -57,6 +57,7 @@
    縁の光（::after）は最後の子として描かれるので、絵を一段上げます。 */
 .add-fab svg { width: 26px; height: 26px; stroke-width: 2.6; position: relative; z-index: 1; }  /* 入れもの：丸ボタン */
 @media (min-width: 840px) { .add-fab { width: 60px; height: 60px; } }   /* 広い幅の＋は一回り大きく（docs/redesign.md 5節） */
+.add-fab :is(.fab-name, .fab-key) { display: none; }   /* 名と近道はノートの席の広い幅だけ（base.css） */
 /* 押すと、**縮まずに膨らんで明るくなります**。動画（Structured）の実測が
    これでした——押した瞬間に丸が一回り大きくなり、色が一段明るいほうへ振れる。
    縮む動きは「引っ込む」ことなので、これから何かが出てくるボタンの合図と
@@ -6947,11 +6948,26 @@ button.note-when:active { opacity: var(--press-fade); }
     display: block; position: absolute; top: calc(var(--sp-10) * 2); bottom: var(--sp-6); right: var(--sp-4);
     width: calc((100% - var(--desk-read)) / 2 - var(--sp-8)); container-type: inline-size; pointer-events: none;
   }
+  /* 意5：三面の読む面は細い（1440 で 804px）——見出しがあれば本文を左へ寄せて右に見出しの列 176px（見本 03）。広ければ真ん中のまま。 */
+  :root.notes-three:is(.notes-mid, .rail-fold) .sheet.is-note.is-docked:not(.is-wide):has(.note-toc-in > *) .sheet-body {
+    padding-inline: max(var(--sp-8), (100% - var(--desk-read)) / 2) max(176px + var(--sp-8), (100% - var(--desk-read)) / 2);
+  }
+  :root.notes-three:is(.notes-mid, .rail-fold) .sheet.is-note.is-docked:not(.is-wide) .note-toc { width: max(176px, (100% - var(--desk-read)) / 2 - var(--sp-8)); }
   /* 真ん中の一覧は「すべてのノート」「問い」・探すときだけ（screen-notes.js の paintMid が .notes-mid）。ホームは
      木｜本文の二列：本文の段に最近直したの札（開いたノートはその上に据わる）。畳んだ列には木が無いので、ホームも出す。 */
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .search-wrap { display: none; }
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
   /* ＋はほかの席と同じ左の列の底（base.css。木はそのぶん底を空ける）。 */
+  /* 何も開いていない読む面には額に入れた広重（意5。screen-notes.js が絵を写す。読めなければ出さない）。紙の下。 */
+  html:not(.is-locked).notes-three:is(.notes-mid, .rail-fold)[data-screen="notes"] .notes-frame:not(.is-blank) {
+    display: grid; place-items: center; position: fixed; left: calc(var(--pane-x) + 1px); right: 0; bottom: 0;
+    top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); z-index: var(--z-bar); pointer-events: none;
+  }
+}
+.notes-frame { display: none; }
+.notes-frame-art {
+  width: min(70%, 420px, 60vh / var(--season-ar, 0.67)); aspect-ratio: 1 / var(--season-ar, 0.67); background: center / cover no-repeat;
+  border: 1px solid var(--c-text-2); border-radius: var(--r-lg); box-shadow: var(--shadow-1);
 }
 /* ノートのホームの広い幅（screen-notes.js の homeBody。840px から。W6）：電話と同じ一列を全幅に。札は四列。 */
 @media (min-width: 840px) {

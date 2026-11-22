@@ -71,13 +71,16 @@ const near = (a, b) => Math.abs(a - b) <= 1;
     t.check(`${w} からだ：カードの行の間 16px`, dg.v.every((g) => near(g, 16)), JSON.stringify(dg.v));
 
     await seat("notes");
-    /* ノートのホーム（W6・意4b）：札・最近の行・本棚を全幅の一列に。札は四列で、間は 16px。 */
-    const n = await M("#screen-notes .nt-home-two :is(.nt-bks, .nt-gates, .nt-recent)");
-    const ng = gaps(await M("#screen-notes .nt-home-two .nt-gate"));
-    const ne = n.length ? edgeOf(n[0].seat) : 0;
-    t.check(`${w} ノートのホーム：窓の端から ${ne}px・札の間 16px`,
-      n.length > 1 && near(Math.min(...n.map((c) => c.l)), ne) && near(Math.min(...n.map((c) => c.r)), ne) && ng.h.length > 0 && ng.h.every((g) => near(g, 16)),
-      JSON.stringify({ l: Math.min(...n.map((c) => c.l)), r: Math.min(...n.map((c) => c.r)), ne, h: ng.h }));
+    /* ノートのホーム（W6・意4b）：札・最近の行・本棚を全幅の一列に。札は四列で、間は 16px。
+       三面（中身 860px〜＝1440・1920）はホームを挟まない（意5）——1032 だけ。 */
+    if (w < 1116) {
+      const n = await M("#screen-notes .nt-home-two :is(.nt-bks, .nt-gates, .nt-recent)");
+      const ng = gaps(await M("#screen-notes .nt-home-two .nt-gate"));
+      const ne = n.length ? edgeOf(n[0].seat) : 0;
+      t.check(`${w} ノートのホーム：窓の端から ${ne}px・札の間 16px`,
+        n.length > 1 && near(Math.min(...n.map((c) => c.l)), ne) && near(Math.min(...n.map((c) => c.r)), ne) && ng.h.length > 0 && ng.h.every((g) => near(g, 16)),
+        JSON.stringify({ l: Math.min(...n.map((c) => c.l)), r: Math.min(...n.map((c) => c.r)), ne, h: ng.h }));
+    }
 
     if (w >= 1280) {
       await page.keyboard.press(",");

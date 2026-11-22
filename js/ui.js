@@ -1292,7 +1292,8 @@
        待つあいだに閉じた紙も奪いません——帰る途中の紙はまだ在るので、すぐ開いた次の
        ノートの本文から、閉じた紙のボタンへカーソルを引き抜いていた（tests/notes.js）。 */
     setTimeout(() => {
-      if (closed || el.contains(document.activeElement)) return;
+      /* calm … 自分から開いた紙（ノートの席に入ると開く右の段。意5）は、居るところから奪わない。 */
+      if (closed || (opts && opts.calm) || el.contains(document.activeElement)) return;
       const target = el.querySelector("input, textarea, select, button:not(.js-close):not(.js-menu)");
       if (target && !("ontouchstart" in window)) focusLanded(() => target, () => !closed && !el.contains(document.activeElement));
       /* 指の端末は欄へ入れない（キーボードを上げない）。紙そのものへ——読み上げが後ろの画面に残らない（B3）。 */

@@ -56,7 +56,8 @@ async function roundTrip(page, sel, same) {
 
     await page.click(".tab-notes");
     await page.waitForTimeout(700);
-    r = await roundTrip(page, "#screen-notes .nt-recent .js-open", () => document.activeElement.matches("#screen-notes .nt-recent .js-open"));
+    /* 三面（意5）は入るといちばん新しい「一つめ」が段に開く——開いていない「二つめ」で。 */
+    r = await roundTrip(page, '#screen-notes .note-row[data-id="n-hand1"] .js-open', () => document.activeElement.matches('#screen-notes .note-row[data-id="n-hand1"] .js-open'));
     t.check("ノートを閉じると、カーソルは組み直した一覧の同じ札へ", r.ok && r.opened && r.back, JSON.stringify(r));
 
     /* ノートの木：← → で畳む・ひらく（B3。カーソルは同じ行に残る）。 */
@@ -199,7 +200,7 @@ async function roundTrip(page, sel, same) {
     t.check("右クリック：やることの行も行の小窓（しまう・消す）", rc.menu && rc.items.some((x) => /アーカイブする/.test(x)) && rc.items.some((x) => /消す/.test(x)), JSON.stringify(rc));
     await page.click(".tab-notes");
     await page.waitForTimeout(700);
-    rc = await rightClick("#screen-notes .nt-recent .note-row");
+    rc = await rightClick('#screen-notes .note-row[data-id="n-hand1"]');
     t.check("右クリック：ノートの行も行の小窓（★・移す・消す）", rc.menu && ["★を付ける", "移す", "消す"].every((w) => rc.items.some((x) => x.includes(w))), JSON.stringify(rc));
 
     /* 2 閉じたら押したものへ：やることの行・小窓（⋯）。 */
@@ -220,7 +221,7 @@ async function roundTrip(page, sel, same) {
 
     await page.click(".tab-notes");
     await page.waitForTimeout(700);
-    await page.locator("#screen-notes .nt-recent .note-row").first().click();
+    await page.locator("#screen-notes .note-row .js-open").first().click();
     await page.waitForSelector(".js-note-more", { timeout: 3000 }).catch(() => {});
     await page.waitForTimeout(500);
     let popBack = null;

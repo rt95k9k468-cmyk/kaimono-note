@@ -406,7 +406,7 @@ const { open, checker } = require("./lib");
   await page.waitForSelector(".notes-tree", { state: "visible", timeout: 4000 });
   const rows = await page.$$eval(".notes-tree .nt-row", (r) => r.map((e) => e.textContent.trim()));
   t.check("木：Notes・すべてのノート・ノートブック", rows[0] === "Notes" && rows[1] === "すべてのノート" && rows.includes("暮らし") && rows.includes("仕事"), rows.join());
-  t.check("木：ホームに印", await page.$eval(".notes-tree .js-tree-home", (e) => e.getAttribute("aria-current") === "true"));
+  t.check("木：三面（意5）はホームを挟まず「すべてのノート」に印", await page.$eval(".notes-tree .js-tree-all", (e) => e.getAttribute("aria-current") === "true"));
   t.check("木の行は上に留めない", !(await page.$(".notes-tree .nt-row.is-stick")));
   const side = '.notes-tree .js-book[data-nb="仕事"]';
   const wasOpen = await page.$eval(side, (e) => e.getAttribute("aria-expanded"));

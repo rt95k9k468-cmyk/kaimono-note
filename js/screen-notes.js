@@ -45,12 +45,36 @@
     if (r.contains("notes-three") !== w >= THREE_W) r.toggle("notes-three", w >= THREE_W);
   }
   const docked = () => { seatMarks(); return document.documentElement.classList.contains("notes-dock") && document.documentElement.dataset.screen === "notes"; };
+  /* 意5：三面（木｜一覧｜読む面）のときはホームを挟まない——いちばん下の面は「すべてのノート」、席に入ると
+     いちばん新しいノートが右の段に開く（読めていなければ読めたときに）。三面でなく（列を畳む）なればホームを下へ戻す。 */
+  const three = () => document.documentElement.classList.contains("notes-three");
+  /* ホームを挟まないのは木が見えているときだけ（畳んだ列には木が無い——本棚が冊への道）。 */
+  const skipHome = () => three() && !document.documentElement.classList.contains("rail-fold");
+  let owedNewest = false;
+  function reseat() {
+    seatMarks();
+    if (!root || !root.clientWidth) return false;     // 隠れている席は、出たときに
+    const base = pages[0].k;
+    if (skipHome() && base === "home" && pages.length === 1) pages = [{ k: "list" }];
+    else if (!skipHome() && base === "list") pages.unshift({ k: "home" });
+    else return false;
+    pick = page().pick || null;
+    return true;
+  }
+  function openNewest() {
+    if (!owedNewest || N().state() !== "on") return;
+    owedNewest = false;
+    if (!three() || papers.length || query || (KN.lock && KN.lock.hides("notes"))) return;
+    const n = recentOf(N().list(), 1)[0];
+    if (n) openNote(n.id, null, { calm: true });
+  }
   /* 「縦に」の案内が覆っている（base.css の「portrait only」と同じ式。横にした 375 幅の機種だけ）。840px からの横は使える。 */
   const covered = window.matchMedia("(max-width: 839.98px) and (orientation: landscape) and (max-height: 520px) and (min-aspect-ratio: 3/2) and (pointer: coarse)");
   /* 向きが変わった（回した直後の blur を離れた拍と読むため。書く紙の turnAt）。 */
   const turning = window.matchMedia("(orientation: landscape)");
   const treeOpen = new Set();      // 開いた枝（"nb:名前" かノートの id）。ホームの木と左の木で一つ。記憶だけに持ちます
   let treeEl = null;
+  let treeCur = null;              // 木が枝を開いてみせたノート（paintTree）
   let seeking = false;             // さがす窓に指が入っている
   /* ホームの木の印：木から開いて閉じたノート（homeCur）か、道すじから戻ったノートブック（homeNb）。 */
   let homeCur = null;
@@ -163,7 +187,7 @@
 
     /* 読み終えた・★・消した・戻した。打つたびには来ません（紙を閉じたときに
        組み直します）。 */
-    N().onChange(() => { if (root) renderBody(); });
+    N().onChange(() => { if (root) { renderBody(); if (document.documentElement.dataset.screen === "notes") openNewest(); } });
 
     /* 降りた面は、右へ払って戻る（段1b。iPhone で「‹ しかない」）。左端でなくても、面のどこからでも（段2の前、
        利用者「左から右へどこからでも」）。引くあいだ一つ上の面を後ろに組んで見せ、戻ると決めたら写しを外して
@@ -181,9 +205,22 @@
       });
     }
     /* ホームの中身は幅で変わる（電話は一列・広い幅は二段）。組み直せば木も塗る。 */
-    window.matchMedia(WIDE).addEventListener("change", () => { seatMarks(); renderBody(); });
-    /* 右の段の印は器の幅で（窓の幅・左の列を畳むで変わる）。 */
-    if (window.ResizeObserver) new ResizeObserver(seatMarks).observe(root);
+    window.matchMedia(WIDE).addEventListener("change", () => { reseat(); renderBody(); });
+    /* 右の段の印は器の幅で（窓の幅・左の列を畳むで変わる）。三面に入る・出るときは下の面を替えて組み直す。 */
+    if (window.ResizeObserver) new ResizeObserver(() => { if (reseat()) renderBody(0); }).observe(root);
+    /* 何も開いていない右の段には、額に入れた広重（意5。地に敷いた絵と同じもの——季節の絵が読めたら写す）。
+       画面は動くので、木と同じく body の子。出す・隠すは CSS（三面のノートの席だけ）。 */
+    const frame = node(html`<div class="notes-frame" aria-hidden="true"><span class="notes-frame-art"></span></div>`);
+    document.body.append(frame);
+    const hang = () => {
+      const art = frame.firstElementChild;
+      const img = root.style.getPropertyValue("--season-img");
+      art.style.backgroundImage = img;
+      frame.classList.toggle("is-blank", !img);
+      KN.util.setVar(art, "--season-ar", root.style.getPropertyValue("--season-ar") || "0.67");
+    };
+    new MutationObserver(hang).observe(root, { attributes: true, attributeFilter: ["data-season-img"] });
+    hang();
   }
 
   /** 引くあいだ後ろに見せる、一つ上の面の写し（押せない）。戻ったときの送りの位置に合わせ、
@@ -1168,7 +1205,7 @@
      （notes-idb.js）。閉じても払っても、閉じた拍に書き切ります。 */
   /* from … 押した一覧のカード。紙はそのカードから膨らむ（段4.3）。
      o … { parent: 親の id（中に足す）, nb: ノートブック（その面の＋）, within: 戻り先のカードを探す場所,
-           after: 閉じたあとに }（段1） */
+           after: 閉じたあとに, calm: 焦点を奪わない（意5） }（段1） */
   function openNote(id, from, o) {
     o = o || {};
     const st = N().state();
@@ -1184,7 +1221,14 @@
     const dock = docked() && !o.within;
     if (dock && papers.length) {
       if (!fresh && papers[papers.length - 1].id === id) return;
+      /* 閉じた拍に一覧が組み直され、押した行からカーソルが外れる——組み直した同じ行の同じ口へ戻す（閉じたら帰る先）。 */
+      const was = document.activeElement, row = was && was.closest && was.closest("[data-id]");
       closePapers();
+      if (row && !was.isConnected && root) {
+        const r2 = root.querySelector(`[data-id="${CSS.escape(row.dataset.id)}"]`);
+        const to = r2 && (was.classList[0] ? r2.querySelector(`.${CSS.escape(was.classList[0])}`) : r2);
+        if (to) to.focus({ preventScroll: true });
+      }
     }
     if (fresh) {
       const up = o.parent ? N().get(o.parent) : null;
@@ -2282,6 +2326,7 @@
       /* 据えた紙の印（席の印が替わっても、閉じ終わるまで段の形のまま。screens.css の右の段）。 */
       cls: docked() ? "is-note is-docked" : "is-note",
       clear: true,
+      calm: !!o.calm,
       /* 右の段は一覧のカードから膨らまない（据える場所が決まっている）。 */
       grow: dock ? null : {
         from: from || null,
@@ -2663,10 +2708,12 @@
     const t = N().tree();
     const cur = papers.length ? papers[papers.length - 1].id : null;
     const curNote = cur ? N().get(cur) : null;
-    if (curNote) {
+    /* 開いたノートまでの枝を開くのは、ノートが替わったときだけ（据えたままの木を畳めるように。意5）。 */
+    if (curNote && cur !== treeCur) {
       if (curNote.notebook && !t.isHead(cur)) treeOpen.add(`nb:${curNote.notebook}`);
       t.path(cur).forEach((n) => { if (!t.isHead(n.id)) treeOpen.add(n.id); });
     }
+    treeCur = cur;
     const p = page();
     const line = (inner, on, act, cls) => {
       const b = node(html`
@@ -2677,7 +2724,8 @@
     line(html`<span class="nt-name">Notes</span>`, !cur && !query && p.k === "home", () => { closePapers(); again(); }, "is-head js-tree-home");
     line(html`${icon("notes")}<span class="nt-name">すべてのノート</span>`, !cur && (!!query || p.k === "list"), () => {
       closePapers();
-      if (page().k !== "list") go({ k: "list" });
+      if (pages[0].k === "list") { pages = [{ k: "list" }]; pick = null; renderBody(0); }   // 三面（意5）：いちばん下の面へ
+      else if (page().k !== "list") go({ k: "list" });
     }, "is-all js-tree-all");
     line(html`${icon("thought")}<span class="nt-name">問い</span>`, !cur && !query && p.k === "ask", () => {
       closePapers();
@@ -3043,7 +3091,8 @@
   /* ＋は一つ（意4b・答え4）：押すと 問いをつくる・考える・ノート（＋に近いほど多い順）。前の名札の無い丸（思考）はやめた。 */
   function dockButton() {
     if (N().state() === "off") return null;
-    const fab = node(html`<div class="quick-add"><button class="add-fab js-open-add" aria-label="書く">${icon("plus")}</button></div>`);
+    /* 広い幅は左の列の「新しいノート」（意5。名と近道 N は列が畳まれていないときだけ見せる）。 */
+    const fab = node(html`<div class="quick-add"><button class="add-fab js-open-add" aria-label="新しいノート">${icon("plus")}<span class="fab-name" aria-hidden="true">新しいノート</span><kbd class="fab-key" aria-hidden="true">N</kbd></button></div>`);
     fab.querySelector(".js-open-add").addEventListener("click", (e) => {
       e.stopPropagation();
       KN.app.fabMenu(e.currentTarget, [
@@ -3063,7 +3112,11 @@
   /** ＋の上の「思考」：thinking に新しいノート。冊は決まっているので小窓を出さずに本文へ。 */
   const think = () => openNote(null, null, { nb: THINK });
 
-  KN.screens.notes = { mount, render, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, inkOf, ink, COLORS: TAG_COLORS, COLOR_NAMES,
+  /** 席に入る前に下の面を決め（三面はホームを挟まない）、入ったらいちばん新しいノートを開く（意5）。 */
+  function prepare() { reseat(); }
+  function entered() { owedNewest = true; openNewest(); }
+
+  KN.screens.notes = { mount, render, prepare, onEnter: entered, dockButton, again, onLeave, open: openNote, makeAsk, colorOf, inkOf, ink, COLORS: TAG_COLORS, COLOR_NAMES,
     pick: pickNote, asks, answer, newBook, think,
     /** 最近直したノート（見開きの右の頁・構6）。鍵のあいだ・読めないあいだは空。 */
     recent: (k) => (N().state() === "on" && !(KN.lock && KN.lock.hides("notes")) ? recentOf(N().list(), k) : []), headOf };

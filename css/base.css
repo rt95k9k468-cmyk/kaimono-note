@@ -1653,7 +1653,17 @@ a { color: var(--c-primary); }
   /* ＋は左の列の底（帯と同じ段＝電話の考えのまま。右下の角では右の段の行の端・丸にかぶった——W5）。
      列はそのぶん底を空け、畳む口・ノートの木も上へ。候補は右へ開く（下の電話の横と同じ）。 */
   .has-fab { --rail-fab: calc(var(--fab-size) + var(--sp-3)); }
-  :root[data-screen="notes"].has-fab { --rail-fab: calc(var(--fab-size) + 44px + var(--sp-2) + var(--sp-3)); }  /* ＋の上の思考の丸（P2-6） */
+  /* ノートの席の＋は左の列の「新しいノート」と近道 N（意5。畳んだ列は丸のまま）。開くと絵だけ傾く。 */
+  :root[data-screen="notes"]:not(.rail-fold).has-fab { --rail-fab: calc(44px + var(--sp-3)); }
+  :root[data-screen="notes"]:not(.rail-fold) .add-fab {
+    display: flex; gap: var(--sp-2); justify-content: center; width: calc(var(--rail-w) - 1px - var(--side-pad) * 2); height: 44px;
+    border-radius: var(--r-md); font: var(--fw-bold) var(--fs-md) var(--font);
+  }
+  :root[data-screen="notes"]:not(.rail-fold) .add-fab.is-open { transform: none; animation: none; }
+  :root[data-screen="notes"]:not(.rail-fold) .add-fab svg { width: 20px; height: 20px; transition: rotate var(--m-press) var(--ease); }
+  :root[data-screen="notes"]:not(.rail-fold) .add-fab.is-open svg { rotate: 45deg; }
+  :root[data-screen="notes"]:not(.rail-fold) .add-fab :is(.fab-name, .fab-key) { display: inline; }
+  .add-fab .fab-key { padding: 0 5px; border: 1px solid color-mix(in srgb, var(--c-text-on) 50%, transparent); border-radius: 5px; font: var(--fw-regular) 11px var(--font); }
   .has-fab .tabbar { padding-bottom: calc(var(--side-pad) + var(--rail-fab)); }
   .has-fab .dock { left: var(--side-pad); right: auto; bottom: var(--side-pad); }
   .rail-fold.has-fab .dock { left: calc((var(--rail-w) - 1px - var(--fab-size)) / 2); }
