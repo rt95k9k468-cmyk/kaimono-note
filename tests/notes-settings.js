@@ -104,7 +104,7 @@ print(json.dumps(out, ensure_ascii=False))
   await openSettings();
   /* 根っこは入口だけの一枚で、どの歯車からも同じ並び（2026年11月5日）。 */
   const entries = () => page.$$eval(`${top} .set-row.has-lead .set-title`, (ts) => ts.map((x) => x.firstChild.textContent.trim()).join());
-  const ENTRIES = "表示・操作,通知・プライバシー,archive,notes,daily,shopping,health,データ・同期,連携・ヘルプ";
+  const ENTRIES = "端末の外の控え,表示・操作,通知・ロック,archive,notes,daily,shopping,health,控え,同期,出し入れ,この端末,連携・ヘルプ";
   t.check("daily の歯車：入口だけの根っこ", (await entries()) === ENTRIES, await entries());
   t.check("根っこにノートの並びの行は出ない（notes の一枚に）", !(await page.locator(`${top} .set-row.is-pick`, { hasText: "並び" }).count()));
   await into("archive");

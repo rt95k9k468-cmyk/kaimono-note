@@ -34,7 +34,7 @@ const { open, checker } = require("./lib");
   };
 
   /* ---------------- 主な筋 ---------------- */
-  /* 根っこは入口だけの一枚（2026年11月5日）：表示・操作／通知・プライバシー／五つのタブ／データ・同期／連携・ヘルプ。
+  /* 根っこは入口だけの一枚（2026年11月5日。意7a で 控えの一行・見た目と操作・席・記録を守る の四つ・連携・ヘルプ）。
      どの歯車から開いても同じ並び。入口の先の一枚に中身が全部並ぶ。 */
   const into = async (title) => {
     const n = await page.locator(".set-layer").count();
@@ -44,15 +44,19 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(300);
     return page.locator(top).innerText();
   };
-  const ENTRIES = ["表示・操作", "通知・プライバシー", "archive", "notes", "daily", "shopping", "health", "データ・同期", "連携・ヘルプ"];
+  const ENTRIES = ["端末の外の控え", "表示・操作", "通知・ロック", "archive", "notes", "daily", "shopping", "health", "控え", "同期", "出し入れ", "この端末", "連携・ヘルプ"];
   const entries = () => page.$$eval(`${top} .set-row.has-lead .set-title`, (ts) => ts.map((x) => x.firstChild.textContent.trim()));
   await openSettings("todo");
   const rootText = await page.locator(top).innerText();
-  t.check("根っこは入口だけの一枚（九つ）", (await entries()).join() === ENTRIES.join(), (await entries()).join());
-  t.check("入口の下に中身の名前（一行）", rootText.includes("明るさ・基調色・文字・上の帯") && rootText.includes("時間割・一日の道・見直す間隔"),
+  t.check("根っこは入口だけの一枚（十三）", (await entries()).join() === ENTRIES.join(), (await entries()).join());
+  t.check("入口の下に中身の名前（一行）", rootText.includes("明るさ・装い・文字") && rootText.includes("時間割・一日の道・見直す間隔"),
     rootText.slice(0, 160));
   t.check("入口の絵は基調色の線の絵だけ（色の四角は無い）",
-    (await page.locator(`${top} .set-tile`).count()) === 0 && (await page.locator(`${top} .set-row.has-lead .set-lead svg`).count()) === 9);
+    (await page.locator(`${top} .set-tile`).count()) === 0 && (await page.locator(`${top} .set-row.has-lead .set-lead svg`).count()) === 13);
+  /* 意7a：入口の背は 60px に揃う。端末の外の控えは値で言う（まだ）。記録を守るの四つは、7b までデータ・同期の一枚へ。 */
+  const hs = await page.$$eval(`${top} .set-row.is-entry`, (rs) => rs.map((r) => Math.round(r.getBoundingClientRect().height)));
+  t.check("入口の背は 60px に揃う", hs.length === 13 && hs.every((h) => h === 60), hs.join());
+  t.check("控えの一行：まだ", (await rowOf("端末の外の控え").locator(".set-val").innerText()).trim() === "まだ");
   await into("daily");
 
   /* 一日の道は 上・下・出さない（2026年10月19日。前は「一日の道を出す」のスイッチ）。
@@ -131,10 +135,10 @@ const { open, checker } = require("./lib");
   await openSettings("todo");
   const T0 = await page.locator(top).innerText();
   const notifyOn = await page.evaluate(() => KN.notify.enabled());
-  t.check("通知・プライバシーの下の一行がいまの状態（通知・ロック）",
-    new RegExp(`通知 ${notifyOn ? "オン" : "オフ"}・ロック オフ`).test(T0) && !T0.includes("やることの時刻を知らせる"), T0.slice(0, 200));
-  const T1 = await into("通知・プライバシー");
-  t.check("通知・プライバシーの一枚に、通知のスイッチとロックが並ぶ（前は一、二行ずつの二枚）",
+  t.check("通知・ロックの値がいまの状態（オンのものだけ・無ければオフ）",
+    (await rowOf("通知・ロック").locator(".set-val").innerText()).trim() === (notifyOn ? "通知" : "オフ") && !T0.includes("やることの時刻を知らせる"), T0.slice(0, 200));
+  const T1 = await into("通知・ロック");
+  t.check("通知・ロックの一枚に、通知のスイッチとロックが並ぶ（前は一、二行ずつの二枚）",
     T1.includes("やることの時刻を知らせる") && /ロック/.test(T1), T1.slice(0, 200));
   await back();
   const TT = await into("daily");
@@ -178,7 +182,7 @@ const { open, checker } = require("./lib");
     ["目標", "「気づいたこと」を出す", "開いたら自動で取り込む", "ヘルスケアから取り込む", "中継所", "記録を書き出す", "AIに分析してもらう"]
       .every((x) => H1.includes(x)) && !H1.includes("AIの窓口") && !H1.includes("日ごとの表"), H1.slice(0, 300));
   await back();
-  const B0 = await into("データ・同期");
+  const B0 = await into("控え");
   t.check("データ・同期：バックアップ・復元・書き出しと取り込みが別の束（消す口は無い）",
     ["バックアップを保存", "バックアップを確かめる", "バックアップから復元", "自動バックアップから戻す", "書き出し", "取り込み", "この端末の中"]
       .every((x) => B0.includes(x)) && !B0.includes("データを消す"), B0.slice(0, 300));
@@ -300,7 +304,7 @@ const { open, checker } = require("./lib");
       ai: { kcal: 500, raw: "あ".repeat(3000), analysis: "い".repeat(1500) } });
   });
   await openSettings("list");
-  await rowOf("データ・同期").click();
+  await rowOf("控え").click();
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U1 = await page.locator(top).innerText();
   t.check("使用量に AI の原文の字数が並ぶ", /AI の原文/.test(U1), (U1.match(/この端末の中[^\n]*/) || [""])[0]);
@@ -312,7 +316,7 @@ const { open, checker } = require("./lib");
     KN.backup.usage = () => ({ ...real(), liveChars: 1700000, where: "idb" });
     return true;
   });
-  await rowOf("データ・同期").click();
+  await rowOf("控え").click();
   await page.waitForFunction(() => /この端末の中/.test(document.querySelector(".set-layer:last-child").innerText));
   const U2 = await page.locator(top).innerText();
   const warnColor = await page.evaluate(() => {

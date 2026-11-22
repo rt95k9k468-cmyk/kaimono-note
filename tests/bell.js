@@ -318,7 +318,7 @@ const KEY = "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(500);
   // 時刻のお知らせの行は 根っこの入口「通知・プライバシー」の先（2026年11月5日）
-  await page.locator(".set-layer:last-child .set-row", { hasText: "通知・プライバシー" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "通知・ロック" }).first().click();
   await page.waitForTimeout(500);
   const rowText = await page.locator(".set-layer:last-child").innerText();
   t.check("設定に「閉じていても鳴らす」", rowText.includes("閉じていても鳴らす"), rowText.slice(0, 300));

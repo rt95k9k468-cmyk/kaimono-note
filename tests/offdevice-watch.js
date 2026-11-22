@@ -45,7 +45,7 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
   const first = await page.locator(".set-layer:last-child .set-row").first().innerText();
-  t.check("設定の頭に「端末の外の控えが15日前のままです」", first.includes("端末の外の控えが15日前のままです"), first);
+  t.check("設定の頭の控えの一行が「15日前」（意7a）", first.includes("端末の外の控え") && first.includes("15日前"), first);
   await page.locator(".set-layer:last-child .set-row").first().click();
   await page.waitForFunction(() => document.querySelectorAll(".set-layer").length >= 2);
   await page.waitForTimeout(300);

@@ -160,7 +160,7 @@ const { open, checker } = require("./lib");
   const ls0 = await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length);
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings");
-  await page.locator(".set-layer:last-child .set-row", { hasText: "データ・同期" }).first().click();
+  await page.locator(".set-layer:last-child .set-row", { hasText: "控え" }).first().click();
   await page.locator(".js-file").setInputFiles({ name: "kurashi.json", mimeType: "application/json", buffer: Buffer.from(fileText) });
   await page.waitForSelector(".js-ok");
   const ask = await page.evaluate(() => document.body.innerText);

@@ -55,7 +55,7 @@ const WORD = "しおかぜ";
   await show("archive");
   await show("settings");
   await page.waitForFunction(() => document.querySelector(".set-layer .set-row"));
-  await page.locator(`${top} .set-row`, { hasText: "通知・プライバシー" }).first().click();
+  await page.locator(`${top} .set-row`, { hasText: "通知・ロック" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(`${top} .set-row.is-sw`, { hasText: "ロック" }).click();
   await answer("1234");

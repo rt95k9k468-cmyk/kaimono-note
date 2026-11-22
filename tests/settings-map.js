@@ -8,7 +8,7 @@
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/settings-map.js */
 const { open, checker } = require("./lib");
 
-const ENTRIES = ["表示・操作", "通知・プライバシー", "archive", "notes", "daily", "shopping", "health", "データ・同期", "連携・ヘルプ"];
+const ENTRIES = ["端末の外の控え", "表示・操作", "通知・ロック", "archive", "notes", "daily", "shopping", "health", "控え", "同期", "出し入れ", "この端末", "連携・ヘルプ"];
 
 (async () => {
   const t = checker("settings-map");
@@ -50,7 +50,7 @@ const ENTRIES = ["表示・操作", "通知・プライバシー", "archive", "n
   /* ---- 根っこ ---- */
   for (const from of ["todo", "archive", "notes", "list", "prices", "diet"]) {
     await openSettings(from);
-    t.check(`${from} の歯車：入口は九つで同じ並び`, (await entries()) === ENTRIES.join(), await entries());
+    t.check(`${from} の歯車：入口は十三で同じ並び`, (await entries()) === ENTRIES.join(), await entries());
   }
 
   /* ---- 既定でない値を置いて、読み直してから見る ---- */
@@ -125,7 +125,7 @@ const ENTRIES = ["表示・操作", "通知・プライバシー", "archive", "n
     layers: document.querySelectorAll("#screen-settings .set-layer").length,
     entries: document.querySelectorAll("#screen-settings .set-layer .set-row.has-lead").length,
   }));
-  t.check("繰り返しても、開けば根っこ一枚・入口は九つのまま", after.layers === 1 && after.entries === 9, JSON.stringify(after));
+  t.check("繰り返しても、開けば根っこ一枚・入口は十三のまま", after.layers === 1 && after.entries === 13, JSON.stringify(after));
 
   /* X4：連携・ヘルプにショートカットの作り方（Apple の端末だけ・畳んで三つ・中継所のURLは出さない）。 */
   await page.evaluate(() => { KN.ics.apple = () => true; KN.app.showScreen("settings"); KN.screens.settings.goTo([{ id: "" }, { id: "help" }]); });

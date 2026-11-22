@@ -372,7 +372,7 @@
   const DUO = window.matchMedia ? window.matchMedia("(min-width: 1280px), (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse)") : null;
   function duo(L) {
     const groups = [];
-    /* 根っこ（入口だけの一枚）も二段（R8、11月12日に利用者が選んだ）：左に 知らせ・表示・データ、右に タブごと
+    /* 根っこ（入口だけの一枚）も二段（R8、11月12日に利用者が選んだ）：左に 控え・見た目・記録を守る、右に 席
        （`.is-root`。置き場は screens.css。順は 上 → 左 → 右）。 */
     L.el.classList.toggle("is-root", L === stack[0]);
     if (DUO && DUO.matches) {
@@ -388,7 +388,7 @@
 
   /* ---------------- 入口と中身（2026年11月5日に作り直した） ----------------
 
-     根っこは**入口だけの一枚**：表示・操作／通知・プライバシー／五つのタブ／データ・同期／連携・ヘルプ。
+     根っこは**入口だけの一枚**：控えの一行／表示・操作・通知・ロック／五つの席／記録を守る（四つ）／連携・ヘルプ（意7a）。
      どの歯車から開いても同じ並び（どこに何があるかを、開くたびに探し直させない）。入口の下の一行は
      中身の名前（説明ではなく、何が入っているか）。中身は入口の先の一枚に**全部並べる**——一、二行だけの
      一枚は作らない。深さは 根っこ → 入口 → 詳細（お店の一覧・中継所…）まで。
@@ -450,13 +450,13 @@
       `sub` … 題の下の一行（根っこの入口の中身の名前）。
       `off` … まだ押しても始まらない行（App key が無い、など）。薄く出し、押せば onTap が理由を言う。
       `alert` … 根っこの頭の知らせ。絵は知らせの色、二行になるときは釣り合いよく折る。 */
-  function navRow({ ico, tint, title, value, onTap, act, off, alert, lead, sub }) {
+  function navRow({ ico, tint, title, value, onTap, act, off, alert, lead, sub, entry }) {
     if (alert && !lead) lead = "icon";
     const mark = lead === "tile"
       ? html`<span class="set-tile" style="background:${tint || TINT.data}">${icon(ico || "gear")}</span>`
-      : lead ? html`<span class="set-lead"${alert ? html` style="color:${TINT.warn}"` : ""}>${icon(ico || "gear")}</span>` : "";
+      : lead ? html`<span class="set-lead"${alert || tint ? html` style="color:${alert ? TINT.warn : tint}"` : ""}>${icon(ico || "gear")}</span>` : "";
     const row = node(html`
-      <button type="button" class="set-row is-nav ${lead ? "has-lead" : ""} ${sub ? "has-sub" : ""} ${act ? "is-act" : ""} ${off ? "is-off" : ""} ${alert ? "is-alert-row" : ""}"
+      <button type="button" class="set-row is-nav ${lead ? "has-lead" : ""} ${entry ? "is-entry" : ""} ${sub ? "has-sub" : ""} ${act ? "is-act" : ""} ${off ? "is-off" : ""} ${alert ? "is-alert-row" : ""}"
               ${off ? html`aria-disabled="true"` : ""}>
         ${mark}
         <span class="set-title">${title}${sub ? html`<span class="set-sub">${sub}</span>` : ""}</span>
@@ -614,16 +614,16 @@
      タブの入口の名前と絵は下の帯と同じ（app.js の FACES）——帯で毎日見ている字と絵で探せるように。 */
   const SEATS = [
     { id: "daily",    label: "archive",  icon: "book",      sub: "日記・いまごろ・季節" },
-    { id: "notes",    label: "notes",    icon: "notes",     sub: "並び・季節の絵・ノートブック" },
+    { id: "notes",    label: "notes",    icon: "notes",     sub: "並び・ノートブック・タグ" },
     { id: "tasks",    label: "daily",    icon: "checklist", sub: "時間割・一日の道・見直す間隔" },
-    { id: "shopping", label: "shopping", icon: "cart",      sub: "お店・カテゴリ・おぼえた振り分け" },
-    { id: "health",   label: "health",   icon: "heart",     sub: "目標・取り込み・書き出し" },
+    { id: "shopping", label: "shopping", icon: "cart",      sub: "お店・カテゴリ" },
+    { id: "health",   label: "health",   icon: "heart",     sub: "目標・取り込み" },
   ];
 
   /** 「›」の先。入口の一枚と、その先の詳細。 */
   const PAGES = {
     look:     { title: "表示・操作",         art: "look", build: () => S.lookRows() },
-    privacy:  { title: "通知・プライバシー", art: "privacy", build: () => privacyRows() },
+    privacy:  { title: "通知・ロック", art: "privacy", build: () => privacyRows() },
     daily:    { title: "archive",  art: "daily", build: () => S.dailyPageRows() },
     notes:    { title: "notes",    art: "notes", build: () => S.notesPageRows() },
     tasks:    { title: "daily",    art: "tasks", build: () => S.tasksPageRows() },
@@ -717,13 +717,6 @@
     /* 保存できていないことは、いちばん先に言います。中へ入る前に目に
        入らないと、直せる人が直す機会を失うので。 */
     if (store.saveError()) L.body.append(saveErrorBanner());
-    /* 歯車の点（R25）の中身を、頭に一行。押すとバックアップへ。 */
-    /* 頭の知らせは、ふつうの行き先と同じ顔にしない（四角を知らせの色に）。 */
-    const stale = KN.backup.offDeviceStale && KN.backup.offDeviceStale();
-    if (stale) L.body.append(card(navRow({
-      ico: "download", tint: TINT.warn, title: staleText(stale), alert: true,
-      onTap: () => go("data"),
-    })));
     if (S.notesSyncAlert) put([S.notesSyncAlert()]);
     if (S.syncAlert) put([S.syncAlert()]);
     /* 写しの端末が困ったとき（js/replica.js の trouble）。数は出さない。押すと Dropbox（最後の控えの時刻はそこ）。 */
@@ -773,50 +766,62 @@
     render();
   }
 
-  function staleText(x) {
-    if (x.stuck) return `Dropbox へ${x.days}日送れていません`;
-    if (x.days === null) return "端末の外の控えが、まだありません";
-    return `端末の外の控えが${x.days}日前のままです`;
+  /* 控えの一行の値（意7a）。端末の外の控えがいつか。古い・送れない（R25 の歯車の点）ときだけ知らせの色。 */
+  function keepNow() {
+    const B = KN.backup;
+    const stale = B.offDeviceStale && B.offDeviceStale();
+    if (stale && stale.stuck) return { value: `${stale.days}日送れていません`, alert: true };
+    const at = B.offDeviceAt && B.offDeviceAt();
+    if (!at) return { value: "まだ", alert: !!stale };
+    const d = -KN.util.daysUntil(KN.util.dayKey(at));
+    return { value: d <= 0 ? "今日" : d === 1 ? "昨日" : `${d}日前`, alert: !!stale };
   }
 
-  /** 根っこの入口。どの歯車から開いても同じ並び。右の値は、入口を開かずに分かる「いま」だけ
-      （基調色の粒・エラーの数）。オン/オフは入口の下の一行が言う（通知・ロック）。
-      下の一行は電話の幅で一行に収まる長さ（16字まで。二行に割れると入口の背がばらつく）。 */
+  /** 根っこの入口。どの歯車から開いても同じ並び（意7a、見本 06・07）：控えの一行／見た目と操作／席／記録を守る／連携・ヘルプ。
+      右の値は、入口を開かずに分かる「いま」だけ（控えの日・基調色の粒・オンのもの・エラーの数）。
+      下の一行は電話の幅で一行に収まる長さ（16字まで）。記録を守るの四つは、7b で一枚ずつに分けるまで データ・同期 の一枚へ。 */
   function rootRows() {
     const s = store.get();
     const look = KN.app.lookOf(s.settings);
     const a = look.look === "modern" ? null : store.ACCENTS.find((x) => x.id === look.accent);
-    const entry = (o) => navRow({ lead: "icon", ...o });
+    const entry = (o) => navRow({ lead: "icon", entry: true, ...o });
+    const keep = keepNow();
     return [
+      card(entry({ ico: "download", tint: "var(--c-text-2)", title: "端末の外の控え", ...keep, onTap: () => go("data") })),
+      head("見た目と操作"),
       card(
         entry({
-          ico: "palette", title: "表示・操作", sub: "明るさ・基調色・文字・上の帯",
+          ico: "palette", title: "表示・操作", sub: "明るさ・装い・文字",
           /* 参考画面と同じで、いまの色をひと粒で。 */
           value: a ? node(html`<span class="set-dot" style="background:${a.swatch}"></span>`) : null,
           onTap: () => go("look"),
         }),
-        entry({ ico: "bell", title: "通知・プライバシー", sub: privacySub(), onTap: () => go("privacy") })
+        entry({ ico: "bell", title: "通知・ロック", value: privacyNow(), onTap: () => go("privacy") })
       ),
-      head("タブごと"),
+      head("席"),
       card(...SEATS.map((t) => entry({ ico: t.icon, title: t.label, sub: t.sub, onTap: () => go(t.id) }))),
-      head("データとヘルプ"),
+      head("記録を守る"),
       card(
-        entry({ ico: "download", title: "データ・同期", sub: "バックアップ・同期・出し入れ", onTap: () => go("data") }),
-        entry({
-          ico: "route", title: "連携・ヘルプ", sub: "ショートカット・中継所・エラー",
-          value: KN.errlog && S.errCount() ? `${S.errCount()}件` : "", onTap: () => go("help"),
-        })
+        entry({ ico: "download", title: "控え", sub: "保存・Dropbox・戻す", onTap: () => go("data") }),
+        entry({ ico: "repeat", title: "同期", sub: "部屋・ノートの同期", onTap: () => go("data") }),
+        entry({ ico: "upload", title: "出し入れ", sub: "書き出し・取り込み", onTap: () => go("data") }),
+        entry({ ico: "rows", title: "この端末", sub: "中身・点検・外す", onTap: () => go("data") })
       ),
+      card(entry({
+        ico: "route", title: "連携・ヘルプ", sub: "ショートカット・中継所・エラー",
+        value: KN.errlog && S.errCount() ? `${S.errCount()}件` : "", onTap: () => go("help"),
+      })),
     ];
   }
 
   /* ---- 通知・プライバシー（前は「通知」と「ロック」の、一、二行ずつの二枚） ---- */
   const notifyCan = () => !!(KN.notify && KN.notify.supported());
   const badgeCan = () => !!(KN.app.appBadge && KN.app.appBadge.supported());
-  function privacySub() {
+  /** 入口の値：オンのものだけ名前で。どちらも切ってあれば「オフ」。 */
+  function privacyNow() {
     const on = (notifyCan() && KN.notify.enabled()) || (badgeCan() && KN.app.appBadge.enabled());
     const lock = KN.lock && KN.lock.supported() && KN.lock.enabled();
-    return `通知 ${on ? "オン" : "オフ"}・ロック ${lock ? "オン" : "オフ"}`;
+    return [on && "通知", lock && "ロック"].filter(Boolean).join("・") || "オフ";
   }
   function privacyRows() {
     return [

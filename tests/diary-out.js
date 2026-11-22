@@ -60,7 +60,7 @@ async function openBackup(page) {
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForFunction(() => KN.app.activeScreen() === "settings" && document.querySelector(".set-layer .set-row"));
   await page.waitForTimeout(250);
-  await tapRow(page, "データ・同期");
+  await tapRow(page, "控え");
   await page.waitForTimeout(400);
 }
 

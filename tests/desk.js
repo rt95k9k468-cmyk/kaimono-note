@@ -356,13 +356,13 @@ const { open, checker, pen } = require("./lib");
   t.check("設定：電話の幅はまとめない（一列のまま）", await page.evaluate(() => !document.querySelector("#screen-settings .set-sec, #screen-settings .is-duo")));
   await page.setViewportSize({ width: 1440, height: 900 });
   await wait(500);
-  /* 根っこも二段（R8、11月12日）：左に 表示・通知 と データ、右に タブごと。右の段の頭は左の段の頭に揃う。 */
+  /* 根っこも二段（R8、11月12日）：左に 控え・見た目・記録を守る、右に 席（意7a）。右の段の頭は左の段の頭に揃う。 */
   const rootLook = await page.evaluate(() => { const L = document.querySelector("#screen-settings .set-layer");
     const r = (s) => { const e = L.querySelector(s); return e && e.getBoundingClientRect(); };
-    const a = r(".set-sec:nth-child(1)"), b = r(".set-sec:nth-child(2)"), c = r(".set-sec:nth-child(3)");
+    const a = r(".set-sec:nth-child(1)"), b = r(".set-sec:nth-child(3)"), c = r(".set-sec:nth-child(2)");
     return { duo: L.classList.contains("is-duo"), right: !!(a && b && c) && b.left > a.right - 1 && Math.abs(b.top - a.top) < 2 && Math.abs(c.left - a.left) < 2 && c.top > a.bottom - 1,
-      tabs: (L.querySelector(".set-sec:nth-child(2) .set-head") || {}).textContent }; });
-  t.check("設定：根っこは 1280px〜で二段（右にタブごと）", rootLook.duo && rootLook.right && /タブ/.test(rootLook.tabs), JSON.stringify(rootLook));
+      tabs: (L.querySelector(".set-sec:nth-child(3) .set-head") || {}).textContent }; });
+  t.check("設定：根っこは 1280px〜で二段（右に席）", rootLook.duo && rootLook.right && /席/.test(rootLook.tabs), JSON.stringify(rootLook));
   await page.locator("#screen-settings .set-row", { hasText: "表示・操作" }).first().click();
   await wait(60);
   const mid = await page.evaluate(() => { const L = [...document.querySelectorAll("#screen-settings .set-layer")].pop();

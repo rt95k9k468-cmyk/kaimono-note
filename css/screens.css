@@ -1848,18 +1848,18 @@
   color: var(--c-primary);
 }
 .set-lead svg { width: var(--ico); height: var(--ico); stroke-width: var(--ico-w); }
-/* 根っこの入口（題の下に中身の名前がある行）は、絵を 40px の角丸の台に入れ、題を少し太く——入口だと一目で分かるように。
+/* 根っこの入口（`is-entry`）は、絵を 40px の角丸の台に入れ、題を少し太く、背は 60px に揃える（意7a）——入口だと一目で分かるように。
    台の色は絵の色から（知らせの行は知らせの色になる）。色は一色のまま。 */
-.set-row.has-lead.has-sub { --set-lead-d: 40px; }
-.set-row.has-lead.has-sub .set-lead {
+.set-row.is-entry.is-nav { --set-lead-d: 40px; min-height: var(--row-h-card); padding-block: 7px; }
+.set-row.is-entry .set-lead {
   width: var(--set-lead-d); height: var(--set-lead-d);
   border-radius: var(--r-sm);
   background: color-mix(in srgb, currentColor 13%, transparent);
 }
-.set-row.has-lead.has-sub .set-title { font-weight: var(--fw-bold); }
-.set-row.has-lead.has-sub .set-sub { font-weight: var(--fw-regular); }
-.set-row + .set-row.has-lead.has-sub::before,
-.set-row.has-lead.has-sub + .set-row::before {
+.set-row.is-entry .set-title { font-weight: var(--fw-bold); }
+.set-row.is-entry .set-sub { font-weight: var(--fw-regular); }
+.set-row + .set-row.is-entry::before,
+.set-row.is-entry + .set-row::before {
   left: calc(var(--set-pad) + var(--set-lead-d, 40px) + var(--set-gap));
 }
 /* 入口の題の下の一行（中身の名前）。題より一段小さく、薄くしすぎない。 */
@@ -6810,9 +6810,9 @@ button.note-when:active { opacity: var(--press-fade); }
     .set-sec:first-child { margin-top: 0; }
     .set-sec > .set-head:first-child { margin-top: 0; }
     .set-sec > .set-card:first-child, .set-sec > .settings-group:first-child { margin-top: var(--sp-2); }
-    /* 根っこ：左に一つ目と三つ目、右にタブごと（R8）。 */
+    /* 根っこ：左に 控え・見た目・記録を守る、右に 席（R8・意7a）。 */
     .set-layer.is-duo.is-root .js-body { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
-    .is-root .set-sec:nth-child(2) { grid-area: 1 / 2 / span 2; margin-top: 0; }
+    .is-root .set-sec:nth-child(3) { grid-area: 1 / 2 / span 3; margin-top: 0; }
   }
   /* からだの紙は地を持たない（`.is-bare`。中のカードの束が地）。広い幅ではカードが段に並んで束が短くなり、束の下で
      地が切れていた——紙そのものに地を（ほかの席の紙と同じ）。 */
