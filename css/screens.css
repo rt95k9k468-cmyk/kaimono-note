@@ -4670,27 +4670,22 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .notes-books { margin: var(--sp-2) var(--sp-4) 0; padding: var(--sp-1); background: var(--c-surface); border-radius: var(--r-lg);
   box-shadow: var(--shadow-1); overflow: clip; }
 #screen-notes[data-season] .notes-books { background: color-mix(in srgb, var(--c-surface) 80%, transparent); }
-/* ホーム（R7、docs/redesign.md 6節）：さがす → 札（数は出さない）→ 最近（表紙のカードを横へ）→ 本棚（背・柄・題箋）→ タグ。 */
-:is(.nt-find, .nt-gate, .nt-cover, .notes-list) { background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-1); }
+/* ホーム（R7・意4b）：さがす → 札（数は出さない）→ 最近（一覧の行を三つ）→ 本棚（背表紙。archive の .arc-shelf/.arc-spine）→ タグ。 */
+:is(.nt-find, .nt-gate, .notes-list) { background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-1); }
 .nt-find { display: flex; align-items: center; gap: 10px; width: calc(100% - var(--sp-4) * 2); height: 48px; margin: var(--sp-3) var(--sp-4) 0;
   padding: 0 var(--sp-4); border-radius: var(--r-md); color: var(--c-text-3); font-size: var(--fs-lg); }
 .search-wrap:not([hidden]) ~ .notes-ground .nt-find { display: none; }
 .notes-books.nt-gates, #screen-notes[data-season] .notes-books.nt-gates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px; margin-top: var(--sp-3); padding: 0; background: none; box-shadow: none; overflow: visible; }
-:is(.nt-gate, .nt-cover, .nt-bk) { transition: background-color var(--m-state) var(--ease), scale var(--m-press) var(--ease); }
-:is(.nt-gate, .nt-cover):active { background-color: var(--press-sink); transition-delay: var(--m-press); }
-:is(.nt-gate, .nt-cover, .nt-bk):active { scale: var(--press-wide); }
+.nt-gate { transition: background-color var(--m-state) var(--ease), scale var(--m-press) var(--ease); }
+.nt-gate:active { background-color: var(--press-sink); transition-delay: var(--m-press); scale: var(--press-wide); }
 .nt-gate { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; height: 52px; padding: 0 var(--sp-3); border-radius: var(--r-md);
   color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); text-align: left; }
 .nt-gate > svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
-.nt-covers { display: flex; gap: var(--sp-3); overflow-x: auto; padding: 2px var(--sp-4) 10px; margin-top: var(--sp-2);
-  scroll-snap-type: x proximity; scroll-padding-inline: var(--sp-4); scrollbar-width: none; }
-.nt-cover { flex: none; width: 156px; display: flex; flex-direction: column; overflow: clip; text-align: left; border-radius: var(--r-lg); scroll-snap-align: start; }
-.nt-cover > .nt-cv { height: 92px; }
-.nt-cover-t { height: calc(2lh + 10px); padding: 10px 12px 0; font-family: var(--font-display); font-size: var(--fs-md);
-  font-weight: var(--fw-bold); line-height: 1.4; overflow: hidden; overflow-wrap: anywhere; }
-.nt-cover-d { padding: var(--sp-1) 12px 12px; font-size: calc(13px * var(--fs-k)); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nt-bks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4) var(--sp-3); margin: var(--sp-2) var(--sp-4) 0; }
+.nt-bks { margin: var(--sp-2) var(--sp-4) 0; }
+.nt-bk.arc-spine { --spine: var(--deep, var(--cat)); width: 40px; height: 128px; }
+.nt-bk.arc-spine[data-pt="none"] { --spine: var(--c-surface-3); color: var(--c-text); }
+.nt-bk.arc-spine b { max-height: 112px; overflow: hidden; }
 /* 冊を運ぶ（note-drag の shelf）：寄る冊は transform で滑り、持ち上げた冊は指につく（滑らない）。 */
 .nt-bks.is-carrying > .nt-bk { transition: transform var(--m-reorder) var(--ease); }
 .nt-bks.is-carrying > .nt-bk.is-lifted { position: relative; z-index: 2; transition: scale var(--m-press) var(--ease); scale: 1.06; }
@@ -4700,11 +4695,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-cv[data-pt="none"] { --cv: var(--c-surface-3); }
 .nt-cv:not(.is-pic)::after { content: ""; position: absolute; inset: 0; opacity: .2; background: var(--pt, none); }
 .nt-cv.is-pic { background: var(--pic) center / cover, var(--cv); }
-.nt-cv.is-book { aspect-ratio: 3 / 4; border-radius: 4px var(--r-sm) var(--r-sm) 4px;
-  box-shadow: inset 9px 0 0 color-mix(in srgb, #000 16%, transparent), inset 10px 0 0 color-mix(in srgb, #fff 14%, transparent), var(--shadow-2); }
-.nt-lb { position: absolute; z-index: 1; left: 22%; right: 12%; top: 16%; padding: 7px 4px; border-radius: 2px; background: var(--c-surface);
-  box-shadow: 0 0 0 1px var(--c-border-2); font-family: var(--font-display); font-size: var(--fs-sm); font-weight: var(--fw-bold); line-height: 1.35;
-  text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 [data-pt="asa"] { --pt: repeating-linear-gradient(60deg, #fff 0 1.5px, #0000 0 14px), repeating-linear-gradient(-60deg, #fff 0 1.5px, #0000 0 14px); }
 [data-pt="ichi"] { --pt: repeating-conic-gradient(#fff 0 25%, #0000 0 50%) 0 0 / 22px 22px; }
 [data-pt="shima"] { --pt: repeating-linear-gradient(90deg, #fff 0 3px, #0000 0 9px, #fff 0 10px, #0000 0 18px); }
@@ -4713,9 +4703,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 [data-pt="ten"] { --dt: radial-gradient(#fff 2px, #0000 2.5px); --pt: var(--dt) 0 0 / 14px 14px, var(--dt) 7px 7px / 14px 14px; }
 /* モダンの表紙は色の面に白い題（和柄と題箋は出さない。docs/redesign.md 4節）。 */
 :root[data-attire="modern"] .nt-cv::after { display: none; }
-:root[data-attire="modern"] .nt-cv.is-book { border-radius: var(--r-md); box-shadow: var(--shadow-1); }
-:root[data-attire="modern"] .nt-lb { inset: auto 10px 10px 12px; padding: 0; background: none; box-shadow: none; color: #fff;
-  font-family: var(--font); text-align: left; }
 .nt-tags { margin-top: var(--sp-2); flex-wrap: wrap; }
 .notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { padding: 0; background: none; box-shadow: none; overflow: visible; }
 /* 6つの棚（SHELF）：一冊の面は棚の色の薄いカード（暗い面は塗りを濃く字を白へ）。見出しの字は 60%（66% では暗い thinking が 4.47）。 */
@@ -4724,7 +4711,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   --shelf-bg: color-mix(in srgb, var(--shelf-c) calc(var(--shelf-a) * var(--shelf-x, 1)), var(--c-surface));
   padding: var(--sp-2) var(--sp-1) var(--sp-3); background: var(--shelf-bg); border-radius: var(--r-lg); overflow: clip; }
 /* thinking は灰の archive と見分けるため濃いめ（10月16日）。 */
-[data-shelf] { --deep: color-mix(in srgb, var(--shelf) 80%, #000); }
+[data-shelf] { --deep: color-mix(in srgb, var(--shelf) 65%, #000); }
 [data-shelf="thinking"] { --shelf: #8A3F9E; --shelf-a: 12%; }
 [data-shelf="reading"] { --shelf: #007B43; }
 [data-shelf="teaching"] { --shelf: #ED6D3D; }
@@ -6840,7 +6827,6 @@ button.note-when:active { opacity: var(--press-fade); }
   #screen-notes[data-season] { --season-art: min(600px, 100vw);
     --season-fade: linear-gradient(to right, var(--c-bg) calc(100% - var(--season-art) * .9),
       color-mix(in srgb, var(--c-bg) 45%, transparent) calc(100% - var(--season-art) * .76), transparent calc(100% - var(--season-art) * .56)); }
-  .nt-bks { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (min-width: 840px) {
   :root { --desk-read: 760px; --desk-wide: 1180px; }
@@ -6971,13 +6957,9 @@ button.note-when:active { opacity: var(--press-fade); }
   :root.notes-dock:not(.notes-mid, .rail-fold) #screen-notes .notes-ground { padding-inline: max(0px, calc((100% - var(--desk-wide)) / 2)); }
   /* ＋はほかの席と同じ左の列の底（base.css。木はそのぶん底を空ける）。 */
 }
-/* ノートのホームの広い幅（screen-notes.js の homeBody。840px から。W6）：電話と同じ一列を全幅に。札と最近は同じ四列、本棚は詰めて並べる。 */
+/* ノートのホームの広い幅（screen-notes.js の homeBody。840px から。W6）：電話と同じ一列を全幅に。札は四列。 */
 @media (min-width: 840px) {
-  #screen-notes .nt-home-two :is(.notes-books.nt-gates, .nt-covers) { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
-  .nt-home-two .nt-covers { display: grid; margin-inline: var(--sp-4); padding: 2px 0 var(--sp-1); overflow: visible; }
-  .nt-home-two .nt-cover { width: auto; }
-  .nt-home-two .nt-cover > .nt-cv { height: 112px; }
-  .nt-home-two .nt-bks { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 22px var(--sp-5); }
+  #screen-notes .nt-home-two .notes-books.nt-gates { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
 }
 /* マウスで指した押せる行・カードは薄く塗る（design-review 9節の W4。動きは足さない）。地の色を持つものにも
    重ねられるよう、塗りは background-image の一枚で（色の地はそのまま）。透けるカードは下の色で。 */

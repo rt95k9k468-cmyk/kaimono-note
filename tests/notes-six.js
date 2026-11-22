@@ -121,15 +121,16 @@ const { open, checker } = require("./lib");
   await page.waitForFunction(() => document.querySelector("#screen-notes .nt-bks"));
   const shelf = await page.$$eval("#screen-notes .nt-bks .nt-bk", (bs) => bs.map((b) => b.dataset.nb));
   t.check("本棚は6つの棚が先・この順", shelf.slice(0, 6).join() === "thinking,reading,teaching,learning,living,archive", shelf.join());
+  const cv_ok = (l) => l.spine;
   const look = await page.evaluate(() => {
-    const cv = document.querySelector('#screen-notes .nt-bk[data-nb="thinking"] .nt-cv');
+    const cv = document.querySelector('#screen-notes .nt-bk[data-nb="thinking"]');
     const body = document.querySelector("#screen-notes .js-body");
     const gates = document.querySelector("#screen-notes .notes-books.nt-gates");
-    return { pt: cv.dataset.pt, bg: getComputedStyle(cv).backgroundColor, label: cv.innerText.trim(),
+    return { spine: cv.classList.contains("arc-spine"), bg: getComputedStyle(cv).backgroundColor, label: cv.innerText.trim(),
       newBook: !!document.querySelector("#screen-notes .js-new-book"), heading: /ノートブック/.test(body.innerText),
       gates: gates ? gates.innerText.replace(/\s+/g, " ").trim() : "", tree: !!document.querySelector("#screen-notes [role=tree]") };
   });
-  t.check("表紙は棚の色と柄・題箋は名前だけ", look.pt === "asa" && look.bg !== "rgba(0, 0, 0, 0)" && look.label === "thinking", JSON.stringify(look));
+  t.check("背表紙は棚の色・字は名前だけ（意4b）", cv_ok(look) && look.bg !== "rgba(0, 0, 0, 0)" && look.label === "thinking", JSON.stringify(look));
   t.check("見出し「ノートブック」とその＋は無い・ホームに木は無い", !look.newBook && !look.heading && !look.tree, JSON.stringify(look));
   t.check("札は すべて・★・問い", look.gates === "すべて ★ 問い", look.gates);
   await page.click('#screen-notes .nt-bk[data-nb="thinking"]');

@@ -341,7 +341,7 @@
 
   const secTitle = (text) => node(html`<div class="notes-sec"><div class="section-title" role="heading" aria-level="2">${text}</div></div>`);
 
-  /** ホーム（R7、docs/redesign.md 6節）：さがす → 札（すべて・★・問い）→ 最近（表紙のカードを横へ送る）→ 本棚 → タグ。
+  /** ホーム（R7、docs/redesign.md 6節）：さがす → 札（すべて・★・問い）→ 最近（一覧の行を三つ。意4b）→ 本棚（背表紙）→ タグ。
       広い幅は二段：本棚とタグ｜札と最近直したの一覧。数は出しません（冊数も）。ノートブックの木は本棚の一冊の中
       （{ k: "nb" } の面）と、広い幅の左の列。ノートブックを足すのは設定、新しいノートは右下の＋（docs/notes.md「6つの棚」）。 */
   function homeBody(box, t) {
@@ -369,7 +369,7 @@
       shelf.push(secTitle("タグ"), row);
     }
     /* 取り込んだまま触っていないノートは出さない（Notion は取り込んだ時刻が直した日になる。答えの12）。 */
-    const recent = recentOf(all, 8);
+    const recent = recentOf(all, 3);
     const met = chance(all, recent);
     const meet = met ? [secTitle(met.label), cards([met.n], t)] : [];
     /* ノートが一つも無いときは、ほかの席と同じ額の絵（言葉は足さない。docs/redesign.md 6節「空の画面」）。 */
@@ -382,27 +382,25 @@
       box.append(find);
     }
     box.append(gates, ...meet);
-    if (recent.length) box.append(secTitle("最近"), coverCards(recent));
+    if (recent.length) box.append(secTitle("最近"), cards(recent, t, null, "nt-recent"));
     box.append(...none, ...shelf);
   }
 
-  /** 本棚：ノートブックを本の形で（6つの棚が先、冊の無いノートがあれば終わりに無地の一冊）。押すと、頭のある冊は
+  /** 本棚：ノートブックを背表紙で（archive の年の棚と同じ部品。意4b）。6つの棚が先、冊の無いノートがあれば終わりに無地の一冊。押すと、頭のある冊は
       頭の紙、無ければその冊の面（中は木）。 */
   function shelfBooks(t) {
-    const box = node(html`<div class="nt-bks m-in" role="list" aria-label="本棚"></div>`);
+    const box = node(html`<div class="nt-bks arc-shelf m-in" role="list" aria-label="本棚"></div>`);
     const all = N().notebooks();
     const order = all.filter((nb) => SHELF[nb]).concat(all.filter((nb) => !SHELF[nb]));
     if (t.tops("").length) order.push("");
     order.forEach((nb) => {
       const h = nb ? t.head(nb) : null;
       const b = node(html`
-        <button type="button" class="nt-bk" role="listitem" data-nb="${nb}" data-grp="${SHELF[nb] ? "s" : "b"}" ${h ? html`data-id="${h.id}"` : ""}>
-          <span class="nt-cv is-book" ${cover(nb)}><span class="nt-lb">${nb || "なし"}</span></span>
-        </button>`);
+        <button type="button" class="nt-bk arc-spine" role="listitem" data-nb="${nb}" data-grp="${SHELF[nb] ? "s" : "b"}" ${h ? html`data-id="${h.id}"` : ""} ${cover(nb)}><b>${nb || "なし"}</b></button>`);
       b.addEventListener("click", () => {
         KN.motion.fire("select");
         if (h) openNote(h.id, b, { back: ".nt-bks .nt-bk" });
-        else { const cv = b.querySelector(".nt-cv"), a = cv.getBoundingClientRect(); go({ k: "nb", v: nb }, !KN.motion.still()); flyCover(cv, a); }
+        else { const a = b.getBoundingClientRect(); go({ k: "nb", v: nb }, !KN.motion.still()); flyCover(b, a); }
       });
       box.append(b);
     });
@@ -471,31 +469,7 @@
     return old.length ? { n: one(old), label: "しばらく開いていない" } : null;
   }
 
-  /** 札の日付＝直した日。今年なら月日だけ、今日なら時刻。 */
-  function editedOf(n) {
-    const d = new Date(n.updatedAt);
-    if (isNaN(d.getTime())) return "";
-    if (U.dayKey(d) === U.todayKey()) return hm(d);
-    const md = `${d.getMonth() + 1}月${d.getDate()}日`;
-    return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
-  }
 
-  /** 最近（電話のホーム）：表紙つきのカードを横へ送る。題・冊・直した日。押すと紙（閉じるとこのカードへ縮んで戻る）。 */
-  function coverCards(list) {
-    const box = node(html`<div class="nt-covers m-in" role="list" aria-label="最近"></div>`);
-    list.forEach((n) => {
-      const c = node(html`
-        <button type="button" class="nt-cover" role="listitem" data-id="${n.id}">
-          <span class="nt-cv" ${cover(n.notebook)} ${picOf(n)}></span>
-          <span class="nt-cover-t">${headOf(n) || "ノート"}</span>
-          <span class="nt-cover-d">${[n.notebook, editedOf(n)].filter(Boolean).join("・")}</span>
-        </button>`);
-      c.addEventListener("click", () => { KN.motion.fire("select"); openNote(n.id, c, { back: ".nt-covers .nt-cover" }); });
-      KN.ui.rowMenu(c, () => rowMenuOf(n.id));
-      box.append(c);
-    });
-    return paintPics(box);
-  }
 
   /* ---------------- 木の行（③。ホーム・左の木・紙の中のノートで同じ。docs/notes-unify.md「画面」） ----------------
      ▸ でその場に開き、名前で開く（ノートは紙。ノートブックは、頭のある冊なら頭の紙、無ければその場で開く）。
@@ -1026,8 +1000,8 @@
   }
 
   /** カードの並び。o … { open(n, el) } 押したとき（無ければ書く紙を重ねる）。 */
-  function cards(list, t, o) {
-    const box = node(html`<div class="notes-list"></div>`);
+  function cards(list, t, o, cls) {
+    const box = node(html`<div class="notes-list ${cls || ""}"></div>`);
     list.forEach((n) => box.append(row(n, t, o)));
     return box;
   }

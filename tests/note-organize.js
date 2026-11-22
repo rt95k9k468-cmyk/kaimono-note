@@ -146,7 +146,7 @@ const importBtn = (page) => page.evaluate(() => {
   await page.waitForSelector("#screen-notes .notes-books");
   const recent = await page.evaluate(() => {
     const sec = [...document.querySelectorAll("#screen-notes .notes-sec")].find((e) => e.textContent.trim() === "最近");
-    return sec ? [...sec.nextElementSibling.querySelectorAll(".nt-cover-t")].map((e) => e.textContent.trim()) : [];
+    return sec ? [...sec.nextElementSibling.querySelectorAll(".note-t")].map((e) => e.textContent.trim()) : [];
   });
   t.check("最近：取り込んだまま触っていないものは出さない", recent.includes("行事") && !recent.includes("授業") && !recent.includes("肉じゃが"), recent.join());
   /* 本棚の頭のある冊は頭の紙（R7。中の木は紙の「中のノート」）。 */

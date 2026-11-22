@@ -262,7 +262,7 @@ const { open, checker, ASKS } = require("./lib");
     const recent = await page.evaluate(async () => {
       KN.screens.notes.again();
       await new Promise((r) => setTimeout(r, 400));
-      return [...document.querySelectorAll("#screen-notes .nt-covers .nt-cover-t")].map((x) => x.textContent.trim());
+      return [...document.querySelectorAll("#screen-notes .nt-recent .note-t")].map((x) => x.textContent.trim());
     });
     await page.click('#screen-notes .nt-bk[data-nb="thinking"]');
     await page.waitForSelector('#screen-notes .nt-shelf[data-shelf="thinking"]', { timeout: 4000 });

@@ -179,7 +179,7 @@ const FORBIDDEN = [
       return !!b && !b.hidden && b.textContent.trim();
     };
     /* ホームの「最近」の表紙のカード（R7。③の行から）。 */
-    return { rows: root.querySelectorAll(".nt-covers .nt-cover").length, text: root.innerText + "\n" + document.getElementById("head").innerText,
+    return { rows: root.querySelectorAll(".nt-recent .note-row").length, text: root.innerText + "\n" + document.getElementById("head").innerText,
       badge: badge("archive") || badge("notes") };
   });
   t.check("ノートの面が出ている（3件）", nf.rows === 3, String(nf.rows));

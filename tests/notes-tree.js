@@ -152,7 +152,7 @@ const { open, checker } = require("./lib");
   t.check("帯はホームでは Notes だけ", (await headName()) === "Notes" && !(await page.$("#head .js-notes-back")));
   const secs = await ground(".notes-sec");
   t.check("ホームは 最近・本棚（見出し「ノートブック」は無い）", secs.join() === "最近,本棚", secs.join());
-  const nRecent = await page.$$eval("#screen-notes .nt-covers .nt-cover", (r) => r.length);
+  const nRecent = await page.$$eval("#screen-notes .nt-recent .note-row", (r) => r.length);
   t.check("最近は表紙のカード（木と行はホームに無い）", nRecent >= 3 && nRecent <= 8 && !(await page.$('#screen-notes .notes-books[role="tree"]')), String(nRecent));
   const gates = await ground(".nt-gates > .nt-gate");
   const first = await page.evaluate(() => [...document.querySelector("#screen-notes .js-body").children].slice(0, 2).map((e) => e.className).join("|"));

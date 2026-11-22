@@ -197,11 +197,11 @@ function under(safe) {
     await wait(600);
     const home = await page.evaluate(() => {
       const two = document.querySelector("#screen-notes .nt-home-two");
-      const l = two && two.querySelector(".nt-bks"), r = two && two.querySelector(".nt-covers");
+      const l = two && two.querySelector(".nt-bks"), r = two && two.querySelector(".nt-recent");
       return { two: !!two, side: !!(l && r) && l.getBoundingClientRect().top >= r.getBoundingClientRect().bottom };
     });
-    t.check(`${at}：ノートのホームは全幅の一列（最近の表紙の下に本棚）`, home.two && home.side, JSON.stringify(home));
-    await page.locator("#screen-notes .nt-cover", { hasText: "一つめ" }).first().click();
+    t.check(`${at}：ノートのホームは全幅の一列（最近の行の下に本棚）`, home.two && home.side, JSON.stringify(home));
+    await page.locator("#screen-notes .nt-recent .note-row .js-open", { hasText: "一つめ" }).first().click();
     await page.waitForSelector(".sheet.is-note.is-open.is-docked", { timeout: 3000 }).catch(() => {});
     await wait(500);
     const dock = async () => page.evaluate(() => {

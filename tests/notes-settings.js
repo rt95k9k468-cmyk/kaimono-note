@@ -206,7 +206,7 @@ print(json.dumps(out, ensure_ascii=False))
   });
   const KN_saved = await page.evaluate(() => KN.notes.colors().nb["仕事"]);
   const card = await page.evaluate(() => {
-    const ico = document.querySelector('#screen-notes .nt-bk[data-nb="仕事"] .nt-cv');
+    const ico = document.querySelector('#screen-notes .nt-bk[data-nb="仕事"]');
     return ico ? ico.style.getPropertyValue("--cat") : "";
   });
   t.check("本棚の表紙も選んだ色（描くのは深い八色・記録は #e07fa8 のまま）", card === "#a8626f" && KN_saved === "#e07fa8", card);
