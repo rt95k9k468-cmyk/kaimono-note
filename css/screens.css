@@ -3036,7 +3036,7 @@ a.btn { text-decoration: none; }
 .think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 /* 今日の机（意6・席1 の今日・候の札のすぐ下）：紙色の一枚。一行の書く口｜考える（問いの無い日）｜写す、下に今日の問い。朱は筆の絵だけ。 */
 .arc-desk { display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
-.arc-desk-row { display: flex; align-items: center; min-height: 60px; padding: 0 var(--sp-2) 0 0; }
+.arc-desk-row { display: flex; align-items: center; min-height: var(--row-h-card); padding: 0 var(--sp-2) 0 0; }
 .arc-desk-write { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-4); text-align: left; color: var(--c-text-2); font: var(--fw-regular) var(--fs-md)/1.4 var(--font-display); letter-spacing: .04em; }
 .arc-desk-write svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
 .arc-desk-ic { display: grid; place-items: center; width: 44px; height: 44px; flex: none; color: var(--c-text-2); }
