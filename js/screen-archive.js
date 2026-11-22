@@ -631,6 +631,8 @@
     h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });
   }
 
+  /** 年の印（意6）：棚の背表紙と同じ色の小さな角と年（藍の札は「予定」の色なのでやめた）。 */
+  const yearMark = (y, more) => `<span class="ima-y" data-c="${+y % 6}">${y}${more || ""}</span>`;
   /** いまごろ：同じ候の、ほかの年の頁を年ごとに横へ。同じ月日の頁に朱の栞。下に、その候に した・買った を一行ずつ（あった順・数えない）。 */
   function imaCard(day, go) {
     if (!showYears(day, !!go) || !KN.dayPage || !KN.season) return null;
@@ -656,11 +658,11 @@
           <b>いまごろ</b>
           ${kou ? html`<i class="arc-then-when">${kou.kou}</i>` : ""}
         </span>
-        ${U.raw(years.map((y) => `<div class="ima-year"><span class="ima-y">${y.year}</span>`
+        ${U.raw(years.map((y) => `<div class="ima-year">${y.pages.length ? "" : yearMark(y.year)}`
           + (y.pages.length ? `<div class="ima-pages">${y.pages.map((d) => {
             const dt = U.dayDate(d.date), l = leadOf(d);
             return `<button type="button" class="ima-page${d.date === y.same ? " is-same" : ""}" data-day="${U.escapeHtml(d.date)}">`
-              + `<span class="ima-d">${dt.getMonth() + 1}月${dt.getDate()}日<small>${U.escapeHtml(U.weekdayJa(d.date))}</small></span>`
+              + `<span class="ima-d">${yearMark(y.year)}${dt.getMonth() + 1}月${dt.getDate()}日<small>${U.escapeHtml(U.weekdayJa(d.date))}</small></span>`
               + `<span class="ima-text${l.blank ? " is-blank" : ""}">${U.escapeHtml(l.text)}</span></button>`;
           }).join("")}</div>` : "")
           + line("した", y.did) + line("買った", y.got) + `</div>`).join(""))}
@@ -696,7 +698,7 @@
           : KN.diaryPosts.parse(d.memo || "").map((p) => ({ at: p.date ? "" : p.at || "", text: firstLine(p.text) })).filter((p) => p.text).slice(0, 4);
       const feed = did(k);
       const tag = (label, src) => { const l = once(feed.filter((f) => f.src === src).map((f) => f.title)); return l.length ? `<p class="ima-line"><b>${label}</b><span>${U.escapeHtml(l.join("・"))}</span></p>` : ""; };
-      return `<button type="button" class="ima-year fc-year" data-day="${U.escapeHtml(k)}"><span class="ima-y">${k.slice(0, 4)}<small>${U.escapeHtml(U.weekdayJa(k))}曜日</small></span>`
+      return `<button type="button" class="ima-year fc-year" data-day="${U.escapeHtml(k)}">${yearMark(k.slice(0, 4), `<small>${U.escapeHtml(U.weekdayJa(k))}曜日</small>`)}`
         + lines.map((l) => `<span class="fc-line">${l.at ? `<time>${U.escapeHtml(l.at)}</time>` : ""}<span class="ima-text${l.blank ? " is-blank" : ""}">${U.escapeHtml(l.text)}</span></span>`).join("")
         + tag("した", "todo") + tag("買った", "item") + "</button>";
     };
@@ -1240,22 +1242,18 @@
     const el = node(html`
       <div class="think-home">
         <section class="think-today">
-          <img class="think-today-art" src="img/think/today.webp" alt="" decoding="async" draggable="false">
-          <div class="think-today-head">
-            <span class="think-today-t">${icon("thought")}<span class="js-think-t"></span></span>
-            <span class="think-today-acts">
-              <button type="button" class="think-today-other js-think-no" aria-label="考えない">${icon("close")}</button>
-              <button type="button" class="think-today-other js-think-other"><span>別の問い</span>${icon("repeat")}</button>
-            </span>
-          </div>
+          <span class="think-today-t js-think-t"></span>
           <p class="think-today-q js-think-q"></p>
           <div class="ask-ctx js-think-ctx" hidden><p class="ask-ctx-from js-think-from"></p><p class="ask-ctx-t js-think-hint"></p></div>
-          <button type="button" class="think-today-go js-think-today">${icon("edit")}<span>この問いから考える</span>${icon("chevron")}</button>
+          <div class="think-today-acts">
+            <button type="button" class="think-today-go js-think-today">${icon("thought")}<span>考える</span></button>
+            <button type="button" class="think-today-other js-think-other">${icon("shuffle")}<span>別の問い</span></button>
+            <button type="button" class="think-today-other js-think-no" aria-label="考えない">${icon("close")}</button>
+          </div>
         </section>
       </div>
     `);
-    /* 絵が届かない（一枚の書き出し・控えに無い）ときは、字だけ。今日の問いは今日だけ（利用者の頼み）。 */
-    el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => im.remove(), { once: true }));
+    /* 今日の問いは今日だけ（利用者の頼み）。 */
     const q = el.querySelector(".js-think-q"), qt = el.querySelector(".js-think-t");
     const past = pastAsks(day);
     /* 開くたびに（読み込み・しばらく離れて戻る・日が替わる）でたらめに引き直す。同じ画面の組み直しでは替えない。 */
@@ -2199,25 +2197,28 @@
     return any;
   }
 
-  /* 今日の机（11月16日・利用者）：候の札のすぐ下に、日記に書く・全文コピー・今日の問い。席3 は日記の中身を出さず「時刻 日記」の一行だけ。 */
+  /* 今日の机（意6・shots/design 05）：候の札のすぐ下の紙色の一枚。一行の書く口（押すと今の書く紙）・写す（小さな絵）、
+     その下に今日の問い（考える＝答える紙・別の問い・考えない）。問いの無い日は行に小さな「考える」（notes の思考）。朱は筆の絵だけ。 */
   const askOK = () => chatView();   // 今日の問いは鍵の対象ではない（11月16日・利用者）
   function todayDesk(day) {
     const el = node(html`
-      <div class="arc-desk">
+      <section class="arc-desk">
         <div class="arc-desk-row">
-          <button type="button" class="think-card is-main js-desk-write">
-            <img class="think-card-art" src="img/think/diary.webp" alt="" decoding="async" draggable="false">
-            <span class="think-card-t">日記に<wbr>書く</span>
-          </button>
-          <button type="button" class="think-card arc-desk-copy js-desk-copy" aria-label="今日の日記をコピー">${icon("copy")}<span class="think-card-t">コピー</span></button>
+          <button type="button" class="arc-desk-write js-desk-write">${icon("edit")}<span>いまのことを一行から</span></button>
+          <button type="button" class="arc-desk-ic js-desk-think" aria-label="考える">${icon("thought")}</button>
+          <button type="button" class="arc-desk-ic js-desk-copy" aria-label="今日の日記をコピー">${icon("copy")}</button>
         </div>
-      </div>
+      </section>
     `);
-    el.querySelectorAll("img").forEach((im) => im.addEventListener("error", () => im.remove(), { once: true }));
     el.querySelector(".js-desk-write").addEventListener("click", () => {
       KN.motion.fire("select");
       if (chatView()) openPost(day, null);
       else openLogSheet(day);
+    });
+    el.querySelector(".js-desk-think").addEventListener("click", () => {
+      KN.motion.fire("select");
+      KN.app.showScreen("notes");
+      KN.screens.notes.think();
     });
     el.querySelector(".js-desk-copy").addEventListener("click", () => {
       if (diaryShut()) { askDiary(); return; }   // 開けたら、もう一度押して写す
@@ -2228,7 +2229,7 @@
       });
     });
     const ask = askOK() ? thinkHome(day) : null;
-    if (ask) el.append(ask);
+    if (ask) { el.append(ask); el.querySelector(".js-desk-think").remove(); }
     return el;
   }
 

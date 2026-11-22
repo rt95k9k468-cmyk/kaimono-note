@@ -181,7 +181,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
     const root = document.getElementById("screen-archive"), mid = document.getElementById("screen-todo");
     const desk = root.querySelector(".day-slide > .arc-desk"), h = desk && desk.querySelector(".think-home");
     return { home: !!h, after: !!(desk && desk.previousElementSibling && desk.previousElementSibling.classList.contains("arc-season")),
-      write: !!(desk && desk.querySelector(".js-desk-write.is-main")), copy: !!(desk && desk.querySelector(".js-desk-copy")), pen: !!mid.querySelector(".tl-now-pen"),
+      write: !!(desk && desk.querySelector(".js-desk-write")), copy: !!(desk && desk.querySelector(".js-desk-copy")), pen: !!mid.querySelector(".tl-now-pen"),
       think: !!(h && h.querySelector(".js-think-new")), mid: !!mid.querySelector(".think-home"), log: !!root.querySelector(".day-slide:not(.is-peek) .arc-log"),
       q: h ? (h.querySelector(".js-think-q") || {}).textContent : "",
       arts: h ? [...h.querySelectorAll("img")].map((im) => im.complete && im.naturalWidth > 0) : [],
@@ -189,7 +189,7 @@ const AT = new Date(2026, 9, 6, 12, 34);
   });
   t.check("席1 の今日：候の札のすぐ下に机（日記に書く・コピー・今日の問い）。思考の札は無い", home.home && home.after && home.write && home.copy && !home.think, JSON.stringify(home));
   t.check("席1 の今日に Daily Log は無く、席3 に問いは無い・筆はある", !home.log && !home.mid && home.pen, JSON.stringify(home));
-  t.check("今日の問いがあり、絵が読めた", /[？。]$/.test(home.q || "") && home.arts.length === 1 && home.arts.every(Boolean), JSON.stringify(home));
+  t.check("今日の問いがあり、絵は無い（意6：紙色の机。朱は筆の絵だけ）", /[？。]$/.test(home.q || "") && home.arts.length === 0, JSON.stringify(home));
   t.check("絵文字なし", !home.emoji);
 
   /* ---- 書く口：種類を選ばずに書く紙。打った先から残る ---- */

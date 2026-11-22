@@ -137,6 +137,27 @@ const FORBIDDEN = [
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(300);
 
+  /* 意6：机は紙色の一枚（朱の塗りが無い）。問いの無い日は行に小さな「考える」・写すは絵だけ。いまごろの年は背表紙の色の印・頁は箱でない。 */
+  const desk6 = await page.evaluate(() => {
+    const root = document.getElementById("screen-archive"), d = root.querySelector(".day-slide:not(.is-peek) .arc-desk");
+    const y = root.querySelector(".is-ima .ima-y"), p = root.querySelector(".is-ima .ima-page"), cs = (e, w) => e && getComputedStyle(e, w);
+    return { bg: cs(d).backgroundColor, prim: getComputedStyle(root).getPropertyValue("--c-primary").trim(), ask: !!d.querySelector(".think-today"),
+      think: !!d.querySelector(".js-desk-think"), copyT: (d.querySelector(".js-desk-copy") || {}).textContent, mark: y && cs(y, "::before").backgroundColor,
+      spine: y && cs(y).getPropertyValue("--spine").trim(), yBg: y && cs(y).backgroundColor, pBg: p && cs(p).backgroundColor };
+  });
+  t.check("意6：机は紙色・考えるは問いの無い日だけ・写すは絵だけ", desk6.bg !== "rgba(0, 0, 0, 0)" && desk6.ask !== desk6.think && desk6.copyT === "", JSON.stringify(desk6));
+  t.check("意6：いまごろの年は背表紙の色の印（札の地なし）・頁は箱でない", !!desk6.spine && desk6.mark !== "rgba(0, 0, 0, 0)"
+    && desk6.yBg === "rgba(0, 0, 0, 0)" && desk6.pBg === "rgba(0, 0, 0, 0)", JSON.stringify(desk6));
+  if (desk6.think) {
+    await page.click("#screen-archive .day-slide:not(.is-peek) .js-desk-think");
+    await page.waitForTimeout(700);
+    const th = await page.evaluate(() => ({ screen: KN.app.activeScreen(), nb: KN.screens.notes.current && (KN.screens.notes.current() || {}).nb }));
+    t.check("意6：机の「考える」で notes の思考（新しいノート）", th.screen === "notes", JSON.stringify(th));
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => { document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click()); KN.app.showScreen("archive"); });
+    await page.waitForTimeout(500);
+  }
+
   /* D1 偶然の一日：押すたびに書いてある過ぎた日のどれかへ（いまの日は除く）。数を言わない。行った先にも同じ札。 */
   const anyText = await page.evaluate(() => document.querySelector("#screen-archive .arc-any").innerText);
   t.check("D1：札は「どこかの一日」だけ（数・禁止語なし）", anyText.trim() === "どこかの一日"

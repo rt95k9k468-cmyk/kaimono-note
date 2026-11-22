@@ -1739,7 +1739,7 @@
   pointer-events: none;
 }
 /* 挿絵は丸い札に切り、水彩（img/think/）と色味を生成りへ寄せる（RI。docs/redesign.md 8節）。 */
-.set-art, .think-today-art, .sheet-mark-art { filter: sepia(.22) saturate(.8); }
+.set-art, .sheet-mark-art { filter: sepia(.22) saturate(.8); }
 .set-top:not(.is-page) .set-art { height: 104px; margin: var(--sp-1) -4px 0 0; }
 .set-top .set-hero { margin-bottom: var(--sp-3); }
 
@@ -2881,14 +2881,14 @@ a.btn { text-decoration: none; }
 .arc-then-when { font-style: normal; font-size: var(--fs-sm); color: var(--c-text-3); }
 .ima-year { display: flex; flex-direction: column; gap: var(--sp-2); }
 .ima-year + .ima-year { padding-top: var(--sp-3); border-top: 1px solid var(--c-border); }
-/* 年は藍の札（R6。見本の .then-y）。 */
-.ima-y {
-  align-self: flex-start; padding: 2px var(--sp-2); border-radius: var(--r-sm);
-  background: var(--c-ai-soft); color: var(--c-ai); font-size: var(--fs-sm); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums;
-}
+/* 年は背表紙の色の小さな角と字（意6。藍の札は「予定」の色）。 */
+.ima-y { display: inline-flex; align-items: center; gap: var(--sp-2); margin-right: var(--sp-3); color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.ima-y::before { content: ""; width: 10px; height: 14px; border-radius: 2px; background: var(--spine); }
 .ima-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: var(--sp-2); }
 .is-ima .ima-pages { grid-template-columns: 1fr; }   /* いまごろは各年一日だけ。横いっぱいに */
-.is-ima .ima-text { -webkit-line-clamp: 3; }
+.is-ima .ima-text { -webkit-line-clamp: 3; padding: 0; }
+.is-ima .ima-page { padding: 0 var(--sp-4) 0 0; background: none; border-radius: 0; }   /* 頁の行（生成りの箱をやめた。栞は残す） */
+.is-ima .ima-d { font-size: var(--fs-sm); }
 .ima-page {
   position: relative; display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--sp-2) var(--sp-3);
   text-align: left; color: inherit; font: inherit; background: var(--c-surface-2); border: 0; border-radius: var(--r-md);
@@ -3034,29 +3034,14 @@ a.btn { text-decoration: none; }
 /* ---- 今日の問い（docs/thinking.md）。ノート・思考の札は notes の＋へ（構4b）。 ---- */
 .think-home { display: flex; flex-direction: column; gap: var(--sp-3); }
 .think-today-go:active, .think-today-other:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-/* 今日の机（席1 の今日・候の札のすぐ下）：日記に書く＝朱の塗り｜コピー、その下に今日の問い。電話は 60px の帯。 */
-.arc-desk { display: flex; flex-direction: column; gap: var(--sp-3); }
-.arc-desk-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
-.think-card {
-  position: relative; min-width: 0; height: 96px; padding: 10px 12px;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;
-  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1); text-align: left; overflow: hidden;
-}
-.think-card.is-main { background: var(--c-primary); border-color: transparent; }
-.think-card:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.think-card-art { position: absolute; right: -6px; top: -2px; width: 84px; height: 70px; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-.think-card-t { position: relative; color: var(--c-text); font-size: var(--fs-md); font-weight: var(--fw-bold); line-height: 1.35; word-break: keep-all; }
-.think-card.is-main .think-card-t { color: var(--c-text-on); }
-.arc-desk-copy { min-width: 88px; align-items: center; justify-content: center; gap: var(--sp-1); color: var(--c-text-2); }
-.arc-desk-copy svg { width: var(--ico); height: var(--ico); flex: none; }
-.arc-desk-copy .think-card-t { font-size: var(--fs-sm); color: var(--c-text-2); }
-@media (max-width: 639.98px) {
-  .think-card { height: 60px; justify-content: center; }
-  .think-card-t { z-index: 1; }
-  .think-card-art { top: 50%; right: -8px; translate: 0 -50%; width: 46px; height: 46px; }
-  .arc-desk-copy { flex-direction: row; }
-}
+/* 今日の机（意6・席1 の今日・候の札のすぐ下）：紙色の一枚。一行の書く口｜考える（問いの無い日）｜写す、下に今日の問い。朱は筆の絵だけ。 */
+.arc-desk { display: flex; flex-direction: column; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-lg); box-shadow: var(--shadow-1); overflow: clip; }
+.arc-desk-row { display: flex; align-items: center; min-height: 60px; padding: 0 var(--sp-2) 0 0; }
+.arc-desk-write { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-4); text-align: left; color: var(--c-text-2); font: var(--fw-regular) var(--fs-md)/1.4 var(--font-display); letter-spacing: .04em; }
+.arc-desk-write svg { width: var(--ico); height: var(--ico); flex: none; color: var(--c-primary); }
+.arc-desk-ic { display: grid; place-items: center; width: 44px; height: 44px; flex: none; color: var(--c-text-2); }
+.arc-desk-ic svg { width: var(--ico); height: var(--ico); }
+:is(.arc-desk-write, .arc-desk-ic):active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 /* 章の扉（構4b・README 8）：候の絵を地に、名は縦書きの明朝（モダンは横組み）。押すと季節のひとこと（行は候の札と同じ）。 */
 .arc-season.arc-door { display: flex; flex-direction: column; gap: var(--sp-3); padding: 0; }
 .arc-door .arc-door-face { position: relative; display: block; width: 100%; height: clamp(220px, 34svh, 300px); margin: 0; padding: 0; overflow: hidden;
@@ -3080,8 +3065,8 @@ a.btn { text-decoration: none; }
 .arc-spine:active { opacity: var(--press-fade); }
 .arc-spine b { writing-mode: vertical-rl; font: var(--fw-bold) calc(14px * var(--fs-k))/1 var(--font-display); letter-spacing: .1em; }
 .arc-spine.is-now::before { content: ""; position: absolute; top: -8px; right: 6px; width: 7px; height: 28px; background: #f1d9a6; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); }
-.arc-spine[data-c="0"] { --spine: #2f4d6b; } .arc-spine[data-c="1"] { --spine: #2f6149; } .arc-spine[data-c="2"] { --spine: #6a4a2c; }
-.arc-spine[data-c="3"] { --spine: #54446e; } .arc-spine[data-c="4"] { --spine: #9a3b2c; } .arc-spine[data-c="5"] { --spine: #3e5a5f; }
+:is(.arc-spine, .ima-y)[data-c="0"] { --spine: #2f4d6b; } :is(.arc-spine, .ima-y)[data-c="1"] { --spine: #2f6149; } :is(.arc-spine, .ima-y)[data-c="2"] { --spine: #6a4a2c; }
+:is(.arc-spine, .ima-y)[data-c="3"] { --spine: #54446e; } :is(.arc-spine, .ima-y)[data-c="4"] { --spine: #9a3b2c; } :is(.arc-spine, .ima-y)[data-c="5"] { --spine: #3e5a5f; }
 .arc-shelf .arc-any { margin: 0 0 var(--sp-3) auto; align-self: flex-end; }
 /* 一年の一冊・月の頁・小口（構5・js/season-book.js）。升と頁の写しは .ima-page を使い回す。小口は送る器の中で留まる（sticky）。 */
 .sb { display: flex; align-items: flex-start; gap: var(--sp-2); }
@@ -3115,39 +3100,20 @@ a.btn { text-decoration: none; }
   .arc-season-row:nth-child(n+3) { font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); }
 }
 
-.think-today {
-  position: relative; padding: var(--sp-3) var(--sp-4) var(--sp-4); border-radius: var(--r-lg); overflow: hidden;
-  background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-1);
-}
-.think-today-head { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
-.think-today-t { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--c-primary); font-size: var(--fs-lg); font-weight: var(--fw-bold); }
-.think-today-t svg { width: var(--ico); height: var(--ico); flex: none; }
-.think-today-other {
-  display: inline-flex; align-items: center; gap: var(--sp-1); min-height: 36px; margin-right: calc(-1 * var(--sp-2)); padding: 0 var(--sp-2);
-  color: var(--c-primary); font-size: var(--fs-sm); transition: opacity var(--m-state) var(--ease);
-}
-.think-today-other svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
-/* 考えない（×）と別の問い。×は字なしで小さく、薄い色（押す前に目立たせない）。 */
-.think-today-acts { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.think-today-other.js-think-no { margin-right: 0; min-width: 36px; justify-content: center; color: var(--c-text-3); }
-.think-today-q { position: relative; margin: var(--sp-2) 0 var(--sp-3); color: var(--c-text); font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: 1.5; }
+.think-today { position: relative; padding: var(--sp-3) var(--sp-4) var(--sp-4); border-top: 1px solid var(--c-border); }
+.think-today-t { color: var(--c-text-2); font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.think-today-q { margin: var(--sp-2) 0 var(--sp-3); color: var(--c-text); font: var(--fw-bold) var(--fs-xl)/1.6 var(--font-display); }
 /* 問いの文脈：出典（日付とノート）と、そのときのこと。思い出すきっかけなので畳まず、問いの下に小さく（今日の問い・答える紙）。 */
 .ask-ctx { position: relative; margin: calc(-1 * var(--sp-2)) 0 var(--sp-3); color: var(--c-text-2); font-size: var(--fs-sm); line-height: var(--lh-ui); }
 .ask-ctx-from { margin: 0; font-weight: var(--fw-bold); }
 .ask-ctx-t { margin: 2px 0 0; }
-/* 押し口は塗り潰さず、札と同じ透けた地に主色を薄く差す（10月16日・利用者「浮かないように」）。影なし。 */
-.think-today-go {
-  position: relative; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-4);
-  border-radius: var(--r-full); color: var(--c-primary); font-size: var(--fs-md); font-weight: var(--fw-bold);
-  background: color-mix(in srgb, var(--c-primary) 14%, var(--c-surface));
-  border: 1px solid color-mix(in srgb, var(--c-primary-fill) 45%, transparent);
-  transition: opacity var(--m-state) var(--ease);
-}
-.think-today-go svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
-.think-today-art {
-  position: absolute; right: calc(-1 * var(--sp-2)); bottom: calc(-1 * var(--sp-1)); width: 132px; height: auto;
-  pointer-events: none; user-select: none; -webkit-user-drag: none;
-}
+/* 考える・別の問い・考えない（×は字なしで右の端に薄く）。押し口は塗らない（10月16日・利用者「浮かないように」）。 */
+.think-today-acts { display: flex; align-items: center; gap: var(--sp-2); }
+.think-today-go, .think-today-other { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-3); border-radius: var(--r-full); color: var(--c-text); font-size: var(--fs-md); transition: opacity var(--m-state) var(--ease); }
+.think-today-go { padding: 0 var(--sp-4); font-weight: var(--fw-bold); background: var(--c-surface-2); }
+.think-today-other { color: var(--c-text-2); font-size: var(--fs-sm); }
+.think-today-go svg, .think-today-other svg { width: var(--ico-sm); height: var(--ico-sm); flex: none; }
+.think-today-other.js-think-no { margin-left: auto; min-width: 44px; justify-content: center; color: var(--c-text-3); }
 /* 頁の組み（構1・shots/vision/README.md 6.1・6.4）。箱・影・区切りの線は無い。長い一件の畳みは JS の watchFold。 */
 .arc-log-row.is-page { display: block; cursor: default; }
 .arc-log-row.is-page .arc-posts { position: relative; display: flex; flex-direction: column; }
