@@ -270,7 +270,7 @@ const { open, checker, pen } = require("./lib");
   await wait(800);
   const tree = await box(".notes-tree"), lastSeat = await box(".tab-diet"), notesScr = await box("#screen-notes");
   t.check("ノート：左の木は左の列の中（席の行の下）、ノートの画面は列の右から", tree && tree.l === 0 && tree.r <= 256 && tree.t >= lastSeat.b
-    && tree.b < 900 && tree.b > 740 && notesScr.l === 256, JSON.stringify({ tree, lastSeat, notesScr }));
+    && tree.b < 900 && tree.b > 690 && /* 底は＋と思考の丸のぶん空く（P2-6） */ notesScr.l === 256, JSON.stringify({ tree, lastSeat, notesScr }));
 
   /* 段7・P2 → R7 → W6：ホームは木｜本文（真ん中の一覧は出さない）。本文は電話と同じ一列を全幅に——札・最近（表紙の
      カードを四列に折る。題・冊と日付）・本棚。★・問い は木にも（最近直したは本文にあるので木には出さない）。 */
@@ -321,7 +321,7 @@ const { open, checker, pen } = require("./lib");
   const pane = await box(".sheet.is-note.is-open");
   const list = await box("#screen-notes .notes-ground");
   const bd = await page.evaluate(() => { const b = document.querySelector(".sheet-backdrop.is-note-cover"); return b ? getComputedStyle(b).display : "none"; });
-  t.check("三列：開いたノートは木と一覧の右・窓の右端まで（覆いなし）", pane && list && pane.l >= list.r && pane.r === 1440 && pane.t >= 40 && pane.b === 900 && bd === "none",
+  t.check("三列：開いたノートは木と一覧の右・窓の右端まで（覆いなし）", pane && list && pane.l >= list.r && pane.r === 1440 && pane.t === 0 && pane.b === 900 /* 頭に写真の帯を残さない（P2-6） */ && bd === "none",
     JSON.stringify({ pane, list, bd }));
   const fab = await box("#dock");
   t.check("三列：＋は左の列の底（右の段・一覧の行にかぶらない。W5）", fab && pane && fab.r <= 256 && fab.b <= 900 && fab.b > 820, JSON.stringify({ fab, pane, list }));

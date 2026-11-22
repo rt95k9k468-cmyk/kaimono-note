@@ -1653,6 +1653,7 @@ a { color: var(--c-primary); }
   /* ＋は左の列の底（帯と同じ段＝電話の考えのまま。右下の角では右の段の行の端・丸にかぶった——W5）。
      列はそのぶん底を空け、畳む口・ノートの木も上へ。候補は右へ開く（下の電話の横と同じ）。 */
   .has-fab { --rail-fab: calc(var(--fab-size) + var(--sp-3)); }
+  :root[data-screen="notes"].has-fab { --rail-fab: calc(var(--fab-size) + 44px + var(--sp-2) + var(--sp-3)); }  /* ＋の上の思考の丸（P2-6） */
   .has-fab .tabbar { padding-bottom: calc(var(--side-pad) + var(--rail-fab)); }
   .has-fab .dock { left: var(--side-pad); right: auto; bottom: var(--side-pad); }
   .rail-fold.has-fab .dock { left: calc((var(--rail-w) - 1px - var(--fab-size)) / 2); }

@@ -6975,7 +6975,7 @@ button.note-when:active { opacity: var(--press-fade); }
   }
   /* 据えた紙（is-docked）は席の印が替わっても段の形のまま——席を移ると閉じるが、閉じ終わるまで真ん中の紙の姿にしない（P7）。 */
   :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide), :root.notes-dock .sheet.is-note.is-docked:not(.is-wide) {
-    left: var(--pane-x); right: 0; top: calc(var(--safe-t) + var(--sp-1) * 2 + 34px + 1px); bottom: 0;
+    left: var(--pane-x); right: 0; top: var(--safe-t); bottom: 0; /* 頭に写真の帯を残さない（P2-6） */
     width: auto; height: auto;
     border-radius: 0;
     box-shadow: -1px 0 0 var(--c-border);
