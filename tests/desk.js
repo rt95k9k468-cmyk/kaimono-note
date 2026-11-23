@@ -448,6 +448,18 @@ const { open, checker, pen } = require("./lib");
     await page.keyboard.press(key);
     await page.waitForSelector(sel, { timeout: 3000 }).catch(() => {});
     t.check(what, !!(await page.$(sel)));
+    /* 意9：広い幅の一冊は一画面——月は十二列の一段・送らずに収まる・下の帯が小口（横）。 */
+    if (key === "g") {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await wait(400);
+      const bk = await page.evaluate(() => {
+        const m = [...document.querySelectorAll(".sheet.is-open .sb-month")].map((x) => Math.round(x.getBoundingClientRect().top));
+        const b = document.querySelector(".sheet.is-open .sheet-body"), e = document.querySelector(".sheet.is-open .sb-edge").getBoundingClientRect();
+        return { n: m.length, row: new Set(m).size, fits: b.scrollHeight <= b.clientHeight + 1, flat: e.width > e.height * 20 };
+      });
+      t.check("広い幅の一冊は一画面（十二列・送らない・小口は下の帯）", bk.n === 12 && bk.row === 1 && bk.fits && bk.flat, JSON.stringify(bk));
+      await page.setViewportSize({ width: 1100, height: 800 });
+    }
     await page.keyboard.press("Escape");
     await page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
     await wait(300);

@@ -6,7 +6,7 @@
      --theme light,dark       明暗（既定 light）
      --size std,xl            字の大きさ（既定 std。xl＝特大）
      --clock 21:30            その時刻から時計を進めて開く（既定は今）
-     --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）・weight・meal・drink・urge・urges（行）・set-<id>（設定の一枚）・find（さがすの紙）
+     --sheet todo             紙を開く：todo（カテゴリの付いた用事）・todo-new・product・log（daily の記録）・cal（小窓の暦）・weight・meal・drink・urge・urges（行）・set-<id>（設定の一枚）・find（さがすの紙）・book（一年の一冊）・month（月の頁）
                               （health）・diary（daily の日記）・note・note-menu（ノートと「⋯」）
      --scroll 400             送る器を下へ（px）
      --attire modern 装い（base.css の「モダン」）を列に足す。「今」はいつも撮る
@@ -130,6 +130,11 @@ async function openSheet(which) {
   } else if (which === "find") {
     const sc = document.querySelector(".screen.is-active");
     KN.searchAll.open("牛乳", sc ? sc.id.replace("screen-", "") : "todo");
+  } else if (which === "book" || which === "month") {
+    KN.app.showScreen("archive");
+    await wait(400);
+    const y = KN.util.todayKey().slice(0, 4);
+    if (which === "book") KN.seasonBook.openBook(y); else KN.seasonBook.openMonth(y, KN.seasonBook.monthFor(y));
   } else if (which === "cal") {
     const at = document.querySelector(".screen.is-active button") || document.body;
     KN.ui.popCalendar(at, { value: KN.util.todayKey(), onPick() {} });

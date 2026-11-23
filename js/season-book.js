@@ -84,12 +84,15 @@
     edge.append(tip);
     let hit = null;
     const at = (e) => {
-      const r = edge.getBoundingClientRect();
-      let n = Math.max(0, Math.min(total - 1, Math.floor((e.clientY - r.top) / r.height * total)));
+      /* 縦の縁（電話・見開き）と、広い幅の一冊の下の帯（横）。長いほうへ読む。 */
+      const r = edge.getBoundingClientRect(), wide = r.width > r.height;
+      const at0 = wide ? e.clientX - r.left : e.clientY - r.top, len = wide ? r.width : r.height;
+      let n = Math.max(0, Math.min(total - 1, Math.floor(at0 / len * total)));
       const m = list.find((x) => (n -= x.days) < 0) || list[list.length - 1];
       tip.hidden = false;
       tip.textContent = `${m.kou}　${spanOf(m)}`;
-      tip.style.top = `${Math.max(0, Math.min(r.height - 28, e.clientY - r.top - 14))}px`;
+      if (wide) tip.style.left = `${Math.max(0, Math.min(len - 160, at0 - 80))}px`;
+      else tip.style.top = `${Math.max(0, Math.min(len - 28, at0 - 14))}px`;
       return m;
     };
     edge.addEventListener("pointerdown", (e) => { edge.setPointerCapture(e.pointerId); hit = at(e); });
@@ -122,8 +125,9 @@
         ${ahead ? "" : html`<img class="sb-pic" src="${thumb(m.k)}" alt="" width="120" height="80" loading="lazy" decoding="async">`}
         <span class="sb-name">${m.kou}<small>${spanOf(m)}</small></span>
         ${line ? html`<span class="ima-text">${line}</span>` : ""}`;
+      /* 広い幅は升に一行を出さない（絵⑨）。指した札に出す。 */
       const el = node(day
-        ? html`<button type="button" class="ima-page sb-masu${now ? " is-now" : ""}" data-k="${m.k}">${body}</button>`
+        ? html`<button type="button" class="ima-page sb-masu${now ? " is-now" : ""}" data-k="${m.k}" title="${line}">${body}</button>`
         : html`<div class="ima-page sb-masu is-still${now ? " is-now" : ""}" data-k="${m.k}">${body}</div>`);
       if (day) el.addEventListener("click", () => jump(day));
       return el;
@@ -134,6 +138,7 @@
     ml.forEach((ms, mo) => {
       const sec = node(html`<section class="sb-month">
         <button type="button" class="sb-mh" aria-label="${mo}月の頁">${mo}月${icon("chevron")}</button>
+        <small class="sb-sk">${ms.filter((m) => m.k % 3 === 0).map((m) => m.sekki).join("・")}</small>
         <div class="ima-pages sb-grid"></div></section>`);
       sec.querySelector(".sb-mh").addEventListener("click", () => { KN.motion.fire("select"); openMonth(year, mo); });
       const grid = sec.querySelector(".sb-grid");
@@ -142,6 +147,15 @@
     });
 
     body.querySelector(".sb-edge").replaceWith(edgeOf(year, rows));
+    /* 広い幅の下の帯（小口）に月の目盛り。幅は月の日の数。 */
+    const ticks = node(html`<div class="sb-ticks" aria-hidden="true"></div>`);
+    for (let mo = 1; mo <= 12; mo++) {
+      const i = document.createElement("i");
+      i.style.flex = String(new Date(+year, mo, 0).getDate());
+      i.textContent = mo;
+      ticks.append(i);
+    }
+    body.append(ticks);
 
     const foot = node(html`<button type="button" class="btn btn-soft btn-sm sb-out">${icon("download")}書き出し</button>`);
     foot.addEventListener("click", () => { if (KN.settingsParts) KN.settingsParts.yearbook(year); });

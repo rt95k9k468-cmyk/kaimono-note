@@ -3089,6 +3089,30 @@ a.btn { text-decoration: none; }
 .sb-kou { display: flex; flex-direction: column; gap: var(--sp-2); }
 .sb-kh { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font: var(--fw-bold) var(--fs-lg)/1.4 var(--font-display); }
 .sb-nav { display: flex; align-items: center; justify-content: space-between; }
+.sb-sk, .sb-ticks { display: none; }
+/* 広い幅は一年が一画面（意9・構想の絵⑨）：左の列の横の面いっぱいに、列は暦の月・升は写真と名だけ・下の帯が小口。 */
+@media (min-width: 1200px) {
+  .sheet.sb-sheet { left: calc(var(--rail-w) + (100vw - var(--rail-w)) / 2); width: calc(100vw - var(--rail-w) - var(--sp-6) * 2); max-height: calc(var(--vvh, 100dvh) - var(--sp-6) * 2); }
+  .sb-sheet .sheet-title { font: var(--fw-bold) var(--fs-3xl)/1.2 var(--font-display); }
+  .sb { flex-direction: column; align-items: stretch; gap: var(--sp-1); }
+  .sb-pages { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--sp-3); }
+  .sb-month { gap: var(--sp-1); }
+  .sb-mh { font-size: var(--fs-lg); line-height: 1.2; } .sb-mh svg { display: none; }
+  .sb-sk { display: block; margin-bottom: var(--sp-2); font-size: var(--fs-2xs); color: var(--c-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sb-grid { grid-template-columns: 1fr; gap: var(--sp-2); }
+  .sb-masu { padding: 0; gap: var(--sp-1); background: none; border-radius: 0; }
+  .sb-masu .sb-pic { max-height: calc((var(--vvh, 100dvh) - 300px) / 7 - 24px); }
+  .sb-masu.is-now .sb-pic { outline: 2px solid var(--c-primary); outline-offset: 1px; } .sb-masu.is-now::before { content: none; }
+  .sb-masu.is-now .sb-name { color: var(--c-primary); }
+  .sb-masu .sb-name { flex-direction: column; gap: 0; font-size: var(--fs-sm); line-height: 1.3; }
+  .sb-masu .ima-text, .sb-masu .sb-name small { display: none; }
+  .sb-month:first-child .sb-masu:first-child .sb-name small, .sb-month:last-child .sb-masu:last-child .sb-name small { display: block; }
+  .sb > .sb-edge { position: relative; top: auto; width: auto; height: 14px; margin-top: var(--sp-6); flex-direction: row; }
+  .sb > .sb-edge > i { box-shadow: inset -1px 0 0 rgb(255 255 255 / .55); }
+  .sb > .sb-edge > i:first-child { border-radius: 3px 0 0 3px; } .sb > .sb-edge > i:nth-last-child(2) { border-radius: 0 3px 3px 0; }
+  .sb > .sb-edge .sb-tip { right: auto; bottom: calc(100% + 6px); }
+  .sb-ticks { display: flex; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; color: var(--c-text-3); }
+}
 /* 電話の最初の一画面は記録へ（W1・docs/redesign.md 2節）：候の札は額 58px・名 22px の一段。順は変えない（daily-rules）。 */
 @media (max-width: 639.98px) {
   .arc-season { gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); }
