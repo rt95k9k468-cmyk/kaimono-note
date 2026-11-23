@@ -7,7 +7,8 @@
    - 主の一台の窓二つがノートだけ直して Dropbox へ送り合っても、送る役を降りない（P6d）
    - 同じノートを窓二つで直す：書いた窓の合図でほかの窓が読み直し、両方の直しが残る・往復しない（P6d）
    - 守4：A の保存待ちのあいだに B が書く → 元は B のまま・A の分は控え「ほかの窓を読む前」・A は読み直して一言。
-     一つの窓だけなら今までどおり。控えから戻す（bulk）は上書きできる
+     一つの窓だけなら今までどおり。控えから戻す（bulk）は上書きでき、そのあと古い記憶の窓が書いても上書きしない。
+     控えが届かなければ読み直さない（一言・開いた記録）。書けるようになって書けば取り直して読み直す
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-windows.js */
 const { open, checker, URL, fakeDropbox, pen } = require("./lib");
 
@@ -254,9 +255,10 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
     t.check("守4：譲ったあと、往復しない", nav.A === settledNav.A && nav.B === settledNav.B, JSON.stringify({ settledNav, nav }));
 
     /* 控えから戻す（利用者の選んだ置き換え）は、ほかの窓が先に書いていても上書きできる。
-       A の読み直しを止めて記憶を古いままにし、B が書いたあとで A が戻す。 */
+       A の読み直しを止めて記憶を古いままにし、B が書いたあとで A が戻す。B も読み直しを止め、古い記憶のまま残す。 */
     await A2.evaluate(() => { KN.app.reloadHere = () => {}; });
     await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの二つめ", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    await B2.evaluate(() => { KN.app.reloadHere = () => {}; });
     await A2.waitForTimeout(800);
     await A2.evaluate(async () => {
       const h = KN.backup.list().find((s) => s.reason === "ほかの窓を読む前");
@@ -266,6 +268,55 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
     const back = await disk();
     t.check("守4：控えから戻すと、ほかの窓が先に書いていても上書きできる（A の分が元へ）",
       back.includes("窓Aの用事") && !back.includes("窓Bの二つめ"), back.length);
+
+    /* 戻したあと、古い記憶の B が書く。前は置き換えの番号が B の番号まで戻り、B が譲らずに戻した中身を上書きした。 */
+    await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの三つめ", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    const keptB = await B2.evaluate(() => KN.store.yielded());
+    const after = await disk();
+    t.check("守4：戻したあと古い記憶の窓が書いても、戻した中身を上書きしない（B は控えへ）",
+      after.includes("窓Aの用事") && !after.includes("窓Bの三つめ") && keptB, JSON.stringify({ len: after.length, keptB }));
+
+    /* 譲った控えが届かない（控えの置き場が書けない日）：A は読み直さない（記憶が唯一の在りか）・一言・開いた記録へ。
+       控えが書けるようになって A がまた書けば、取り直して読み直す。両方を開き直して古い印を消してから。 */
+    await A2.reload();
+    await B2.reload();
+    await booted(A2); await ready(A2);
+    await booted(B2); await ready(B2);
+    await A2.waitForTimeout(800);
+    await A2.evaluate(() => {
+      window.__asked = 0;
+      KN.app.reloadHere = () => { window.__asked++; };
+      window.__take = KN.backup.take;
+      KN.backup.take = () => Promise.resolve("failed");
+    });
+    await A2.evaluate(() => KN.store.addTodo({ title: "窓Aの残す分", due: KN.util.todayKey() }));
+    await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの四つめ", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    await A2.waitForTimeout(1500);
+    const lost = await A2.evaluate(() => ({
+      asked: window.__asked,
+      mine: KN.store.get().todos.some((x) => x.title === "窓Aの残す分"),
+      toast: (window.__toasts || []).some((s) => s.includes("この窓の分を保存できませんでした")),
+      noted: KN.liveIdb.journal().some((e) => e.kind === "yield-failed"),
+    }));
+    const disk4 = await disk();
+    t.check("守4：控えが届かなければ読み直さず、記憶に残す・一言・開いた記録へ（元は B のまま）",
+      lost.asked === 0 && lost.mine && lost.toast && lost.noted && disk4.includes("窓Bの四つめ") && !disk4.includes("窓Aの残す分"),
+      JSON.stringify(lost));
+    const retook = await A2.evaluate(async () => {
+      let given = "";
+      let got = null;
+      KN.backup.take = (reason, o) => {
+        if (reason === "ほかの窓を読む前") given = JSON.stringify(o.state);
+        return window.__take(reason, o).then((r) => { if (reason === "ほかの窓を読む前") got = r; return r; });
+      };
+      KN.store.addTodo({ title: "窓Aの五つめ", due: KN.util.todayKey() });
+      KN.store.saveNow();
+      await KN.store.yielded();
+      await new Promise((r) => setTimeout(r, 300));
+      return { asked: window.__asked, got, both: given.includes("窓Aの残す分") && given.includes("窓Aの五つめ") };
+    });
+    t.check("守4：控えが書けるようになって書けば、取り直して読み直す（残した分も控えに入る）",
+      retook.asked === 1 && retook.got === "taken" && retook.both, JSON.stringify(retook));
     t.check("エラーなし（続けて書く窓二つ）", !W.errors.length, W.errors.join(" | "));
     await W.browser.close();
   }

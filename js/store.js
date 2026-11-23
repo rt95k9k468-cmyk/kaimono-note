@@ -1378,7 +1378,8 @@
     const disk = seqIn(prev);
     // ほかの窓が先に書いていたら、書かずに譲る（守4。下の yieldTo）。利用者の選んだ置き換えは上書きする。
     if (!bulk && disk > lsSeq) { yieldTo(disk); return "yield"; }
-    const seq = lsSeq + 1;
+    /* 元の番号より上へ。置き換え（bulk）を古い記憶の窓がすると、前は番号が戻り、ほかの窓が譲らずに上書きした。 */
+    const seq = Math.max(lsSeq, disk) + 1;
     const json = JSON.stringify(Object.assign({}, liveShape(), { lsSeq: seq }));
     watchBefore(prev, disk);
     try {
@@ -1453,7 +1454,7 @@
   /* 元を書き換える直前に、いまの元を見ます（docs/storage.md の「記録の写し」）。
      - 使っているうちに元が消えていた（読めた・書けたのに元が無い）→ 開いた記録へ。
        記憶の中の記録はそのままなので、この保存で元は戻ります。
-     - ほかの画面が先に書いていた（元の番号のほうが大きい）→ 開いた記録へ。
+     - ほかの窓が先に書いていた（元の番号のほうが大きい）→ ふだんは writeLive が譲る。置き換え（bulk）だけ開いた記録へ。
      - この保存で記録が一度に大きく減る → 減る前の元を控えへ（「大きく減る前」）。
        利用者の選んだ置き換え（bulk）は、それぞれ自分の控えを取っているので除く。
      ここで何が起きても、保存は止めない。 */
@@ -1498,11 +1499,33 @@
       const mine = JSON.stringify(state);
       if (mine !== lastYield && KN.backup) {
         lastYield = mine;
-        yieldP = KN.backup.take("ほかの窓を読む前", { state: JSON.parse(mine), now: true, force: true }).catch(() => {});
+        /* 前の控えのあとへ続ける。取る前にもっと新しい記憶が来ていたら、そちらに任せる（中身は積み重ね）。
+           届いたかを true/false で——届かなければ読み直さない（この窓の記憶が唯一の在りか。app.js の otherWindow）。 */
+        yieldP = Promise.resolve(yieldP).then(() => {
+          if (mine !== lastYield) return true;
+          return KN.backup.take("ほかの窓を読む前", { state: JSON.parse(mine), now: true, force: true })
+            .then((r) => r !== "failed", () => false)
+            .then((ok) => {
+              if (ok) return true;
+              if (lastYield === mine) lastYield = null;   // 次に譲るとき、同じ中身でも取り直す
+              if (KN.liveIdb) KN.liveIdb.note({ kind: "yield-failed", seq: lsSeq, disk });
+              return false;
+            });
+        }).catch(() => false);
       }
       try { sessionStorage.setItem(YIELD_KEY, "1"); } catch (_) { /* 印が無くても、記録は守れている */ }
     } catch (err) {
       console.warn("yield to other window", err);
+    }
+  }
+
+  /* 譲った控えが届いたか（譲っていなければ true）。日記の写しへの書き足しも待つ。待つあいだに次の控えが来たら、
+     それも待つ（前は最初の一つだけ待ち、そのあいだに打った分の控えが届く前に頁を読み直しえた）。 */
+  async function yielded() {
+    for (;;) {
+      const p = yieldP;
+      const [ok] = await Promise.all([p || true, KN.diaryIdb && KN.diaryIdb.idle ? KN.diaryIdb.idle() : null]);
+      if (p === yieldP) return ok !== false;
     }
   }
 
@@ -5471,7 +5494,7 @@
     rawLive, adoptRaw, totalOf, isBlank, shrinks,
     // 守4：ほかの窓に譲ったときの読み直し（app.js の otherWindow）と、読み直したあとの一言。
     onYield: (fn) => { clashHook = fn; }, sayYield,
-    yielded: () => Promise.all([yieldP, KN.diaryIdb && KN.diaryIdb.idle ? KN.diaryIdb.idle() : null]),
+    yielded,
     get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
     // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
     liveChars: (o) => JSON.stringify(liveShape(o)).length,

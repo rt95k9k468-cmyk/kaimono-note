@@ -220,7 +220,7 @@
 | `diary-good.js` | よかったこと（docs/thinking.md）：書く紙の帯の札で中身の頭に見えない印 U+2063・吹き… |
 | `desk-dock.js` | 右の段のノートが閉じるあいだ段の形のまま（design-review 10節の P7）：開いたまま「すべてのノート」で… |
 | `desk-edges.js` | パソコンの境目（docs/desk.md 段12）：839｜840 で帯が下｜左の列、1023｜1024（中身 792… |
-| `desk-windows.js` | 二つの窓（docs/desk.md 段10）：同じ文脈の頁二つ。続けて書くと譲る（守4） |
+| `desk-windows.js` | 二つの窓（docs/desk.md 段10）：同じ文脈の頁二つ。続けて書くと譲る・届かねば残す（守4） |
 | `desk-replica.js` | 写しの端末（docs/desk.md 段15の②、js/replica.js）：偽の Dropbox。 |
 | `desk-inbox.js` | 写しの端末から足す道と主の一台の取り込み（docs/desk.md 段15の③、js/desk-inbox.js）：偽… |
 | `gutters.js` | 余白の物差し（design-review 10節の P7）：電話 393 の左右の余白（からだ・ノート 16px・買う… |

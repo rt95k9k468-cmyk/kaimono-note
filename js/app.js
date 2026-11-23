@@ -1153,6 +1153,7 @@
     /* ノートの書きかけ（IndexedDB）を書き終えてから読み直す。読み直しが書き込みを途中で捨て、別の窓が書いた
        拍に打っていたノートの本文が消えていた（パソコン段10。docs/desk.md・tests/desk-windows.js）。 */
     let otherWrote = false;
+    let keptToast = false;   // 控えが届かなかった一言は一度だけ
     const otherWindow = () => {
       if (otherWrote) return;
       otherWrote = true;
@@ -1163,10 +1164,14 @@
       if (f && f !== document.body && f.blur) f.blur();
       store.flush();
       const notes = KN.notes && KN.notes.flush ? KN.notes.flush() : null;
-      /* ノートは 1.5 秒まで。譲った控えは 8 秒まで待つ（譲ったときだけ。混んだ端末で 1.5 秒では届かなかった）。 */
+      /* ノートは 1.5 秒まで。譲った控えは届くまで待つ（前は 8 秒で切って読み直し、届く前ならこの窓の分が消えた）。
+         届かなければ読み直さない——この窓の記憶が唯一の在りか。次に書くときにまた譲って取り直し、届けば読み直す。 */
       const upTo = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise((ok) => setTimeout(ok, ms))]);
-      Promise.all([upTo(notes, 1500), upTo(store.yielded(), 8000)])
-        .then(() => KN.app.reloadHere());
+      Promise.all([upTo(notes, 1500), store.yielded()]).then(([, kept]) => {
+        if (kept) { KN.app.reloadHere(); return; }
+        otherWrote = false;
+        if (!keptToast) { keptToast = true; KN.ui.toast("この窓の分を保存できませんでした"); }
+      });
     };
     window.addEventListener("storage", (e) => { if (e.key === store.KEY) otherWindow(); });
     /* 書こうとしたらほかの窓が先に書いていた（守4）：同じ読み直しへ。読み直したら一言。 */
