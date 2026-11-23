@@ -1311,7 +1311,7 @@ a { color: var(--c-primary); }
      なって、字の下を色つきの札が流れていくようになったので、そこで
      読めなくならないための一段です。 */
   color: var(--c-text-2);
-  font-size: calc(11px * var(--fs-k));   /* 見本は 10.5px。字の下限 11px（tests/legibility.js）に合わせる */
+  font-size: var(--fs-xs);   /* 見本は 10.5px。字の下限 11px（tests/legibility.js）に合わせる */
   font-weight: var(--fw-regular);
   letter-spacing: .01em;
   /* `scale` の帰り道（離したときに戻る速さ）はここ。行き道は
@@ -1449,7 +1449,7 @@ a { color: var(--c-primary); }
   border-radius: var(--r-full);
   background: var(--c-accent);
   color: var(--c-text-on);
-  font-size: calc(11px * var(--fs-k));
+  font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
   display: grid;
   place-items: center;

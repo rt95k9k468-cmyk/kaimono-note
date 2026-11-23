@@ -2,7 +2,7 @@
 
    base.css の `:root` にある色・影・角・余白・字・太さ・行の高さの札が、どれも表に
    載っているか（逆に、表にあって :root に無い名前も落とす）。そして、札と同じ値の
-   直書き（太さ・角・行の高さ・19/24px の字）が CSS と JS に戻っていないか。
+   直書き（太さ・角・行の高さ・札と同じ大きさの字）が CSS と JS に戻っていないか。
    暗い面は二度書いてある（システムに従う `@media (prefers-color-scheme: dark)` の
    `:root:not([data-theme="light"])…` と、自分で選んだ `:root[data-theme="dark"]…`）。その組が
    一行も違わないか（roadmap-unify の U3。片方だけ直すと、片方の暗い面だけ色がずれる）。
@@ -44,14 +44,15 @@ const RULES = [
   ["字の太さは札で（400/700 も直に書かない）", /font-weight:\s*\d/],
   ["角は札と同じ値を直に書かない", /border-radius:\s*(10|14|20|28|999)px\s*[;}!]/],
   ["行の高さは札と同じ値を直に書かない", /line-height:\s*(1\.2|1\.6|1\.75)\s*[;}!]/],
-  ["19px・24px の字は札で", /calc\((19|24)px \* var\(--fs-k\)\)/],
+  /* .diet は札を一段上げるので、その中の .hl- は数のまま（意8） */
+  ["札と同じ大きさの字は札で", /calc\((11|12\.5|14|16|19|24)px \* var\(--fs-k\)\)/, /^\.hl-/],
 ];
-for (const [name, re] of RULES) {
+for (const [name, re, skip] of RULES) {
   const hits = [];
   for (const f of files) {
     read(f).split("\n").forEach((l, i) => {
       if (/^\s*--[a-z0-9-]+\s*:/.test(l)) return;
-      if (re.test(l)) hits.push(`${f}:${i + 1}`);
+      if (re.test(l) && !(skip && skip.test(l))) hits.push(`${f}:${i + 1}`);
     });
   }
   t.check(name, !hits.length, hits.slice(0, 5).join(" "));
