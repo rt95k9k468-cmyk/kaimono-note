@@ -13,7 +13,7 @@
    Dropbox への通信は全部止めてある。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/break.js */
-const { open, checker, URL } = require("./lib");
+const { open, checker, URL, abortNoise } = require("./lib");
 
 const KEY = "kaimono-note-v2";
 const AWAY = URL.replace("index.html", "manifest.webmanifest");
@@ -177,7 +177,7 @@ const AWAY = URL.replace("index.html", "manifest.webmanifest");
 
   /* 6. 二つの画面 */
   const page2 = await ctx.newPage();
-  page2.on("pageerror", (e) => errors.push("2枚目: " + String(e)));
+  page2.on("pageerror", (e) => { if (!abortNoise(e)) errors.push("2枚目: " + String(e)); });
   await page2.goto(URL);
   await ready(page2);
   await page.evaluate(() => KN.store.addTodo({ title: "6 一枚目で足した" }));
@@ -204,7 +204,7 @@ const AWAY = URL.replace("index.html", "manifest.webmanifest");
   });
   await page.waitForTimeout(200);
   const page3 = await ctx.newPage();
-  page3.on("pageerror", (e) => errors.push("3枚目: " + String(e)));
+  page3.on("pageerror", (e) => { if (!abortNoise(e)) errors.push("3枚目: " + String(e)); });
   await page.close();
   await page3.goto(URL);
   await ready(page3);

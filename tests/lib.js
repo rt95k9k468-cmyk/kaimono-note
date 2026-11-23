@@ -72,6 +72,9 @@ function clockAt(hms) {
   return new Date(clock0.at + (Date.now() - clock0.real));
 }
 
+/** WebKit は、台本が止めた（route.abort）Dropbox への要求を「access control checks」の頁のエラーとして出す。それは数えない。 */
+const abortNoise = (e) => process.env.KN_BROWSER === "webkit" && /cannot load \S*dropbox(api)?\.com\S* due to access control checks/.test(String(e));
+
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。
     unfold：畳んだ面（js/util.js の FOLDED）のうち、開いて確かめるものの名前。読み直しても開いたまま。
@@ -94,7 +97,7 @@ async function open({ viewport = { width: 390, height: 844 }, before, touch = fa
     ...(tz ? { timezoneId: tz } : {}) });
   const page = await ctx.newPage();
   const errors = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
+  page.on("pageerror", (e) => { if (!abortNoise(e)) errors.push(String(e)); });
   /* CSP（R29）が何かを止めたら、それもエラーとして数える——iPhone で黙って
      動かなくなる種類なので。 */
   page.on("console", (m) => {
@@ -229,7 +232,20 @@ async function pen(page) {
 /** 偽の Dropbox（tests/restore-drill.js・desk-windows.js）。`on` は page か context（窓二つで分け合う）。
     files（path → 中身）は端末をまたいで一つ渡す。uploads に置いた path を足す。 */
 async function fakeDropbox(on, files, uploads) {
-  const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+  const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Authorization, Content-Type, Dropbox-API-Arg, *", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+  /* WebKit の傍受は Blob の本文を見せない（postData が null）。WebKit のときだけ、Dropbox へ送る Blob を字にしてから送らせる。 */
+  if (process.env.KN_BROWSER === "webkit") await on.addInitScript(() => {
+    const f = window.fetch;
+    window.fetch = async (u, init) => {
+      if (init && init.body instanceof Blob && /dropboxapi\.com/.test(String(u))) {
+        const headers = new Headers(init.headers || {});
+        if (!headers.has("Content-Type") && init.body.type) headers.set("Content-Type", init.body.type);
+        init = { ...init, headers, body: await init.body.text() };
+      }
+      return f.call(window, u, init);
+    };
+  });
+  const text = (req) => { const b = req.postDataBuffer(); return b ? b.toString("utf8") : ""; };
   const revs = new Map();
   let n = 0;
   const json = (route, status, obj) => route.fulfill({ status, headers: { ...cors, "Content-Type": "application/json" }, body: JSON.stringify(obj) });
@@ -240,13 +256,13 @@ async function fakeDropbox(on, files, uploads) {
     const h = req.headers();
     const arg = h["dropbox-api-arg"] ? JSON.parse(h["dropbox-api-arg"]) : null;
     if (u.pathname === "/oauth2/token") {
-      const f = Object.fromEntries(new URLSearchParams(req.postData() || ""));
+      const f = Object.fromEntries(new URLSearchParams(text(req)));
       return json(route, 200, { access_token: "acc", expires_in: 14400, token_type: "bearer", ...(f.grant_type === "authorization_code" ? { refresh_token: "ref" } : {}) });
     }
     if (u.pathname === "/2/files/upload") {
       if (arg.mode === "add" && files.has(arg.path)) return json(route, 409, { error_summary: "path/conflict/file/.." });
       if (arg.mode && arg.mode[".tag"] === "update" && revs.get(arg.path) !== arg.mode.update) return json(route, 409, { error_summary: "path/conflict/file/.." });
-      files.set(arg.path, req.postData());
+      files.set(arg.path, text(req));
       uploads.push(arg.path);
       revs.set(arg.path, `r${++n}`);
       return json(route, 200, { name: arg.path.split("/").pop(), rev: revs.get(arg.path) });
@@ -257,7 +273,7 @@ async function fakeDropbox(on, files, uploads) {
       return json(route, 200, { entries, has_more: false, cursor: "c" });
     }
     if (u.pathname === "/2/files/get_metadata") {
-      const { path } = JSON.parse(req.postData());
+      const { path } = JSON.parse(text(req));
       if (!files.has(path)) return json(route, 409, { error_summary: "path/not_found/.." });
       if (!revs.has(path)) revs.set(path, `r${++n}`);
       return json(route, 200, { ".tag": "file", name: path.slice(1), rev: revs.get(path), server_modified: "2026-10-31T03:00:00Z", size: files.get(path).length });
@@ -271,4 +287,4 @@ async function fakeDropbox(on, files, uploads) {
   });
 }
 
-module.exports = { fakeDropbox, open, checker, ensureServer, noFit, noAnchor, openReview, pen, URL, ROOT, ASKS };
+module.exports = { abortNoise, fakeDropbox, open, checker, ensureServer, noFit, noAnchor, openReview, pen, URL, ROOT, ASKS };
