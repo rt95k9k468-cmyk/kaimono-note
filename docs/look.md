@@ -280,6 +280,7 @@ CLAUDE.md の実測は「副題と左の時刻は #636363」なので、`--c-tex
 | 役目の色 | `--c-ai` `--c-ai-soft` `--c-take` `--c-take-soft` `--c-yamabuki` `--c-yamabuki-fill` `--c-yamabuki-soft` `--c-fuji` `--c-fuji-soft` `--c-kaki` `--c-kaki-fill` `--c-kaki-soft` | 藍＝予定・値段／若竹＝やること・済／山吹＝お酒・最安／藤＝睡眠／柿＝消費（字・-fill は塗り・-soft は薄い地） | 変わる |
 | 値札・注意 | `--c-accent` `--c-accent-soft` `--c-accent-ink` `--c-cool-soft` `--c-cool-ink` `--c-danger` `--c-danger-soft` `--c-warn` | | 変わる |
 | からだの色 | `--c-m-steps` `--c-m-steps-lit` `--c-m-burn` `--c-m-burn-lit` `--c-m-sleep` `--c-m-sleep-lit` `--c-m-drink` `--c-m-drink-lit` | | 変わる |
+| 食事の区分 | `--c-slot-b/l/d/s`（`-soft`） | 朝 山吹・昼 浅葱・夜 藍・間食 薄紅。帯の中で隣り合うので色相を離す（意8・11月22日） | 変わる |
 | 食事の時 | `--c-slot-b` `--c-slot-l` `--c-slot-d` `--c-slot-s` `--c-slot-b-soft` `--c-slot-l-soft` `--c-slot-d-soft` `--c-slot-s-soft` | 朝・昼・夜・間食 | 変わる |
 | 影 | `--shadow-1` `--shadow-2` `--shadow-3` | 薄い順 | 変わる（黒の濃い影） |
 | 角 | `--r-sm` `--r-md` `--r-lg` `--r-xl` `--r-full` | 10 / 14 / 20（カード）/ 28（紙）/ 999px。モダンは lg 22・xl 30 | 同じ |
