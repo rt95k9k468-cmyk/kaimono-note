@@ -370,7 +370,7 @@ button, [role="tab"] {
 .icon-cell-mark { display: grid; place-items: center; height: 30px; }
 .icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }  /* 入れもの：絵選びの升 */
 .icon-cell-label {
-  font-size: calc(10px * var(--fs-k));
+  font-size: var(--fs-2xs);
   line-height: 1.15;
   color: var(--c-text-2);
   text-align: center;
@@ -1352,7 +1352,7 @@ button.hero-node:active { scale: var(--press-dot); }
    Icon Design System の上で描かれている」ことを示す印として要ります。 */
 
 .sheet-mark {
-  font-size: calc(21px * var(--fs-k));
+  font-size: var(--fs-2xl);
   line-height: 1;
   margin-right: var(--sp-2);
   display: inline-flex;
@@ -1703,7 +1703,7 @@ button.hero-node:active { scale: var(--press-dot); }
 
 .key {
   position: relative; height: 52px; border-radius: var(--r-md); background: var(--c-surface-2); color: var(--c-text);
-  font-size: calc(22px * var(--fs-k)); font-weight: var(--fw-bold); display: grid; place-items: center; line-height: 1;
+  font-size: var(--fs-2xl); font-weight: var(--fw-bold); display: grid; place-items: center; line-height: 1;
   transition: background var(--m-press) var(--ease), transform var(--m-press), scale var(--m-press);
 }
 
@@ -1730,7 +1730,7 @@ button.hero-node:active { scale: var(--press-dot); }
    same kind of job — a rate applied to what is already typed — but cool
    rather than warm, since this one takes money off. */
 .key-off { color: var(--c-cool-ink); background: var(--c-cool-soft); gap: 0; line-height: 1.05; }
-.key-off-cap { font-size: calc(10px * var(--fs-k)); opacity: .75; }
+.key-off-cap { font-size: var(--fs-2xs); opacity: .75; }
 .key-off-main { font-size: var(--fs-lg); }
 
 /* Two states in one slot: ＝ works the sum out, 確定 puts the pad away. Same

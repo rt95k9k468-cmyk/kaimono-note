@@ -197,6 +197,7 @@
   --fs-xs: calc(11px * var(--fs-k)); --fs-sm: calc(12.5px * var(--fs-k)); --fs-md: calc(14px * var(--fs-k));
   --fs-lg: calc(16px * var(--fs-k)); --fs-xl: calc(19px * var(--fs-k));  --fs-2xl: calc(24px * var(--fs-k));
   --fs-sub: calc(13px * var(--fs-k)); --fs-row: calc(17px * var(--fs-k));  /* 副の一行・行の題（意8。見比べで足した） */
+  --fs-2xs: calc(10px * var(--fs-k)); --fs-3xl: calc(32px * var(--fs-k));  /* 小さな印・大きな見出し（意8。同上） */
 
   --fw-regular: 400;
   --fw-bold:    700;
@@ -1721,7 +1722,7 @@ a { color: var(--c-primary); }
   .head, .head[data-sky] { --head-ink: var(--c-text); --head-disc: var(--c-surface-2); --head-ring: transparent; background: var(--c-bg); }
   .head[data-sky]::before, .head-eye { display: none; }
   .head[data-sky] .topbar-dayrow { text-shadow: none; }
-  .topbar-day .topbar-title, .head-name { font-size: calc(21px * var(--fs-k)); }
+  .topbar-day .topbar-title, .head-name { font-size: var(--fs-2xl); }
   .head-tray { padding: 0; min-height: 0; border-radius: 0; background: none; }
   .head { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-auto-columns: auto; column-gap: var(--sp-3);
     align-items: start; padding: var(--sp-1) var(--sp-4) 0 0; }

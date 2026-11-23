@@ -313,9 +313,9 @@
 }
 /* 日にちの数は、字の幅をそろえます——「18」→「19」で後ろの「日」が数px跳ねないように。 */
 .day-d { font-variant-numeric: tabular-nums; }
-.day-w { margin-left: var(--sp-2); font: var(--fw-bold) calc(15px * var(--fs-k)) var(--font); letter-spacing: .04em; }
-@media (min-width: 640px) { .topbar-day .topbar-title, .head-name { font-size: calc(32px * var(--fs-k)); } }
-@media (min-width: 840px) { .topbar-day .topbar-title, .head-name { font-size: calc(34px * var(--fs-k)); } }
+.day-w { margin-left: var(--sp-2); font: var(--fw-bold) var(--fs-lg) var(--font); letter-spacing: .04em; }
+@media (min-width: 640px) { .topbar-day .topbar-title, .head-name { font-size: var(--fs-3xl); } }
+@media (min-width: 840px) { .topbar-day .topbar-title, .head-name { font-size: var(--fs-3xl); } }
 
 /* ---- 題の字が入れ替わる（util.js の rollText） ----
 
@@ -919,7 +919,7 @@
    under the name. */
 .todo-at {
   flex: none;
-  font-size: calc(10px * var(--fs-k));
+  font-size: var(--fs-2xs);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
@@ -933,7 +933,7 @@
 /* And the rule under it. No ↻ — the circle it is sitting beneath has one. */
 .todo-every {
   flex: none;
-  font-size: calc(9.5px * var(--fs-k));
+  font-size: var(--fs-2xs);
   font-weight: var(--fw-bold);
   line-height: 1.3;
   letter-spacing: -.02em;
@@ -1544,11 +1544,11 @@
   --set-tile: 30px;
   --set-gap: 10px;   /* 絵と題のあいだ */
   --set-fs: var(--fs-row);
-  --set-fs-head: calc(15px * var(--fs-k));
+  --set-fs-head: var(--fs-lg);
   --set-fs-sub: var(--fs-sub);   /* 根っこの入口の下の一行（補足 13。docs/redesign.md 4節） */
   /* 説明は少なく、大きく（2026年9月30日）。13px の薄い字で長く書くのを
      やめて、残した一行を 15px で読めるように。 */
-  --set-fs-foot: calc(15px * var(--fs-k));
+  --set-fs-foot: var(--fs-lg);
   --set-line: var(--c-border);
   --set-chev: var(--c-border-2);
   /* 明るく（2026年11月5日、利用者が ChatGPT の画面案を添えて頼んだ）：地は灰ではなく、
@@ -1708,7 +1708,7 @@
   margin: var(--sp-2) 0 var(--sp-4);
   padding: 0 calc(var(--set-gut) + 2px);
   position: relative;
-  font: var(--fw-bold) calc(32px * var(--fs-k))/var(--lh-tight) var(--font-display);
+  font: var(--fw-bold) var(--fs-3xl)/var(--lh-tight) var(--font-display);
 }
 
 /* ---- 頭の挿絵（根っこは題の右、入口の先はまん中）----
@@ -2834,7 +2834,7 @@ a.btn { text-decoration: none; }
 }
 .diet-edit-name { font-size: var(--fs-sm); color: var(--c-text-2); }
 .diet-edit-unit { font-size: var(--fs-xs); color: var(--c-text-3); }
-.diet-edit-src { font-size: calc(10px * var(--fs-k)); color: var(--c-text-3); text-align: right; }
+.diet-edit-src { font-size: var(--fs-2xs); color: var(--c-text-3); text-align: right; }
 
 /* ---- 取り込みの、生の中身 ---- */
 
@@ -2941,9 +2941,9 @@ a.btn { text-decoration: none; }
 .arc-season-row:first-child { color: var(--c-primary); font-weight: var(--fw-bold); letter-spacing: .12em; }
 .arc-season-row:first-child .arc-season-k { color: inherit; }
 .arc-season-row:nth-child(2) .arc-season-k { display: block; font-size: var(--fs-xs); }
-.arc-season-name { display: block; font: var(--fw-bold) calc(26px * var(--fs-k))/1.3 var(--font-display); letter-spacing: .06em; color: var(--c-text); }
+.arc-season-name { display: block; font: var(--fw-bold) var(--fs-2xl)/1.3 var(--font-display); letter-spacing: .06em; color: var(--c-text); }
 .arc-season-row:nth-child(3) { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--c-border); }
-.arc-season-row:nth-child(n+3) { font: var(--fw-regular) calc(15px * var(--fs-k))/1.7 var(--font-display); color: var(--c-text); }
+.arc-season-row:nth-child(n+3) { font: var(--fw-regular) var(--fs-lg)/1.7 var(--font-display); color: var(--c-text); }
 /* 季節の変わり目の一拍（N7）。変わる日の行だけ、その日はじめて開いたときに左から一度満ちる
    （打つかは screen-archive.js の SEASON_BEAT_KEY）。字も色も変えない。 */
 .is-m-arrive.is-season-first .arc-season-row.is-turn { animation: season-fill var(--m-fill) var(--ease-out) both; }
@@ -2966,7 +2966,7 @@ a.btn { text-decoration: none; }
 .arc-log-row:active:not(.is-chat) { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .arc-log-row:first-child { border-top: none; }
 .arc-log-day { display: flex; flex-direction: column; align-items: center; width: 44px; flex: none; }
-.arc-log-day b { font-size: calc(26px * var(--fs-k)); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.arc-log-day b { font-size: var(--fs-2xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; line-height: 1.1; }
 .arc-log-day i { font-size: var(--fs-sm); font-style: normal; color: var(--c-text-3); }
 .arc-log-wx { display: flex; flex-direction: column; align-items: center; margin-top: var(--sp-2); font: var(--fs-xs) var(--font-num); white-space: nowrap; color: var(--c-text-2); }
 .arc-log-row.is-today .arc-log-day b { color: var(--c-primary); }
@@ -3024,7 +3024,7 @@ a.btn { text-decoration: none; }
    数字が同じ顔で四つ並ぶと、どれがその日の話なのか読み取れません。 */
 .arc-log-meta { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .arc-stamp {
-  font-size: calc(10px * var(--fs-k)); color: var(--c-text-3);
+  font-size: var(--fs-2xs); color: var(--c-text-3);
   background: var(--c-surface-2);
   border-radius: var(--r-sm);
   padding: 1px 6px;
@@ -3049,7 +3049,7 @@ a.btn { text-decoration: none; }
 .arc-door .arc-door-face.arc-season-art { color: #fff; border-color: transparent;
   background: linear-gradient(180deg, rgb(10 8 6 / .28), transparent 30% 55%, rgb(10 8 6 / .5)), linear-gradient(270deg, rgb(10 8 6 / .46), transparent 46%),
     var(--season-img, none) center / cover no-repeat, var(--season-k); }
-.arc-door-ko { position: absolute; right: var(--door-r, 22px); left: var(--door-l, auto); top: 22px; writing-mode: var(--door-wm, vertical-rl); font: var(--fw-bold) calc(34px * var(--fs-k))/1 var(--font-display); letter-spacing: .16em; }
+.arc-door-ko { position: absolute; right: var(--door-r, 22px); left: var(--door-l, auto); top: 22px; writing-mode: var(--door-wm, vertical-rl); font: var(--fw-bold) var(--fs-3xl)/1 var(--font-display); letter-spacing: .16em; }
 .arc-door-yomi { position: absolute; right: var(--door-r2, 68px); left: var(--door-l, auto); top: var(--door-yomi-t, 24px); writing-mode: var(--door-wm, vertical-rl); font-size: var(--fs-xs); letter-spacing: .24em; }
 .arc-door-sekki { position: absolute; left: 18px; bottom: 16px; font-size: var(--fs-xs); font-weight: var(--fw-bold); letter-spacing: .12em; }
 .arc-door-sekki b { display: block; font: var(--fw-bold) var(--fs-xl)/1.3 var(--font-display); letter-spacing: .08em; }
@@ -3095,7 +3095,7 @@ a.btn { text-decoration: none; }
   .arc-season-art { width: 58px; }
   .arc-season-main { gap: 0; }
   .arc-season-row:nth-child(2) .arc-season-k { display: none; }
-  .arc-season-name { font-size: calc(22px * var(--fs-k)); }
+  .arc-season-name { font-size: var(--fs-2xl); }
   .arc-season-row:nth-child(3) { margin-top: 0; padding-top: 0; border-top: 0; }
   .arc-season-row:nth-child(n+3) { font-size: var(--fs-sm); line-height: 1.5; color: var(--c-text-2); }
 }
@@ -4286,7 +4286,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* 名前は種類の色の札（予定＝藍・やること＝若竹・締切＝山吹・過ぎた＝灰）。薄い塗りに同じ色の濃い字（docs/redesign.md 5節）。 */
 .cal-name {
   display: block; flex: none; min-width: 0; max-width: 100%; padding: 0 1px 0 4px; text-align: left; border-radius: 4px;
-  font-style: normal; font-size: calc(10px * var(--fs-k)); font-weight: var(--fw-bold); line-height: 15px;
+  font-style: normal; font-size: var(--fs-2xs); font-weight: var(--fw-bold); line-height: 15px;
   color: color-mix(in srgb, var(--cat) 78%, var(--c-text)); background: color-mix(in srgb, var(--cat) 15%, var(--c-bg));
 }
 .cal-name ~ .cal-name ~ .cal-name, .cal-name.is-over { display: none; }
@@ -4300,7 +4300,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .cal.is-tall .cal-name ~ .cal-name { display: block; }
 .cal.is-tall .cal-name.is-over { display: none; }
 .cal-rest { display: none; }
-.cal.is-tall .cal-rest { display: block; flex: none; padding-left: 4px; text-align: left; font-style: normal; font-size: calc(10px * var(--fs-k)); line-height: 13px; color: var(--c-text-2); }
+.cal.is-tall .cal-rest { display: block; flex: none; padding-left: 4px; text-align: left; font-style: normal; font-size: var(--fs-2xs); line-height: 13px; color: var(--c-text-2); }
 /* 日と日のあいだの、薄い薄い罫線（右と下。右端の列は右を引かない）。 */
 .cal-day { box-shadow: inset 0 -1px 0 var(--cal-line), inset -1px 0 0 var(--cal-line); border-radius: 0; }
 .cal-day[data-wd="6"] { box-shadow: inset 0 -1px 0 var(--cal-line); }
@@ -4686,7 +4686,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
 /* 一冊の面の木は詰め（「Notion くらい狭く」）、字は一回り大きく（10月16日）。 */
 .notes-ground { --nt-fs: var(--fs-row); }
-@media (pointer: fine) { .notes-ground { --nt-fs: calc(15px * var(--fs-k)); } }
+@media (pointer: fine) { .notes-ground { --nt-fs: var(--fs-lg); } }
 .notes-books .nt-row { --nt-h: 38px; font-size: var(--nt-fs); }
 .notes-books .nt-row :is(.nt-twist, .nt-add) { height: var(--nt-h); }
 @media (pointer: fine) { .notes-books .nt-row { --nt-h: 32px; } }
@@ -5905,7 +5905,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .tl-sub-name {
   position: relative;
   display: inline-block;
-  font-size: calc(15px * var(--fs-k));
+  font-size: var(--fs-lg);
   color: var(--c-text);
 }
 /* 済んだ手順にも、行と同じ取り消し線を引きます。同じ意味には同じ形。
@@ -6138,7 +6138,7 @@ button.note-when:active { opacity: var(--press-fade); }
    書いた日には点（暦の log の点と同じ意味）。 */
 .mp-grid.is-day .mp-cell {
   position: relative; padding: 0; border: 0; border-radius: var(--r-full); background: none;
-  font-size: calc(15px * var(--fs-k)); font-weight: var(--fw-regular); font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg); font-weight: var(--fw-regular); font-variant-numeric: tabular-nums;
   color: var(--c-text-2);
 }
 .mp-grid.is-day .mp-cell.is-sun { color: color-mix(in srgb, var(--c-sun) 62%, var(--c-text-2)); }
@@ -6639,7 +6639,7 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 .road-bead::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 .road-more {
-  font: inherit; font-size: calc(9px * var(--fs-k)); font-weight: var(--fw-bold);
+  font: inherit; font-size: var(--fs-2xs); font-weight: var(--fw-bold);
   line-height: 15px; text-align: center; color: var(--c-primary);
 }
 .road-more::before { content: none; }
@@ -6850,7 +6850,7 @@ button.note-when:active { opacity: var(--press-fade); }
   }
   @container seat (min-width: 1100px) {
     .arc-season-art { width: 128px; }
-    .arc-season-name { font-size: calc(32px * var(--fs-k)); }
+    .arc-season-name { font-size: var(--fs-3xl); }
   }
 }
 /* P3a：やることの今日（道｜時間割）とからだ（段組み）は、窓でなく**中身の幅**（席の器＝窓から左の列を引いた幅）で決める
@@ -6989,9 +6989,9 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   .sheet.is-note.is-wide { width: calc(100% - var(--safe-l) - var(--safe-r) - var(--note-gap) * 2); }
   :root.notes-dock[data-screen="notes"] .sheet.is-note:not(.is-wide), :root.notes-dock .sheet.is-note.is-docked:not(.is-wide) { right: var(--safe-r); }
   /* 月の暦は窓に収める（六週で 426px あり、最後の週が窓の外だった）：マスの名前は一段。背の高い月（fitTall）は窓が低くて付かない。 */
-  .topbar-day .topbar-title, .head-name { font-size: calc(21px * var(--fs-k)); }
+  .topbar-day .topbar-title, .head-name { font-size: var(--fs-2xl); }
   .cal:not(.is-tall) .cal-dots { height: 15px; padding: 0 2px; }
-  .cal:not(.is-tall) .cal-name { font-size: calc(10px * var(--fs-k)); line-height: 15px; padding: 0 1px 0 4px; border-radius: 4px; }
+  .cal:not(.is-tall) .cal-name { font-size: var(--fs-2xs); line-height: 15px; padding: 0 1px 0 4px; border-radius: 4px; }
   .cal:not(.is-tall) .cal-name ~ .cal-name { display: none; }
   /* からだ：カードを二段に（desk は中身 768px から。横の窓の中身は 670〜770px）。 */
   /* やることの今日（R3）：左に帯と時間割、右に時刻なしと今週。段組みはどれも、月を右に立てて紙が細い
@@ -7091,7 +7091,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .strip-open:active { scale: var(--press-wide); }
 .strip-open:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .strip-top { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: 12px; }
-.strip-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(15px * var(--fs-k)); font-weight: var(--fw-bold); }
+.strip-next { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); font-weight: var(--fw-bold); }
 .strip-left { margin-left: auto; flex: none; font-size: var(--fs-sm); color: var(--c-text-2); white-space: nowrap; }
 .strip-wrap { position: relative; display: block; }
 .strip-bar { position: relative; display: block; height: 26px; border-radius: var(--r-sm); background: var(--c-surface-2); overflow: hidden; }
