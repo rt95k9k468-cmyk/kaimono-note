@@ -72,8 +72,9 @@ function clockAt(hms) {
   return new Date(clock0.at + (Date.now() - clock0.real));
 }
 
-/** WebKit は、台本が止めた（route.abort）Dropbox への要求を「access control checks」の頁のエラーとして出す。それは数えない。 */
-const abortNoise = (e) => process.env.KN_BROWSER === "webkit" && /cannot load \S*dropbox(api)?\.com\S* due to access control checks/.test(String(e));
+/** WebKit は、台本が止めた・偽物が返した Dropbox への要求を「access control checks」の頁のエラーとして出すことがある。それは数えない
+    （文中の URL は「https: /…」と崩れて届く。形に頼らず二語で見る）。 */
+const abortNoise = (e) => process.env.KN_BROWSER === "webkit" && /dropbox(api)?\.com/.test(String(e)) && /access control checks/.test(String(e));
 
 /** 新しい文脈で開いて、立ち上がるまで待つ。{ browser, ctx, page, errors }
     before(ctx, page) は開く前に呼ぶ（CPU を遅くする・見張りを仕込む、など）。
