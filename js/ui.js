@@ -2567,7 +2567,7 @@
              飛ばして、いま打った言葉を直接記録する一本道）。 */
           const empty = node(html`
             <div class="stack gap-2">
-              <p style="color:var(--c-text-3);font-size:calc(13px * var(--fs-k));padding:8px 0 0">
+              <p style="color:var(--c-text-3);font-size:var(--fs-sub);padding:8px 0 0">
                 「${query}」に合う絵はありません
               </p>
               <button type="button" class="icon-report-toggle js-report-empty">

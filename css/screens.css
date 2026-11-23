@@ -563,7 +563,7 @@
   width: 30px; height: 30px;
   border-radius: var(--r-full);
   font-family: var(--font-num);
-  font-size: calc(17px * var(--fs-k));
+  font-size: var(--fs-row);
   font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -1284,7 +1284,7 @@
 
 /* 値段は墨の 17px 太（丸い字）。下に「最安」の王冠を比べたときだけ（docs/redesign.md R5）。 */
 .item-price-amount {
-  font-family: var(--font-num); font-size: calc(17px * var(--fs-k)); font-weight: var(--fw-bold); line-height: var(--lh-tight);
+  font-family: var(--font-num); font-size: var(--fs-row); font-weight: var(--fw-bold); line-height: var(--lh-tight);
   color: var(--c-text); font-variant-numeric: tabular-nums;
 }
 .item-price-store { font-size: calc(12px * var(--fs-k)); }
@@ -1543,9 +1543,9 @@
   --set-pad: 18px;   /* カードの中の左右（絵の左端） */
   --set-tile: 30px;
   --set-gap: 10px;   /* 絵と題のあいだ */
-  --set-fs: calc(17px * var(--fs-k));
+  --set-fs: var(--fs-row);
   --set-fs-head: calc(15px * var(--fs-k));
-  --set-fs-sub: calc(13px * var(--fs-k));   /* 根っこの入口の下の一行（補足 13。docs/redesign.md 4節） */
+  --set-fs-sub: var(--fs-sub);   /* 根っこの入口の下の一行（補足 13。docs/redesign.md 4節） */
   /* 説明は少なく、大きく（2026年9月30日）。13px の薄い字で長く書くのを
      やめて、残した一行を 15px で読めるように。 */
   --set-fs-foot: calc(15px * var(--fs-k));
@@ -2088,7 +2088,7 @@
    目盛りはつまみの中心が止まるところ（両端はつまみの半径ぶん内側）。 */
 .set-row.is-slider { gap: var(--sp-3); padding-top: var(--sp-3); padding-bottom: var(--sp-3); }
 .set-slide-a { flex: none; color: var(--c-text-2); line-height: 1; }
-.set-slide-a.is-small { font-size: calc(13px * var(--fs-k)); }
+.set-slide-a.is-small { font-size: var(--fs-sub); }
 .set-slide-a.is-large { font-size: var(--fs-2xl); }
 .set-range {
   --tick: var(--set-chev);
@@ -2651,11 +2651,11 @@ button.section-note:active { opacity: var(--press-fade); }
 .diet-slot-ico { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: var(--r-md); background: color-mix(in srgb, var(--sc) 16%, var(--c-surface)); color: var(--sc); }
 .diet-slot-ico svg { width: 24px; height: 24px; }  /* 入れもの：46の台 */
 .diet-slot-name { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); white-space: nowrap; }
-.diet-slot-kcal { margin-left: auto; font: var(--fw-bold) calc(17px * var(--fs-k)) / 1.2 var(--font-num); color: var(--c-text); }
+.diet-slot-kcal { margin-left: auto; font: var(--fw-bold) var(--fs-row) / 1.2 var(--font-num); color: var(--c-text); }
 .diet-slot-view { position: relative; flex-direction: row; align-items: center; gap: var(--sp-3); min-height: var(--row-h-card); cursor: pointer; transition: opacity var(--m-state) var(--ease); }
 .diet-slot-view[role="button"]:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 .hl-slot-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.diet-slot-text { font-size: calc(13px * var(--fs-k)); line-height: 1.45; color: var(--c-text-2); overflow-wrap: anywhere; }
+.diet-slot-text { font-size: var(--fs-sub); line-height: 1.45; color: var(--c-text-2); overflow-wrap: anywhere; }
 .hl-slot-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; }
 .hl-slot-end small { font-size: var(--fs-sm); color: var(--c-text-3); }
 .hl-slot-add { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--c-surface-2); color: var(--c-text-2); }
@@ -4685,7 +4685,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shelf-x: 1.8; --shelf-to: #fff; } }
 :root[data-theme="dark"] { --shelf-x: 1.8; --shelf-to: #fff; }
 /* 一冊の面の木は詰め（「Notion くらい狭く」）、字は一回り大きく（10月16日）。 */
-.notes-ground { --nt-fs: calc(17px * var(--fs-k)); }
+.notes-ground { --nt-fs: var(--fs-row); }
 @media (pointer: fine) { .notes-ground { --nt-fs: calc(15px * var(--fs-k)); } }
 .notes-books .nt-row { --nt-h: 38px; font-size: var(--nt-fs); }
 .notes-books .nt-row :is(.nt-twist, .nt-add) { height: var(--nt-h); }
@@ -7111,7 +7111,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
   content: ""; position: absolute; left: -4px; top: -5px; width: 10px; height: 10px; border-radius: 50%;
   background: var(--c-now); box-shadow: 0 0 0 2px var(--c-surface);
 }
-.strip-tk { position: relative; display: block; height: calc(18px * var(--fs-k)); margin-top: 4px; font-family: var(--font-num); font-size: calc(13px * var(--fs-k)); line-height: 1.35; color: var(--c-text-3); }
+.strip-tk { position: relative; display: block; height: calc(18px * var(--fs-k)); margin-top: 4px; font-family: var(--font-num); font-size: var(--fs-sub); line-height: 1.35; color: var(--c-text-3); }
 .strip-tk > span { position: absolute; top: 0; translate: -50% 0; }
 .strip-tk > span:first-child { translate: 0 0; }
 .strip-tk > span:last-child { translate: -100% 0; }
@@ -7223,7 +7223,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 #screen-prices .face-seg { padding-bottom: var(--sp-3); }
 /* 棚のカード：頭は色の点・名前・品数。行の線は端から端まで（見本）。 */
 :is(#screen-list, #screen-prices) .cat-group.is-run { --shelf-inset: 0px; padding-bottom: 0; overflow: clip; }
-:is(#screen-list, #screen-prices) .shelf-head { padding: var(--sp-3) var(--sp-4) var(--sp-1); font: var(--fw-bold) calc(13px * var(--fs-k)) var(--font); color: var(--c-text-2); }
+:is(#screen-list, #screen-prices) .shelf-head { padding: var(--sp-3) var(--sp-4) var(--sp-1); font: var(--fw-bold) var(--fs-sub) var(--font); color: var(--c-text-2); }
 .shelf-head .chip-dot { width: 9px; height: 9px; background: var(--cat); }
 .shelf-n { margin-left: auto; font-family: var(--font-num); font-weight: var(--fw-regular); color: var(--c-text-3); }
 /* 行（買うもの・価格）：60px、絵は種類の色を 13% 敷いた 46px の台に、絵は札の色そのまま。 */
@@ -7240,13 +7240,13 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .item-fav .ui-ico { width: 14px; height: 14px; }  /* 入れもの：名前の横の小さな印 */
 .item-fav .ico-line { display: none; }
 .item-fav .ico-solid { display: block; }
-#screen-list .item-meta, #screen-prices .product-meta { min-height: 0; font-size: calc(13px * var(--fs-k)); color: var(--c-text-2); }
+#screen-list .item-meta, #screen-prices .product-meta { min-height: 0; font-size: var(--fs-sub); color: var(--c-text-2); }
 #screen-list .item-price, #screen-prices .item-price { min-width: 3.5em; padding-left: 0; }
 /* docs/shopping.md「S1〜S4」：店の札・買った一拍の値段の欄・これまでの最安。 */
 /* 札の当たり（::after の 44px）が送る器の頭で切れないよう上に 4px。上の貼りつく帯（.wk-faces）の下 4px は上の札の当たりなので、
    引き上げて重ねない（重ねると帯が上に描かれて取られる）。 */
 .shop-stores .chip-row { padding-block: 4px var(--sp-2); }
-.item-price-in { width: 5.4em; height: 36px; padding: 0 var(--sp-2); text-align: right; font: var(--fw-bold) calc(17px * var(--fs-k)) var(--font-num); animation: fade-in var(--m-state) var(--ease-out); }
+.item-price-in { width: 5.4em; height: 36px; padding: 0 var(--sp-2); text-align: right; font: var(--fw-bold) var(--fs-row) var(--font-num); animation: fade-in var(--m-state) var(--ease-out); }
 .pd-low { margin: 0; font-size: var(--fs-md); color: var(--c-text-2); }
 .pd-low b { font-family: var(--font-num); color: var(--c-text); }
 #screen-list .item-wrap .item.is-checked { opacity: .55; }
@@ -7261,7 +7261,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .pbar-b > i { display: block; height: 100%; border-radius: 5px; background: var(--c-border-2); transform-origin: left center; scale: var(--w, 1) 1; animation: stack-grow var(--m-fill) var(--ease-out) both; }
 :is(.pbar, .price-row).is-best .pbar-b > i { background: var(--c-yamabuki-fill); }
 .pbar-y { text-align: right; font-family: var(--font-num); font-weight: var(--fw-bold); }
-#screen-prices .pbar { font-size: calc(13px * var(--fs-k)); }
+#screen-prices .pbar { font-size: var(--fs-sub); }
 #screen-prices .pbar-b { height: 6px; }
 /* 今日買ったもの：一枚の行（絵の台・題・品数・＞）。ひらくと下に買った行のカード。 */
 #screen-list .day-bought-head.tk-h { padding: var(--sp-2) calc(var(--sp-3) + var(--sp-1)) var(--sp-2); }
@@ -7273,7 +7273,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 #screen-list .day-bought-toggle > svg { color: var(--c-text-3); }
 .got-main { display: flex; flex-direction: column; min-width: 0; }
 .got-t { font-size: var(--fs-xl); color: var(--c-text); }
-.got-n { font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-regular); color: var(--c-text-2); }
+.got-n { font-size: var(--fs-sub); font-weight: var(--fw-regular); color: var(--c-text-2); }
 .got-n .cat-head-count { display: inline-block; color: inherit; font-weight: inherit; }
 #screen-list .day-bought.is-today > .item-list { margin-top: var(--sp-2); }
 /* 小見出し（今回買うもの・そのほか・ほかの日の買ったもの）は明朝 --fs-xl。 */
@@ -7346,7 +7346,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* 体重と食事：名前・36px の数・ひと言、下の端に細い線（体重）と入れた枠の色の帯（食事）。 */
 .hl-hero { display: flex; min-width: 0; height: 100%; padding: 14px 14px 12px; text-align: left; color: var(--c-text); transition: scale var(--m-press) var(--ease); }
 .hl-hero-in { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.hl-hero-h { display: flex; align-items: center; gap: 6px; font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-2); }
+.hl-hero-h { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .hl-hero-h > svg { flex: none; width: 17px; height: 17px; color: var(--c-primary); }  /* 入れもの：カードの名前 */
 .hl-hero-v { margin-top: 4px; font: var(--fw-bold) calc(36px * var(--fs-k)) / 1.15 var(--font-num); letter-spacing: -.02em; white-space: nowrap; }
 .hl-hero-v b { position: relative; font-weight: inherit; }
@@ -7374,7 +7374,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .hl-meals-in { display: flex; flex-direction: column; gap: var(--sp-2); }
 .hl-sec { display: flex; align-items: center; gap: var(--sp-2); padding: 0 var(--sp-1); }
 .diet-memo-h { display: flex; justify-content: flex-end; }
-.hl-sec-a { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; min-height: 44px; font-size: calc(13px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-primary); }
+.hl-sec-a { margin-left: auto; display: inline-flex; align-items: center; gap: 3px; min-height: 44px; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--c-primary); }
 .hl-sec-a > svg { width: 16px; height: 16px; }  /* 入れもの：小見出しの右 */
 .hl-sec-a:active, .hl-goal:active { opacity: var(--press-fade); }
 .hl-list { overflow: clip; }
@@ -7384,7 +7384,7 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .diet-ai-btns .btn { flex: 1; background: var(--c-surface-2); }
 /* 体重の推移：小見出しと期間、図、凡例と目標の札（藍）。線は紙色の幕が右へ退いて描かれる（scale）。 */
 .hl-chart-h { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
-.hl-chart-h .tk-h { flex: 1 0 auto; font-size: calc(17px * var(--fs-k)); }
+.hl-chart-h .tk-h { flex: 1 0 auto; font-size: var(--fs-row); }
 .hl-chart-h .diet-range { flex: 1 1 250px; }
 .diet-plot-chart { position: relative; }
 .hl-wipe { position: absolute; top: 0; background: var(--c-surface); transform-origin: 100% 50%; scale: 0 1; pointer-events: none; }
