@@ -97,15 +97,15 @@
   --c-m-drink:     #b9820f;
   --c-m-drink-lit: #dfa32b;
 
-  /* --- 食事の区分（朝・昼・夜・間食）。帯の中で隣り合うので色相を離す（R4 で見直す） --- */
-  --c-slot-b:      #e0a02f;
-  --c-slot-l:      #2e9bd6;
-  --c-slot-d:      #2b3a8f;
-  --c-slot-s:      #c0559b;
-  --c-slot-b-soft: #fbf1dc;
-  --c-slot-l-soft: #dcf0fb;
-  --c-slot-d-soft: #e0e4f6;
-  --c-slot-s-soft: #f8e4f2;
+  /* --- 食事の区分（朝・昼・夜・間食）。山吹・浅葱・藍・薄紅（意8。帯の中で隣り合うので色相を離す） --- */
+  --c-slot-b:      #dfa32b;
+  --c-slot-l:      #3d8c97;
+  --c-slot-d:      #2b5a8c;
+  --c-slot-s:      #b06a7a;
+  --c-slot-b-soft: #f6ead0;
+  --c-slot-l-soft: #dcecee;
+  --c-slot-d-soft: #dfe8f2;
+  --c-slot-s-soft: #f4e3e6;
 
   /* --- 絵の大きさ、二段階（主＝押せるもの・目印／添え＝文字に寄り添うもの）。入れものの中身だけ例外 --- */
   --ico:    20px;
@@ -469,8 +469,8 @@
     --c-danger: #f08a7c; --c-danger-soft: #3d1f1b; --c-warn: #dcae4a;
     --c-m-steps: #7cc7a2; --c-m-steps-lit: #b0e2c9; --c-m-burn: #eb9a62; --c-m-burn-lit: #f6c4a0;
     --c-m-sleep: #b3a5e6; --c-m-sleep-lit: #d3caf3; --c-m-drink: #e3b95a; --c-m-drink-lit: #f0d596;
-    --c-slot-b: #e8b258; --c-slot-l: #4fd0e0; --c-slot-d: #8878f0; --c-slot-s: #e28ad0;
-    --c-slot-b-soft: #332a1a; --c-slot-l-soft: #142b36; --c-slot-d-soft: #1f2244; --c-slot-s-soft: #33203a;
+    --c-slot-b: #e8b258; --c-slot-l: #7cc3cc; --c-slot-d: #8db5e2; --c-slot-s: #dc9aa8;
+    --c-slot-b-soft: #332a1a; --c-slot-l-soft: #173236; --c-slot-d-soft: #1f3147; --c-slot-s-soft: #3a2228;
     --push-shadow: -1px 0 0 rgba(255, 255, 255, .14), -14px 0 28px rgba(0, 0, 0, .5);
     --shadow-1: 0 1px 2px rgba(0, 0, 0, .3); --shadow-2: 0 8px 24px rgba(0, 0, 0, .45); --shadow-3: 0 10px 40px rgba(0, 0, 0, .55);
   }
@@ -488,8 +488,8 @@
   --c-danger: #f08a7c; --c-danger-soft: #3d1f1b; --c-warn: #dcae4a;
   --c-m-steps: #7cc7a2; --c-m-steps-lit: #b0e2c9; --c-m-burn: #eb9a62; --c-m-burn-lit: #f6c4a0;
   --c-m-sleep: #b3a5e6; --c-m-sleep-lit: #d3caf3; --c-m-drink: #e3b95a; --c-m-drink-lit: #f0d596;
-  --c-slot-b: #e8b258; --c-slot-l: #4fd0e0; --c-slot-d: #8878f0; --c-slot-s: #e28ad0;
-  --c-slot-b-soft: #332a1a; --c-slot-l-soft: #142b36; --c-slot-d-soft: #1f2244; --c-slot-s-soft: #33203a;
+  --c-slot-b: #e8b258; --c-slot-l: #7cc3cc; --c-slot-d: #8db5e2; --c-slot-s: #dc9aa8;
+  --c-slot-b-soft: #332a1a; --c-slot-l-soft: #173236; --c-slot-d-soft: #1f3147; --c-slot-s-soft: #3a2228;
   --push-shadow: -1px 0 0 rgba(255, 255, 255, .14), -14px 0 28px rgba(0, 0, 0, .5);
   --shadow-1: 0 1px 2px rgba(0, 0, 0, .3); --shadow-2: 0 8px 24px rgba(0, 0, 0, .45); --shadow-3: 0 10px 40px rgba(0, 0, 0, .55);
 }
