@@ -8,7 +8,7 @@
    道具の絵が無い・ノートは書ける／書き出し（zip に images/<id>.jpg と相対の参照・まとめる md は打ったまま）／
    Dropbox（JSON に画像が入らない・画像は一度だけ・戻すと手元に無い画像を読む・名前とハッシュが違えば
    書かない）／plain・検索・カードの冒頭が参照を出さない・http の画像は画像にならず fetch もしない／
-   段5より前のノートは読み込みの前後で同じ・入れ物の版は1のまま。
+   段5より前のノートは読み込みの前後で同じ・入れ物の版は1のまま／展開の時点で縮める（守5：向き6・小さい写真・使えない端末）。
 
    画像は台本の中で canvas から作る。本物の Dropbox には繋がない（page.route）。
 
@@ -188,6 +188,58 @@ const IMG_DB = "kaimono-note-images";
   t.check("入れ物に一件・長辺1600・ArrayBuffer", k1.length === 1 && k1[0].id === A && k1[0].w === 1600 && k1[0].h === 1200 && k1[0].blob,
     JSON.stringify(k1));
   t.check("縮めた中身は 1MB より小さい", k1[0] && k1[0].n < 1e6, k1[0] && k1[0].n);
+
+  /* ---- 1b. 展開の時点で縮める（守5・監-8）。左が赤・右が青の 4000×3000。向き6（右へ90°）は上が赤。 ---- */
+  const halves = Buffer.from(await page.evaluate(() => {
+    const cv = document.createElement("canvas"); cv.width = 4000; cv.height = 3000;
+    const g = cv.getContext("2d"); g.fillStyle = "#f00"; g.fillRect(0, 0, 2000, 3000); g.fillStyle = "#00f"; g.fillRect(2000, 0, 2000, 3000);
+    return cv.toDataURL("image/jpeg", 0.9).split(",")[1];
+  }), "base64");
+  const ifd = Buffer.from([0x4d, 0x4d, 0, 0x2a, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const app1o = Buffer.concat([Buffer.from("Exif\0\0", "binary"), ifd]);
+  const turned = Buffer.concat([halves.subarray(0, 2), Buffer.from([0xff, 0xe1, (app1o.length + 2) >> 8, (app1o.length + 2) & 255]), app1o, halves.subarray(2)]);
+  const small1 = Buffer.from(await picture(800, 600, 7), "base64");
+  const dec = await page.evaluate(async ([flat64, turned64, small64]) => {
+    const fileOf = (b64, n) => new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], n, { type: "image/jpeg" });
+    const real = window.createImageBitmap;
+    const seen = [];
+    let mode = "";
+    window.createImageBitmap = function (src, o) {
+      if (src instanceof Blob) seen.push(o && o.resizeWidth ? `${o.resizeWidth}x${o.resizeHeight}` : "full");
+      if (o && o.resizeWidth && mode === "ignore") { const { resizeWidth, resizeHeight, ...rest } = o; return real.call(this, src, rest); }
+      if (o && o.resizeWidth && mode === "swap") return real.call(this, src, { ...o, resizeWidth: o.resizeHeight, resizeHeight: o.resizeWidth });
+      return real.apply(this, arguments);
+    };
+    const tops = async (bytes) => {
+      const bm = await real(new Blob([bytes], { type: "image/jpeg" }));
+      const cv = document.createElement("canvas"); cv.width = bm.width; cv.height = bm.height;
+      const g = cv.getContext("2d"); g.drawImage(bm, 0, 0);
+      const px = (x, y) => [...g.getImageData(x, y, 1, 1).data].slice(0, 3).map((v) => v > 128 ? 1 : 0).join("");
+      return { top: px(bm.width / 2, 2), bottom: px(bm.width / 2, bm.height - 3), left: px(2, bm.height / 2), right: px(bm.width - 3, bm.height / 2) };
+    };
+    const go = async (m, b64, sides) => {
+      mode = m; seen.length = 0;
+      const r = await KN.noteImg.shrink(fileOf(b64, "x.jpg"), sides);
+      const one = Array.isArray(r) ? r : [r];
+      return { seen: seen.join(","), sizes: one.map((x) => `${x.w}x${x.h}`).join(","), look: await tops(one[0].bytes) };
+    };
+    try {
+      return {
+        flat: await go("", flat64), turned: await go("", turned64), small: await go("", small64),
+        pair: await go("", flat64, [1600, 320]), ignore: await go("ignore", flat64), swap: await go("swap", turned64),
+      };
+    } finally { window.createImageBitmap = real; }
+  }, [halves.toString("base64"), turned.toString("base64"), small1.toString("base64")]);
+  t.check("守5：4000×3000 は 1600×1200 で開く（原寸で開かない）", dec.flat.seen === "1600x1200" && dec.flat.sizes === "1600x1200"
+    && dec.flat.look.left === "100" && dec.flat.look.right === "001", JSON.stringify(dec.flat));
+  t.check("守5：向き6の写真は縦 1200×1600・上が赤", dec.turned.seen === "1200x1600" && dec.turned.sizes === "1200x1600"
+    && dec.turned.look.top === "100" && dec.turned.look.bottom === "001", JSON.stringify(dec.turned));
+  t.check("守5：小さい写真（800×600）は縮めずに開く", dec.small.seen === "full" && dec.small.sizes === "800x600", JSON.stringify(dec.small));
+  t.check("守5：大小二つは大きい方で一度だけ開く", dec.pair.seen === "1600x1200" && dec.pair.sizes === "1600x1200,320x240", JSON.stringify(dec.pair));
+  t.check("守5：縮めて開けない端末は原寸のまま同じ結果", dec.ignore.seen === "1600x1200" && dec.ignore.sizes === "1600x1200"
+    && dec.ignore.look.left === "100", JSON.stringify(dec.ignore));
+  t.check("守5：縦横が入れ替わって返る端末は原寸で開き直す", dec.swap.seen === "1200x1600,full" && dec.swap.sizes === "1200x1600"
+    && dec.swap.look.top === "100" && dec.swap.look.bottom === "001", JSON.stringify(dec.swap));
   await page.evaluate(() => document.activeElement.blur());
   await page.waitForFunction(() => {
     const im = document.querySelector(".sheet.is-note.is-open .js-view .nv-img.is-on img");

@@ -116,8 +116,39 @@
 
   /* ---------------- 縮める ---------------- */
 
-  /** 写真を読んで、絵の元（drawImage に渡せるもの）と大きさ。向きは端末が直す。 */
-  async function decode(file) {
+  /** 向きを直したあとの大きさ。Image は読むだけでは展開しない（描くときに展開する）。 */
+  async function dimsOf(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      return await new Promise((resolve, reject) => {
+        const x = new Image();
+        x.onload = () => resolve({ w: x.naturalWidth, h: x.naturalHeight });
+        x.onerror = () => reject(new Error("画像を開けませんでした"));
+        x.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  /** 写真を読んで、絵の元（drawImage に渡せるもの）と大きさ。向きは端末が直す。
+      side を渡すと、長辺 side より大きい写真は展開の時点で縮める（48MP を原寸で開くと約190MB）。
+      縮めて開けない端末・縦横が入れ替わって返る端末は、今までどおり原寸で開く。 */
+  async function decode(file, side) {
+    if (window.createImageBitmap && side) {
+      try {
+        const d = await dimsOf(file);
+        const k = side / Math.max(d.w, d.h);
+        if (d.w && d.h && k < 1) {
+          const rw = Math.max(1, Math.round(d.w * k)), rh = Math.max(1, Math.round(d.h * k));
+          const bm = await createImageBitmap(file, { imageOrientation: "from-image", resizeWidth: rw, resizeHeight: rh, resizeQuality: "high" });
+          if (bm.width && bm.height && Math.abs(bm.width / bm.height - d.w / d.h) < 0.02 * (d.w / d.h)) {
+            return { src: bm, w: bm.width, h: bm.height, done: () => { try { bm.close(); } catch (_) { /* 閉じてある */ } } };
+          }
+          try { bm.close(); } catch (_) { /* 閉じてある */ }
+        }
+      } catch (_) { /* 下の原寸で */ }
+    }
     if (window.createImageBitmap) {
       try {
         const bm = await createImageBitmap(file, { imageOrientation: "from-image" });
@@ -157,7 +188,7 @@
     return { bytes: await bytesOf(blob), w: cv.width, h: cv.height };
   }
   async function shrink(file, sides = [SIDE]) {
-    const pic = await decode(file);
+    const pic = await decode(file, Math.max(...sides));
     try {
       if (!pic.w || !pic.h) throw new Error("画像を開けませんでした");
       const out = [];
