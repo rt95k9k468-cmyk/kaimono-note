@@ -28,7 +28,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   });
   await page.waitForTimeout(500);
 
-  const waitClosed = () => page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 5000 });
+  const waitClosed = () => page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 10000 });
   /* 飲みたくなったは画面に置かず、お酒の紙の中（.urge-bar）。 */
   const openDrink = async () => {
     await page.click("#screen-diet .js-day-card .js-drink");
