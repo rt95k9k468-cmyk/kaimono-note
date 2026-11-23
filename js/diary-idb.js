@@ -656,6 +656,7 @@
 
   KN.diaryIdb = {
     start, ready, settled, body, retry, onChange, status, delivered, afterWrite, reloaded,
+    idle,   // 写しへ書き終えるのを待つ（ほかの窓に譲って頁を読み直す前。store.yielded・守4）
     isOut, forLive, prepare, markOut, putBack, deliver,
   };
 })();

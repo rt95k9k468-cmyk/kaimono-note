@@ -6,6 +6,8 @@
    - A でノートの本文を打った直後 → B が書く → A を読み直してもノートの本文が残る
    - 主の一台の窓二つがノートだけ直して Dropbox へ送り合っても、送る役を降りない（P6d）
    - 同じノートを窓二つで直す：書いた窓の合図でほかの窓が読み直し、両方の直しが残る・往復しない（P6d）
+   - 守4：A の保存待ちのあいだに B が書く → 元は B のまま・A の分は控え「ほかの窓を読む前」・A は読み直して一言。
+     一つの窓だけなら今までどおり。控えから戻す（bulk）は上書きできる
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-windows.js */
 const { open, checker, URL, fakeDropbox, pen } = require("./lib");
 
@@ -191,6 +193,74 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
     t.check("ノートの窓：読み直したあと、往復しない", nav.P === settledNav.P && nav.Q === settledNav.Q, JSON.stringify({ settledNav, nav }));
     t.check("エラーなし（ノートの窓二つ）", !P.errors.length, P.errors.join(" | "));
     await P.browser.close();
+  }
+
+  /* 守4（監-3）：窓A の保存待ち（120ms）のあいだに窓B が書く。前は A が読み直す直前の flush で古い記憶を丸ごと書き、
+     B の変更が両方の窓から消えた。いまは A が譲る：元は B のまま・A の分は控え「ほかの窓を読む前」・A は読み直して一言。 */
+  {
+    const W = await open({ viewport: { width: 1440, height: 900 } });
+    const A2 = W.page;
+    const ready = (p) => p.evaluate(() => Promise.all([KN.liveIdb.ready(), KN.diaryIdb.ready(), KN.backup.ready()]));
+    await ready(A2);
+    const B2 = await W.ctx.newPage();
+    B2.on("pageerror", (e) => W.errors.push("B2: " + e.message));
+    await B2.setViewportSize({ width: 1440, height: 900 });
+    await B2.goto(URL);
+    await booted(B2);
+    await ready(B2);
+    const nav = { A: 0, B: 0 };
+    reloads(A2, nav, "A");
+    reloads(B2, nav, "B");
+    const disk = () => A2.evaluate(() => localStorage.getItem("kaimono-note-v2") || "");
+    const yields = (p) => p.evaluate(() => KN.backup.list().filter((s) => s.reason === "ほかの窓を読む前").length);
+    const settle = async (p, k, before) => {
+      for (let i = 0; i < 50 && nav[k] === before; i++) await A2.waitForTimeout(100);
+      await booted(p);
+      await ready(p);
+    };
+
+    /* 一つの窓だけが書く：今までどおり元へ・控えは取らない。B は読み直す。 */
+    let b0 = nav.B;
+    await A2.evaluate(() => KN.store.addTodo({ title: "窓Aのひとり", due: KN.util.todayKey() }));
+    await settle(B2, "B", b0);
+    t.check("守4：一つの窓だけが書けば、今までどおり元へ（控えは取らない）",
+      (await disk()).includes("窓Aのひとり") && (await yields(A2)) === 0 && (await yields(B2)) === 0, JSON.stringify(nav));
+
+    /* 続けて書く（A は保存待ちのまま、B が書き終える）。 */
+    const a0 = nav.A;
+    b0 = nav.B;
+    await A2.evaluate(() => KN.store.addTodo({ title: "窓Aの用事", due: KN.util.todayKey() }));
+    await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの用事", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    await settle(A2, "A", a0);
+    await A2.waitForTimeout(600);
+    const raw = await disk();
+    const seenA = await A2.evaluate(() => ({
+      b: KN.store.get().todos.some((x) => x.title === "窓Bの用事"),
+      toast: [...document.querySelectorAll(".toast")].some((e) => e.textContent.includes("ほかの窓の分を読みこみました")),
+    }));
+    const keptA = await yields(A2);
+    t.check("守4：B の変更が元に残る（A は上書きしない）", raw.includes("窓Bの用事") && !raw.includes("窓Aの用事"), raw.length);
+    t.check("守4：A は読み直して B の変更が見え、一言を出す", nav.A === a0 + 1 && seenA.b && seenA.toast, JSON.stringify({ nav, seenA }));
+    t.check("守4：A の分は控え「ほかの窓を読む前」に残る", keptA === 1, `控え ${keptA}`);
+    const settledNav = { ...nav };
+    await A2.waitForTimeout(2500);
+    t.check("守4：譲ったあと、往復しない", nav.A === settledNav.A && nav.B === settledNav.B, JSON.stringify({ settledNav, nav }));
+
+    /* 控えから戻す（利用者の選んだ置き換え）は、ほかの窓が先に書いていても上書きできる。
+       A の読み直しを止めて記憶を古いままにし、B が書いたあとで A が戻す。 */
+    await A2.evaluate(() => { KN.app.reloadHere = () => {}; });
+    await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの二つめ", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    await A2.waitForTimeout(800);
+    await A2.evaluate(async () => {
+      const h = KN.backup.list().find((s) => s.reason === "ほかの窓を読む前");
+      await KN.backup.restore(h.at);
+      await new Promise((r) => setTimeout(r, 400));
+    });
+    const back = await disk();
+    t.check("守4：控えから戻すと、ほかの窓が先に書いていても上書きできる（A の分が元へ）",
+      back.includes("窓Aの用事") && !back.includes("窓Bの二つめ"), back.length);
+    t.check("エラーなし（続けて書く窓二つ）", !W.errors.length, W.errors.join(" | "));
+    await W.browser.close();
   }
   t.done();
 })().catch((e) => { console.error(e); process.exit(1); });

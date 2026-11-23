@@ -1156,11 +1156,20 @@
     const otherWindow = () => {
       if (otherWrote) return;
       otherWrote = true;
+      /* 待っている保存も先に。ほかの窓が書いたあとなので、元へは書かずに控えへ譲る（守4。store.js の yieldTo）。
+         頁を閉じる瞬間（pagehide）に回すと、控えと日記の写しを書き終える前に頁が消えるので、ここで書き終えるのを待つ。
+         欄から外すのは、打ちかけの日記（手が止まるまで待つ欄）をいま記録へ入れるため（どの欄も外れたときに書く）。 */
+      const f = document.activeElement;
+      if (f && f !== document.body && f.blur) f.blur();
+      store.flush();
       const notes = KN.notes && KN.notes.flush ? KN.notes.flush() : null;
-      Promise.race([Promise.resolve(notes).catch(() => {}), new Promise((ok) => setTimeout(ok, 1500))])
+      Promise.race([Promise.all([Promise.resolve(notes).catch(() => {}), store.yielded()]), new Promise((ok) => setTimeout(ok, 1500))])
         .then(() => KN.app.reloadHere());
     };
     window.addEventListener("storage", (e) => { if (e.key === store.KEY) otherWindow(); });
+    /* 書こうとしたらほかの窓が先に書いていた（守4）：同じ読み直しへ。読み直したら一言。 */
+    store.onYield(otherWindow);
+    store.sayYield();
     if (KN.notes && KN.notes.onOther) KN.notes.onOther(otherWindow);   // ノートを書いた合図も（js/notes-idb.js。P6d）
 
     /* The clock moving is a thing that changes the screen.

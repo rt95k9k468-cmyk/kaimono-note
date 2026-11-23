@@ -676,6 +676,12 @@
   let replacedN = 0;
   let lastTotal = null;
   let wroteLive = false;
+  /* 守4（二つの窓）：譲ったときに呼ぶもの（app.js が「ほかの窓が書いた」と同じ読み直しを渡す）・
+     最後に控えへ入れた中身（同じものを二度入れない）・読み直したあとの一言の印（窓ごと＝sessionStorage）。 */
+  let clashHook = null;
+  let lastYield = null;
+  let yieldP = null;   // その控えを取り終える約束（頁を読み直す前に待つ。閉じる瞬間に取りかけると届かない）
+  const YIELD_KEY = KEY + "-yield";
 
   /* 写しの端末（docs/desk.md「段15」）。この端末だけの印 `kn-replica`（記録の外。控えで iPhone へ渡らない）。
      入っているあいだは記録（KEY）に書かない。データの欄は iPhone の控えの写し（js/replica.js が showReplica で渡す。
@@ -1367,9 +1373,14 @@
        本物を上書きできました。ここで塞げば、どの道から来ても同じです。 */
     if (loadError) return;
     if (replica) { writeReplica(); return; }
+    let prev = null;
+    try { prev = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
+    const disk = seqIn(prev);
+    // ほかの窓が先に書いていたら、書かずに譲る（守4。下の yieldTo）。利用者の選んだ置き換えは上書きする。
+    if (!bulk && disk > lsSeq) { yieldTo(disk); return "yield"; }
     const seq = lsSeq + 1;
     const json = JSON.stringify(Object.assign({}, liveShape(), { lsSeq: seq }));
-    watchBefore();
+    watchBefore(prev, disk);
     try {
       try {
         localStorage.setItem(KEY, json);
@@ -1446,15 +1457,12 @@
      - この保存で記録が一度に大きく減る → 減る前の元を控えへ（「大きく減る前」）。
        利用者の選んだ置き換え（bulk）は、それぞれ自分の控えを取っているので除く。
      ここで何が起きても、保存は止めない。 */
-  function watchBefore() {
+  function watchBefore(prev, disk) {
     try {
-      let prev = null;
-      try { prev = localStorage.getItem(KEY); } catch (_) { /* 読めない端末 */ }
       if (prev === null && (loadInfo.hadData || wroteLive)) {
         if (KN.liveIdb) KN.liveIdb.note({ kind: "vanished", seq: lsSeq });
       } else if (prev) {
-        const m = /"lsSeq":(\d+)\}$/.exec(prev.slice(-40));
-        const disk = m ? Number(m[1]) : 0;
+        // ここへ来るのは利用者の選んだ置き換え（bulk）だけ。ふだんは yieldTo が先に譲る。
         if (disk > lsSeq && KN.liveIdb) KN.liveIdb.note({ kind: "other", seq: lsSeq, disk });
       }
       const total = totalOf(state);
@@ -1470,6 +1478,41 @@
     } finally {
       bulk = false;
     }
+  }
+
+  /* 元の字の末尾の番号（liveShape のあとに足すので、いつも最後）。無ければ 0。 */
+  function seqIn(raw) {
+    const m = raw ? /"lsSeq":(\d+)\}$/.exec(raw.slice(-40)) : null;
+    return m ? Number(m[1]) : 0;
+  }
+
+  /* 守4（二つの窓。docs/storage.md「二つの窓」）。元の番号が自分より大きい＝ほかの窓が先に書いた。
+     前はそのまま上書きし、ほかの窓の変更が両方から消えた（保存待ちの 120ms・閉じる瞬間の flush・読み直しの頭の flush）。
+     書かずに：この窓の記憶は控え「ほかの窓を読む前」（間引かない）へ。日記の本文だけは写しへ載せる
+     （番号を元と同じにして、読み直しの突き合わせで写しが勝つ）。記録の写し・過去の棚へは書かない（古い記憶を広げない）。
+     番号は進めない——読み直すまで何度来ても譲る。読み直しは呼んだ側（saveOnce・reload・閉じる瞬間は閉じるだけ）。 */
+  function yieldTo(disk) {
+    try {
+      if (KN.liveIdb) KN.liveIdb.note({ kind: "yield", seq: lsSeq, disk });
+      if (KN.diaryIdb) KN.diaryIdb.afterWrite(disk, true);
+      const mine = JSON.stringify(state);
+      if (mine !== lastYield && KN.backup) {
+        lastYield = mine;
+        yieldP = KN.backup.take("ほかの窓を読む前", { state: JSON.parse(mine), now: true, force: true }).catch(() => {});
+      }
+      try { sessionStorage.setItem(YIELD_KEY, "1"); } catch (_) { /* 印が無くても、記録は守れている */ }
+    } catch (err) {
+      console.warn("yield to other window", err);
+    }
+  }
+
+  /* 譲ったあと読み直したら、一言（一度だけ）。app.js の起動と reload から。 */
+  function sayYield() {
+    try {
+      if (!sessionStorage.getItem(YIELD_KEY)) return;
+      sessionStorage.removeItem(YIELD_KEY);
+    } catch (_) { return; }
+    if (KN.ui && KN.ui.toast) KN.ui.toast("ほかの窓の分を読みこみました");
   }
 
   /* 記録の数（countsOf の合計）。 */
@@ -1646,7 +1689,11 @@
        直った版で開き直せば、そのまま元のデータが読めます。 */
     if (loadError) return false;
     try {
-      writeLive();
+      if (writeLive() === "yield") {
+        // ほかの窓が書いた。読み直す（app.js が渡した道。無ければここで）。書いていないので false。
+        if (clashHook) clashHook(); else reload();
+        return false;
+      }
       if (saveError) {
         saveError = null;
         KN.ui && KN.ui.toast("保存を再開しました");
@@ -1703,7 +1750,8 @@
      opened in two places — keeps its own copy in memory, and the `storage`
      event only reaches tabs that were already open. Pulling to refresh is how
      you ask for whatever the other one wrote. Our own pending save goes out
-     first, so a refresh can never discard an edit that had not landed yet. */
+     first, so a refresh can never discard an edit that had not landed yet.
+     （ほかの窓が先に書いていたら、その一拍は元へ書かずに控えへ——writeLive の yieldTo。守4） */
   function reload() {
     if (replica) { if (KN.replica) KN.replica.refresh(true); return; }
     flushPending();
@@ -1720,6 +1768,7 @@
     if (KN.diaryIdb) KN.diaryIdb.reloaded();
     if (KN.todoPast) KN.todoPast.reloaded();
     emit();
+    sayYield();   // 先の書き出しがほかの窓に譲っていたら（守4）
   }
 
   /* iOSでアプリを閉じる・タブを切り替えるとき、120msのデバウンス待ちの
@@ -5420,6 +5469,9 @@
     seqAtLeast: (n) => { if (Number(n) > lsSeq) lsSeq = Number(n); },
     // 記録の写し（js/live-idb.js）が使います。
     rawLive, adoptRaw, totalOf, isBlank, shrinks,
+    // 守4：ほかの窓に譲ったときの読み直し（app.js の otherWindow）と、読み直したあとの一言。
+    onYield: (fn) => { clashHook = fn; }, sayYield,
+    yielded: () => Promise.all([yieldP, KN.diaryIdb && KN.diaryIdb.idle ? KN.diaryIdb.idle() : null]),
     get, update, subscribe, reload, flush, saveNow, saveSoon: persist,
     // 元（localStorage）に書く形の字数（日記の本文を外したあとは、外した形で）。
     liveChars: (o) => JSON.stringify(liveShape(o)).length,
