@@ -8,6 +8,8 @@
       自動の控え：いちばん新しくない一つへ戻す → その時点の中身。新しいほうの控えも残り、そこへやり直せる
    3. IndexedDB が壊れる：開けない日も記録は書けて残り、直れば写しが追いつく／写しの中身が途中で切れていても
       元が勝ち、次の書き込みで写しが直る
+   4. 空の端末で記録の枠を越える控え：断り → 日記を記録から外す → 復元 → 本文が一字も違わない → 最新を上書きせず
+      「この端末から控えを送る」が出る（守2）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/restore-drill.js */
 const { open, checker, fakeDropbox } = require("./lib");
@@ -227,5 +229,91 @@ async function restoreFromDropbox(page, rowText) {
   t.check("3 次の書き込みで写しが直る", !!v4 && v4.json === (await lsRaw()));
   t.check("エラーが出ていない（C）", !C.errors.length, C.errors.join(" | "));
   await C.browser.close();
+
+  /* ================= 4. 空の端末で、記録の枠を越える控え（守2） =================
+     断り → 日記を記録から外す（空の書き出しを保存）→ 復元 → 本文が一字も違わない → 「この端末から控えを送る」。 */
+  const files4 = new Map();
+  const upE = [];
+  const E = await open({ before: (ctx, p) => fakeDropbox(p, files4, upE) });
+  const ep = E.page;
+  await settle(ep);
+  const bodies4 = await ep.evaluate(() => {
+    const s = JSON.parse(KN.store.exportJSON());
+    const out = {};
+    for (let i = 0; i < 280; i++) {
+      const date = new Date(Date.UTC(2015, 0, 1 + i)).toISOString().slice(0, 10);
+      out[date] = `四の${i}:` + "x".repeat(10000);
+      s.archive.days.push({ date, memo: out[date], wake: null, sleep: null, wakeSource: "manual", sleepSource: "manual", createdAt: null, updatedAt: null });
+    }
+    window.__big4 = JSON.stringify(s);
+    return out;
+  });
+  files4.set("/kurashi-latest.json", await ep.evaluate(() => window.__big4));
+  t.check("4 空の端末で始まり、控えは枠を越える", await ep.evaluate(() => KN.store.isBlank(KN.store.get())
+    && KN.store.inspectBackup(window.__big4).size > 2600000));
+  await connect(ep);
+  const dlg = (text) => ep.locator(".sheet, [role=dialog]", { hasText: text }).last();
+  const toast4 = (text) => ep.waitForFunction((x) => [...document.querySelectorAll(".toast-msg")].some((e) => e.textContent.includes(x)), text, { timeout: 20000 });
+  const openRows = async (labels) => {
+    await ep.evaluate(() => KN.app.showScreen("settings"));
+    await ep.waitForTimeout(400);
+    for (const label of labels) {
+      await ep.locator(".set-layer:last-child .set-row", { hasText: label }).first().click();
+      await ep.waitForTimeout(450);
+    }
+  };
+  const pickLatest = async () => {
+    await openRows(["控え", "Dropbox へ自動で送る", "Dropbox の控えから戻す"]);
+    await ep.locator(".set-layer:last-child button.row", { hasText: "（最新）" }).first().click({ timeout: 5000 });
+  };
+  let step4 = "断り";
+  try {
+    await pickLatest();
+    const refuse = dlg("入りきりません");
+    await refuse.waitFor({ timeout: 8000 });
+    t.check("4 枠を越える控えは断り「先に外す」と言う", (await refuse.innerText()).includes("日記を記録から外す"));
+    await refuse.locator(".js-ok").click();
+    await ep.waitForTimeout(300);
+    t.check("4 断ったときは何も入らない", await ep.evaluate(() => KN.store.isBlank(KN.store.get())));
+    await ep.keyboard.press("Escape");
+    await ep.keyboard.press("Escape");
+
+    step4 = "外す儀式";
+    await openRows(["この端末", "日記を記録から外す"]);
+    await dlg("日記を記録から外しますか").locator(".js-ok").click({ timeout: 8000 });
+    await toast4("準備できました");
+    await ep.waitForTimeout(300);
+    const dl = ep.waitForEvent("download");
+    await ep.locator(".set-layer:last-child .set-row", { hasText: "書き出して外す" }).first().click();
+    await dl;
+    await dlg("保存できましたか").locator(".js-ok").click({ timeout: 8000 });
+    await toast4("日記を記録から外しました");
+    t.check("4 空の端末でも、日記を記録から外せる", await ep.evaluate(() => KN.diaryIdb.isOut()));
+    await ep.keyboard.press("Escape");
+    await ep.keyboard.press("Escape");
+
+    step4 = "復元";
+    await pickLatest();
+    await dlg("復元しますか").locator(".js-ok").click({ timeout: 8000 });
+    await ep.waitForFunction(() => /復元しました/.test(document.body.innerText), null, { timeout: 20000 });
+    await ep.waitForTimeout(600);
+    const diff4 = await ep.evaluate((want) => Object.keys(want).filter((d) => (KN.store.dayLog(d) || {}).memo !== want[d]), bodies4);
+    t.check("4 戻した日記の本文が一字も違わない（280日）", diff4.length === 0, diff4.slice(0, 5).join(","));
+    t.check("4 元（localStorage）は枠に収まる", (await ep.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) < 2600000);
+    await ep.keyboard.press("Escape");
+    await ep.keyboard.press("Escape");
+
+    step4 = "送る役";
+    /* 自動で送る時（SOON）を待つ代わりに一度送らせる。Dropbox に最新があるので役は「ほか」になり、上書きしない。 */
+    const r4 = await ep.evaluate(() => KN.dropbox.sync());
+    t.check("4 戻した空の端末は Dropbox の最新を上書きしない", r4 === "other" && !upE.some((x) => /^\/(kurashi-latest|daily\/)/.test(x)), `${r4} ${upE.join(",")}`);
+    await openRows(["控え", "Dropbox へ自動で送る"]);
+    const rows4 = await ep.locator(".set-layer:last-child .set-row").allTextContents();
+    t.check("4 戻したあと「この端末から控えを送る」が出る", rows4.some((x) => x.includes("この端末から控えを送る")), rows4.join(" / "));
+  } catch (err) {
+    t.check(`4 通しが「${step4}」で止まらない`, false, String((err && err.message) || err).slice(0, 300));
+  }
+  t.check("エラーが出ていない（E）", !E.errors.length, E.errors.join(" | "));
+  await E.browser.close();
   t.done();
 })().catch((e) => { console.error(e); process.exit(1); });
