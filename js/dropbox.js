@@ -294,15 +294,19 @@
   /** 残す日付の控え（`names` は名前の順＝日付の順）。新しいほうから KEEP 個と、
       月の背骨：各月で最初の一つを、控えのある月の新しいほうから MONTHS か月ぶん。
       気づくのが KEEP 日より遅れた消失も戻せるように。月は時計ではなく控えで
-      数える（時計が狂っても、開かない月があっても、背骨は減らない）。 */
+      数える（時計が狂っても、開かない月があっても、背骨は減らない）。
+      年の背骨：各年で最初の一つは、ずっと残す（これも名前で数える）。 */
   function keepers(names) {
     const keep = new Set(names.slice(Math.max(0, names.length - KEEP)));
     const firsts = new Map();        // "YYYY-MM" → その月で最初の名前
+    const years = new Map();         // "YYYY" → その年で最初の名前
     names.forEach((n) => {
       const month = DAILY_RE.exec(n)[1].slice(0, 7);
       if (!firsts.has(month)) firsts.set(month, n);
+      if (!years.has(month.slice(0, 4))) years.set(month.slice(0, 4), n);
     });
     [...firsts.values()].slice(-MONTHS).forEach((n) => keep.add(n));
+    years.forEach((n) => keep.add(n));
     return keep;
   }
 

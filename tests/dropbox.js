@@ -146,7 +146,7 @@ const { open, checker } = require("./lib");
     JSON.stringify(uploads()[2].arg.mode));
   t.check("日付の控えはその日はじめての中身のまま", files.get(uploads()[1].arg.path) === dayBody);
 
-  // 6. 日が変わる：日付の控えを足し、新しい30個と月の背骨（各月で最初の一つを12か月）を残す（ほかの名前は消さない）
+  // 6. 日が変わる：日付の控えを足し、新しい30個と月の背骨（各月で最初の一つを12か月）と年の背骨（各年で最初の一つ）を残す（ほかの名前は消さない）
   for (let i = 0; i < 34; i++) {
     const d = new Date(Date.UTC(2025, 0, 1 + i)).toISOString().slice(0, 10);
     files.set(`/daily/kurashi-${d}.json`, "{}");
@@ -159,6 +159,9 @@ const { open, checker } = require("./lib");
     files.set(`/daily/kurashi-${m}-05.json`, "{}");
     files.set(`/daily/kurashi-${m}-20.json`, "{}");
   }
+  // 年の背骨の試し：2020〜2022年の三年に、3月10日と8月15日の二つずつ
+  const oldYears = ["2020", "2021", "2022"];
+  oldYears.forEach((y) => { files.set(`/daily/kurashi-${y}-03-10.json`, "{}"); files.set(`/daily/kurashi-${y}-08-15.json`, "{}"); });
   files.set("/daily/my-notes.json", "{}");
   await page.evaluate(() => {
     const v = JSON.parse(localStorage.getItem("kaimono-note-dropbox"));
@@ -184,11 +187,16 @@ const { open, checker } = require("./lib");
   const spine = months.slice(4).map((m) => `${m}-05`).concat("2025-01-01");
   t.check("月の背骨：各月で最初の一つが、新しい12か月ぶん残る（30個の外でも）", spine.every(has),
     spine.filter((d) => !has(d)).join(" "));
+  // 年の最初：2020〜2022年の3月10日、2023年は12月5日、2024年は1月5日（月12の外でも）
+  const yearSpine = oldYears.map((y) => `${y}-03-10`).concat(`${months[0]}-05`, `${months[1]}-05`);
+  t.check("年の背骨：各年で最初の一つが、月12の外でもずっと残る", yearSpine.every(has),
+    yearSpine.filter((d) => !has(d)).join(" "));
   const gone = months.slice(4).map((m) => `${m}-20`)
-    .concat(...months.slice(0, 4).map((m) => [`${m}-05`, `${m}-20`]))
+    .concat(...months.slice(0, 4).map((m) => [`${m}-20`]), months.slice(2, 4).map((m) => `${m}-05`))
+    .concat(oldYears.map((y) => `${y}-08-15`))
     .concat(["2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]);
-  t.check("ほかは消える：月の二つ目・12か月より前の月・30個の外", !gone.some(has), gone.filter(has).join(" "));
-  t.check("日付の控えは30個＋背骨10個・ほかの名前は残る", dailyNames.length === 40 && files.has("/daily/my-notes.json"),
+  t.check("ほかは消える：月の二つ目・12か月より前の月（年の最初でないもの）・年の二つ目・30個の外", !gone.some(has), gone.filter(has).join(" "));
+  t.check("日付の控えは30個＋月の背骨10個＋年の背骨5個・ほかの名前は残る", dailyNames.length === 45 && files.has("/daily/my-notes.json"),
     dailyNames.length + " " + dailyNames[0]);
 
   // 7. 前の版から上がった端末（送ったことはあるが、役も版も覚えていない＝今の iPhone）は、送る役のまま
@@ -255,7 +263,7 @@ const { open, checker } = require("./lib");
   const list = await page.evaluate(() => KN.dropbox.backups());
   const nList = 1 + [...files.keys()].filter((p) => /^\/daily\/kurashi-/.test(p)).length;   // 最新＋日付の控え（背骨も）
   t.check("控えの並び：最新が先、日付の控えは新しい順、ほかの名前は出ない",
-    list.length === nList && nList === 41 && list[0].latest && list[0].path === "/kurashi-latest.json"
+    list.length === nList && nList === 46 && list[0].latest && list[0].path === "/kurashi-latest.json"
       && list.slice(1).every((f, i, a) => !i || a[i - 1].day > f.day) && !list.some((f) => /my-notes/.test(f.path)),
     JSON.stringify(list.slice(0, 3)));
   const dl = await page.evaluate(() => KN.dropbox.download("/kurashi-latest.json"));
