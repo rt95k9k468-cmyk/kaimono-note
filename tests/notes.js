@@ -319,11 +319,14 @@ const { open, checker } = require("./lib");
   t.check("開いたノートにはカーソルを入れない（キーボードを出さない）",
     await page.evaluate(() => !document.activeElement || !document.activeElement.closest(".sheet")));
   /* 全部を並べると、開ききる前の ⋯ が小窓を出さないことがある（11月12日に一度）。出るまで押し直す。 */
-  for (let i = 0; i < 4 && !(await page.$(".note-pop-item.is-danger")); i++) {
-    await page.click(".sheet.is-note .js-note-more");
-    await page.waitForSelector(".note-pop-item.is-danger", { timeout: 1500 }).catch(() => {});
+  /* 押す間に小窓が作り直されると掴み損ねる（11月22日の毎日の全部で一度）。押せるまで開き直す。 */
+  for (let i = 0; i < 4; i++) {
+    if (!(await page.$(".note-pop-item.is-danger"))) {
+      await page.click(".sheet.is-note .js-note-more");
+      await page.waitForSelector(".note-pop-item.is-danger", { timeout: 1500 }).catch(() => {});
+    }
+    if (await page.click(".note-pop-item.is-danger", { timeout: 3000 }).then(() => true, () => false)) break;
   }
-  await page.click(".note-pop-item.is-danger");
   await page.waitForFunction(() => !document.querySelector(".sheet.is-note.is-open"), null, { timeout: 3000 });
   await page.waitForTimeout(400);
   t.check("消したノートは一覧から外れる", !(await page.$(`.note-row[data-id="${n1.id}"]`)));
