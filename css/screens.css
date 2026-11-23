@@ -3093,11 +3093,11 @@ a.btn { text-decoration: none; }
 /* 広い幅は一年が一画面（意9・構想の絵⑨）：左の列の横の面いっぱいに、列は暦の月・升は写真と名だけ・下の帯が小口。 */
 @media (min-width: 1200px) {
   .sheet.sb-sheet { left: calc(var(--rail-w) + (100vw - var(--rail-w)) / 2); width: calc(100vw - var(--rail-w) - var(--sp-6) * 2); max-height: calc(var(--vvh, 100dvh) - var(--sp-6) * 2); }
-  .sb-sheet .sheet-title { font: var(--fw-bold) var(--fs-3xl)/1.2 var(--font-display); }
+  .sb-sheet .sheet-title { font: var(--fw-bold) var(--fs-3xl)/var(--lh-tight) var(--font-display); }
   .sb { flex-direction: column; align-items: stretch; gap: var(--sp-1); }
   .sb-pages { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--sp-3); }
   .sb-month { gap: var(--sp-1); }
-  .sb-mh { font-size: var(--fs-lg); line-height: 1.2; } .sb-mh svg { display: none; }
+  .sb-mh { font-size: var(--fs-lg); line-height: var(--lh-tight); } .sb-mh svg { display: none; }
   .sb-sk { display: block; margin-bottom: var(--sp-2); font-size: var(--fs-2xs); color: var(--c-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sb-grid { grid-template-columns: 1fr; gap: var(--sp-2); }
   .sb-masu { padding: 0; gap: var(--sp-1); background: none; border-radius: 0; }
