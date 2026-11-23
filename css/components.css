@@ -999,7 +999,7 @@ button.hero-node:active { scale: var(--press-dot); }
   border-radius: 0;
   color: var(--c-text);
   font-family: var(--font-display);
-  font-size: calc(23px * var(--fs-k));
+  font-size: var(--fs-2xl);
   font-weight: var(--fw-bold);
   line-height: 1.35;
   letter-spacing: -.01em;
@@ -1737,7 +1737,7 @@ button.hero-node:active { scale: var(--press-dot); }
    colour and same place, because it is the same "big green key" throughout —
    only the glyph changes, and it changes the moment an operator is typed. */
 .key-ok { background: var(--c-primary); color: var(--c-text-on); font-size: var(--fs-lg); }
-.key-ok.is-equals { font-size: calc(25px * var(--fs-k)); }
+.key-ok.is-equals { font-size: var(--fs-2xl); }
 .key-ok:active { background: var(--c-primary-2); }
 
 /* キーの中身。キーの大きさが決めます（二段階の外）。 */

@@ -1630,7 +1630,7 @@ a { color: var(--c-primary); }
   /* 棚（構6）：daily の席だけ・背の足りる窓だけ（低い窓は席と暦を優先）。背表紙は頁の棚の小さい形。 */
   .rail-shelf .arc-shelf { min-height: 0; margin-top: var(--sp-3); padding: 0; gap: 4px; }
   .rail-shelf .arc-spine, .rail-shelf .arc-spine:hover { width: 28px; height: 60px; background: var(--spine); color: #fff; }
-  .rail-shelf .arc-spine b { font-size: calc(12px * var(--fs-k)); }
+  .rail-shelf .arc-spine b { font-size: var(--fs-sm); }
   :root:not([data-screen="todo"]) .rail-shelf { display: none; }
   @media (max-height: 859.98px) { .rail-shelf { display: none; } }
   .rail-mini-h { display: flex; align-items: center; padding: 0 var(--sp-1) 6px; font: var(--fw-bold) var(--fs-base) var(--font-display); }

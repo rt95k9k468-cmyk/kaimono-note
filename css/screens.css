@@ -284,7 +284,7 @@
 /* 「年・節気」の小さな一行（日付の上）。 */
 .head-eye {
   grid-column: 1 / -1;
-  font-size: calc(12px * var(--fs-k));
+  font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   letter-spacing: .1em;
   line-height: 1.4;
@@ -1287,7 +1287,7 @@
   font-family: var(--font-num); font-size: var(--fs-row); font-weight: var(--fw-bold); line-height: var(--lh-tight);
   color: var(--c-text); font-variant-numeric: tabular-nums;
 }
-.item-price-store { font-size: calc(12px * var(--fs-k)); }
+.item-price-store { font-size: var(--fs-sm); }
 
 
 /* checked section toggle */
@@ -2543,11 +2543,11 @@ button.section-note:active { opacity: var(--press-fade); }
 .urge-sec-head { display: flex; align-items: center; gap: 7px; }
 .urge-sec-ico { line-height: 0; color: var(--c-primary); flex: none; }
 .urge-sec-ico svg { width: var(--ico-sm); height: var(--ico-sm); }
-.urge-sec-title { font-size: calc(15.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text); }
+.urge-sec-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); color: var(--c-text); }
 /* 「任意」は、書かなくてよいことを一目で言うため。薄い地の小さな札で、
    題より前に出ないようにします。 */
 .urge-sec-opt {
-  font-size: calc(10.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--c-text-3);
+  font-size: var(--fs-xs); font-weight: var(--fw-bold); color: var(--c-text-3);
   background: var(--c-surface-2); border-radius: var(--r-full);
   padding: 2px 7px; line-height: 1.5;
 }
@@ -2724,7 +2724,7 @@ button.section-note:active { opacity: var(--press-fade); }
 .diet-steps b { color: var(--c-text); }
 .diet-code {
   margin: 0; padding: var(--sp-3); background: var(--c-surface-2);
-  border-radius: var(--r-md); font-size: calc(11.5px * var(--fs-k)); line-height: var(--lh-body);
+  border-radius: var(--r-md); font-size: var(--fs-xs); line-height: var(--lh-body);
   overflow-x: auto; white-space: pre; color: var(--c-text-2);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -2846,7 +2846,7 @@ a.btn { text-decoration: none; }
 }
 .diet-got-head { font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .diet-got pre {
-  margin: 0; font-size: calc(12px * var(--fs-k)); line-height: var(--lh-body); color: var(--c-text);
+  margin: 0; font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--c-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap; word-break: break-all;
 }
@@ -3073,7 +3073,7 @@ a.btn { text-decoration: none; }
 .sb-pages { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
 .sb-month { display: flex; flex-direction: column; gap: var(--sp-2); }
 .sb-mh { display: inline-flex; align-items: center; align-self: flex-start; gap: 2px; padding: 0; border: 0; background: none; color: var(--c-text);
-  font: var(--fw-bold) calc(18px * var(--fs-k))/1.4 var(--font-display); }
+  font: var(--fw-bold) var(--fs-xl)/1.4 var(--font-display); }
 .sb-mh svg { color: var(--c-text-3); }
 .sb-pic { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: var(--r-sm); background: var(--c-border); }
 .sb-pic.is-s { width: 48px; flex: none; }
@@ -3120,7 +3120,7 @@ a.btn { text-decoration: none; }
 .arc-log-row.is-page .arc-posts::before, .wr-page::before { content: ""; position: absolute; inset: 0 auto 0 50px; width: 1px; background: var(--c-primary); }
 .pg-row {
   display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: baseline; min-height: 24px;
-  width: 100%; padding: 0; text-align: left; color: var(--c-text-2); font-size: calc(13.5px * var(--fs-k)); line-height: var(--lh-ui);
+  width: 100%; padding: 0; text-align: left; color: var(--c-text-2); font-size: var(--fs-md); line-height: var(--lh-ui);
 }
 .pg-row > :last-child { padding-left: var(--sp-3); min-width: 0; }
 .pg-row.is-brk { margin-top: 18px; }
@@ -3130,7 +3130,7 @@ a.btn { text-decoration: none; }
 .pg-at.is-later { white-space: normal; }
 .pg-row.is-day { align-items: start; }
 .pg-at .arc-log-day { width: auto; align-items: flex-end; }
-.pg-row.is-done, .pg-row.is-bought { min-height: 28px; font-size: calc(15.5px * var(--fs-k)); color: var(--c-text); cursor: pointer; transition: opacity var(--m-state) var(--ease); }
+.pg-row.is-done, .pg-row.is-bought { min-height: 28px; font-size: var(--fs-lg); color: var(--c-text); cursor: pointer; transition: opacity var(--m-state) var(--ease); }
 
 .pg-row .pg-body:has(> svg) { display: flex; align-items: baseline; gap: 6px; }
 .pg-row .pg-body > svg { flex: none; width: 1em; height: 1em; translate: 0 .15em; color: var(--c-take); }
@@ -3138,7 +3138,7 @@ a.btn { text-decoration: none; }
 .pg-row.is-many .pg-title { white-space: normal; }
 .pg-row.is-times, .pg-row.is-diary-at { cursor: pointer; transition: opacity var(--m-state) var(--ease); }
 .pg-row.is-times:active, .pg-row.is-diary-at:active, .pg-row.is-done:active, .pg-row.is-bought:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
-.pg-foot { padding: var(--sp-3) 0 0 62px; font-size: calc(13.5px * var(--fs-k)); color: var(--c-text-2); }
+.pg-foot { padding: var(--sp-3) 0 0 62px; font-size: var(--fs-md); color: var(--c-text-2); }
 .arc-post.pg-row { padding: 10px 0; color: var(--c-text); }
 .arc-post-at { display: inline-flex; justify-content: flex-end; align-items: baseline; gap: 3px; }
 .arc-post-at svg { width: 1em; height: 1em; translate: 0 .15em; color: var(--c-yamabuki); }
@@ -6783,7 +6783,7 @@ button.note-when:active { opacity: var(--press-fade); }
 }
 /* 640px から、暦の札は全文に近く（12px・三段。docs/redesign.md 5節）。 */
 @media (min-width: 640px) {
-  .cal-name { font-size: calc(12px * var(--fs-k)); line-height: 20px; padding: 0 3px 0 7px; border-radius: 6px; }
+  .cal-name { font-size: var(--fs-sm); line-height: 20px; padding: 0 3px 0 7px; border-radius: 6px; }
   .cal:not(.is-tall) .cal-dots { height: 64px; padding: 0 var(--sp-1); }
   .cal:not(.is-tall) .cal-name ~ .cal-name ~ .cal-name { display: block; }
   .cal:not(.is-tall) .cal-name ~ .cal-name ~ .cal-name ~ .cal-name { display: none; }
@@ -7326,11 +7326,11 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .hl-mets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .hl-met { container-type: inline-size; display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 10px 9px 9px; text-align: left; color: var(--c-text); transition: scale var(--m-press) var(--ease); }
 .hl-met:active, .hl-hero:active { scale: var(--press-wide); }
-.hl-met-h { display: flex; align-items: center; gap: 4px; font-size: calc(11.5px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--mc); white-space: nowrap; }
+.hl-met-h { display: flex; align-items: center; gap: 4px; font-size: calc(11px * var(--fs-k)); font-weight: var(--fw-bold); color: var(--mc); white-space: nowrap; }
 .hl-met-h > svg { flex: none; width: 15px; height: 15px; }  /* 入れもの：札の名前 */
 /* 数は札の幅に収める：電話の四つ並びは中身 64px で「1,940kcal」が入らない。狭い札では歩数・総消費の単位を畳み（名前が言う）、
    数は器の幅（cqi）で 20px から縮む（五桁の歩数）。 */
-.hl-met-v { font: var(--fw-bold) min(calc(20px * var(--fs-k)), 30cqi) / 1.25 var(--font-num); letter-spacing: -.01em; white-space: nowrap; }
+.hl-met-v { font: var(--fw-bold) min(var(--fs-xl), 30cqi) / 1.25 var(--font-num); letter-spacing: -.01em; white-space: nowrap; }
 @container (max-width: 96px) { .hl-met:not(.js-drink) .hl-met-v small { display: none; } }
 .hl-met-v small { margin-left: 2px; font: var(--fw-regular) calc(11px * var(--fs-k)) var(--font); letter-spacing: 0; color: var(--c-text-3); }
 .hl-met-v.is-over { color: var(--c-danger); }
