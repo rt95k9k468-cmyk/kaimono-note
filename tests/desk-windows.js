@@ -200,6 +200,13 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
   {
     const W = await open({ viewport: { width: 1440, height: 900 } });
     const A2 = W.page;
+    /* 一言は 3.6 秒で消える。混んだ機械では読み直しを待つうちに消えるので、出た字を頁ごとに書き留める。 */
+    await W.ctx.addInitScript(() => {
+      window.__toasts = [];
+      new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => {
+        if (n.nodeType === 1 && n.classList.contains("toast")) window.__toasts.push(n.textContent);
+      }))).observe(document, { childList: true, subtree: true });
+    });
     const ready = (p) => p.evaluate(() => Promise.all([KN.liveIdb.ready(), KN.diaryIdb.ready(), KN.backup.ready()]));
     await ready(A2);
     const B2 = await W.ctx.newPage();
@@ -236,7 +243,7 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
     const raw = await disk();
     const seenA = await A2.evaluate(() => ({
       b: KN.store.get().todos.some((x) => x.title === "窓Bの用事"),
-      toast: [...document.querySelectorAll(".toast")].some((e) => e.textContent.includes("ほかの窓の分を読みこみました")),
+      toast: (window.__toasts || []).some((s) => s.includes("ほかの窓の分を読みこみました")),
     }));
     const keptA = await yields(A2);
     t.check("守4：B の変更が元に残る（A は上書きしない）", raw.includes("窓Bの用事") && !raw.includes("窓Aの用事"), raw.length);

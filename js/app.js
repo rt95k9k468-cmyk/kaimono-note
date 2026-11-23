@@ -1163,7 +1163,9 @@
       if (f && f !== document.body && f.blur) f.blur();
       store.flush();
       const notes = KN.notes && KN.notes.flush ? KN.notes.flush() : null;
-      Promise.race([Promise.all([Promise.resolve(notes).catch(() => {}), store.yielded()]), new Promise((ok) => setTimeout(ok, 1500))])
+      /* ノートは 1.5 秒まで。譲った控えは 8 秒まで待つ（譲ったときだけ。混んだ端末で 1.5 秒では届かなかった）。 */
+      const upTo = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise((ok) => setTimeout(ok, ms))]);
+      Promise.all([upTo(notes, 1500), upTo(store.yielded(), 8000)])
         .then(() => KN.app.reloadHere());
     };
     window.addEventListener("storage", (e) => { if (e.key === store.KEY) otherWindow(); });
