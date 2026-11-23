@@ -5234,9 +5234,14 @@
          （外してあれば、戻しても元には書かない分。R26 の段2b）。 */
       const cut = pastCutoff();
       const past = next.todos.reduce((n, t) => n + (isPastTodo(t, cut) ? JSON.stringify(t).length + 1 : 0), 0);
+      // size は applyBackup が元へ戻す欄だけ（付けたし exportedAt・app・lsSeq・…Book＝ノートは元に書かない）。
+      const kept = {};
+      Object.keys(next).forEach((k) => {
+        if (!["exportedAt", "app", "lsSeq"].includes(k) && !/Book$/.test(k)) kept[k] = next[k];
+      });
       return {
         ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next), bare,
-        pastBare: todoOut(next).length > 0, past, size: JSON.stringify(next).length,
+        pastBare: todoOut(next).length > 0, past, size: JSON.stringify(kept).length,
       };
     } catch (err) {
       return { ok: false, reason: String((err && err.message) || err) };

@@ -230,6 +230,37 @@ window.__diff = function (a, b, p) {
   const au = await page.evaluate(() => KN.audit.check(KN.store.get()));
   t.check("F. 戻した記録を点検すると、食い違いは0件", au.total === 0, JSON.stringify(au));
 
+  /* ================= G. 大きさは元へ戻す欄だけで量る（守2） =================
+     ノート（noteBook）は元に書かないので、小さな記録＋300万字のノートの控えは断らない。
+     記録そのものが枠（260万字）を越えれば、今までどおり size が越える。 */
+  const G = await page.evaluate(() => {
+    const raw = JSON.parse(KN.store.exportJSON("2026-11-23T00:00:00.000Z"));
+    const at = new Date().toISOString();
+    raw.noteBook = { v: 1, notes: [{ id: "n-big", title: "", body: "ノ".repeat(3000000), notebook: "", tags: [], fav: false,
+      createdAt: at, updatedAt: at, deletedAt: null }] };
+    const noteText = JSON.stringify(raw);
+    const big = JSON.parse(KN.store.exportJSON());
+    for (let i = 0; i < 280; i++) big.archive.days.push({ date: new Date(Date.UTC(2015, 0, 1 + i)).toISOString().slice(0, 10), memo: "y".repeat(10000), wake: null, sleep: null });
+    return { noteText, noteSize: KN.store.inspectBackup(noteText).size, bigSize: KN.store.inspectBackup(JSON.stringify(big)).size };
+  });
+  t.check("G. 小さな記録＋大きなノートの控え：size にノートを数えない", G.noteSize < 2600000, String(G.noteSize));
+  t.check("G. 記録そのものが枠を越える控え：size は枠を越える（今までどおり断る側）", G.bigSize > 2600000, String(G.bigSize));
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "控え" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".js-file").setInputFiles({ name: "kurashi.json", mimeType: "application/json", buffer: Buffer.from(G.noteText) });
+  await page.waitForSelector(".js-ok", { timeout: 6000 });
+  const gMsg = await page.evaluate(() => document.body.innerText);
+  t.check("G. 断らず、復元の確認が出る", gMsg.includes("復元しますか") && !gMsg.includes("入りきりません"), "");
+  await page.locator(".js-ok").last().click();
+  await page.waitForFunction(() => KN.notes.get("n-big"), null, { timeout: 8000 }).catch(() => {});
+  const gGot = await page.evaluate(() => ({
+    note: (KN.notes.get("n-big") || { body: "" }).body.length,
+    ls: (localStorage.getItem("kaimono-note-v2") || "").length,
+  }));
+  t.check("G. ノートは合わさり、記録（localStorage）には入らない", gGot.note === 3000000 && gGot.ls < 2600000, JSON.stringify(gGot));
+
   t.check("エラーが出ていない", errors.length === 0, errors.join("\n"));
   await browser.close();
   t.done();
