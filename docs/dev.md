@@ -154,7 +154,7 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - **main への push の前に、門のうち画面を開かないもの（`run-all.js --quick`、数秒）を `.claude/hooks/push-gate.js`
   が回し、落ちれば push を止める**（2026年10月27日）。10月9〜26日に門で落ちた21回のうち19回は、この決まりの見張り
   （`chip-icon-size`・`words`・`inline-style` ほか）だけで落ちていた——押す前に回していなかった。見るのは手元の木なので、コミットしてから押す。
-- **データの門**（守1、2026年11月23日）：`ship.js` は差分に保存の層（`DATA_FILES`）があれば、データの台本（`DATA_TESTS`・14本）を門の名に足す。
+- **データの門**（守1、2026年11月23日）：`ship.js` は差分に保存の層（`DATA_FILES`）があれば、データの台本（`DATA_TESTS`・16本。鍵が記録を隠す・開くので `lock`・`diary-lock` も）を門の名に足す。
   `KN_SHIP_DRY=1` で回す名だけ出して終わる。保存の層に `.js` を足したら `DATA_FILES` にも、保存の台本を足したら `DATA_TESTS` にも。
 - **門の外も含めた全部は、GitHub が毎日一度回す**（`.github/workflows/tests-daily.yml`、日本の朝3時。
   roadmap-seamless の X20、2026年10月10日）。**日本の時間帯で**（`TZ`・`KN_TZ`。門は UTC なので、日本の0〜9時に

@@ -36,9 +36,9 @@ function push(...ref) {
   }
 }
 
-const DATA_FILES = /^(js\/(store|idb|live-idb|diary-idb|todo-past|backup|settings-backup|dropbox|notes-idb|notes-sync|note-img|note-file|sync|replica|desk-inbox|health-relay)\.js|sw\.js|relay\/.+|sync\/.+)$/;
+const DATA_FILES = /^(js\/(app|lock|bell|store|idb|live-idb|diary-idb|todo-past|backup|settings-backup|dropbox|notes-idb|notes-sync|note-img|note-file|sync|replica|desk-inbox|health-relay)\.js|sw\.js|relay\/.+|sync\/.+)$/;
 const DATA_TESTS = ["live-idb", "diary-idb", "diary-out", "lost-record", "dropbox", "notes-restore", "notes-sync", "offdevice-watch",
-  "backup-notes-only", "note-files", "inbox-take", "siri-inbox", "desk-windows", "diary-import"];
+  "backup-notes-only", "note-files", "inbox-take", "siri-inbox", "desk-windows", "diary-import", "lock", "diary-lock"];
 
 /* 回す名：渡された名＋（保存の層に触れていれば）データの台本。差分が取れなければ触れたとみなす。 */
 function plan() {

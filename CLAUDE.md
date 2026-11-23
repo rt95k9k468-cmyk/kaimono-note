@@ -19,7 +19,7 @@
 ## 流し方（訊かずに main まで）
 
 - ブランチはセッションの指定どおり（無ければ `claude/<話題>`）。**ローカルの `main` は使わない。** テスト → コミット →
-  一区切りごとに `node .claude/ship.js [自分の変更の台本]`（取りこみ→門→枝→main。保存の層に触れていればデータの台本も足す。赤・競合なら止まり名だけ出す）。
+  一区切りごとに `node .claude/ship.js [自分の変更の台本]`（取りこみ→門→枝→main。赤・競合なら止まり名だけ出す）。
   取りこんだ人の変更で門が赤なら、自分の仕事より先に直す。直せなければ積まずに利用者へ。
 - 結論は一度だけ見る：`mcp__github__actions_list`（list_workflow_runs・resource_id "pages.yml"・perPage 1）で
   run_number と head_sha を照らす。赤なら docs/dev.md「main を分け合う」。毎日の全部（"tests-daily.yml"）はセッションの頭に一度。
