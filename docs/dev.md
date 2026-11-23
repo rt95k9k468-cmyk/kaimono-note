@@ -154,11 +154,13 @@ CLAUDE.md の一行が足りないと感じたら、ここの該当する節を�
 - **main への push の前に、門のうち画面を開かないもの（`run-all.js --quick`、数秒）を `.claude/hooks/push-gate.js`
   が回し、落ちれば push を止める**（2026年10月27日）。10月9〜26日に門で落ちた21回のうち19回は、この決まりの見張り
   （`chip-icon-size`・`words`・`inline-style` ほか）だけで落ちていた——押す前に回していなかった。見るのは手元の木なので、コミットしてから押す。
+- **データの門**（守1、2026年11月23日）：`ship.js` は差分に保存の層（`DATA_FILES`）があれば、データの台本（`DATA_TESTS`・14本）を門の名に足す。
+  `KN_SHIP_DRY=1` で回す名だけ出して終わる。保存の層に `.js` を足したら `DATA_FILES` にも、保存の台本を足したら `DATA_TESTS` にも。
 - **門の外も含めた全部は、GitHub が毎日一度回す**（`.github/workflows/tests-daily.yml`、日本の朝3時。
   roadmap-seamless の X20、2026年10月10日）。**日本の時間帯で**（`TZ`・`KN_TZ`。門は UTC なので、日本の0〜9時に
   だけ出る日付の取り違えはここでしか見えない）。配るのは止めない。結果はセッションの頭に一度だけ見る
   （`actions_list`・resource_id "tests-daily.yml"・perPage 1）。赤なら、その台本を手元で回して直すのを先に。
-  二つ目の列 `webkit` は選んだ台本だけを WebKit で（roadmap-3.2 の G3）。知らせるだけ——Linux の WebKit で落ちても、
+  二つ目の列 `webkit` は選んだ台本だけを WebKit で（roadmap-3.2 の G3。見た目の段と、守1 の保存の段の二つ）。知らせるだけ——Linux の WebKit で落ちても、
   iPhone で確かめるまでアプリは直さない。台本を足すのは workflow の一行（CDP・`page.coverage` を使うものは入れない）。
 - 新しい文脈で初めて開くと、Service Worker が入れ替わって**一度読み直す**
   （`app.js` の `controllerchange`。刻印の無い手元の版だけ——配った版は動いている版と同じなら読み直さない、
