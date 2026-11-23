@@ -87,6 +87,35 @@ t.check("試験の台本はサイトの登録に入っていない", !testsIn.le
   t.check("sw.js が文として読める", !err, err);
 }
 
+/* Actions は SHA に留め、試験の道具は lock どおりに入れる（監-10、2026年11月23日）。動くタグは
+   持ち主が差し替えれば黙って中身が変わる。上げるときは SHA と「# vX.Y.Z」を一緒に。 */
+{
+  const dir = path.join(ROOT, ".github/workflows");
+  const wf = fs.readdirSync(dir).filter((f) => /\.ya?ml$/.test(f));
+  const loose = [], noLock = [];
+  for (const f of wf) {
+    const src = fs.readFileSync(path.join(dir, f), "utf8");
+    for (const m of src.matchAll(/^\s*-?\s*uses:\s*(\S+)(.*)$/gm)) {
+      if (!/@[0-9a-f]{40}$/.test(m[1]) || !/#\s*v\d+\.\d+\.\d+/.test(m[2])) loose.push(`${f}: ${m[1]}`);
+    }
+    if (/npm install\b/.test(src)) noLock.push(f);
+  }
+  t.check(`Actions がどれも SHA ＋「# vX.Y.Z」で留めてある（${wf.length}本）`, wf.length > 0 && !loose.length, loose.join(", "));
+  t.check("workflow は npm ci で入れる（npm install は lock を書き換えうる）", !noLock.length, noLock.join(", "));
+  let lockOk = "";
+  try {
+    const pkg = JSON.parse(read("tests/package.json"));
+    const lock = JSON.parse(read("tests/package-lock.json"));
+    const root = (lock.packages || {})[""] || {};
+    for (const [k, v] of Object.entries(pkg.dependencies || {})) {
+      if (!/^\d+\.\d+\.\d+$/.test(v)) lockOk += `${k} は版を一つに（${v}） `;
+      if ((root.dependencies || {})[k] !== v) lockOk += `${k} が lock と違う `;
+      if ((lock.packages[`node_modules/${k}`] || {}).version !== v) lockOk += `${k} の入る版が違う `;
+    }
+  } catch (e) { lockOk = String(e); }
+  t.check("tests/package-lock.json が package.json と合う", !lockOk, lockOk.trim());
+}
+
 /* 大きさの上限（docs/dev.md「短く書く」の「一手を軽く」）。門でも落とす（2026年11月15日、利用者が決めた。
    門で警報だけだと、翌朝の全部で赤くなっていた）。
    数えるのは字（Array.from ではなく length。比べるだけなので足りる）。カテゴリの合計なので、

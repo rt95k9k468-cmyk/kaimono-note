@@ -91,7 +91,7 @@
 | `insights-halves.js` | 気づいたことの前半と後半（R13）。時計を 9月29日に止め30日の窓で：休日・食後がどちらの半分でも重いと今までどお… |
 | `insights-weekday.js` | 気づいたことの曜日の揺れ（J1）。時計を 10月9日に止め直近12週で：減っている途中でも月曜（重い）と金曜（軽い）を… |
 | `run-all.js` | 台本ではなく回し役（R19）。上の「まとめて回す」 |
-| `registry.js` | 3か所の登録（R21）。ブラウザ不要（playwright の無いところでも走る）。 |
+| `registry.js` | 3か所の登録（R21）・Actions の SHA と lock（監-10）。ブラウザ不要。 |
 | `offline.js` | 電波なしで開けるか（R21）。**アプリを開かずに Service Worker だけ入れ**（開くと、ネットで取った… |
 | `update-path.js` | 版の入れ替えの道（roadmap-seamless の N1・N2・N3・3節の2）。 |
 | `resume.js` | 読み直し・閉じられたあとも居た場所へ（roadmap-seamless の N4・X14 の (b)、docs/scr… |

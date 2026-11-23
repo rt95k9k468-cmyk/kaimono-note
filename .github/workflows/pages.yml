@@ -26,19 +26,19 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
 
-      # playwright は tests/ だけの package.json で入れる（サイトの中には入らない）。
+      # playwright は tests/ だけの package.json と package-lock.json で入れる（サイトの中には入らない）。
       - name: Install Playwright
         working-directory: tests
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
 
       - name: Run the gate tests
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-24.04   # ubuntu-latest（26.04）は Playwright 1.56 が Chromium を入れられない（2026年11月1日）
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
 
@@ -64,7 +64,7 @@ jobs:
       # `enablement: true` cannot do it for us — GITHUB_TOKEN is not allowed to
       # create a Pages site ("Resource not accessible by integration").
       - name: Configure Pages
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       # Names the worker's cache after the commit and versions every css/js URL.
       # The URL versioning is what reaches an app already carrying an older
@@ -86,7 +86,7 @@ jobs:
 
       # Since v4 dotfiles (.nojekyll, .claude/) stay out; an Actions deploy runs no Jekyll.
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           # The app is static — publish the repository root as-is.
           path: .
@@ -96,7 +96,7 @@ jobs:
       - name: Deploy
         id: deployment
         continue-on-error: true
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
       - name: Wait before retrying the deploy
         if: steps.deployment.outcome == 'failure'
@@ -105,4 +105,4 @@ jobs:
       - name: Deploy (retry)
         id: deployment_retry
         if: steps.deployment.outcome == 'failure'
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
