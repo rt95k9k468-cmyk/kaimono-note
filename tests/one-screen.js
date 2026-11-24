@@ -85,8 +85,7 @@ const { open, checker } = require("./lib");
         [...r.body, ...r.meal].every((b) => b.top >= r.headBottom && b.bottom <= r.barTop), JSON.stringify([r.body, r.meal]));
     }
 
-    /* ③ ＋は、末尾まで送ったとき最後の中身より下（archive に＋は無い・構4b） */
-    if (id === "archive") { t.check("③ archive：＋は無い", await page.evaluate(() => !document.querySelector("#dock .add-fab"))); continue; }
+    /* ③ ＋は、末尾まで送ったとき最後の中身より下 */
     const end = await page.evaluate(() => {
       const sc = KN.app.scrollerOf(document.querySelector(".screen.is-active"));
       sc.scrollTop = sc.scrollHeight;

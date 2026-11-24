@@ -2372,8 +2372,20 @@
     root.classList.toggle("is-season-first", first);
   });
 
-  /* ＋は無い（構4b：書くのは席3 の「いま」の筆と、過ぎた日の頁の終わりの一行）。二度押しは受けない。 */
-  KN.screens.archive = { mount, render, prepare, onEnter, day: () => focusDay(),
+  /* ＋は日記を書く紙（11月24日・利用者「＋が無いと帯の大きさが席で変わる」。構4b で外したのを戻した）。
+     見ている日が過ぎた日ならその日へ、ほかは今日へ。机の「いまのことを一行から」と同じ紙。 */
+  function dockButton() {
+    const fab = node(html`<div class="quick-add"><button class="add-fab js-open-add" aria-label="日記を書く">${icon("plus")}</button></div>`);
+    fab.querySelector(".js-open-add").addEventListener("click", () => {
+      const today = U.todayKey();
+      const day = viewDay && viewDay < today ? viewDay : today;
+      if (chatView()) openPost(day, null);
+      else openLogSheet(day);
+    });
+    return fab;
+  }
+
+  KN.screens.archive = { mount, render, prepare, onEnter, dockButton, day: () => focusDay(),
     goDay: (d) => goDayTo(d), lead: (d) => (hasDiary(d) ? leadOf(d) : null), recountLeave,   // lead：一年の一冊・月の頁の一行（season-book.js）
     midPage, midSig,   // midPage・midSig：tasks の今日の面の頭（構4a）
     facing,   // 見開きの右の頁の 年々・いまごろ（構6）

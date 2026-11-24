@@ -215,9 +215,9 @@ const SEP = "\u001E";
   const tel = after.todos.find((x) => /田中/.test(x.title));
   t.check("@ で推せない字は、今日のやること", tel && tel.due === after.today, JSON.stringify(after.todos));
 
-  /* ---- 今日の筆：種類を選ばずに書く紙（思考のホーム。docs/thinking.md）。席1 に＋は無い（構4b） ---- */
+  /* ---- 今日の筆：種類を選ばずに書く紙（思考のホーム。docs/thinking.md）。席1 の＋は日記の紙（11月24日に戻した） ---- */
   await tab("archive");
-  t.check("席1 に＋は無い", await page.evaluate(() => !document.querySelector("#dock .add-fab")));
+  t.check("席1 に＋がある", await page.evaluate(() => !!document.querySelector("#dock .add-fab")));
   const memoBefore = await page.evaluate(() => JSON.stringify(KN.store.dayLog(KN.util.todayKey()) || null));
   await pen(page);
   await page.waitForTimeout(700);

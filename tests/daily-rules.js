@@ -43,7 +43,7 @@ const FORBIDDEN = [
     return { kids: [...root.querySelector(".day-slide").children].map((e) => ["arc-season", "arc-desk", "arc-shelf", "day-main", "arc-then"].find((c) => e.classList.contains(c)) || e.className),
       text: root.innerText, add: !!document.querySelector("#dock .js-open-add") };
   });
-  t.check("席1 の今日は 扉（候の札）→ 机 → 棚・Daily Log も＋も無い（構4b）", front.kids.slice(0, 3).join() === "arc-season,arc-desk,arc-shelf" && !front.kids.includes("day-main") && !front.add, front.kids.join(","));
+  t.check("席1 の今日は 扉（候の札）→ 机 → 棚・Daily Log は無く＋は日記の紙（11月24日）", front.kids.slice(0, 3).join() === "arc-season,arc-desk,arc-shelf" && !front.kids.includes("day-main") && front.add, front.kids.join(","));
   t.check("席1 の今日に評価の言葉が出ない", !FORBIDDEN.some((w) => front.text.includes(w)));
   /* ここから先の「空の日」は、書いていない過ぎた日（一昨日）の頁。 */
   await page.evaluate((d) => KN.screens.archive.goDay(d), days.blank);
