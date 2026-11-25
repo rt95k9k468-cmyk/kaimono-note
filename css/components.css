@@ -1091,13 +1091,15 @@ button.hero-node:active { scale: var(--press-dot); }
 .d-row + .d-row,
 .d-row + .d-segs,
 .d-add { border-top: 1px solid var(--c-border); }
-/* 予定｜やること・仕事｜くらし（docs/todo-items.md「仕事の予定とやること」）。 */
+/* やること｜予定 と、右に「仕事」の札一つ（docs/todo-items.md「仕事の予定とやること」・磨5）。 */
 .d-segs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
 }
+.d-segs .seg { flex: 0 1 50%; }
 .d-segs .seg-btn { padding-inline: 2px; white-space: nowrap; }
 .d-row:active { background: var(--press-sink); transition-delay: var(--m-press); }
 .d-row:disabled { opacity: var(--press-off); }

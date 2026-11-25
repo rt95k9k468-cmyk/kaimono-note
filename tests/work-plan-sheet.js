@@ -3,7 +3,7 @@
    前半は表：js/when-parse.js を node で読み、「隔週」「◯週ごと」「毎年」を測る。
    ◯週ごとは曜日か時刻もいっしょなら暦の◯週ごと（weekly＋repeatWeeks）、どちらも無ければ
    済ませてから◯×7日のまま（10月18日、利用者）。
-   後半は紙：頭に やること｜予定・仕事｜くらし の札。既定はやること・くらしで、欄を足さない。
+   後半は紙：頭に やること｜予定 と「仕事」の札一つ（磨5）。既定はやること・くらしで、欄を足さない。
    打った字に時刻があれば予定（札を押したら替えない）。くりかえしに「毎年」、毎週に「隔週」ほか。
    直す紙で札を戻せば欄は消える。
 
@@ -77,14 +77,19 @@ t.check("describe は「毎年」", W.describe(W.parse("毎年 健康診断", { 
     return o;
   }, [title, PLAN]);
   const pressed = () => page.evaluate(() =>
-    [...document.querySelectorAll(".d-segs .seg-btn[aria-pressed=true]")].map((b) => b.dataset.v).join(","));
+    [document.querySelector(".d-segs .js-kind .seg-btn[aria-pressed=true]").dataset.v,
+      document.querySelector(".d-segs .js-side").getAttribute("aria-pressed") === "true" ? "work" : "life"].join(","));
 
   await page.evaluate(() => { KN.store.update((s) => { s.todos = []; }); KN.app.showScreen("todo"); });
 
   /* 既定：やること・くらし。しまっても欄を足さない。 */
   await addOpen();
-  t.check("紙の頭に札が二組", await page.evaluate(() =>
-    document.querySelectorAll(".d-segs .js-kind .seg-btn").length === 2 && document.querySelectorAll(".d-segs .js-side .seg-btn").length === 2));
+  /* 磨5：やること｜予定 はそのまま、右に「仕事」の札一つ（くらしは書かない）。 */
+  t.check("やること｜予定 と、右に仕事の札一つ（くらしは書かない）", await page.evaluate(() => {
+    const segs = document.querySelector(".d-segs"), k = segs.querySelector(".js-kind"), w = segs.querySelector(".js-side");
+    return k.querySelectorAll(".seg-btn").length === 2 && w.matches("button.chip") && w.textContent.trim() === "仕事"
+      && !segs.textContent.includes("くらし") && w.getBoundingClientRect().left > k.getBoundingClientRect().right;
+  }));
   t.check("既定はやること・くらし", await pressed() === "task,life", await pressed());
   await page.fill(".js-title", "書類");
   await save();
@@ -94,7 +99,7 @@ t.check("describe は「毎年」", W.describe(W.parse("毎年 健康診断", { 
   /* 打った字に時刻と◯週ごと → 予定・隔週。 */
   await addOpen();
   await page.fill(".js-title", "10:00 2週ごと 定例");
-  await page.evaluate(() => document.querySelector(".js-side [data-v=work]").click());
+  await page.evaluate(() => document.querySelector(".js-side").click());
   await save();
   const ev = await rec("定例");
   t.check("時刻があれば予定・仕事・毎週の2週ごと", ev && ev.kind === "event" && ev.side === "work"
@@ -148,7 +153,7 @@ t.check("describe は「毎年」", W.describe(W.parse("毎年 健康診断", { 
   await page.waitForSelector(".js-title");
   await page.waitForTimeout(300);
   t.check("直す紙は記録の札を点ける", await pressed() === "event,work", await pressed());
-  await page.evaluate(() => { document.querySelector(".js-kind [data-v=task]").click(); document.querySelector(".js-side [data-v=life]").click(); });
+  await page.evaluate(() => { document.querySelector(".js-kind [data-v=task]").click(); document.querySelector(".js-side").click(); });
   await save();
   // くり返しなので「どこまで直す」が出る
   await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.includes("以後すべて")); if (b) b.click(); });

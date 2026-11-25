@@ -72,7 +72,7 @@ const { open, checker } = require("./lib");
     subs: [...document.querySelectorAll(".js-subs .js-sub")].map((x) => x.value),
     on: [...document.querySelectorAll(".js-subs .js-sub-check")].some((b) => b.classList.contains("is-on")),
     kind: document.querySelector('.js-kind [aria-pressed="true"]').dataset.v,
-    side: document.querySelector('.js-side [aria-pressed="true"]').dataset.v,
+    side: document.querySelector(".js-side").getAttribute("aria-pressed") === "true" ? "work" : "life",
   }));
   t.check("T3：いちばん新しい回の手順（済みの印は借りない）・予定・仕事も付く",
     lentOut.subs.join("|") === "保険証|薬手帳" && !lentOut.on && lentOut.kind === "event" && lentOut.side === "work", JSON.stringify(lentOut));
@@ -86,12 +86,14 @@ const { open, checker } = require("./lib");
   await page.evaluate(() => document.querySelector('button[aria-label="やることを追加"]').click());
   await page.waitForSelector(".js-title");
   await page.waitForTimeout(300);
-  await page.click('.js-side [data-v="life"]');
+  // 仕事の札は一つ。押して外す＝自分で くらし を選んだ
+  await page.click(".js-side");
+  await page.click(".js-side");
   await title.click();
   await page.keyboard.type("びょう");
   await page.click(".js-cands .chip");
   t.check("T3：自分で選んだ くらし は替えない", await page.evaluate(() =>
-    document.querySelector('.js-side [aria-pressed="true"]').dataset.v === "life"));
+    document.querySelector(".js-side").getAttribute("aria-pressed") === "false"));
 
   /* 言い切った時刻は早く移る。「10時」は少し待つ。 */
   await page.fill(".js-title", "");

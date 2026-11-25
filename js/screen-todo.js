@@ -620,7 +620,8 @@
           ${/* 種類は いつ の下（RS：何 → いつ → くわしく。時刻を打てば予定に寄るので、押すのはまれ）。 */""}
           <div class="d-segs">
             <div class="seg js-kind" role="group"><button type="button" class="seg-btn" data-v="task">やること</button><button type="button" class="seg-btn" data-v="event">予定</button></div>
-            <div class="seg js-side" role="group"><button type="button" class="seg-btn" data-v="work">仕事</button><button type="button" class="seg-btn" data-v="life">くらし</button></div>
+            ${/* 仕事は札一つ（押すと仕事。くらしは書かない。磨5・11月14日、利用者）。記録の side は同じ。 */""}
+            <button type="button" class="chip js-side" aria-pressed="false">仕事</button>
           </div>
         </div>
 
@@ -1674,7 +1675,7 @@
     /* 予定｜やること・仕事｜くらし の札（docs/todo-items.md「仕事の予定とやること」）。 */
     function paintPlan() {
       body.querySelectorAll(".js-kind .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === kind)));
-      body.querySelectorAll(".js-side .seg-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === side)));
+      body.querySelector(".js-side").setAttribute("aria-pressed", String(side === "work"));
     }
     /** しまう欄。既定（やること・くらし・毎週）は null で渡し、planField に落とさせる。 */
     function planPick(rep, weeks, k) {
@@ -1687,10 +1688,8 @@
       if (!b) return;
       kind = b.dataset.v; kindHand = true; paintPlan(); haptic();
     });
-    body.querySelector(".js-side").addEventListener("click", (e) => {
-      const b = e.target.closest(".seg-btn");
-      if (!b) return;
-      side = b.dataset.v; sideHand = true; paintPlan(); haptic();
+    body.querySelector(".js-side").addEventListener("click", () => {
+      side = side === "work" ? "life" : "work"; sideHand = true; paintPlan(); haptic();
     });
     paintPlan();
 
