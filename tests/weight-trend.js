@@ -162,8 +162,15 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     const out = { before, text: el.hidden ? null : el.textContent, want: `その日はおよそ ${want.toFixed(1)}kg` };
     td.value = KN.util.shiftDay(KN.util.todayKey(), -3); td.dispatchEvent(new Event("change", { bubbles: true }));
     out.past = el.hidden;
+    /* 点検17：説明の文・「例：」の欄の字が無い・kcal・P・F・C は一行に四つ。 */
+    const sh = document.querySelector(".sheet.is-open");
+    const tops = [".js-kcal", ".js-p", ".js-f", ".js-c"].map((q) => Math.round(sh.querySelector(q).getBoundingClientRect().top));
+    out.notes = sh.querySelectorAll(".diet-note").length;
+    out.ex = [...sh.querySelectorAll("input")].filter((i) => /例/.test(i.placeholder)).length;
+    out.row = new Set(tops).size;
     return out;
   });
+  t.check("点検17：目標の紙に説明の文・「例：」が無い・kcal〜C は一行", est.notes === 0 && est.ex === 0 && est.row === 1, JSON.stringify(est));
   t.check("目標日を選ぶと「その日はおよそ◯kg」（選ぶ前・過ぎた日は出さない）",
     est.before && est.text === est.want && est.past, JSON.stringify(est));
   await page.keyboard.press("Escape");

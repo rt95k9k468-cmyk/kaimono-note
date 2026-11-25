@@ -2733,6 +2733,9 @@ button.section-note:active { opacity: var(--press-fade); }
 /* 横にならぶ入力欄。iPhoneの幅でも折り返して収まるように。 */
 .field-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .field-row > .field { min-width: 96px; }
+/* 四つ並び（目標の kcal・P・F・C）は一行に四等分（96px で折ると C だけ次の行だった。点検17）。 */
+.field-row.is-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.field-row.is-4 > .field { min-width: 0; }
 
 /* ---- 取り込みの、読めたもの一覧 ---- */
 

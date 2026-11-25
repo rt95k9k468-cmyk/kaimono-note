@@ -4096,12 +4096,12 @@
         <div class="field-row">
           <label class="field grow">
             <span class="field-label">身長 (cm)</span>
-            <input class="input js-h" inputmode="decimal" placeholder="例：170"
+            <input class="input js-h" inputmode="decimal"
                    value="${g.heightCm == null ? "" : String(g.heightCm)}">
           </label>
           <label class="field grow">
             <span class="field-label">目標体重 (kg)</span>
-            <input class="input js-tw" inputmode="decimal" placeholder="例：65"
+            <input class="input js-tw" inputmode="decimal"
                    value="${g.targetKg == null ? "" : String(g.targetKg)}">
           </label>
         </div>
@@ -4121,7 +4121,7 @@
 
         <div class="divider"></div>
         <div class="section-title">一日の目安</div>
-        <div class="field-row">
+        <div class="field-row is-4">
           <label class="field grow">
             <span class="field-label">kcal</span>
             <input class="input js-kcal" inputmode="numeric" value="${g.kcalTarget == null ? "" : String(g.kcalTarget)}">
@@ -4160,18 +4160,12 @@
                    value="${g.sleepTarget == null ? "" : String(Math.round(g.sleepTarget / 6) / 10)}">
           </label>
         </div>
-        <p class="diet-note">
-          空なら <b>${n0(STEPS_DEFAULT)}歩 / ${n0(BURN_DEFAULT)}kcal / ${SLEEP_DEFAULT / 60}時間</b>。届く高さがおすすめです。
-        </p>
 
         <label class="field">
           <span class="field-label">お酒の目安（純アルコール g/日）</span>
           <input class="input js-alc" inputmode="decimal" placeholder="20"
                  value="${g.alcoholG == null ? "" : String(g.alcoholG)}">
         </label>
-        <p class="diet-note">
-          空なら <b>${DR.GUIDE_G}g</b>（厚生労働省の「節度ある適度な飲酒」の目安）。
-        </p>
         ${/* 平均・傾きを何日ぶんで均すか（R4 で体重のカードの右の三つをやめ、まれな手順としてここへ畳んだ）。空なら7日。 */""}
         <details class="diet-why">
           <summary>平均と傾きの日数</summary>
@@ -4267,11 +4261,11 @@
     const deficit = pace != null ? Math.round((-pace * perKg) / 7) : null;
     const suggest = deficit != null ? Math.max(1200, avg - deficit) : null;
 
+    /* 目安は押せる一つだけ（消費の平均と目安の文は外した——空の欄の字と目安の数で足りる。2026年11月25日の点検17）。 */
+    if (suggest == null) return;
     const el = node(html`
       <div class="diet-suggest-box">
-        <p class="diet-note">直近${burn.length}日の消費は平均 <b>${avg.toLocaleString()}kcal</b>。
-          ${suggest != null ? html`摂取の目安は <b>${Math.round(suggest).toLocaleString()}kcal</b>。` : ""}</p>
-        ${suggest != null ? html`<button class="btn btn-soft btn-sm js-use">この目安を入れる</button>` : ""}
+        <button class="btn btn-soft btn-sm js-use">目安 ${Math.round(suggest).toLocaleString()}kcal を入れる</button>
       </div>
     `);
     const use = el.querySelector(".js-use");
