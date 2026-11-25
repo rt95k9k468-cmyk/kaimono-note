@@ -213,6 +213,17 @@ const { open, checker } = require("./lib");
   c.check("週へ移ると頭から：今週の見出しが帯のすぐ下・過ぎた日は畳んで今日の行が最初",
     hid.top === 0 && hid.first && hid.fold === "false" && Math.abs(hid.head) <= 2 && hid.seen, JSON.stringify(hid));
 
+  /* 点検9：何も無い日の日付と曜日は透かさない（透かして 3.2:1・2.3:1 だった）。数字は二番目の墨。 */
+  const faint = await page.evaluate(() => {
+    const days = [...document.querySelectorAll("#screen-todo .wk-day.is-empty:not(.is-today)")];
+    const ink2 = getComputedStyle(document.documentElement).getPropertyValue("--c-text-2").trim();
+    const probe = document.createElement("i"); probe.style.color = ink2; document.body.append(probe);
+    const want = getComputedStyle(probe).color; probe.remove();
+    return { n: days.length, see: days.filter((d) => [".wk-dn", ".wk-wd"].some((q) => getComputedStyle(d.querySelector(q)).opacity !== "1")).length,
+      ink: days.filter((d) => !["0", "6"].includes(d.dataset.wd) && !d.classList.contains("is-holiday")).every((d) => getComputedStyle(d.querySelector(".wk-dn")).color === want) };
+  });
+  c.check("点検9：空き日の日付・曜日は透かさない・数字は二番目の墨", faint.n > 0 && faint.see === 0 && faint.ink, JSON.stringify(faint));
+
   c.check("エラーなし", !errors.length, errors.join(" / "));
   await browser.close();
   c.done();
