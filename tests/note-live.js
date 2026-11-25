@@ -2,7 +2,7 @@
 
    往復で一字も違わない（取り込みで来る表・コード・HTML・\r も）／行をまたぐ手（改行の続き・太字の中で切る・
    見出しの頭・⌫で印を外す・つなぐ・画像を消す・Delete）／読む姿と書く姿で行の高さが揃う（閉じても同じ姿）／
-   打つ・行頭の「# 」「- 」「1. 」「[] 」「> 」「---」で形が変わる・「**…**」で太字、そのあとは細い／道具の帯・
+   打つ・行頭の「# 」「- 」「1. 」「[] 」「> 」「---」で形が変わる（箇条の頭の「- [ ] 」「## 」も。点検21）・「**…**」で太字、そのあとは細い／道具の帯・
    取り消す・貼り付け・四角／変換中は行の要素を作り直さない・確定の改行で行が増えない／往復しないノートと
    「印で書く」端末は今の書く欄／パソコンの Tab・Ctrl+B／マーカー ==字== と「[[」のリンク（F7）。
 
@@ -209,6 +209,21 @@ const BODY = [
   const strong = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-note .js-live strong")].map((s) => s.textContent));
   await page.keyboard.type("細");
   t.check("「**…**」で太字、続けて打つ字は細い", strong.includes("太") && (await lastLine()) === "**太**細", JSON.stringify({ strong, last: await lastLine() }));
+  /* 点検21：箇条の頭で「- [ ] 」「## 」を打つと、その行がチェック・見出しに（字のまま残らない）。 */
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+  await page.keyboard.type("- ");
+  await page.keyboard.type("- [ ] ");
+  const nestTask = { k: await lineKind(), l: await lastLine() };
+  await page.keyboard.type("ほす");
+  await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
+  await page.keyboard.type("- ");
+  await page.keyboard.type("## ");
+  const nestHead = { k: await lineKind(), l: await lastLine() };
+  await page.keyboard.type("中見出し");
+  await page.keyboard.press("Enter");
+  t.check("点検21：箇条の頭の「- [ ] 」はチェック・「## 」は見出しに", nestTask.k === "nv-li is-task" && nestTask.l === "- [ ] "
+    && /nv-h2/.test(nestHead.k) && nestHead.l === "## ", JSON.stringify({ nestTask, nestHead }));
 
   /* ---- ⌫・取り消す ---- */
   await endOf("新しい見出し");

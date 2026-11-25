@@ -28,6 +28,8 @@
   const PIC = /\.(jpg|png|gif|webp|heic|heif|bmp|avif|tif)$/;
   /* 「[] 」「[ ] 」をチェックに（行頭。箇条の「- [] 」も）。 */
   const BOX = /^(\s*)(?:([-*]) )?\[ ?\] /;
+  /* 箇条の頭で打った「## 」「- [ ] 」（字のまま「- ## 」「- - [ ] 」に残っていた。2026年11月25日の点検21）。 */
+  const NEST = /^(\s*)[-*] (?:(#{1,3}) |[-*] \[ ?\] )/;
 
   const lineStart = (v, i) => (i > 0 ? v.lastIndexOf("\n", i - 1) + 1 : 0);
   const lineEnd = (v, i) => { const e = v.indexOf("\n", i); return e < 0 ? v.length : e; };
@@ -622,10 +624,16 @@
       const here = s && s[0] >= at && s[1] <= at + v.length ? [s[0] - at, s[1] - at] : null;
       let shift = 0;
       const m = BOX.exec(v);
+      const n = !m && here && NEST.exec(v);
       if (m && here && here[0] === m[0].length && F().parse(v).kind !== "task") {
         const to = `${m[1]}${m[2] || "-"} [ ] `;
         v = to + v.slice(m[0].length);
         shift = to.length - m[0].length;
+      } else if (n && here[0] === n[0].length) {
+        // 打った直後だけ：見出しは箇条を外して、チェックは同じ字下げのまま。
+        const to = n[2] ? `${n[2]} ` : `${n[1]}- [ ] `;
+        v = to + v.slice(n[0].length);
+        shift = to.length - n[0].length;
       }
       const prev = el.previousSibling && known(el.previousSibling) ? lastLine(el.previousSibling._md) : null;
       const fresh = build(v, prev);
