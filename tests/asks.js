@@ -95,12 +95,18 @@ const { open, checker, ASKS } = require("./lib");
   await page.waitForTimeout(600);
 
   /* ---- ノートのホームに「問い」の行 ---- */
-  const homeRow = await page.evaluate(async () => {
+  const home = await page.evaluate(async () => {
     KN.screens.notes.again();
     await new Promise((r) => setTimeout(r, 300));
     const b = document.querySelector("#screen-notes .notes-books .js-asks");
-    return b ? b.textContent.trim() : null;
+    /* 点検29：★の札は絵の★だけ（字の「★」を並べない。名前は読み上げに）。 */
+    const f = document.querySelector("#screen-notes .notes-books .js-favs");
+    const name = f && f.querySelector(".nt-name");
+    return { row: b ? b.textContent.trim() : null,
+      fav: f ? { star: !!f.querySelector("svg"), hidden: !!name && name.classList.contains("sr-only"), sr: name && name.textContent } : null };
   });
+  const homeRow = home.row;
+  t.check("点検29：★の札は絵の★だけ・名前は読み上げに", !home.fav || (home.fav.star && home.fav.hidden && home.fav.sr !== "★"), JSON.stringify(home.fav));
   t.check("ノートのホームに「問い」の行", homeRow === "問い", String(homeRow));
 
   /* ---- まだの問い → 答える紙 → 「？問い」を頭にしたノート ---- */

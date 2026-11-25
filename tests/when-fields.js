@@ -234,6 +234,17 @@ const { open, checker } = require("./lib");
     hit: parseFloat(getComputedStyle(b, "::after").height), clip: getComputedStyle(b).overflow, span: !!b.querySelector(":scope > span") })));
   t.check("欄の当たりは 44px 以上・字は中の span", hb.length && hb.every((x) => x.hit >= 44 && x.clip === "visible" && x.span), JSON.stringify(hb));
 
+  /* 点検27：体重は全角でも読む（「６３．５」→ 63.5・「６３０」→ 63.0）。 */
+  const wide = [];
+  for (const v of ["６３．５", "６３０"]) {
+    await page.evaluate(() => KN.screens.diet.openWeightSheet(null, "2026-01-05"));
+    await page.waitForSelector(`${S} .js-kg`);
+    await page.evaluate((v) => { const i = document.querySelector(".sheet.is-open .js-kg"); i.value = v; }, v);
+    await page.locator(`${S} .js-save`).last().click(); await page.waitForTimeout(500);
+    wide.push(await page.evaluate(() => (KN.store.get().diet.weights.find((w) => w.day === "2026-01-05") || {}).kg));
+    await page.evaluate(() => KN.store.update((s) => { s.diet.weights = s.diet.weights.filter((w) => w.day !== "2026-01-05"); }));
+  }
+  t.check("点検27：体重は全角の「６３．５」「６３０」も読む", wide[0] === 63.5 && wide[1] === 63, JSON.stringify(wide));
   t.check("エラーが出ない", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();

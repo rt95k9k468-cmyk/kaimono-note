@@ -6,6 +6,7 @@
    - 見つからないは「見つかりませんでした」だけ（「見つかりません」で止めない・句点を付けない）
    - 写したは「コピーしました」、写せなかったは「コピーできませんでした」の二つだけ
    - AI の入口は「AIに〜」（「AIと〜」「AI用〜」が無い）
+   - 用事を足した一言に「◯までに」を使わない（10時の予定に合わない。点検28。日と時刻は「に」）
    画面は開かない。
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/words.js */
@@ -46,5 +47,8 @@ t.check("写した・写せなかったは二つだけ", !copy.length, copy.join
 
 const ai = hits(/AI(?:と|用)[^\n"`<]{0,6}/g);
 t.check("AI の入口は「AIに〜」", !ai.length, ai.join(" / "));
+
+const by = hits(/\$\{when\}までに/g);
+t.check("用事を足した一言に「◯までに」を使わない", !by.length, by.join(" / "));
 
 t.done();

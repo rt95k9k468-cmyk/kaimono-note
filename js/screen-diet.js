@@ -2408,7 +2408,7 @@
         let changed = 0;
         el.querySelectorAll(".js-v").forEach((inp) => {
           const type = inp.dataset.type;
-          const raw = inp.value.trim();
+          const raw = inp.value.normalize("NFKC").trim();   // 全角の数も（点検27）
           const before = store.healthValue(day, type);
           if (!raw) {
             if (before != null) { store.clearHealth(day, type); changed++; }
@@ -3826,7 +3826,11 @@
     paintMore();
 
     foot.querySelector(".js-save").addEventListener("click", () => {
-      const val = parseFloat(String(kgEl.value).replace(/[^\d.]/g, ""));
+      /* 全角の「６３．５」も読む（NFKC。前は字を捨てて「体重を入れてください」と出た。点検27）。全角の三桁「６３０」は
+         打つあいだの autoDecimal を通らないので、ここで同じく 63.0 に。 */
+      let kgText = String(kgEl.value).normalize("NFKC").replace(/[^\d.]/g, "");
+      if (/^\d{3}$/.test(kgText)) kgText = `${kgText.slice(0, 2)}.${kgText.slice(2)}`;
+      const val = parseFloat(kgText);
       if (!(val > 0)) { KN.ui.toast("体重を入れてください"); return; }
       const fatRaw = parseFloat(String(body.querySelector(".js-fat").value).replace(/[^\d.]/g, ""));
       const patch = {

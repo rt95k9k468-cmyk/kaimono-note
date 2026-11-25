@@ -1957,8 +1957,9 @@
           lead: at ? lead : null, subs, icon: iconKey, ...planPick(repeat) });
         const undoDone = doneNow(rec);
         if (undoDone) KN.ui.toast(`「${title}」を済ませました ${tlClock(doneAt)}`, { action: { label: "元に戻す", onClick: undoDone } });
+        /* 「までに」は締切の言い方で、10時の予定や「明日やる」に合わなかった（点検28）。日と時刻は「に」で。 */
         else KN.ui.toast(fixed
-          ? `「${title}」を${when}までに`
+          ? `「${title}」を${when}に`
           : `「${title}」を追加しました`,
           rec ? { action: { label: "元に戻す", onClick: () => store.removeTodo(rec.id) } } : undefined);
       }

@@ -385,13 +385,14 @@
     const all = N().list();
     const two = window.matchMedia(WIDE).matches;
     const gates = node(html`<div class="notes-books nt-gates" role="list"></div>`);
-    const gate = (label, mark, to, cls) => {
-      const b = node(html`<button type="button" class="nt-gate notes-book ${cls}" role="listitem">${mark}<span class="nt-name">${label}</span></button>`);
+    /* hide：名前は読み上げだけ（★の札は絵の★が名前。字の「★」も並べると同じ印が二つだった。点検29）。 */
+    const gate = (label, mark, to, cls, hide) => {
+      const b = node(html`<button type="button" class="nt-gate notes-book ${cls}" role="listitem">${mark}<span class="nt-name${hide ? " sr-only" : ""}">${label}</span></button>`);
       b.addEventListener("click", () => { KN.motion.fire("select"); go(to); });
       gates.append(b);
     };
     gate("すべて", icon("notes"), { k: "list" }, "js-all");
-    gate("★", icon("star"), { k: "list", pick: { k: "fav" } }, "js-favs");
+    gate("★の付いたノート", icon("star"), { k: "list", pick: { k: "fav" } }, "js-favs", true);
     gate("問い", icon("thought"), { k: "ask" }, "js-asks");
     const books = shelfBooks(t);
     const shelf = books.childElementCount ? [secTitle("本棚"), books] : [];
