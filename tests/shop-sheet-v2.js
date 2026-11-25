@@ -173,6 +173,21 @@ const { open, checker } = require("./lib");
 
   const txt = await page.evaluate(() => document.body.innerText);
   t.check("絵文字を出さない", !/\p{Extended_Pictographic}/u.test(txt));
+  /* 点検16：絵を選ぶ紙——名前は 11px で一字だけ次の行に落ちない（「とうもろこ／し」）・欄の字に例を書かない。 */
+  const pick = await page.evaluate(async () => {
+    document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click());
+    await new Promise((r) => setTimeout(r, 500));
+    const p = KN.store.addProduct({ name: "とうもろこし" }); KN.productSheet.open(p.id); await new Promise((r) => setTimeout(r, 700));
+    document.querySelector(".sheet.is-open .pd-hero .hero-node").click(); await new Promise((r) => setTimeout(r, 900));
+    const ls = [...document.querySelectorAll(".sheet.is-open .icon-cell-label")];
+    const lone = ls.filter((e) => {
+      const t = e.firstChild; if (!t || t.nodeType !== 3 || t.length < 2) return false;
+      const top = (i) => { const rg = document.createRange(); rg.setStart(t, i); rg.setEnd(t, i + 1); return Math.round(rg.getClientRects()[0].top); };
+      return top(t.length - 1) !== top(t.length - 2);
+    }).map((e) => e.textContent);
+    return { n: ls.length, fs: parseFloat(getComputedStyle(ls[0]).fontSize), lone: lone.slice(0, 5), ph: document.querySelector(".sheet.is-open .js-q").placeholder };
+  });
+  t.check("点検16：絵の名前は 11px 以上・一字だけ落ちない・欄に例なし", pick.n > 100 && pick.fs >= 11 && !pick.lone.length && !/例/.test(pick.ph), JSON.stringify(pick));
   t.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();

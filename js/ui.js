@@ -2434,7 +2434,7 @@
     const store = KN.store;
     const body = node(html`
       <div class="stack gap-3">
-        <input class="input js-q" placeholder="絵をさがす（例：洗剤）"
+        <input class="input js-q" placeholder="絵をさがす"
                autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="絵をさがす">
         <button type="button" class="icon-report-toggle js-report-toggle" aria-pressed="false">
           ${icon("flag")}

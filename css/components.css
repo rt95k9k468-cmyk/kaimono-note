@@ -370,10 +370,12 @@ button, [role="tab"] {
 .icon-cell-mark { display: grid; place-items: center; height: 30px; }
 .icon-cell-mark .p-icon { width: 27px; height: 27px; vertical-align: 0; }  /* 入れもの：絵選びの升 */
 .icon-cell-label {
-  font-size: var(--fs-2xs);
+  /* 11px・行の長さをそろえる（10px で「とうもろこ／し」と一字だけ落ちていた。点検16）。 */
+  font-size: var(--fs-xs);
   line-height: 1.15;
   color: var(--c-text-2);
   text-align: center;
+  text-wrap: balance;
   /* Two lines at most: 「ほっとけーきみっくす」 must not push the grid about. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
