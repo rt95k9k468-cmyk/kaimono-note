@@ -266,6 +266,15 @@ const FORBIDDEN = [
   t.check("切ると、いまごろは出ない", !c.ima);
   t.check("切ると、どこかの一日も出ない", await page.evaluate(() => !document.querySelector("#screen-archive .arc-any")));
 
+  /* 点検23：まだ来ていない候の見出しも、絵と同じ大きさの空の額で字がそろう。 */
+  const ahead = await page.evaluate(async () => {
+    const t0 = KN.util.todayKey(); KN.seasonBook.openMonth(+t0.slice(0, 4) + 1, +t0.slice(5, 7));
+    await new Promise((r) => setTimeout(r, 400));
+    const hs = [...document.querySelectorAll(".sb-sheet .sb-kh")].slice(-3);
+    const out = { n: document.querySelectorAll(".sb-sheet .sb-pic.is-ahead").length, x: hs.map((h) => Math.round(h.querySelector("b").getBoundingClientRect().left)) };
+    return out;
+  });
+  t.check("点検23：まだ来ていない候も空の額で、候の名の左がそろう", ahead.n > 0 && new Set(ahead.x).size === 1, JSON.stringify(ahead));
   t.check("ページのエラーが無い", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();

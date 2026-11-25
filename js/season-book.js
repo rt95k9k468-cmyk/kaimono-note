@@ -193,7 +193,7 @@
           pageList.push({ d, text: l ? l.text : [...new Set(feed)].join("・"), blank: !l || l.blank });
         }
         const sec = node(html`<section class="sb-kou">
-          <h3 class="sb-kh">${m.from > today ? "" : html`<img class="sb-pic is-s" src="${thumb(m.k)}" alt="" width="60" height="40" decoding="async">`}
+          <h3 class="sb-kh">${m.from > today ? html`<span class="sb-pic is-s is-ahead" aria-hidden="true"></span>` : html`<img class="sb-pic is-s" src="${thumb(m.k)}" alt="" width="60" height="40" decoding="async">`}
             <b>${m.kou}</b><small>${spanOf({ from: a, to: b })}</small></h3>
           ${pageList.length ? html`<div class="ima-pages"></div>` : ""}</section>`);
         const grid = sec.querySelector(".ima-pages");

@@ -3059,7 +3059,8 @@ a.btn { text-decoration: none; }
 .arc-door-ko, .arc-door-yomi { white-space: nowrap; }   /* 絶対配置の縦組みは長さが縮む */
 .arc-season-art :is(.arc-door-ko, .arc-door-yomi, .arc-door-sekki) { text-shadow: 0 1px 10px rgb(0 0 0 / .6); }
 [data-attire="modern"] .arc-door { --door-wm: horizontal-tb; --door-r: auto; --door-r2: auto; --door-l: 18px; --door-yomi-t: calc(32px + 34px * var(--fs-k)); }   /* 装いは札だけ */
-.arc-door > .arc-season-main { display: none; padding-inline: var(--sp-2); }
+/* 開いた行は扉の左にそろえる（.arc-season の align-items: center を縦並びで受けて、塊ごと中央へ寄っていた。点検22）。 */
+.arc-door > .arc-season-main { display: none; align-self: stretch; padding-inline: var(--sp-2); }
 .arc-door.is-open > .arc-season-main { display: flex; }
 /* 棚（構4b）：年の背表紙。色は年ごとに決め打ち、幅と高さはどの年も同じ（年を比べない）。今年に栞。右の端に偶然の一日。 */
 .arc-shelf { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px; min-height: 100px; padding: 0 var(--sp-2); border-bottom: 3px solid var(--c-border-2); }
@@ -3080,6 +3081,8 @@ a.btn { text-decoration: none; }
 .sb-mh svg { color: var(--c-text-3); }
 .sb-pic { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; border-radius: var(--r-sm); background: var(--c-border); }
 .sb-pic.is-s { width: 48px; flex: none; }
+/* まだ来ていない候は絵の代わりに同じ大きさの空の額（字が左へずれていた。点検23）。 */
+.sb-pic.is-ahead { background: none; box-shadow: inset 0 0 0 1px var(--c-border); }
 .sb-name { display: flex; align-items: baseline; gap: var(--sp-2); font: var(--fw-bold) var(--fs-md)/1.4 var(--font-display); }
 .sb-name small, .sb-kh small { font: var(--fw-regular) var(--fs-xs)/1 var(--font-num); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .sb-edge { position: sticky; top: 0; flex: none; width: 14px; height: min(68svh, 520px); display: flex; flex-direction: column; touch-action: none; }

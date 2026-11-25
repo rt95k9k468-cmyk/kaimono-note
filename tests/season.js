@@ -124,6 +124,16 @@ t.check("日付でないものには何も言わない", SE.of("") === null && S
   t.check("置き場所は日の一枚の頭の候の札（R6。今日は扉で、日の行は席1 の今日に無い・構4b）", scr.first && scr.noRow);
   t.check("候の名は札の見出し（明朝の大きな字）", scr.name === scr.kou, `${scr.name} / ${scr.kou}`);
   t.check("字の太さは 400", scr.weight === "400", scr.weight);
+  /* 点検22：扉を開いた行は扉の左にそろう（前は塊ごと中央へ寄って約78px あいた）。 */
+  const door = await page.evaluate(async () => {
+    const d = document.querySelector("#screen-archive .arc-door");
+    if (!d) return null;
+    if (!d.classList.contains("is-open")) d.querySelector(".arc-door-face").click();
+    await new Promise((r) => setTimeout(r, 300));
+    const m = d.querySelector(":scope > .arc-season-main");
+    return { gap: Math.round(m.getBoundingClientRect().left - d.getBoundingClientRect().left) };
+  });
+  t.check("点検22：開いた季節のひとことは扉の左にそろう", !door || door.gap <= 12, JSON.stringify(door));
   const hits2 = FORBIDDEN.filter((w) => scr.all.includes(w));
   t.check("daily の画面に評価の言葉が出ない", !hits2.length, hits2.join(","));
 
