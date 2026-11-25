@@ -3435,8 +3435,8 @@ button.tl-over:active { opacity: var(--press-fade); }
 .refit-m { flex: none; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .refit-ok { margin: var(--sp-3) 0 0; color: var(--c-text-2); }
 .refit-row .chip-row { flex-wrap: wrap; }
-/* 詰めるの口（時間割の頭。週の「選ぶ」と同じ字）と紙（docs/todo-timeline.md の「詰める」）。
-   右端に寄せない——右下の＋が、頭の一行の右端に重なる高さがある（撮って見つけた）。 */
+/* 詰めるの口（畳んだ帯のカードの右下。帯が無い・ひらいたときは時間割の頭。週の「選ぶ」と同じ字）と紙
+   （docs/todo-timeline.md の「詰める」）。 */
 .tl-fill {
   margin: -4px 0; min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-full);
   font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-primary);
@@ -3992,7 +3992,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   background: linear-gradient(to bottom, var(--tl-fill) 0 var(--p), var(--tl-wait) var(--p) 100%);
   pointer-events: none;
 }
-/* 畳んだ長い空き。一定の高さで、物差しは切れる——目盛りは描かず、点線と字で言う。 */
+/* 畳んだ長い空き。一定の高さ（18px）で、物差しは切れる——目盛りは描かず、字なしの点線で言う（磨4）。 */
 .tl-list > .tl-fold {
   left: 0; right: var(--tl-right);
   height: calc(var(--h) * 1px);
@@ -4007,14 +4007,6 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   -webkit-mask: var(--tl-dash);
   mask: var(--tl-dash);
 }
-.tl-fold-text {
-  margin-left: calc(var(--tl-gut) + 20px);   /* 軸（gut+4px）に字を刺さない */
-  font-size: var(--fs-sm);
-  color: var(--c-text-3);
-  white-space: nowrap;
-}
-/* 「いま」の線が空きの中を通るときは、字を線からよける（--fold-y は字のまん中の高さ。screen-todo.js の avoidNow）。 */
-.tl-fold[style*="--fold-y"] .tl-fold-text { align-self: flex-start; margin-top: calc(var(--fold-y) * 1px); translate: 0 -50%; }
 
 /* 今日の用事をみな済ませた日の、いまの時から一日の終わりまで（js の restRow・2026年10月28日、利用者）。札と同じ形——左端の
    棒は時計が通ったところまで色（--pass）、地は白。色は絵の丸（棒と同じ塗り）と、札の頭のうすい光だけ（面は塗らない）。
@@ -7141,6 +7133,9 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .strip-tk > span:first-child { translate: 0 0; }
 .strip-tk > span:last-child { translate: -100% 0; }
 .strip-sum { display: block; margin-top: 6px; font-size: var(--fs-sm); color: var(--c-text-2); }
+/* 詰めるの口（磨4）：「予定・空き」の行の右。ボタンの中にボタンは置けないので、カードの右下へ重ねる。字の右端は「あと◯」と揃う。 */
+.day-strip > .strip-fill { position: absolute; right: 4px; bottom: 4px; margin: 0; }
+.day-strip.has-fill .strip-sum { padding-right: 5.5em; }
 /* ひらいた道（前の道そのもの）。畳む印は右上。入るときは 8px 上がりながら（動きの辞書の「移る」）。 */
 /* ひらいた道は前の道の幅のまま（カードの地も線も持たない。道の札の置き方は紙の幅で数えてある）。 */
 .day-strip.is-open { margin: 0; padding-top: var(--sp-2); background: none; border: 0; box-shadow: none; border-radius: 0; }

@@ -51,16 +51,16 @@ t.check("見込みの長さが次の予定にかかっても、次の頭で止�
 // 畳み：9時の用事と17時の用事のあいだ（10時〜17時）は畳む。
 r = L([it("a", H(9), H(10)), it("b", H(17), H(18))], O);
 t.check("90分以上の空きは一つに畳む", r.folds.length === 1 && r.folds[0].fromMin === H(10) && r.folds[0].untilMin === H(17), JSON.stringify(r.folds));
-t.check("畳んだ区間の高さは一定（44px）", near(r.folds[0].height, 44) && near(r.cards[1].top, 72 + 44), JSON.stringify([r.folds, r.cards]));
-t.check("全体の高さ＝札＋畳み＋札", near(r.height, 72 + 44 + 72), String(r.height));
-t.check("y：畳んだ区間の中は区間の高さへ比例（真ん中＝22px）", near(r.y(H(13, 30)), 72 + 22));
-t.check("y：畳みのあとは積み上がる", near(r.y(H(17)), 72 + 44));
+t.check("畳んだ区間の高さは一定（18px・磨4）", near(r.folds[0].height, 18) && near(r.cards[1].top, 72 + 18), JSON.stringify([r.folds, r.cards]));
+t.check("全体の高さ＝札＋畳み＋札", near(r.height, 72 + 18 + 72), String(r.height));
+t.check("y：畳んだ区間の中は区間の高さへ比例（真ん中＝9px）", near(r.y(H(13, 30)), 72 + 9));
+t.check("y：畳みのあとは積み上がる", near(r.y(H(17)), 72 + 18));
 
 r = L([it("a", H(9), H(10)), it("b", H(11), H(12))], { start: H(9), end: H(13) });
 t.check("90分未満の空きは畳まず物差しのまま", r.folds.length === 0 && near(r.cards[1].top, 144), JSON.stringify([r.folds, r.cards[1]]));
 
 r = L([], { start: H(5), end: H(23) });
-t.check("用事が無い日は一日ぶんが一つの畳み", r.folds.length === 1 && near(r.height, 44));
+t.check("用事が無い日は一日ぶんが一つの畳み", r.folds.length === 1 && near(r.height, 18));
 
 r = L([it("a", H(22), H(24, 30))], { start: H(5), end: H(23) });
 t.check("寝る時刻をすぎる札は範囲を広げて描く", r.to >= H(24, 30) && near(r.cards[0].height, 150 * 1.2), JSON.stringify([r.to, r.cards]));
@@ -72,7 +72,7 @@ t.check("連なりごとに列数が違ってよい（aは1列・b/cは2列）",
 r = L([it("a", H(9), H(10)), it("b", H(10), H(11)), it("c", H(9, 10), H(10))], Object.assign({ open: { a: 60 } }, O));
 const ca = r.cards.find((c) => c.id === "a"), cb = r.cards.find((c) => c.id === "b");
 t.check("ひらいた札は足したぶん高い（72＋60）", near(ca.height, 132), JSON.stringify(r.cards));
-t.check("下の札は押し下がる（10時の札の頭＝72＋60・全体も60伸びる）", near(cb.top, 132) && near(r.height, 72 * 2 + 60 + 44), JSON.stringify(r.cards));
+t.check("下の札は押し下がる（10時の札の頭＝72＋60・全体も60伸びる）", near(cb.top, 132) && near(r.height, 72 * 2 + 60 + 18), JSON.stringify(r.cards));
 t.check("継ぎ目ちょうどで終わる隣の列の札は伸ばさない（50分＝60px）", near(r.cards.find((c) => c.id === "c").height, 60), JSON.stringify(r.cards));
 t.check("押し下げは時間を持たない：y(10:00)＝132・y(9:59)＜72", near(r.y(H(10)), 132) && r.y(H(9, 59)) < 72);
 t.check("minAt：継ぎ目の中は10:00、その下は物差しどおり", near(r.minAt(100), H(10)) && near(r.minAt(132 + 36), H(10, 30)));

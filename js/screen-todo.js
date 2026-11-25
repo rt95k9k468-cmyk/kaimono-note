@@ -3760,6 +3760,10 @@
      2026年9月29日）。組み立ては時間割と同じ `buildDay`——二つが別々に数えると、
      地図と時間割が食い違うので。設定の「一日の道」で 上・下・出さない を選べます。 */
   const roadOn = () => store.get().settings.todoRoad !== false;
+  /** 詰めるの口を出す日か（今日と先の日に動かせるやることが一つでもあれば、いつも。2026年11月8日、利用者）。 */
+  const fillableDay = (day, rows) => day >= todayKey() && rows.some((t) => KN.plan.canFill(t, day));
+  /** 詰めるの口が、畳んだ帯のカードに乗る（磨4）。乗らないときは時間割の頭。 */
+  const fillInStrip = (day, rows) => roadOn() && !roadOpen && fillableDay(day, rows);
 
   /** 一日の帯（R3・docs/redesign.md 6節）：道を畳んだ一本（5〜23時）。予定は藍・やることは若竹・活動は藤の枠・いまの印・
       「次は◯◯／あと◯」・合計と空き（redesign-features の T2。事実だけ）。押すと今の道がひらく（roadOpen）。
@@ -3800,6 +3804,14 @@
           <span class="strip-tk">${S.ticks.map((m) => html`<span style="left:${pct(S.x(m))}">${Math.floor(m / 60) % 24}</span>`)}</span>
           <span class="strip-sum">${sum}</span>
         </button>`));
+      /* 詰めるの口は「予定・空き」の行の右（磨4・2026年11月25日、利用者が選んだ）。ボタンの中にボタンは置けないので、
+         カードの右下へ重ねる。帯が無い・道をひらいているときは、前のまま時間割の頭（.tl-sum）。 */
+      if (fillInStrip(day, rows)) {
+        box.classList.add("has-fill");
+        const fb = node(html`<button type="button" class="tl-fill strip-fill js-fill">詰める</button>`);
+        fb.addEventListener("click", () => { haptic(); fillSheet(day); });
+        box.append(fb);
+      }
     }
     box.addEventListener("click", (e) => {
       if (!e.target.closest(".strip-open, .strip-fold")) return;
@@ -5377,8 +5389,8 @@
     if (rest && restLeft > 0) rest.fresh = true;   // いま最後の一件を済ませた（開いただけなら咲くのは arrive）
     if (isToday) restLeft = plan.items.length;
     /* 組み直しの口（3.0 の B3）。入りきらない（over）ときだけ。
-       詰めるの口は、今日と先の日に動かせるやることが一つでもあれば、いつも（2026年11月8日、利用者）。 */
-    const fillable = day >= todayKey() && rows.some((t) => P.canFill(t, day));
+       詰めるの口は、今日と先の日に動かせるやることが一つでもあれば、いつも（2026年11月8日、利用者）。畳んだ帯があればそちら（磨4）。 */
+    const fillable = fillableDay(day, rows) && !fillInStrip(day, rows);
     const sec = node(html`
       <div class="tl${rest ? " is-rest" : ""}">
         ${/* 「このあと空き◯分」は出しません。時間割そのものが、時刻の
@@ -5579,21 +5591,6 @@
     markPass(list, passAt(list, nowMin), nowMin);
     growLate(list, nowMin);
     if (at != null) axis.append(nowMark(nowMin, at));
-    avoidNow(list, axis);
-  }
-
-  /** 畳んだ空きの字は、「いま」の線をまたがない：線が空きの中にあれば、広いほうの側のまん中へ寄せる。
-      （軸と一覧は座標が違うので、実際の位置で測る。） */
-  function avoidNow(list, axis) {
-    const mark = axis.querySelector(".tl-now");
-    const y = mark ? mark.getBoundingClientRect().top : null;
-    list.querySelectorAll(":scope > .tl-fold").forEach((f) => {
-      const r = f.getBoundingClientRect();
-      if (y != null && r.height && y > r.top && y < r.bottom) {
-        const above = y - r.top, below = r.bottom - y;
-        KN.util.setVar(f, "--fold-y", (above > below ? above / 2 : above + below / 2).toFixed(1));
-      } else f.style.removeProperty("--fold-y");
-    });
   }
 
   /** 過ぎてもまだの用事（長さを決めた・まだ・決めた終わりを過ぎた、今日だけ。道の `is-late` と同じ条件）。
@@ -6579,13 +6576,13 @@
     return out;
   }
 
-  /** 畳んだ長い空き（90分以上の予定なし）。一定の高さで、物差しは切れる——目盛りは描かず波線で言う。 */
+  /** 畳んだ長い空き（90分以上の予定なし）。一定の高さで、物差しは切れる——目盛りは描かず点線で言う。
+      字は無い（磨4・2026年11月25日、利用者が選んだ。前は「〜 ◯時まで予定なし 〜」）。 */
   function foldRow(f) {
     return node(html`
-      <li class="tl-fold" data-at="${String(f.fromMin)}" data-until="${String(f.untilMin)}"
+      <li class="tl-fold" aria-hidden="true" data-at="${String(f.fromMin)}" data-until="${String(f.untilMin)}"
           style="--top:${f.top.toFixed(1)};--h:${f.height.toFixed(1)}">
-        <span class="tl-fold-rail" aria-hidden="true"></span>
-        <span class="tl-fold-text">〜 ${tlClock(KN.plan.toTime(f.untilMin))} まで予定なし 〜</span>
+        <span class="tl-fold-rail"></span>
       </li>
     `);
   }

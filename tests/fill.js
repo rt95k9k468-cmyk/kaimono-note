@@ -2,7 +2,7 @@
    時計を 11月11日（水）12:47 に止める（いま＝12:45）。一日の終わりは 16:00。
    会議（予定 14:00・30分）・薬（毎日 13:30・5分）は動かさない。お（10:00 を過ぎた・20分）・え（時刻なし・長さなし）・
    う（時刻なし・15分）・い（15:00・30分）・あ（時刻なし・60分）を動かす。
-   - 時間割の頭に「詰める」（今日・先の日）。過ぎた日には出ない
+   - 「詰める」（今日・先の日）は帯のカードの「予定・空き」の行の右（磨4）。道をひらくと時間割の頭へ。過ぎた日には出ない
    - 紙の既定：始める いま 12:45・ゆとり 5分・長さ未定 30分
    - 並びは時間割の上から：お 12:45 → え 14:35（薬・会議をゆとりごとよける）→ う 15:10 → い 15:30、あ は入らない（既定は明日）
    - 予定・くり返しは「動かさない」に。閉じれば何も変わらない
@@ -67,11 +67,33 @@ const YESTERDAY = "2026-11-10";
 
   await page.click('.tab[data-tab="todo"]');
   await wait(700);
-  const btn = await page.evaluate(() => {
-    const b = document.querySelector("#screen-todo .js-fill");
-    return b ? b.textContent.trim() : null;
+  const where = () => page.evaluate(() => {
+    const bs = [...document.querySelectorAll("#screen-todo .day-slide:not(.is-peek) .js-fill")];
+    const b = bs[0];
+    if (!b) return null;
+    const sum = b.closest(".day-strip") && b.closest(".day-strip").querySelector(".strip-sum");
+    const r = b.getBoundingClientRect(), q = sum && sum.getBoundingClientRect();
+    const t = sum && document.createRange();
+    if (t) t.selectNodeContents(sum);
+    const tr = t && t.getBoundingClientRect();
+    return {
+      n: bs.length, text: b.textContent.trim(), inStrip: !!b.closest(".day-strip"), inSum: !!b.closest(".tl-sum"),
+      /* 字の縦のまん中が「予定・空き」の行の中・字の右（重ならない） */
+      sameRow: !!q && Math.abs((r.top + r.bottom) / 2 - (q.top + q.bottom) / 2) <= 4,
+      rightOf: !!tr && r.left >= tr.right,
+    };
   });
-  c.check("時間割の頭に「詰める」", btn === "詰める", String(btn));
+  const btn = await where();
+  c.check("帯のカードの「予定・空き」の行の右に「詰める」（一つ）", btn && btn.n === 1 && btn.text === "詰める" && btn.inStrip && !btn.inSum && btn.sameRow && btn.rightOf, JSON.stringify(btn));
+  /* 道をひらくと帯のカードは無い → 時間割の頭へ戻る。畳めば帯へ。 */
+  await page.click("#screen-todo .day-slide:not(.is-peek) .strip-open");
+  await wait(500);
+  const opened = await where();
+  c.check("道をひらくと「詰める」は時間割の頭（一つ）", opened && opened.n === 1 && opened.inSum && !opened.inStrip, JSON.stringify(opened));
+  await page.click("#screen-todo .day-slide:not(.is-peek) .strip-fold");
+  await wait(500);
+  const back = await where();
+  c.check("畳めば帯のカードへ戻る", back && back.n === 1 && back.inStrip, JSON.stringify(back));
   const before = await snap();
 
   const read = () => page.evaluate(() => {
