@@ -233,6 +233,10 @@ window.__diff = function (a, b, p) {
   /* ================= G. 大きさは元へ戻す欄だけで量る（守2） =================
      ノート（noteBook）は元に書かないので、小さな記録＋300万字のノートの控えは断らない。
      記録そのものが枠（260万字）を越えれば、今までどおり size が越える。 */
+  /* 除く決まり（付けたし）は一か所。量りと戻す側が別々に持つと、片方だけ変わって量りが小さく出る。 */
+  const storeSrc = require("fs").readFileSync(require("path").join(__dirname, "../js/store.js"), "utf8");
+  const rules = (storeSrc.match(/\/Book\$\//g) || []).length;
+  t.check("G. 付けたしを除く決まり（…Book）は store.js に一か所", rules === 1, String(rules));
   const G = await page.evaluate(() => {
     const raw = JSON.parse(KN.store.exportJSON("2026-11-23T00:00:00.000Z"));
     const at = new Date().toISOString();
