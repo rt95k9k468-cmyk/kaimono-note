@@ -7279,7 +7279,8 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 #screen-prices .product > .pbars { flex: 1 0 100%; padding: 0 0 var(--sp-1) 58px; }
 /* 店ごとの値段の棒（productSheet.bars）。長さは scale（transform の原則）、描かれるときは左から伸びる。 */
 .pbars { display: flex; flex-direction: column; gap: var(--sp-2); }
-.pbar { display: grid; grid-template-columns: minmax(0, 7em) minmax(0, 1fr) 4.2em; gap: 10px; align-items: center; font-size: var(--fs-md); color: var(--c-text); }
+/* 店名の列は 8em（7em では「ドラッグストア」が「ドラッグス…」に切れた。点検14）。 */
+.pbar { display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) 4.2em; gap: 10px; align-items: center; font-size: var(--fs-md); color: var(--c-text); }
 .pbar-s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .pbar-b { display: block; height: 10px; border-radius: 5px; background: var(--c-surface-2); overflow: hidden; }
 .pbar-b > i { display: block; height: 100%; border-radius: 5px; background: var(--c-border-2); transform-origin: left center; scale: var(--w, 1) 1; animation: stack-grow var(--m-fill) var(--ease-out) both; }

@@ -2,6 +2,7 @@
    - 値段が一つの店だけの品物：買うものの行・価格の行と升に王冠は無く、店の名前だけ。紙の頭に「最安」と言わない
    - 二つの店に値段がある品物：安いほうの店に王冠。紙の頭は「最安 店 値段」
    F5（11月12日）：店で絞る札（S1）・鍵盤の税抜と率（S3）・前回との差とこれまでの最安（S4）も。
+   点検14（11月25日）：価格の棒の店名は7字（ドラッグストア）まで切れない。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/crown.js */
 const { open, checker } = require("./lib");
 
@@ -36,6 +37,16 @@ const { open, checker } = require("./lib");
     t.check(`${layout}・${screen}：一つの店の品物に王冠が無い`, !!one && !one.crown && one.text.includes("試しの店A"), JSON.stringify(one));
     t.check(`${layout}・${screen}：二つの店の品物は安いほうに王冠`, !!two && two.crown && two.text.includes("試しの店B"), JSON.stringify(two));
   }
+  /* 点検14：棒の店名の列は7字が入る（7em では「ドラッグス…」）。 */
+  const cut = await page.evaluate(() => {
+    const S = KN.store, st = S.addStore("ドラッグストア"), p = S.get().products.find((x) => x.name === "牛乳");
+    S.addPrice(p.id, { storeId: st.id, price: 230, amount: 1 });
+    return new Promise((r) => setTimeout(() => {
+      const s = [...document.querySelectorAll("#screen-prices .pbar-s")].find((e) => e.textContent === "ドラッグストア");
+      r(s ? { w: s.clientWidth, need: s.scrollWidth } : null);
+    }, 500));
+  });
+  t.check("点検14：価格の棒の店名「ドラッグストア」は切れない", !!cut && cut.need <= cut.w, JSON.stringify(cut));
   const cap = async (id) => {
     await page.evaluate((id) => { KN.productSheet.open(id); }, id);
     await page.waitForTimeout(700);
