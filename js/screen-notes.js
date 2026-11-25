@@ -3110,7 +3110,8 @@
   function onLeave() { if (document.documentElement.classList.contains("notes-dock")) closePapers(); }
 
   /** ＋の上の「思考」：thinking に新しいノート。冊は決まっているので小窓を出さずに本文へ。 */
-  const think = () => openNote(null, null, { nb: THINK });
+  /* o.after：閉じたあとに（ほかの席から来たら、その席へ帰す。点検3）。 */
+  const think = (o) => openNote(null, null, { nb: THINK, after: o && o.after });
 
   /** 席に入る前に下の面を決め（三面はホームを挟まない）、入ったらいちばん新しいノートを開く（意5）。 */
   function prepare() { reseat(); }

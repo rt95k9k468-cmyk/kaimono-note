@@ -36,6 +36,8 @@
   const diaryBody = () => (KN.diaryIdb ? KN.diaryIdb.body() : "ok");
   const UNREAD = "読めません";
   const MISSING = "本文が見つかりません";
+  /* notes へ移って開いた紙を閉じたら、ここへ帰る（前は notes の席のまま。2026年11月25日の点検3）。 */
+  function backHere() { if (KN.app.activeScreen() === "notes") KN.app.showScreen("archive"); }
   /** 本文を元から外した行（store.memoOut。docs/storage.md の「段2の案」）の、
       本文の欄に出す字。印の行でなければ null。印の行は本文のある日です
       ——写しから戻る前は「読み込み中」、写しにも無ければ「本文が見つかりません」。 */
@@ -1317,7 +1319,7 @@
       KN.motion.fire("select");
       /* 答えのノート（頭の行が「？問い」。＋でつくった問いも）は答える紙で続きを。 */
       if (cur.note && cur.line === 0 && NS && NS.answer && NS.answer(cur.text, grow)) return;
-      if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line }); }
+      if (cur.note) { KN.app.showScreen("notes"); KN.screens.notes.open(cur.note, null, { line: cur.line, after: backHere }); }
     });
     return el;
   }
@@ -2218,7 +2220,7 @@
     el.querySelector(".js-desk-think").addEventListener("click", () => {
       KN.motion.fire("select");
       KN.app.showScreen("notes");
-      KN.screens.notes.think();
+      KN.screens.notes.think({ after: backHere });
     });
     el.querySelector(".js-desk-copy").addEventListener("click", () => {
       if (diaryShut()) { askDiary(); return; }   // 開けたら、もう一度押して写す

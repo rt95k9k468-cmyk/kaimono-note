@@ -154,6 +154,9 @@ const FORBIDDEN = [
     const th = await page.evaluate(() => ({ screen: KN.app.activeScreen(), nb: KN.screens.notes.current && (KN.screens.notes.current() || {}).nb }));
     t.check("意6：机の「考える」で notes の思考（新しいノート）", th.screen === "notes", JSON.stringify(th));
     await page.keyboard.press("Escape");
+    await page.waitForTimeout(700);
+    const back = await page.evaluate(() => KN.app.activeScreen());
+    t.check("点検3：思考の紙を閉じると archive へ帰る", back === "archive", back);
     await page.evaluate(() => { document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click()); KN.app.showScreen("archive"); });
     await page.waitForTimeout(500);
   }
