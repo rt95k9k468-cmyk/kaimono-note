@@ -450,38 +450,17 @@
     sec.querySelectorAll(".cal-pad").forEach((c) => c.classList.toggle("is-off-week", !padsOn));
   }
 
-  /* ---- 買ったものの絵（段4） ----
+  /* ---- 買ったもの（段4） ----
 
-     その日に買ったもの（買うものの「買った」、`checkedAt`）を、やることの
-     暦と同じ丸で出します（`.cal-mark`——カテゴリの色に染まった丸の中に、
-     その品物の絵を白抜きで）。三つまで。材料は daily の「その日に買った
-     もの」（store.dayFeed の③）と同じで、写しは持ちません。
+     その日に買ったもの（買うものの「買った」、`checkedAt`）を、やることの暦と同じ**名前の札**で出します
+     （`.cal-name`。札の色は品物の色。入りきらなければ最後の札を「+n」——screen-todo.js の calMarkOf と同じ印）。
+     前はカテゴリの色の丸に品の絵を三つまでで、12px では何か読めず、読み上げの名も無かった（2026年11月25日の点検15。
+     redesign 1節「暦の札は字のまま」）。材料は daily の「その日に買ったもの」（store.dayFeed の③）と同じで、写しは持ちません。
 
      `checkedAt` は UTC の ISO なので、日は `dayKey(new Date(...))` で
      ローカルに直して数えます（頭10文字を切ると、朝の買い物が前の日へ
-     回ります——store.js の dayOfStamp）。
-
-     絵を決める順は store.productMark と同じ（手で選んだ絵→名前→カテゴリの
-     名前）。当たらなければ、やることと同じ小さな丸だけ——包みの絵
-     （productIcons.fallback）は色つきで、白抜きの丸に入れると塗りが潰れます。
-     引いた答えは覚えておきます（findKey は安くありません。screen-todo.js の
-     cachedArt と同じ理由）。 */
-  const artMemo = new Map();
-  function boughtArt(p) {
-    const P = KN.productIcons;
-    const cat = KN.store.getCategory(p.categoryId);
-    const ck = `${p.icon || ""}\u0001${p.name}\u0001${(cat && cat.name) || ""}`;
-    let v = artMemo.get(ck);
-    if (v === undefined) {
-      const key = (p.icon && P.byKey(p.icon) && p.icon)
-        || P.findKey(p.name) || (cat && P.findKey(cat.name)) || "";
-      v = (key && P.byKey(key)) || "";
-      artMemo.set(ck, v);
-    }
-    return v;
-  }
-
-  /** 日ごとの、その日に買った品物（同じ品物は一つ、買った順に三つまで）。 */
+     回ります——store.js の dayOfStamp）。 */
+  /** 日ごとの、その日に買った品物（同じ品物は一つ、買った順）。 */
   function boughtByDay() {
     const s = KN.store.get();
     const by = new Map();
@@ -492,20 +471,18 @@
         const p = k && KN.store.getProduct(i.productId);
         if (!p) return;
         const list = by.get(k) || [];
-        if (list.length < 3 && !list.includes(p)) list.push(p);
+        if (!list.includes(p)) list.push(p);
         by.set(k, list);
       });
     return by;
   }
 
-  function marksHtml(list) {
-    return (list || []).map((p) => {
-      const svg = boughtArt(p);
-      const inner = svg
-        ? `<span class="todo-mark">${svg}</span>`
-        : `<span class="todo-mark is-plain"><i class="todo-dot"></i></span>`;
-      return `<i class="cal-mark" style="--cat:${KN.util.escapeHtml(KN.store.productColor(p) || "var(--c-primary-fill)")}">${inner}</i>`;
-    }).join("");
+  function marksOf(list) {
+    if (!list || !list.length) return { html: "" };
+    const esc = KN.util.escapeHtml, n2 = list.length > 2, n3 = list.length > 3;
+    const html = list.map((p, i) => `<i class="cal-name${n2 && i >= 1 ? " is-o2" : ""}${n3 && i >= 2 ? " is-o3" : ""}" style="--cat:${esc(KN.store.productColor(p) || "var(--c-primary-fill)")}"><b>${esc(p.name)}</b></i>`).join("")
+      + (n2 ? `<i class="cal-more" aria-hidden="true" data-a="+${list.length - 1}" data-b="${n3 ? `+${list.length - 2}` : ""}"></i>` : "");
+    return { html, label: ` 買った ${list.map((p) => p.name).join("・")}` };
   }
 
   /* 日のマスは KN.calGrid が組みます。`.cal-dots` は、買ったものが無い日も
@@ -569,7 +546,7 @@
     const { year, month } = only || shownMonth();
     const grid = KN.calGrid.fill(sec, {
       year, month, here: sCur(), outToday: true,
-      mark: (k) => ({ html: marksHtml(bought.get(k)) }),
+      mark: (k) => marksOf(bought.get(k)),
       pick: (k, b) => pick(k, b),
     });
     if (only) return;

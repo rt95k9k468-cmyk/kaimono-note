@@ -257,16 +257,16 @@ const { open, checker } = require("./lib");
     !document.querySelector("#head .head-ghost")
     && !document.querySelector("#head .cal").classList.contains("is-marks-in")));
 
-  /* ---- 買うものの暦：その日に買ったものの丸（段4） ----
-     色の丸（`.cal-mark`。やることの暦は名前になった）。同じ品物は一つ、三つまで。買っていない
-     （チェックの無い）ものは出さない。 */
+  /* ---- 買うものの暦：その日に買ったものの名前（段4。2026年11月25日の点検15から名前の札） ----
+     名前の札（`.cal-name`、品物の色）。同じ品物は一つ。入りきらなければ最後の札を「+n」。読み上げに「買った 品…」。
+     買っていない（チェックの無い）ものは出さない。前は色の丸に品の絵で、12px では何か読めなかった。 */
   await page.evaluate(() => {
     const s = KN.store.get();
     const ps = s.products.slice(0, 5);
     const at = (h) => new Date(2026, 8, 14, h, 0).toISOString();
     const when = new Map();
     ps.forEach((p, i) => when.set(KN.store.addItem(p.id).id, at(9 + i)));
-    /* 同じ品物をもう一度（丸は一つのまま）。 */
+    /* 同じ品物をもう一度（札は一つのまま）。 */
     when.set(KN.store.addItem(ps[0].id).id, at(16));
     KN.store.update((st) => st.items.forEach((i) => {
       if (when.has(i.id)) { i.checked = true; i.checkedAt = when.get(i.id); }
@@ -275,14 +275,15 @@ const { open, checker } = require("./lib");
   await go("list");
   const shopMarks = await page.evaluate(() => {
     const cell = (k) => document.querySelector(`#head .cal .cal-day[data-day="${k}"]`);
-    const m14 = cell("2026-09-14").querySelectorAll(".cal-mark");
-    return { n14: m14.length, n15: cell("2026-09-15").querySelectorAll(".cal-mark").length,
-      drawn: [...m14].every((m) => !!m.querySelector(".todo-mark svg, .todo-mark .todo-dot")),
-      tinted: [...m14].every((m) => !!m.style.getPropertyValue("--cat")) };
+    const c14 = cell("2026-09-14"), m14 = c14.querySelectorAll(".cal-name"), more = c14.querySelector(".cal-more");
+    return { n14: m14.length, n15: cell("2026-09-15").querySelectorAll(".cal-name, .cal-mark").length, dots: c14.querySelectorAll(".cal-mark").length,
+      shown: [...m14].filter((m) => getComputedStyle(m).display !== "none").length, more: more && getComputedStyle(more, "::before").content,
+      tinted: [...m14].every((m) => !!m.style.getPropertyValue("--cat")), label: c14.getAttribute("aria-label") };
   });
-  c.check("買うものの暦：買った日に丸が出る（三つまで）", shopMarks.n14 === 3, JSON.stringify(shopMarks));
+  c.check("買うものの暦：買った日に名前の札（同じ品は一つ・五品）", shopMarks.n14 === 5 && shopMarks.dots === 0, JSON.stringify(shopMarks));
   c.check("買っていない日には出ない", shopMarks.n15 === 0, JSON.stringify(shopMarks));
-  c.check("丸の中に絵（当たらなければ小さな丸）・カテゴリの色", shopMarks.drawn && shopMarks.tinted);
+  c.check("点検15：札は一つと「+4」・品物の色・読み上げに「買った」", shopMarks.shown === 1 && shopMarks.more === '"+4"' && shopMarks.tinted
+    && / 買った /.test(shopMarks.label), JSON.stringify(shopMarks));
   /* 片づけ（この先の試験は、買うものの暦を印なしの前提で見ている）。 */
   await page.evaluate(() => KN.store.update((s) => { s.items = s.items.filter((i) => !i.checked); }));
   await go("todo");
