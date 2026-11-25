@@ -9,7 +9,7 @@
    3. IndexedDB が壊れる：開けない日も記録は書けて残り、直れば写しが追いつく／写しの中身が途中で切れていても
       元が勝ち、次の書き込みで写しが直る
    4. 空の端末で記録の枠を越える控え：断り → 日記を記録から外す → 復元 → 本文が一字も違わない → 最新を上書きせず
-      「この端末から控えを送る」が出る（守2）
+      役が決まる前から「この端末から控えを送る」が出る（守2。「いま送る」は送らずに役を「ほか」にし14日黙る）
 
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/restore-drill.js */
 const { open, checker, fakeDropbox } = require("./lib");
@@ -231,7 +231,7 @@ async function restoreFromDropbox(page, rowText) {
   await C.browser.close();
 
   /* ================= 4. 空の端末で、記録の枠を越える控え（守2） =================
-     断り → 日記を記録から外す（空の書き出しを保存）→ 復元 → 本文が一字も違わない → 「この端末から控えを送る」。 */
+     断り → 日記を記録から外す（空の書き出しを保存）→ 復元 → 本文が一字も違わない → 役が決まる前から「この端末から控えを送る」。 */
   const files4 = new Map();
   const upE = [];
   const E = await open({ before: (ctx, p) => fakeDropbox(p, files4, upE) });
@@ -304,12 +304,19 @@ async function restoreFromDropbox(page, rowText) {
     await ep.keyboard.press("Escape");
 
     step4 = "送る役";
-    /* 自動で送る時（SOON）を待つ代わりに一度送らせる。Dropbox に最新があるので役は「ほか」になり、上書きしない。 */
+    /* 役が決まる前（自動で送る時より先）に開く。「いま送る」を押すと送らずに役が「ほか」になり、14日の点まで黙るので出さない。 */
+    await openRows(["控え", "Dropbox へ自動で送る"]);
+    const rows4 = await ep.locator(".set-layer:last-child .set-row").allTextContents();
+    t.check("4 戻した直後（役が決まる前）は「いま送る」でなく「この端末から控えを送る」", rows4.some((x) => x.includes("この端末から控えを送る"))
+      && !rows4.some((x) => x.includes("いま送る")), rows4.join(" / "));
+    await ep.keyboard.press("Escape");
+    await ep.keyboard.press("Escape");
+    /* 自動で送る時（SOON）を待つ代わりに一度送らせる。Dropbox に最新があるので役は「ほか」になり、上書きしない（決まりは同じ）。 */
     const r4 = await ep.evaluate(() => KN.dropbox.sync());
     t.check("4 戻した空の端末は Dropbox の最新を上書きしない", r4 === "other" && !upE.some((x) => /^\/(kurashi-latest|daily\/)/.test(x)), `${r4} ${upE.join(",")}`);
     await openRows(["控え", "Dropbox へ自動で送る"]);
-    const rows4 = await ep.locator(".set-layer:last-child .set-row").allTextContents();
-    t.check("4 戻したあと「この端末から控えを送る」が出る", rows4.some((x) => x.includes("この端末から控えを送る")), rows4.join(" / "));
+    const rows4b = await ep.locator(".set-layer:last-child .set-row").allTextContents();
+    t.check("4 役が「ほか」と決まったあとも「この端末から控えを送る」", rows4b.some((x) => x.includes("この端末から控えを送る")), rows4b.join(" / "));
   } catch (err) {
     t.check(`4 通しが「${step4}」で止まらない`, false, String((err && err.message) || err).slice(0, 300));
   }
