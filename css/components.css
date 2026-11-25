@@ -39,9 +39,10 @@
    広げます（screens.css の `.tl-open` と `.diet-slot-view`）。 */
 .topbar-day,
 .chip, .btn-sm, .seg-btn, .tl-fill, .tw-sw,   /* 36〜38px の押すもの（R8 の的の総ざらい） */
+.sb-mh,   /* 年の本の月の見出し（27px。上下は月の間と節気の小さな字。点検26） */
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji { position: relative; }
 .topbar-day::after,
-.chip::after, .btn-sm::after, .seg-btn::after, .tl-fill::after, .tw-sw::after,
+.chip::after, .btn-sm::after, .seg-btn::after, .tl-fill::after, .tw-sw::after, .sb-mh::after,
 .item-wrap:not(.is-tile-wrap) .item-emoji.js-emoji::after {
   content: "";
   position: absolute;
@@ -2058,7 +2059,8 @@ button.hero-node:active { scale: var(--press-dot); }
 .unf-cands .chip-row { flex-wrap: wrap; }
 /* 詳細の紙の静かなすすめ（一つだけ）。 */
 .unf-hint { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.unf-hint-x { display: grid; place-items: center; width: 28px; height: 28px; color: inherit; opacity: .8; }
+.unf-hint-x { position: relative; display: grid; place-items: center; width: 28px; height: 28px; color: inherit; opacity: .8; }
+.unf-hint-x::after { content: ""; position: absolute; inset: -8px -12px -8px -4px; }   /* 44×44。左は札との隙間まで（点検26） */
 .unf-hint-x svg { width: var(--ico-sm); height: var(--ico-sm); }
 
 /* やることの足す紙の、前に書いた題（screen-todo.js の paintCands）。題の下に横一列、横へ送る。 */

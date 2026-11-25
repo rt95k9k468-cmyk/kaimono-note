@@ -3788,7 +3788,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .tl-now > * { flex: none; z-index: 1; }   /* 線（::after）より前 */
 /* 日記の筆（構4c）。層は押せない作り（.tl-axis）なので、筆だけ押せる。当たりは ::before で 44px。 */
 .tl-now-pen { position: relative; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-full); background: var(--c-surface); color: var(--c-text-2); box-shadow: inset 0 0 0 1.5px var(--c-now); pointer-events: auto; transition: opacity var(--m-state) var(--ease); }
-.tl-now-pen::before { content: ""; position: absolute; inset: -9px -4px; }
+.tl-now-pen::before { content: ""; position: absolute; inset: -9px -4px -9px -14px; }   /* 44×44。左は押せない時刻の札・「いま」の字の上（点検26） */
 .tl-now-pen svg { width: var(--ico-sm); height: var(--ico-sm); }
 /* ここには点（.tl-now-dot）と、右へ流れる線（.tl-now-line）がありました。
    **外しました。** 丸薬と背骨が、過ぎたぶんとこれからで色を変えるように
@@ -4066,7 +4066,10 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   font-size: var(--fs-sm); color: var(--c-text-3);
 }
 .tl-done-row > .check { width: 20px; height: 20px; border-width: 1.5px; }
-.tl-done-row > .check::after { width: 34px; height: 34px; }
+.tl-done-row > .check::after { width: 34px; height: 44px; }   /* 縦は行の背いっぱい。横は隣の時刻・題まで（点検26） */
+/* 済ませた時刻（押すと直す）も、当たりは行の背いっぱい（見た目 20px。点検26）。 */
+.tl-done-row > button.tl-doneat { position: relative; }
+.tl-done-row > button.tl-doneat::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 44px; translate: 0 -50%; }
 .tl-done-row > .check[aria-checked="true"], .tl-done-row > .check.is-trace {
   --done-dot: color-mix(in srgb, var(--c-text-3) 55%, var(--c-sheet));
   background: var(--done-dot); border-color: var(--done-dot);
@@ -5406,11 +5409,14 @@ textarea.note-title-in {
 .note-wheel-row:active { opacity: var(--press-fade); transition-delay: var(--m-press); }
 /* 時刻の紙（2026年10月2日）。詳細の紙と同じ一行ずつの枠。右に、押せる値。 */
 .sub-check {
+  position: relative;
   display: grid; place-items: center; flex: none;
   width: 24px; height: 24px; border-radius: 7px;
   border: 2px solid var(--c-border-2); color: transparent;
 }
 .sub-check svg { width: 14px; height: 14px; stroke-width: 3; }  /* 入れもの：24の□ */
+/* 当たりは左右の隙間（掴み手・欄まで 6px）と行の背まで：36×48（見た目 24px。点検26）。 */
+.sub-check::after { content: ""; position: absolute; inset: -12px -6px; }
 .sub-check.is-on { background: var(--c-primary-fill); border-color: var(--c-primary-fill); color: var(--c-text-on); }
 .tw-row { min-height: var(--row-h); padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
 .tw-row:active { background: none; }

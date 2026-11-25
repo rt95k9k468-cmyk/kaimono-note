@@ -66,6 +66,16 @@ const DAY = "2026-10-25";
       .map((e) => e.textContent.trim()) };
   });
   c.check("点検6：いまの札は行の時刻の字に重ならない", hit.n >= 3 && hit.over && !hit.over.length, JSON.stringify(hit));
+  /* 点検26：いまの筆（見た目 26px）の当たりは 44×44。 */
+  const pen = await b.page.evaluate(() => {
+    const el = document.querySelector("#screen-todo .tl-now-pen");
+    if (!el) return null;
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && (e === el || el.contains(e)); };
+    const reach = (dx, dy) => { let n = 0; while (n < 40 && on(cx + dx * (n + 1), cy + dy * (n + 1))) n++; return n; };
+    return { w: reach(-1, 0) + reach(1, 0) + 1, h: reach(0, -1) + reach(0, 1) + 1 };
+  });
+  c.check("点検26：いまの筆の当たりは 44×44", !!pen && pen.w >= 43 && pen.h >= 43, JSON.stringify(pen));
   c.check("点検6：エラーなし", !b.errors.length, b.errors.join("\n"));
   await b.browser.close();
   c.done();

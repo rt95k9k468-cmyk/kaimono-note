@@ -68,6 +68,15 @@ const DAY = "2026-10-20";
   }), id);
   c.check("元に戻すと親はその日へ・紙の印も最後の一つだけ外れる", sBack.due === DAY && sBack.on.join() === "true,false", JSON.stringify(sBack));
 
+  /* 点検26：手順の丸（見た目 24px）の当たりは行の背（44px 以上）と左右の隙間まで。 */
+  const sub = await page.evaluate(() => {
+    const el = document.querySelector(".sheet.is-open .sub-check");
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const on = (x, y) => { const e = document.elementFromPoint(x, y); return !!e && (e === el || el.contains(e)); };
+    const reach = (dx, dy) => { let n = 0; while (n < 40 && on(cx + dx * (n + 1), cy + dy * (n + 1))) n++; return n; };
+    return { w: reach(-1, 0) + reach(1, 0) + 1, h: reach(0, -1) + reach(0, 1) + 1 };
+  });
+  c.check("点検26：手順の丸の当たりは縦 44px 以上・横 30px 以上", sub.h >= 43 && sub.w >= 30, JSON.stringify(sub));
   /* 点検31：手順を足して改行せずに打つだけで、頭の「☑ n/m」が増える。 */
   const subN = () => page.evaluate(() => { const f = document.querySelector(".sheet.is-open .hero-fact.is-subs i"); return f ? f.textContent : ""; });
   const before = await subN();
