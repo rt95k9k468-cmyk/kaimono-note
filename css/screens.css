@@ -6880,6 +6880,8 @@ button.note-when:active { opacity: var(--press-fade); }
     .day-slide > .arc-then, .day-slide > .arc-any, .day-slide > .arc-shelf { grid-column: 2; }
     .day-slide.is-front > .arc-shelf, .day-slide.is-front > .arc-desk { grid-column: 1; }   /* 今日（構4b）：左に扉・机・棚、右にいまごろ */
     .day-slide.is-front > .arc-then { grid-row: 1 / -1; }
+    /* 右の段が無い今日は、読む幅の一列を真ん中に（点検24）。 */
+    .tl-sheet.is-daily .day-slide.is-alone { grid-template-columns: minmax(0, 1fr); padding-inline: max(var(--sp-4), calc((100% - var(--desk-read)) / 2)); }
   }
   @container seat (min-width: 1100px) {
     .arc-season-art { width: 128px; }

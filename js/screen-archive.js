@@ -2248,6 +2248,8 @@
     else { const main = node(html`<div class="day-main"></div>`); main.append(dailyLog(ym, day)); el.append(main); }
     const then = imaCard(day);
     if (then) el.append(then);
+    /* 今日で右の段（いまごろ）が無いときは一列（広い幅で右半分が空いていた。2026年11月25日の点検24）。 */
+    else if (front) el.classList.add("is-alone");
     const any = !front && anyDay(day);
     if (any) el.append(any);
     /* まだ来ていない日は、見るだけ。daily の中からは行けませんが、見ている

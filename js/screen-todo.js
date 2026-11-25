@@ -3039,7 +3039,8 @@
     const d = KN.util.dayDate(k);
     const list = node(html`<section class="card fc-day" data-day="${k}">
       <h2 class="tk-h">${d.getMonth() + 1}月${d.getDate()}日<span class="tk-h-n">${KN.util.weekdayJa(k)}</span></h2>
-      ${rows.map((t) => html`<button type="button" class="fc-row js-open" data-id="${t.id}"><time>${t.time ? tlClock(t.time) : ""}</time><span>${t.title || ""}</span></button>`)}
+      ${/* 時刻のある行が一つも無ければ、時刻の列を取らない（名前だけ字下げされて間が空いていた。点検24） */""}
+      ${rows.map((t) => html`<button type="button" class="fc-row js-open" data-id="${t.id}">${rows.some((x) => x.time) ? html`<time>${t.time ? tlClock(t.time) : ""}</time>` : ""}<span>${t.title || ""}</span></button>`)}
     </section>`);
     list.addEventListener("click", (e) => { const b = e.target.closest(".js-open"); if (b) { haptic(); openSheet(b.dataset.id, null); } });
     box.append(list, weekCard(day, open));

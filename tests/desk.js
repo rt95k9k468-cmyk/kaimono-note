@@ -435,6 +435,11 @@ const { open, checker, pen } = require("./lib");
   await page.click('#screen-todo .tk-facing [data-facing="next"]');
   await wait(400);
   t.check("あした の札で次の日の頁と今週", await page.evaluate(() => !!document.querySelector("#screen-todo .tk-facing .fc-day") && !!document.querySelector("#screen-todo .tk-facing .tk-week")));
+  /* 点検24：あした の札は、時刻のある行が無ければ時刻の列を取らない（名前が見出しの左にそろう）。 */
+  const fcRow = await page.evaluate(() => { const c = document.querySelector("#screen-todo .tk-facing .fc-day");
+    const rows = [...c.querySelectorAll(".fc-row")]; const anyTime = rows.some((r) => (r.querySelector("time") || {}).textContent);
+    return { n: rows.length, anyTime, ok: anyTime || rows.every((r) => !r.querySelector("time")) }; });
+  t.check("点検24：あした に時刻が無ければ時刻の列を取らない", fcRow.ok, JSON.stringify(fcRow));
   const dk = () => page.evaluate(() => { const r = document.querySelector("#head .topbar-dayrow"); return r ? r.dataset.dayKey : ""; });
   const j0 = await dk();
   await page.keyboard.press("j");
@@ -486,6 +491,15 @@ const { open, checker, pen } = require("./lib");
 
   const rowH = () => page.evaluate(() => Math.round(document.querySelector(".tab-list").getBoundingClientRect().height));
   t.check("マウスの左の列の行は 42px", (await rowH()) === 42, String(await rowH()));
+  /* 点検24：archive の今日で右の段（いまごろ）が無ければ、一列を真ん中に（右半分を空けない）。 */
+  const alone = await page.evaluate(async () => {
+    KN.app.showScreen("archive"); await new Promise((r) => setTimeout(r, 700));
+    const s = document.querySelector("#screen-archive .day-slide.is-front");
+    if (!s || s.querySelector(":scope > .arc-then")) return { skip: true };
+    const d = s.querySelector(".arc-door, .arc-season, .arc-desk").getBoundingClientRect(), r = s.getBoundingClientRect();
+    return { alone: s.classList.contains("is-alone"), mid: Math.round((d.left + d.right) / 2 - (r.left + r.right) / 2) };
+  });
+  t.check("点検24：archive の今日は右の段が無ければ一列で真ん中", alone.skip || (alone.alone && Math.abs(alone.mid) <= 8), JSON.stringify(alone));
   t.check("エラーなし", !errors.length, errors.join(" | "));
   await browser.close();
 
