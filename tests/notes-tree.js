@@ -156,7 +156,8 @@ const { open, checker } = require("./lib");
   t.check("最近は表紙のカード（木と行はホームに無い）", nRecent >= 3 && nRecent <= 8 && !(await page.$('#screen-notes .notes-books[role="tree"]')), String(nRecent));
   const gates = await ground(".nt-gates > .nt-gate");
   const first = await page.evaluate(() => [...document.querySelector("#screen-notes .js-body").children].slice(0, 2).map((e) => e.className).join("|"));
-  t.check("一番上に さがす、次に札「すべて」「★」「問い」", gates.join() === "すべて,★,問い" && /nt-find\|.*nt-gates/.test(first), `${gates.join()} / ${first}`);
+  /* ★の札は絵の★が名前（字は読み上げだけ「★の付いたノート」。点検29）。 */
+  t.check("一番上に さがす、次に札「すべて」「★」「問い」", gates.join() === "すべて,★の付いたノート,問い" && /nt-find\|.*nt-gates/.test(first), `${gates.join()} / ${first}`);
   const shelf = await page.$$eval("#screen-notes .nt-bks .nt-bk", (bs) => bs.map((b) => b.dataset.nb));
   const shelfText = (await ground(".nt-bks")).join("");
   t.check("本棚にノートブック（題箋は名前だけ・数は出さない）", shelf.includes("暮らし") && shelf.includes("仕事") && !/\d/.test(shelfText), shelf.join());

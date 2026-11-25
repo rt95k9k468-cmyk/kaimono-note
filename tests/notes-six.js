@@ -132,7 +132,7 @@ const { open, checker } = require("./lib");
   });
   t.check("背表紙は棚の色・字は名前だけ（意4b）", cv_ok(look) && look.bg !== "rgba(0, 0, 0, 0)" && look.label === "thinking", JSON.stringify(look));
   t.check("見出し「ノートブック」とその＋は無い・ホームに木は無い", !look.newBook && !look.heading && !look.tree, JSON.stringify(look));
-  t.check("札は すべて・★・問い", look.gates === "すべて ★ 問い", look.gates);
+  t.check("札は すべて・★・問い（★は絵。字は読み上げの「★の付いたノート」。点検29）", look.gates === "すべて ★の付いたノート 問い", look.gates);
   await page.click('#screen-notes .nt-bk[data-nb="thinking"]');
   await page.waitForSelector('#screen-notes .nt-shelf[data-shelf="thinking"]');
   const face = await page.evaluate(() => {
