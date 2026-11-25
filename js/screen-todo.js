@@ -5675,19 +5675,22 @@
   }
   const spansMeet = (a, b) => a[0] < b[1] - 1 && b[0] < a[1] - 1;
 
+  /* 用事の時刻の箱は**測らずに**、組んだ高さ（行の data-top・data-h と clockSpan）から出す。開いた一拍は行が
+     上から浮かぶ動きの途中で、測ると動く前の位置をよけて、着いた時刻の字に札が乗っていた（2026年11月25日の点検6）。 */
   function clearOfClocks(sec, list, y) {
-    const top0 = sec.getBoundingClientRect().top;
-    const gap = clockGap();
+    const B = clockBox(), gap = clockGap();
+    const base = list.offsetTop + list.clientTop + listPad(list);
     let out = y;
     for (const li of list.children) {
-      const el = li.querySelector(".tl-time");
+      if (!li.classList.contains("tl-row")) continue;
+      const el = li.querySelector(":scope > .tl-time");
       if (!el || !el.textContent.trim()) continue;
-      const r = el.getBoundingClientRect();
-      if (r.height <= 0) continue;
-      const mid = r.top + r.height / 2 - top0;
-      // 「ごろ」は箱の外（下）に浮いているので、下へ逃がすときはそのぶん先へ。
-      const about = el.querySelector(".tl-about");
-      const below = about ? Math.max(0, about.getBoundingClientRect().bottom - r.bottom) : 0;
+      const c = { top: Number(li.dataset.top), height: Number(li.dataset.h) };
+      if (!isFinite(c.top) || !isFinite(c.height)) continue;
+      // 「ごろ」は時刻の下に浮いているので、下へ逃がすときはそのぶん先へ。
+      const about = !!el.querySelector(".tl-about");
+      const mid = base + clockSpan(c, about, B)[0] + B.h / 2;
+      const below = about ? B.about : 0;
       const d = out - mid;
       if (d <= -gap || d >= gap + below) continue;
       out = mid + (d < 0 ? -gap : gap + below);

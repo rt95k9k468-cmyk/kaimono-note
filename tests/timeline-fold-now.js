@@ -1,6 +1,8 @@
 /* 畳んだ長い空きは字なしの点線・背 18px（磨4・2026年11月25日。前は 44px に「〜 まで予定なし 〜」）。
    「いま」の線が畳みの中を通っても、線と点線だけ（よける字が無い）。
-   夜のルーティンと燃えるゴミを済ませ、21:36 に見る（あとは 22:30 まで予定なし）。 */
+   夜のルーティンと燃えるゴミを済ませ、21:36 に見る（あとは 22:30 まで予定なし）。
+   点検6（2026年11月25日）：10:30 に、10:00〜10:30 の用事・時刻なし（10:30 ごろ）・14:00 の日を開く——いまの札は
+   どの行の時刻の字にも重ならない（行が浮かぶ動きの途中で測っていて、着いた字に乗っていた）。 */
 const { open, checker } = require("./lib");
 
 const DAY = "2026-10-25";
@@ -43,5 +45,28 @@ const DAY = "2026-10-25";
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
   c.check("エラーなし", !errors.length, errors.join("\n"));
   await browser.close();
+
+  /* 点検6：いまの札と行の時刻の字。席へ入る動き（行が浮かぶ）のあいだに置いても、着いた字に乗らない。 */
+  const b = await open({ before: async (ctx, p) => { await p.clock.setFixedTime(new Date(2026, 9, 25, 10, 30)); } });
+  await b.page.evaluate((day) => {
+    const s = KN.store;
+    s.addTodo({ title: "病院の予約", due: day, time: "10:00", minutes: 30 });
+    s.addTodo({ title: "電球を替える", due: day });
+    s.addTodo({ title: "資料をまとめる", due: day, time: "14:00", minutes: 60 });
+  }, DAY);
+  await b.page.click('.tab[data-tab="todo"]');
+  await b.page.waitForFunction(() => !document.querySelector(".screen.is-m-arrive"), null, { timeout: 5000 });
+  await b.page.waitForTimeout(600);
+  const hit = await b.page.evaluate(() => {
+    const n = document.querySelector("#screen-todo .tl-now .tl-time");
+    if (!n) return { none: true };
+    const a = n.getBoundingClientRect();
+    const rows = [...document.querySelectorAll("#screen-todo .day-slide:not(.is-peek) .tl-row > .tl-time")].filter((e) => e.textContent.trim());
+    return { n: rows.length, over: rows.filter((e) => { const r = e.getBoundingClientRect(); return r.top < a.bottom - 1 && a.top < r.bottom - 1; })
+      .map((e) => e.textContent.trim()) };
+  });
+  c.check("点検6：いまの札は行の時刻の字に重ならない", hit.n >= 3 && hit.over && !hit.over.length, JSON.stringify(hit));
+  c.check("点検6：エラーなし", !b.errors.length, b.errors.join("\n"));
+  await b.browser.close();
   c.done();
 })();
