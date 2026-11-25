@@ -2,7 +2,7 @@
    docs/shopping.md の末の節）。2026年10月4日。V26（10月5日）で既定に。
 
    - 足す紙も直す紙も、頭（絵・名前・名前の右に小さな★）＋カテゴリの札＋メモ
-   - 足す紙：名前からカテゴリと絵を推す・★とメモを付けて足せる
+   - 足す紙：名前からカテゴリと絵を推す（ひらがなの品もカタカナの手がかりに当たる。点検5）・★とメモを付けて足せる
    - 直す紙：★は行の★（R5 から名前の横の小さな印。行にボタンは無い）・カテゴリは小窓で選ぶ（手で選んだ印が付く）・名前を直せる・
      メモが残る・数量を出さない・⋯ の「リストから外す」（元に戻せる）・値段の欄は下に
    - 絵を押すと絵を選ぶ紙
@@ -63,6 +63,9 @@ const { open, checker } = require("./lib");
     return { cat: s.querySelector(".js-cat-v").textContent, mark: !!s.querySelector(".pd-hero .hero-node svg") };
   });
   t.check("名前からカテゴリと絵を推す", guess.cat === "掃除・洗剤" && guess.mark, JSON.stringify(guess));
+  /* 点検5：カタカナの手がかりはひらがなで打った品にも当たる。逆（ひらがなの「とり」→ トリートメント）は当てない。 */
+  const kana = await page.evaluate(() => { const g = KN.store.guessCategory; return [g("ばなな"), g("ﾊﾞﾅﾅ"), g("トリートメント")]; });
+  t.check("点検5：ばなな・ﾊﾞﾅﾅ は野菜・くだもの、トリートメントは肉に当たらない", kana[0] === "c-veg" && kana[1] === "c-veg" && kana[2] !== "c-meat", JSON.stringify(kana));
   await page.click(".sheet.is-open .pd-fav");
   await page.click(".sheet.is-open .js-memo-chip");   // V27：足す紙のメモは札を押すと欄が出る
   await page.fill(".sheet.is-open .js-memo", "大きいほう");

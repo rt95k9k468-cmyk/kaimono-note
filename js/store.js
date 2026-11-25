@@ -1930,11 +1930,15 @@
 
     let bestId = OTHER_CATEGORY;
     let bestLen = 0;
+    /* カタカナだけの手がかり（バナナ）は、ひらがなで打った品（ばなな）にも当てる。絵はバナナなのにカテゴリが
+       その他だった（2026年11月25日の点検5）。逆（ひらがなの「とり」をトリートメントに当てる）はしない。 */
+    const text = raw.normalize("NFKC");
+    const hira = (w) => (/^[ァ-ヶー]+$/.test(w) ? w.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)) : null);
     for (const [catId, words] of CATEGORY_HINTS) {
       // A category the user deleted must not shadow a still-valid match.
       if (!state.categories.some((c) => c.id === catId)) continue;
       for (const w of words) {
-        if (w.length > bestLen && raw.includes(w)) {
+        if (w.length > bestLen && (text.includes(w) || (hira(w) && text.includes(hira(w))))) {
           bestId = catId;
           bestLen = w.length;
         }
