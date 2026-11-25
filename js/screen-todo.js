@@ -4498,7 +4498,11 @@
       const ev = rows.filter((t) => t.kind === "event");
       const list = starts.concat(ev, rows.filter((t) => t.kind !== "event"), dues, key < today ? (done.get(key) || []) : []);
       const past = key < today ? "is-past" : "";
-      list.forEach((t, i) => nodes.push(node(html`<i class="cal-name ${past}" style="--cat:${i < starts.length + rows.length ? KIND(t) : "var(--kind-due)"}"><b>${t.title}</b></i>`)));
+      /* 週の段・月の段（ふつう）で入りきらないときは、最後の札を「+n」に（月の面の fitTall と同じ形。電話は二つ・
+         640px から三つ——is-o2・is-o3 がその幅で隠れる名前。前は二つで黙って切れていた。2026年11月25日の点検8）。 */
+      const n2 = list.length > 2, n3 = list.length > 3;
+      list.forEach((t, i) => nodes.push(node(html`<i class="cal-name ${past} ${n2 && i >= 1 ? "is-o2" : ""} ${n3 && i >= 2 ? "is-o3" : ""}" style="--cat:${i < starts.length + rows.length ? KIND(t) : "var(--kind-due)"}"><b>${t.title}</b></i>`)));
+      if (n2) nodes.push(node(html`<i class="cal-more" aria-hidden="true" data-a="+${list.length - 1}" data-b="${n3 ? `+${list.length - 2}` : ""}"></i>`));
       return {
         cat: dayColor(key),
         label: (n ? ` やること${n}件` : "") + e.spans.map((p) => ` ${p.t.title}`).join("")
