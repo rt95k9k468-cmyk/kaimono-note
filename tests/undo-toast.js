@@ -9,6 +9,7 @@
      （二度押しても増えない）
    - daily の記録を画面から（紙の ⋯ の「消す」で、確かめずに）消す → 「消しました」と「元に戻す」→ 押すと戻る
    - 記録はもとどおり（試しに足して消したものだけ）
+   - 紙が開いているあいだの一言は画面の上（紙の中身・保存に乗らない。2026年11月25日の点検7）。閉じていれば下
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/undo-toast.js */
 const fs = require("fs");
 const path = require("path");
@@ -151,6 +152,20 @@ const { open, checker } = require("./lib");
   t.check("記録はもとどおり（足して消したものだけ）",
     ["entries"].every((k) => JSON.stringify(a.archive && a.archive[k]) === JSON.stringify(b.archive && b.archive[k]))
     && ["weights", "meals", "drinks", "urges", "health"].every((k) => JSON.stringify(a.diet && a.diet[k]) === JSON.stringify(b.diet && b.diet[k])));
+  /* 点検7：紙の上の一言は画面の上へ。閉じたあとの一言は下（帯の上）のまま。 */
+  const where = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const pos = () => { const r = document.querySelector("#toast-root .toast:not(.is-out)").getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
+    const h = KN.ui.sheet({ title: "試し", body: KN.util.node(KN.util.html`<p>中身</p>`) });
+    await wait(500);
+    KN.ui.toast("試しの一言");
+    const on = pos();
+    (h && h.close ? h.close() : document.querySelector(".sheet.is-open .js-close").click());
+    await wait(600);
+    KN.ui.toast("閉じたあとの一言");
+    return { on, off: pos(), H: innerHeight };
+  });
+  t.check("点検7：紙が開いていれば一言は画面の上・閉じれば下", where.on < where.H * 0.25 && where.off > where.H * 0.6, JSON.stringify(where));
   t.check("ページのエラーが無い", !errors.length, errors.join(" | "));
   await browser.close();
   t.done();

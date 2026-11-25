@@ -1529,6 +1529,8 @@ button.hero-node:active { scale: var(--press-dot); }
   .toast-action:hover { background: color-mix(in srgb, var(--c-bg) 12%, transparent); }
 }
 
+/* 紙・小窓の上の一言は画面の上に（ui.js の toast・点検7）。広い幅は下の角のまま（紙は中央の窓）。 */
+@media (max-width: 639.98px) { .toast-root.is-top { top: calc(var(--safe-t) + var(--sp-3)); bottom: auto; } }
 @keyframes toast-in  { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to   { opacity: 0; transform: translateY(8px) scale(.98); } }
 

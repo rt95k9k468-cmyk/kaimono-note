@@ -2172,6 +2172,8 @@
        「元に戻す」は残し、押せない知らせはその上に短く出て消える。 */
     toasts.forEach((t) => { if (acts.length || !t.acts) t.drop(); });
     const duration = until ? TOAST_UNTIL_MS : long ? TOAST_LONG_MS : acts.length ? TOAST_ACT_MS : TOAST_MS;
+    /* 紙・小窓が開いているあいだは画面の上に（下だと紙の中身・小窓の下の段に乗った。2026年11月25日の点検7）。 */
+    root.classList.toggle("is-top", !!document.querySelector("#sheet-root .sheet.is-open, .note-pop"));
 
     const el = node(html`
       <div class="toast">
