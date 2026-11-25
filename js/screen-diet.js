@@ -61,7 +61,8 @@
   /* 一日の順に、日の高さで。朝は昇る日、昼は真上の日、夜は月——
      間食だけは時刻ではないので、食べもののほうを描きます。 */
   /* short は札や帯に出す一文字ぶんの名前。label は文の中で使う名前です
-     （「朝食を直す」と「朝 300kcal」では、要る長さが違います）。 */
+     （「朝食を直す」と「朝 300kcal」では、要る長さが違います）。食事の欄の見出しは画面も紙も label
+     （画面は朝食・紙は朝で、同じ欄の名がずれていた。2026年11月25日の点検19）。 */
   const SLOTS = [
     { id: "breakfast", label: "朝食", short: "朝",   ico: "sunrise" },
     { id: "lunch",     label: "昼食", short: "昼",   ico: "sun" },
@@ -2768,7 +2769,7 @@
         <div class="diet-slot" data-slot="${sl.id}">
           <div class="diet-slot-head">
             <span class="diet-slot-ico">${icon(sl.ico)}</span>
-            <b class="diet-slot-name">${sl.short}</b>
+            <b class="diet-slot-name">${sl.label}</b>
             <span class="diet-slot-kcal mono-num">${kcal ? `${kcal.toLocaleString()}kcal` : ""}</span>
           </div>
           <textarea class="textarea diet-slot-memo grow-field js-slot-memo" data-slot="${sl.id}" rows="1"
@@ -3491,7 +3492,7 @@
           <div class="diet-read">
             ${KN.util.raw(SLOTS.map((sl) => `
               <div class="diet-read-row">
-                <span class="diet-read-name">${sl.short}</span>
+                <span class="diet-read-name">${sl.label}</span>
                 <b class="mono-num">${ai.slots[sl.id] == null ? "—" : ai.slots[sl.id].toLocaleString()}</b>
                 <span class="diet-read-day">${ai.slots[sl.id] == null ? "書かれていません" : "kcal"}</span>
               </div>`).join(""))}

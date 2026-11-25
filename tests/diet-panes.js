@@ -109,6 +109,17 @@ const { open, checker } = require("./lib");
   t.check("AI推計のひと言と二つのボタンはカードの底、「AI推計」の札は無い", r.noteIn && r.aiOpen);
   t.check("お酒を足した合計・PFC・熱量比は出さない", !/お酒を足すと|熱量比|繊維/.test(r.text) && !r.text.includes("diet-pfc"));
   t.check("評価の言葉・絵文字なし", !/\p{Extended_Pictographic}/u.test(r.text));
+  /* 点検19：食事の欄の名は画面と「食事を書く」の紙で同じ（前は 朝食／朝）。 */
+  const names = await page.evaluate(async () => {
+    const on = [...document.querySelectorAll("#screen-diet .diet-slot-view .diet-slot-name")].map((e) => e.textContent.trim());
+    KN.screens.diet.openMealMemoSheet(KN.util.todayKey());
+    await new Promise((res) => setTimeout(res, 700));
+    const sh = [...document.querySelectorAll(".sheet.is-open .diet-slot-name")].map((e) => e.textContent.trim());
+    document.querySelectorAll(".sheet.is-open .js-close").forEach((b) => b.click());
+    await new Promise((res) => setTimeout(res, 500));
+    return { on, sh };
+  });
+  t.check("点検19：食事の名は画面と紙で同じ（朝食・昼食・夕食・間食）", names.on.length === 4 && JSON.stringify(names.on) === JSON.stringify(names.sh), JSON.stringify(names));
 
   /* ---- iPad 縦（820px）：二段 ---- */
   await page.setViewportSize({ width: 820, height: 1180 });
