@@ -1198,7 +1198,10 @@
         `);
         const field = line.querySelector(".js-sub");
         field.addEventListener("input", () => {
+          /* 空⇄字ありが変わったら頭の「☑ 0/1」も（改行せずにほかを押すと数が増えなかった。点検31）。 */
+          const had = !!subs[i].title.trim();
           subs[i].title = field.value;
+          if (had !== !!field.value.trim()) paintHeroFacts();
           /* 運んでいるあいだの控え（reorder.js の ghost）は cloneNode で
              作るので、打った字は **value 属性**にも書いておきます
              ——属性を更新しないと、控えだけが打つ前の字を出します。 */

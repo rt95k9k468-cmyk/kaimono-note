@@ -68,6 +68,15 @@ const DAY = "2026-10-20";
   }), id);
   c.check("元に戻すと親はその日へ・紙の印も最後の一つだけ外れる", sBack.due === DAY && sBack.on.join() === "true,false", JSON.stringify(sBack));
 
+  /* 点検31：手順を足して改行せずに打つだけで、頭の「☑ n/m」が増える。 */
+  const subN = () => page.evaluate(() => { const f = document.querySelector(".sheet.is-open .hero-fact.is-subs i"); return f ? f.textContent : ""; });
+  const before = await subN();
+  await page.click(".sheet.is-open .js-sub-add");
+  await page.waitForTimeout(200);
+  await page.keyboard.type("爪");
+  const after = await subN();
+  c.check("点検31：手順を打つだけで頭の数が増える（改行しなくても）", +before.split("/")[1] === 2 && +after.split("/")[1] === 3, JSON.stringify({ before, after }));
+
   c.check("ページのエラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();
   c.done();
