@@ -5,7 +5,7 @@
      一件は頁の行。長い一件は頭と終わりの三行ずつで畳み「全文を読む」で伸び縮み。押すと道具（直す・写す・ノートへ移す。
      日付と育休の行だけの頭には出さない）。作成は Daily Log の ⋯
    - 印は書き出し→取り込み・写し（diary-idb）にそのまま乗る
-   - 今日の頁は席3（頭に今日の問いと「いま」より上の行・「いま」の筆）、過ぎた日の頁は席1（構4b の二つめ）。席1 に＋・線・二度押しは無い。
+   - 今日の頁は席3（頭に今日の問いと「いま」より上の行・「いま」の筆）、過ぎた日の頁は席1（構4b の二つめ）。席1 の＋は日記の紙（11月24日に戻した）、線・二度押しは無い。
      筆は種類を選ばずに書く紙（新しい一件）
    - 今日の問いは開くたびにでたらめに引き、最近出た問い（askSeen）を避ける（読み込み直すと替わる）
    - 打った先から残る（時刻は打ち始めた時）。直しても時刻の行は変わらない。空にすると外れ、元に戻せる
@@ -267,10 +267,10 @@ const AT = new Date(2026, 9, 6, 12, 34);
   /* 席3 の頭の頁は日付だけの頭を出さない（日付は題が言う）。 */
   t.check("席3 の今日の頁は「12:34 日記」の一行だけ（本文は出さない）", p1.length === 1 && p1[0].at === "12:34" && p1[0].text === "日記" && !(await midText()).includes("一件目の字"), JSON.stringify(p1));
 
-  /* ---- 席1 に＋は無い（構4b）。二件目も筆から ---- */
+  /* ---- 席1 の＋は日記の紙（11月24日に戻した）。二件目は筆から ---- */
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(300);
-  t.check("席1 に＋（書く）は無い", await page.evaluate(() => !document.querySelector("#dock .add-fab")));
+  t.check("席1 に＋がある", await page.evaluate(() => !!document.querySelector("#dock .add-fab")));
   await pen(page);
   await sheetOpen();
   await page.focus(".sheet.is-open .js-memo");
