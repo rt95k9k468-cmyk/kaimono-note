@@ -1816,12 +1816,13 @@
      六種類ぜんぶです。カードに出す四つとは別で、こちらは減らしません
      （直せる場所が減ると、直せない値が生まれます）。 */
   const BODY_ROWS = [
-    { type: "steps",         label: "歩数",       unit: "歩",   hint: "8432", ico: "steps" },
-    { type: "activeEnergy",  label: "アクティブ", unit: "kcal", hint: "430",  ico: "flame" },
-    { type: "restingEnergy", label: "安静時",     unit: "kcal", hint: "1520", ico: "bed" },
-    { type: "sleep",         label: "睡眠",       unit: "",     hint: "7:12", ico: "moon" },
-    { type: "distance",      label: "歩行距離",   unit: "km",   hint: "6.1",  ico: "route" },
-    { type: "heartRate",     label: "心拍数",     unit: "bpm",  hint: "62",   ico: "heart" },
+    /* 欄の字（8432・6.1・62）は本物の値に見えたので外した（点検18。睡眠だけ形の「--:--」）。 */
+    { type: "steps",         label: "歩数",       unit: "歩",   ico: "steps" },
+    { type: "activeEnergy",  label: "アクティブ", unit: "kcal", ico: "flame" },
+    { type: "restingEnergy", label: "安静時",     unit: "kcal", ico: "bed" },
+    { type: "sleep",         label: "睡眠",       unit: "",     ico: "moon" },
+    { type: "distance",      label: "歩行距離",   unit: "km",   ico: "route" },
+    { type: "heartRate",     label: "心拍数",     unit: "bpm",  ico: "heart" },
   ];
 
   const showValue = (type, v) => {
@@ -2328,7 +2329,9 @@
     let day = day0 || U.todayKey();
 
     const body = node(html`<div class="stack"><div class="js-inner"></div></div>`);
-    const h = KN.ui.sheet({ title: "からだの記録", content: body });
+    /* 頭の絵の台はほかの記録の紙（体重・食事・お酒）と同じ形（前はこの紙だけ無かった。2026年11月25日の点検18）。 */
+    const hero = KN.ui.recHero({ ico: "steps", ink: "var(--c-m-steps)", title: "からだの記録" });
+    const h = KN.ui.sheet({ title: "からだの記録", hero, content: body });
 
     function paint() {
       const inner = body.querySelector(".js-inner");
@@ -2357,7 +2360,7 @@
                 <label class="diet-edit-row">
                   <span class="diet-edit-name">${r.label}</span>
                   <input class="input js-v" data-type="${r.type}" inputmode="${r.type === "sleep" ? "text" : "decimal"}"
-                         value="${KN.util.escapeHtml(shown)}" placeholder="${r.hint}">
+                         value="${KN.util.escapeHtml(shown)}" ${r.type === "sleep" ? 'placeholder="--:--"' : ""}>
                   <span class="diet-edit-unit">${r.unit}</span>
                   <span class="diet-edit-src">${v == null ? ""
                     : mine ? "手入力"
@@ -2365,7 +2368,6 @@
                 </label>`;
             }).join(""))}
           </div>
-          <p class="diet-note">空で保存すると消えます。</p>
 
           <div class="section-title">ワークアウト</div>
           ${workouts.length ? html`
@@ -2378,7 +2380,7 @@
                   </span>
                   <button class="icon-btn js-wdel" data-id="${KN.util.escapeHtml(w.id)}" aria-label="消す">${icon("trash")}</button>
                 </div>`).join(""))}
-            </div>` : html`<p class="diet-note">この日のワークアウトはありません。</p>`}
+            </div>` : ""}
           <button class="btn btn-soft btn-sm js-wadd">${icon("plus")}ワークアウトを記録</button>
 
           <button class="btn btn-primary btn-block js-save">保存</button>

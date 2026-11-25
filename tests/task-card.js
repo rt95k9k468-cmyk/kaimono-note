@@ -192,6 +192,14 @@ const { open, checker } = require("./lib");
     t.check("記録の頭：体重のカードの絵から飛ぶ", await page.evaluate(() => !!document.querySelector(".sheet-morph.hero-node") && !document.querySelector(".rec-hero.is-pop")));
     await page.keyboard.press("Escape");
     await page.waitForTimeout(700);
+    /* 点検18：からだの記録の紙（歩数ほか）にも頭の絵の台・説明の文なし・本物に見える欄の字なし。 */
+    await page.click("#screen-diet .js-cell");
+    await page.waitForTimeout(800);
+    const bs = await page.evaluate(() => { const sh = document.querySelector(".sheet.is-open");
+      return { hero: !!sh.querySelector(".rec-hero"), notes: sh.querySelectorAll(".diet-note").length, ph: [...sh.querySelectorAll(".js-v")].map((i) => i.placeholder).filter((p) => /\d/.test(p)) }; });
+    t.check("点検18：からだの記録の紙に頭の絵・説明の文なし・数の欄の字なし", bs.hero && bs.notes === 0 && !bs.ph.length, JSON.stringify(bs));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(700);
   }
 
   /* ---- 構4b の二つめ：席1 の線の下の札は外した（今日の用事は席3 の時間割で済ませる） ---- */
