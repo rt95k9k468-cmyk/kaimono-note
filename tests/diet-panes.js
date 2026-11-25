@@ -119,6 +119,21 @@ const { open, checker } = require("./lib");
     await new Promise((res) => setTimeout(res, 500));
     return { on, sh };
   });
+  /* 点検25：特大の字でも、体重と食事の札の数と単位は札の中に収まる。 */
+  const xl = await page.evaluate(async () => {
+    const d = KN.util.todayKey();
+    const add = KN.store.addMeal({ day: d, time: "12:30", slot: "lunch", items: [{ name: "試しの大盛り", kcal: 1090, slot: "lunch" }] });
+    KN.app.applyTextSize("xl");
+    await new Promise((res) => setTimeout(res, 500));
+    const over = [...document.querySelectorAll("#screen-diet .hl-hero .hl-hero-v > *")].map((e) => {
+      const p = e.closest(".hl-hero").getBoundingClientRect(); return Math.round(e.getBoundingClientRect().right - (p.right - 1)); }).filter((d) => d > 0);
+    KN.app.applyTextSize("std");
+    const k = document.querySelector("#screen-diet .hl-hero.is-kcal .hl-hero-v b").textContent;
+    KN.store.update((st) => { st.diet.meals = st.diet.meals.filter((m) => m.id !== (add && add.id)); });
+    await new Promise((res) => setTimeout(res, 300));
+    return k.replace(/\D/g, "").length >= 4 ? over : ["3桁", k];
+  });
+  t.check("点検25：特大の字でも札の数と単位ははみ出さない", !xl.length, JSON.stringify(xl));
   t.check("点検19：食事の名は画面と紙で同じ（朝食・昼食・夕食・間食）", names.on.length === 4 && JSON.stringify(names.on) === JSON.stringify(names.sh), JSON.stringify(names));
 
   /* ---- iPad 縦（820px）：二段 ---- */

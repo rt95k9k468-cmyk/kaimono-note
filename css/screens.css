@@ -7380,6 +7380,9 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 .hl-hero-h { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--c-text-2); }
 .hl-hero-h > svg { flex: none; width: 17px; height: 17px; color: var(--c-primary); }  /* 入れもの：カードの名前 */
 .hl-hero-v { margin-top: 4px; font: var(--fw-bold) calc(36px * var(--fs-k)) / 1.15 var(--font-num); letter-spacing: -.02em; white-space: nowrap; }
+/* 特大の字では「1,090kcal」が札の右端から 2px 出た（点検25）。数は札の幅の 26% まで（標準の電話の幅では 36px のまま）。 */
+.hl-hero { container-type: inline-size; }
+.hl-hero-v { font-size: min(calc(36px * var(--fs-k)), 26cqi); }
 .hl-hero-v b { position: relative; font-weight: inherit; }
 .hl-hero-v small { margin-left: 3px; font: var(--fw-bold) calc(14px * var(--fs-k)) var(--font); letter-spacing: 0; color: var(--c-text-2); }
 .hl-hero-v small.is-about { margin: 0 2px 0 0; }
