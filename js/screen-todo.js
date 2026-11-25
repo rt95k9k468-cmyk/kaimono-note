@@ -2801,8 +2801,9 @@
     `);
     if (sheet !== els.body) els.body.append(sheet);
 
-    /* 空の画面は紙の中に（外に出すと、白い紙が空のまま上に残る）。 */
-    if (!all.length) {
+    /* 空の画面は紙の中に（外に出すと、白い紙が空のまま上に残る）。一日ずつ見ているときは、用事が一件も無くても
+       「今日｜週｜月」と一日の帯を出す（初めての人が週・月へ行けなかった。2026年11月25日の点検1）——空は日の中で出す。 */
+    if (!all.length && !oneDay()) {
       /* 用事が一件も無くても、今日の面の頭には「いま」より上の頁（構4a。送らない——下は空の一枚だけ）。 */
       const box = sheet !== els.body && oneDay() && face === "today" && shownDay() === todayKey() && headPage(todayKey(), true);
       if (box) sheet.append(box);
@@ -2817,7 +2818,7 @@
       return;
     }
 
-    if (!shown.length) {
+    if (!shown.length && !oneDay()) {
       els.body.append(node(html`
         <p class="empty is-quiet">
           見つかりませんでした
@@ -3740,9 +3741,12 @@
     const road = roadOn() ? dayStrip(day, rows, done, open) : null;
     if (road && !below) sec.append(road);
     if (!rows.length && !done.length) {
+      /* 空の日も、全く無いときと同じ形（絵と題。一段ぶんの大きさ）。前は左端の小さな字で二通りだった（点検11）。 */
       sec.append(node(html`
-        <p class="todo-today-empty">${day === todayKey()
-          ? "今日のぶんはありません" : "この日のやることはありません"}</p>
+        <div class="empty is-quiet">
+          <div class="empty-art">${KN.util.raw(KN.emptyArt.donePad)}</div>
+          <h2 class="empty-title">やることはありません</h2>
+        </div>
       `));
     } else {
       const tl = timeline(rows, { id: "day", day });
