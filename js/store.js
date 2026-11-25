@@ -1413,14 +1413,14 @@
   }
 
   /** 写しを見せる（js/replica.js）。iPhone の控えの字。読めなければ投げる（今の写しのまま）。
-      控えの付けたし（exportedAt・app・…Book＝ノート）は入れない。設定はこの端末のもの。
+      控えの付けたし（addonKey）は入れない。設定はこの端末のもの。
       lay … まだ取りこまれていない依頼を重ねる（js/desk-inbox.js）。重ねた形が写しになる。 */
   function showReplica(text, lay) {
     if (!replica) return false;
     const { next } = readBackup(text);
     const s = {};
     Object.keys(next).forEach((k) => {
-      if (!["exportedAt", "app", "lsSeq"].includes(k) && !/Book$/.test(k)) s[k] = next[k];
+      if (!addonKey(k)) s[k] = next[k];
     });
     s.settings = state.settings;
     if (lay) { try { lay(s); } catch (err) { console.warn("replica lay", err); } }
@@ -5295,6 +5295,14 @@
     throw new Error("バックアップの形をしていません");
   }
 
+  /* 控えの付けたし（元に書かない欄）：exportedAt・app・lsSeq と、名前が …Book で終わるもの
+     （noteBook はノート丸ごと。元へ入れると枠があふれる）。付けたしを足すときは …Book で終わる名前に。
+     量り（inspectBackup）・戻す（applyBackup）・写し（showReplica）はここだけを見る——別々に持つと
+     片方だけ変わって量りが小さく出る（tests/restore-practice.js の G）。 */
+  function addonKey(k) {
+    return k === "exportedAt" || k === "app" || k === "lsSeq" || /Book$/.test(k);
+  }
+
   /** 戻す前・確かめるときに、中身を見るだけ。`{ ok, reason, exportedAt, counts }` */
   function inspectBackup(text) {
     try {
@@ -5306,11 +5314,9 @@
          （外してあれば、戻しても元には書かない分。R26 の段2b）。 */
       const cut = pastCutoff();
       const past = next.todos.reduce((n, t) => n + (isPastTodo(t, cut) ? JSON.stringify(t).length + 1 : 0), 0);
-      // size は applyBackup が元へ戻す欄だけ（付けたし exportedAt・app・lsSeq・…Book＝ノートは元に書かない）。
+      // size は applyBackup が元へ戻す欄だけ（付けたし addonKey は元に書かない）。
       const kept = {};
-      Object.keys(next).forEach((k) => {
-        if (!["exportedAt", "app", "lsSeq"].includes(k) && !/Book$/.test(k)) kept[k] = next[k];
-      });
+      Object.keys(next).forEach((k) => { if (!addonKey(k)) kept[k] = next[k]; });
       return {
         ok: true, exportedAt: parsed.exportedAt || null, counts: countsOf(next), bare,
         pastBare: todoOut(next).length > 0, past, size: JSON.stringify(kept).length,
@@ -5397,11 +5403,10 @@
       if (next.todoOut) s.todoOut = next.todoOut;
       else delete s.todoOut;
       /* emptyState() に無い一番上の鍵（新しい版の棚）も戻す（docs/storage.md「知らない欄」）。
-         書き出しの付けたしは戻さない：exportedAt・app と、名前が …Book で終わるもの（noteBook は
-         ノート丸ごと。元へ入れると枠があふれる）。付けたしを足すときは …Book で終わる名前に。 */
+         書き出しの付けたし（addonKey）は戻さない。 */
       const known = emptyState();
       Object.keys(next).forEach((k) => {
-        if (k in known || ["exportedAt", "app", "lsSeq", "todoOut"].includes(k) || /Book$/.test(k)) return;
+        if (k in known || k === "todoOut" || addonKey(k)) return;
         s[k] = next[k];
       });
       s.schema = SCHEMA;
