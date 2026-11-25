@@ -171,6 +171,12 @@ const { open, checker } = require("./lib");
   /* 行き先の札：行の右にもとの日。押すと小窓、選べばその場で動き、トーストで戻せる。 */
   const pill = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .tl-prev-sec .tl-move")].map((b) => b.textContent.trim()));
   t.check("前の日からの行の右に、もとの日の札", pill.includes("昨日"), JSON.stringify(pill));
+  /* 点検12：丸は右端（札は丸の左）。時間割のカードと同じ並び。 */
+  const ends = await page.evaluate(() => [...document.querySelectorAll("#screen-todo .tl-prev-sec li")].map((li) => {
+    const c = li.querySelector(".check").getBoundingClientRect(), m = li.querySelector(".tl-move").getBoundingClientRect(), L = li.getBoundingClientRect();
+    return { gap: Math.round(L.right - c.right), left: m.right <= c.left };
+  }));
+  t.check("点検12：前の日からの丸は右端・札は丸の左", ends.length > 0 && ends.every((e) => e.gap < 24 && e.left), JSON.stringify(ends));
   const openPill = async () => {
     await page.evaluate(() => {
       const li = [...document.querySelectorAll("#screen-todo .tl-prev-sec .tl-row")].find((x) => /病院/.test(x.textContent));

@@ -4034,7 +4034,9 @@
         const move = node(html`<button type="button" class="tl-move" aria-haspopup="menu"
           aria-label="${formatDay(t.due)}・行き先を選ぶ">${formatDay(t.due)}${icon("chevron")}</button>`);
         move.addEventListener("click", (e) => { e.stopPropagation(); haptic(); prevMenu(t, move); });
-        if (item) item.append(move);
+        /* 札は丸の左に（丸は時間割のカードと同じく右端。前は札が右端で、丸が行の中ほどに来ていた。点検12）。 */
+        const chk = item && item.querySelector(":scope > .check");
+        if (chk) chk.before(move); else if (item) item.append(move);
         list.append(li);
       });
     sec.append(list);
