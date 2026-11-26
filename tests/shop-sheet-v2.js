@@ -185,9 +185,12 @@ const { open, checker } = require("./lib");
       const top = (i) => { const rg = document.createRange(); rg.setStart(t, i); rg.setEnd(t, i + 1); return Math.round(rg.getClientRects()[0].top); };
       return top(t.length - 1) !== top(t.length - 2);
     }).map((e) => e.textContent);
-    return { n: ls.length, fs: parseFloat(getComputedStyle(ls[0]).fontSize), lone: lone.slice(0, 5), ph: document.querySelector(".sheet.is-open .js-q").placeholder };
+    /* 点検16：外来語は片仮名で名乗る（とまと → トマト）。和語は平仮名のまま（きゅうり）。 */
+    const names = ls.map((e) => e.textContent.trim());
+    return { n: ls.length, fs: parseFloat(getComputedStyle(ls[0]).fontSize), lone: lone.slice(0, 5), ph: document.querySelector(".sheet.is-open .js-q").placeholder,
+      kana: ["トマト", "キャベツ", "パン", "テレビ", "きゅうり", "かぼちゃ"].every((w) => names.includes(w)) && !names.includes("とまと") };
   });
-  t.check("点検16：絵の名前は 11px 以上・一字だけ落ちない・欄に例なし", pick.n > 100 && pick.fs >= 11 && !pick.lone.length && !/例/.test(pick.ph), JSON.stringify(pick));
+  t.check("点検16：絵の名前は 11px 以上・一字だけ落ちない・欄に例なし・外来語は片仮名", pick.n > 100 && pick.fs >= 11 && !pick.lone.length && !/例/.test(pick.ph) && pick.kana, JSON.stringify(pick));
   t.check("ページのエラーなし", !errors.length, errors.join("\n"));
   await browser.close();
   t.done();
