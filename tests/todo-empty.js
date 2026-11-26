@@ -36,6 +36,10 @@ const { open, checker } = require("./lib");
   c.check("説明の一文は出さない", !r.text);
   c.check("空でも今日｜週｜月がある", r.faces);
   c.check("空でも一日の帯がある", r.strip);
+  /* 点検2：日の無い用事の欄の見出しは「日付なし」（前は「時刻なし」で、その日の時刻の無い用事に読めた）。 */
+  const head = await page.evaluate(() => { const b = document.querySelector("#screen-todo .tl-someday-add");
+    return b ? [b.querySelector(".tk-h").textContent.trim(), b.getAttribute("aria-label")] : null; });
+  c.check("点検2：日の無い用事の欄は「日付なし」", !!head && head[0] === "日付なし" && head[1] === "日付なしに足す", JSON.stringify(head));
 
   const id = await page.evaluate(() => KN.store.addTodo({ title: "牛乳", due: KN.util.todayKey() }).id);
   await page.waitForTimeout(300);

@@ -3951,8 +3951,10 @@
     const sec = node(html`
       <section class="todo-group tl-someday-sec" data-group="someday">
         <h2 class="todo-head tl-someday-head">
-          <button type="button" class="tl-someday-add" aria-label="時刻なしに足す">
-            <span class="tk-h">時刻なし</span>
+          ${/* 見出しは中身（日の無い用事・前の日から・今週の印）に合わせて「日付なし」（前は「時刻なし」で、その日の
+             時刻の無い用事に読めた。2026年11月25日の点検2、利用者が選んだ） */""}
+          <button type="button" class="tl-someday-add" aria-label="日付なしに足す">
+            <span class="tk-h">日付なし</span>
             ${n ? html`<span class="cat-head-count">${n}</span>` : ""}
             <span class="tl-someday-plus">${icon("plus")}</span>
           </button>
