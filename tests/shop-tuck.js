@@ -128,6 +128,27 @@ const { open, checker } = require("./lib.js");
   }, [e, shopId]);
   t.check("S2：確定でその店・今日の値段になり、買った印も付く", await checked(e) && JSON.stringify(await prices(e)) === "[298]" && day,
     JSON.stringify(await prices(e)));
+  /* 点検（11月26日）：下の方の行の欄は、鍵盤の上へ送られる（直す前は欄ごと鍵盤の下に隠れて打っていた）。 */
+  await page.evaluate(() => ["品L1", "品L2", "品L3", "品L4", "品L5", "品L6", "品L7", "品L8", "品L9", "品L10"]
+    .forEach((n) => KN.store.addItem(KN.store.addProduct({ name: n }).id)));
+  await page.waitForTimeout(600);
+  const low = await page.evaluate(() => {
+    const ws = [...document.querySelectorAll("#screen-list .item-wrap:not(.day-bought .item-wrap)")]
+      .filter((w) => { const r = w.getBoundingClientRect(); return r.top > 0 && r.bottom < innerHeight - 120; });
+    const w = ws[ws.length - 1];
+    return w && { id: w.dataset.flip, bottom: Math.round(w.getBoundingClientRect().bottom) };
+  });
+  await tapCheck(low.id);
+  await page.waitForSelector(`#screen-list .item-wrap[data-flip="${low.id}"] .item-price-in`, { timeout: 2000 });
+  await page.click(`#screen-list .item-wrap[data-flip="${low.id}"] .item-price-in`);
+  await page.waitForTimeout(900);
+  const shown = await page.evaluate((id) => ({
+    field: Math.round(document.querySelector(`#screen-list .item-wrap[data-flip="${id}"] .item-price-in`).getBoundingClientRect().bottom),
+    pad: Math.round(document.querySelector(".keypad.is-open").getBoundingClientRect().top),
+  }), low.id);
+  t.check("点検：下の方の行の値段の欄は、鍵盤の上へ送られる", low.bottom > shown.pad && shown.field <= shown.pad, JSON.stringify({ low, shown }));
+  await page.click(".keypad .js-ok");
+  await page.waitForTimeout(600);
 
   t.check("エラーなし", errors.length === 0, errors.join("\n"));
   await browser.close();

@@ -1046,7 +1046,16 @@
       go(n != null && isFinite(n) && n >= 0 ? n : null, parseFloat(input.dataset.rate));
     };
     const t = setTimeout(end, ASK_MS);
-    KN.keypad.bind(input, { onOpen: () => clearTimeout(t), onCommit: end });
+    /* 行は鍵盤の上へ送る（11月26日、一コマずつの点検）。自前の鍵盤は端末が知らないので、下の方の行は欄ごと鍵盤の下に
+       隠れたまま打っていた。送るのは scrollTop で（scrollIntoView は文書ごと送る。app.js の watchTopTap）。 */
+    const reveal = () => {
+      const sc = KN.app.scrollerOf(document.getElementById("screen-list"));
+      const pad = document.querySelector(".keypad");
+      if (!sc || !pad || !row.isConnected) return;
+      const over = row.getBoundingClientRect().bottom - (window.innerHeight - pad.offsetHeight);
+      if (over > 0) sc.scrollTo({ top: sc.scrollTop + over, behavior: KN.motion.smooth() });
+    };
+    KN.keypad.bind(input, { onOpen: () => { clearTimeout(t); reveal(); }, onCommit: end });
     input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input) end(); }, 150));
   }
 
