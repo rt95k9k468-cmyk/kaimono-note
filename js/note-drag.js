@@ -24,7 +24,6 @@
   const INTO = [0.28, 0.72];   // 行のこの高さのあいだ＝その中へ
 
   let drag = null;
-  const isActive = () => !!drag;
 
   /* 字下げの段（screen-notes.js の rowLook と同じ：5段目から半分ずつ）。 */
   const unit = (d) => (d <= 4 ? d : 4 + (d - 4) / 2);

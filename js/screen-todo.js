@@ -995,15 +995,8 @@
       pickHandle.el.append(el);
       pickHandle.place();
     }
-    /* 札（今日・明日・18:00・空き）を押して決めたら、その紙は閉じます。
-       決めたあとにもう一度「閉じる」を押させるのは、一回ぶん余計です。
-       札が点くのを一拍見せてから閉じます（押したものが効いたと分かるように）。
-       車輪・±15分では閉じません——そちらは何度か触って合わせるものなので。 */
-    function closePick() {
-      const h = pickHandle;
-      pickHandle = null;
-      if (h) setTimeout(() => h.close(), KN.motion.ms("--m-state"));
-    }
+    /* 日付の札（今日・明日…）は暦の小窓が押したら自分で閉じる（popCalendar）。時刻の小窓は車輪・長さ・期限を
+       一つに持つので、札一つでは閉じない（前の closePick は呼ぶ所が無くなっていたので外した。2026年11月26日）。 */
     function paintRows() {
       const row = (sel, label, value) => {
         body.querySelector(sel + " .d-label").textContent = label;

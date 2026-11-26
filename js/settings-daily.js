@@ -10,7 +10,7 @@
   const { html, node, icon } = KN.util;
   const store = KN.store;
   const S = KN.settingsParts;
-  const { go, card, head, foot, navRow, switchRow, pickRow, choose, render } = S;
+  const { card, head, foot, navRow, switchRow, pickRow, choose, render } = S;
 
   /* ---------------- daily ----------------
 

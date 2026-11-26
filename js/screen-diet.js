@@ -88,7 +88,6 @@
     const s = v.toFixed(d == null ? 1 : d);
     return /^-?0(\.0+)?$/.test(s) ? "±" + s.replace("-", "") : (v > 0 ? "+" + s : s);
   };
-  const hhmm = (min) => (min == null ? "—" : `${Math.floor(min / 60)}時間${String(Math.round(min % 60)).padStart(2, "0")}分`);
   /* 横に四つ並べる枠のための、短い書き方。「6時間40分」は7文字で、
      四等分した枠には入りません。 */
   const hm = (min) => (min == null ? "—" : `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, "0")}m`);
@@ -843,13 +842,6 @@
     if (from != null) sec.querySelector(".diet-hero-value b").dataset.from = from;
     host.addEventListener("click", () => openWeightSheet(card.weight, card.day));
     host.append(sec);
-  }
-
-  /* 「11月30日」、年をまたげば「2027年1月5日」。 */
-  function longDay(key) {
-    const d = U.dayDate(key);
-    const md = `${d.getMonth() + 1}月${d.getDate()}日`;
-    return d.getFullYear() === new Date().getFullYear() ? md : `${d.getFullYear()}年${md}`;
   }
 
   /* 体重のカードの細い線：その日までの14日の N日平均（推移と同じ trendLine。記録の頭から均す）。面は薄い朱、
@@ -1825,13 +1817,6 @@
     { type: "distance",      label: "歩行距離",   unit: "km",   ico: "route" },
     { type: "heartRate",     label: "心拍数",     unit: "bpm",  ico: "heart" },
   ];
-
-  const showValue = (type, v) => {
-    if (v == null) return "—";
-    if (type === "sleep") return hhmm(v);
-    if (type === "distance") return v.toFixed(1);
-    return n0(v);
-  };
 
   /** その日のその種目が手で書かれたものか。 */
   const isManual = (day, type) =>
@@ -3669,9 +3654,6 @@
     { id: "", label: "未記入" },
   ];
   const mealLabel = (v) => (v === "before" ? "食前" : v === "after" ? "食後" : "");
-  const wearLabel = (v) => (v === true ? "着衣あり" : v === false ? "着衣なし" : "");
-  /** 行に添える一言。書いていない条件は言いません。 */
-  const condText = (w) => [mealLabel(w && w.meal), wearLabel(w && w.clothed)].filter(Boolean).join("・");
 
   /* 二桁打ったら、三桁目の前に小数点を入れます。体重も体脂肪率も
      「58.6」「13.2」の形にしかならないので、毎回「.」を探して打つのは
