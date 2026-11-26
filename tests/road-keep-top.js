@@ -36,6 +36,18 @@ const { open, checker } = require("./lib");
   });
   c.check("暦を伸ばす・畳むで紙を組み直さない", calKept);
   await page.evaluate(() => KN.store.setCalPref("todo", { open: !KN.store.calPrefs("todo").open }));
+  await page.waitForTimeout(700);
+  /* 題を押して暦を伸ばしても、時間割の行に FLIP が付かない（紙ごと下がるのは #panes の動きが補う）。前は画面の上から測って
+     「355px 動いた」と読み、二重に補った行が一日の帯の上へ跳んでから違う速さで戻った（2026年11月26日、ui.js の flipRows）。 */
+  const flipped = await page.evaluate(() => new Promise((ok) => {
+    document.querySelector("#head .js-day-title").click();
+    requestAnimationFrame(() => ok([...document.querySelectorAll("#screen-todo .tl-row")]
+      .filter((r) => r.style.transform || r.getAnimations().some((a) => a.transitionProperty === "transform")).length));
+  }));
+  c.check("暦を伸ばしても時間割の行に FLIP が付かない（帯と札が一緒に下がる）", flipped === 0, `${flipped} 行`);
+  await page.waitForTimeout(700);
+  await page.evaluate(() => document.querySelector("#head .js-day-title").click());
+  await page.waitForTimeout(700);
   await page.clock.setFixedTime(new Date(2026, 9, 6, 9, 45));
   const fell = await page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");

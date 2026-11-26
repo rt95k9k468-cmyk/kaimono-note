@@ -1468,10 +1468,20 @@
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return () => {};
     }
+    /* 位置は**送る器の窓から**測る（画面の上からではなく）。暦が伸びると紙ごと下がり、それは #panes の動きが補う——
+       画面の上から測ると、動いていない行まで「355px 動いた」と読んで二重に補い、行だけが一日の帯の上へ跳んでから
+       違う速さで戻っていた（11月26日、一コマずつ撮って）。入れ物（host）から測るのも違う：済ませた行が上の頁へ入って
+       送り位置を合わせる道（screen-todo の doneRest）で、画面では動いていない行を動いたと読む。 */
+    const frame = () => {
+      const scr = host.closest && host.closest(".screen");
+      const sc = scr && KN.app && KN.app.scrollerOf ? KN.app.scrollerOf(scr) : null;
+      return (sc && sc.isConnected ? sc : host).getBoundingClientRect().top;
+    };
     const first = new Map();
+    const top0 = frame();
     host.querySelectorAll(selector).forEach((el) => {
       const id = el.dataset.flip;
-      if (id) first.set(id, el.getBoundingClientRect().top);
+      if (id) first.set(id, el.getBoundingClientRect().top - top0);
     });
 
     return () => {
@@ -1485,8 +1495,9 @@
          行のせいで次の行を測るたびに並べ直しが入ります（四十行で四十回。docs/motion.md の
          「押した一拍を軽く」）。先に全部を測れば、並べ直しは最初の一回だけ。 */
       const now = new Map();
+      const top1 = frame();
       rows.forEach((el) => {
-        if (first.has(el.dataset.flip)) now.set(el, el.getBoundingClientRect().top);
+        if (first.has(el.dataset.flip)) now.set(el, el.getBoundingClientRect().top - top1);
       });
       let moved = false;
       rows.forEach((el) => {
