@@ -29,7 +29,7 @@ GitHub Pages で配る＝素材の元のファイルを、誰でも落とせる�
 - 数字：`--font-num`＝`ui-rounded`（iPhone・Mac の Safari で SF Pro Rounded）。明朝では効かせない。
 
 **絵**
-- UI：Phosphor Regular v2.1.1（MIT）。体重計だけ IconOven（線・MIT）、服の層の三枚は Hugeicons（線・MIT）。
+- UI：Phosphor Regular v2.1.1（MIT）。体重計だけ IconOven（線・MIT）。
 - 品物（708キー）：単色シルエット。借り先は Phosphor Fill・Material Symbols（rounded fill）・MingCute Fill・Tabler Filled・
   Remix Icon Fill・Boxicons Solid・Bootstrap Icons Fill・Fluent（filled）・Pinhead・IconOven（線を面に直した3枚：まな板・ティッシュ・らっぷ）。描き起こしは無い。
 - こと（108枚）：Phosphor Fill とよそのセット（手描きは無い）。空の画面 4枚（`empty-art.js`）：IconOven 3枚・andrsrxn 1枚（線・MIT）。
