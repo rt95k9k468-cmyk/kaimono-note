@@ -40,6 +40,12 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   let h = await heroKg();
   t.check("記録の無い日の頭は「—」", h.kg === "—", JSON.stringify(h));
+  /* 食品の一行読み：大文字・全角の単位も量として読む（前は「牛乳1L」が量なしの一杯ぶん。11月26日の点検）。 */
+  const units = await page.evaluate(() => ["牛乳1L", "水500mL", "牛乳0.5Ｌ", "ご飯150G", "牛乳200ｃｃ", "ご飯150g"].map((s) => {
+    const p = KN.foodData.parseLine(s);
+    return `${p.name}|${p.qty}|${p.unit}`;
+  }).join(" "));
+  t.check("食品の一行読みは L・mL・全角の単位も量にする", units === "牛乳|1|l 水|500|ml 牛乳|0.5|l ご飯|150|g 牛乳|200|ml ご飯|150|g", units);
 
   /* ---- 記録する ---- */
   await plusPick("体重");
