@@ -951,6 +951,9 @@
    空の入れもの（読み・選んだ札・一覧）は間を作らない。 */
 .sheet .stack.diet-form { gap: var(--sp-4); }
 .sheet .stack.diet-form > :empty { display: none; }
+/* 服装の層の札（体重の紙）。絵は字の前に小さく、引く重さはラベルの横に薄く。 */
+.wear-row .chip svg { width: var(--ico); height: var(--ico); flex: none; }
+.wear-off { margin-left: var(--sp-2); color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 .time-label { flex: none; font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--c-text-2); }
 
 /* Put away rather than done — worth saying, because the drawer holds both. */
@@ -2400,13 +2403,14 @@
 /* 量った点は線と同じ色。前は灰色で、線とは別のものを指しているように
    見えていました。今日の点だけは大きく、地の色で縁取ります——線の先が
    どこで終わっているかは、いちばん知りたいことなので。 */
-.diet-dot { fill: var(--c-primary); opacity: .38; }
-/* 機械が測った点は、手で書いた点と見分けがつくように中を抜きます。 */
-.diet-dot.is-health { fill: none; stroke: var(--c-primary); stroke-width: 1; opacity: .5; }
+.diet-dot { fill: var(--c-primary); opacity: .5; }
+/* 食前は白抜き、食後（と未記入）は塗り。抜いた中は地の色で埋め、後ろの線を透かさない。 */
+.diet-dot.is-before { fill: var(--c-surface); stroke: var(--c-primary); stroke-width: 1; opacity: 1; stroke-opacity: .6; }
 .diet-dot.is-now {
   fill: var(--c-primary); opacity: 1;
   stroke: var(--c-surface); stroke-width: 1.6;
 }
+.diet-dot.is-now.is-before { fill: var(--c-surface); stroke: var(--c-primary); stroke-width: 1.4; }
 
 /* 飲んだ日の印。濃さは純アルコール量で変えます（SVG側で opacity を付ける）。 */
 .diet-beer-mug { fill: none; stroke: var(--c-accent); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -2421,7 +2425,8 @@
 .diet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-2); }
 .diet-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .diet-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
-.diet-legend-item i.dot-actual { background: var(--c-text-3); width: 6px; height: 6px; border-radius: 50%; }
+.diet-legend-item i.dot-actual { background: var(--c-primary); width: 7px; height: 7px; border-radius: 50%; }
+.diet-legend-item i.dot-actual.is-before { background: none; box-shadow: inset 0 0 0 1.5px var(--c-primary); }
 .diet-legend-item i.dot-beer { width: 12px; height: 12px; border-radius: 0; background: none; color: var(--c-accent); line-height: 0; }
 /* 凡例の粒。これは絵ではなく色見本の大きさに合わせます。 */
 .diet-legend-item i.dot-beer svg { width: 12px; height: 12px; stroke-width: 2; }  /* 入れもの：凡例の粒 */

@@ -817,11 +817,13 @@
        （平均・傾きは何日ぶんで均すか、目標まではいくつを狙うか）。 */
   function renderToday(host, card, sum) {
     const w = card.weight;
+    /* 大きな数も平均・線と同じく服を引いた値（層と重さが分かる日だけ。紙の欄は量った値のまま）。 */
+    const wk = w ? D.bodyKg(w) : null;
     const when = dayName(card.day);
     /* 開いたとき、大きな数は**前の記録から**数えて変わる（U16・countWeight）。0 からでは大げさ。 */
     const pts = sum.points, last = pts[pts.length - 1];
     const from = w && last && last.day === card.day && pts.length > 1
-      && Math.abs(pts[pts.length - 2].kg - w.kg) >= 0.05 ? pts[pts.length - 2].kg : null;
+      && Math.abs(pts[pts.length - 2].kg - wk) >= 0.05 ? pts[pts.length - 2].kg : null;
 
     /* R4：カードごと押すと体重の紙（見本の #health）。平均・傾きの日数は「目標」の紙の畳み、目標は推移のカードの下の札から。
        傾きの色は目標へ向かっているときだけ若竹（推移の線の光と同じ決め）。 */
@@ -833,7 +835,7 @@
     const sec = node(html`
       <span class="hl-hero-in">
         <span class="hl-hero-h diet-hero-label">${icon("scale")}${when === "今日" ? "" : when + "の"}体重</span>
-        <span class="hl-hero-v diet-hero-value"><b class="mono-num">${w ? kg(w.kg) : "—"}</b><small>kg</small></span>
+        <span class="hl-hero-v diet-hero-value"><b class="mono-num">${w ? kg(wk) : "—"}</b><small>kg</small></span>
         <span class="hl-hero-s"><span>${sum.avgWindowDays}日平均 <b>${now == null ? "—" : now.toFixed(1)}</b></span>・<span><b class="${toward ? "is-toward" : ""}">${tw == null ? "—" : signed(tw, 1)}</b> /週</span></span>
         ${extra ? html`<span class="hl-hero-s is-sub">${extra}</span>` : ""}
         ${KN.util.raw(spark(card.day, sum.avgWindowDays))}
@@ -921,7 +923,8 @@
         </div>
         <div class="diet-plot-chart js-chart"></div>
         <div class="diet-legend">
-          <span class="diet-legend-item"><i class="dot-actual"></i>実測</span>
+          <span class="diet-legend-item"><i class="dot-actual is-before"></i>食前</span>
+          <span class="diet-legend-item"><i class="dot-actual"></i>食後</span>
           <span class="diet-legend-item"><i class="dot-ma7"></i>7日平均</span>
           ${range === 0 || range >= 30 ? html`<span class="diet-legend-item"><i class="dot-ma14"></i>14日平均</span>` : ""}
           <span class="diet-legend-item js-leg-beer"><i class="dot-beer">${icon("drink")}</i>飲んだ日</span>
@@ -1203,8 +1206,10 @@
               縁取って、線の先端がどこかを言います。 */""}
         ${KN.util.raw(pts.map((p, i) => {
           const now = i === pts.length - 1;
-          return `<circle class="diet-dot ${p.source === "health" ? "is-health" : ""} ${now ? "is-now" : ""}"`
-            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 1.8}"`
+          /* 食前は白抜き・食後（と未記入）は塗り（2026年11月26日 利用者）。印はこの二つだけ——
+             出どころ（ヘルスケア）の白抜きはやめた。体重は手で入れるので、食前と取り違えるだけ。 */
+          return `<circle class="diet-dot ${p.meal === "before" ? "is-before" : ""} ${now ? "is-now" : ""}"`
+            + ` cx="${x(p.day).toFixed(1)}" cy="${y(p.kg).toFixed(1)}" r="${now ? 3 : 2.3}"`
             /* 左からどれだけ来たところか（0〜1）。開いたとき、線がそこまで引かれた
                ころに点が出ます（screens.css の「開いたとき、満ちる」）。 */
             + ` style="--f:${Math.max(0, Math.min(1, (x(p.day) - padL) / Math.max(1, W - padL - padR))).toFixed(2)}"/>`;
@@ -3650,11 +3655,12 @@
     { id: "after", label: "食後" },
     { id: "", label: "未記入" },
   ];
-  const WEAR_CHIPS = [
-    { id: "no", label: "着衣なし" },
-    { id: "yes", label: "着衣あり" },
-    { id: "", label: "未記入" },
-  ];
+  /* 服装は重ね着の層（D.WEAR）を足し引きする札と「なし」。何も押していなければ未記入。
+     層を書いた日は、設定（目標の紙の「服の重さ」）の重さを線・平均から引く。 */
+  const wearLabel = (clothed, wear) => (clothed === false ? "着衣なし"
+    : clothed !== true ? ""
+    : wear && wear.length ? wear.map((id) => (D.WEAR.find((L) => L.id === id) || { label: "" }).label).filter(Boolean).join("・")
+    : "着衣あり");
   const mealLabel = (v) => (v === "before" ? "食前" : v === "after" ? "食後" : "");
 
   /* 二桁打ったら、三桁目の前に小数点を入れます。体重も体脂肪率も
@@ -3719,6 +3725,7 @@
     const seed = w || store.lastWeightCondition();
     let meal = seed.meal || null;
     let clothed = seed.clothed == null ? null : seed.clothed;
+    let wear = clothed === true && Array.isArray(seed.wear) ? seed.wear.slice() : null;
 
     /* RS 2回目：何（体重・体脂肪）→ いつ（日付と時刻の札）→ 詳細（量ったとき・服装・メモ。前回の条件が入っている）。 */
     const last = w ? null : store.latestWeight();
@@ -3751,8 +3758,11 @@
             <div class="js-meal"></div>
           </div>
           <div class="field">
-            <span class="field-label">服装</span>
-            <div class="js-wear"></div>
+            <span class="field-label">服装<span class="wear-off js-wear-off"></span></span>
+            <div class="chip-row wear-row js-wear">
+              <button type="button" class="chip" data-id="none">なし</button>
+              ${KN.util.raw(D.WEAR.map((L) => `<button type="button" class="chip" data-id="${L.id}">${icon(L.ico)}${L.label}</button>`).join(""))}
+            </div>
           </div>
           <label class="field">
             <span class="field-label">メモ</span>
@@ -3787,7 +3797,7 @@
       restEl.hidden = !open;
       moreEl.setAttribute("aria-expanded", String(open));
       moreEl.classList.toggle("is-open", open);
-      const said = [mealLabel(meal), clothed == null ? "" : clothed ? "着衣あり" : "着衣なし"].filter(Boolean).join("・");
+      const said = [mealLabel(meal), wearLabel(clothed, wear)].filter(Boolean).join("・");
       moreEl.querySelector(".urge-more-t").textContent = open ? "詳細をとじる" : said ? `詳細　${said}` : "詳細";
     };
     moreEl.addEventListener("click", () => { open = !open; paintMore(); KN.motion.fire("select"); });
@@ -3801,10 +3811,33 @@
       activeId: meal || "",
       onPick: (id) => { meal = id || null; paintMeal(); paintMore(); },
     });
-    const paintWear = () => KN.ui.chipRow(body.querySelector(".js-wear"), WEAR_CHIPS, {
-      activeId: clothed == null ? "" : (clothed ? "yes" : "no"),
-      onPick: (id) => { clothed = id === "yes" ? true : (id === "no" ? false : null); paintWear(); paintMore(); },
+    /* 層は押すたびに着る・脱ぐ。「なし」は層を外す。もう一度押すと未記入。層を全部外しても未記入。
+       前からの「着衣あり」（層なし）は、どの札も点けずに残る——触れなければそのまま保存する。 */
+    const wearEl = body.querySelector(".js-wear");
+    const paintWear = () => {
+      wearEl.querySelectorAll(".chip").forEach((el) => {
+        const id = el.dataset.id;
+        el.setAttribute("aria-pressed", String(id === "none" ? clothed === false : !!(wear && wear.includes(id))));
+      });
+      /* 引く重さ。量っていない層があれば出さない（引かない）。 */
+      const off = D.wearKg({ day: body.querySelector(".js-day").value, clothed, wear });
+      body.querySelector(".js-wear-off").textContent = off ? ` −${off.toFixed(2).replace(/0$/, "")}kg` : "";
+    };
+    wearEl.addEventListener("click", (e) => {
+      const el = e.target.closest(".chip");
+      if (!el) return;
+      const id = el.dataset.id;
+      if (id === "none") { clothed = clothed === false ? null : false; wear = null; }
+      else {
+        const on = new Set(wear || []);
+        if (on.has(id)) on.delete(id); else on.add(id);
+        wear = D.WEAR.map((L) => L.id).filter((x) => on.has(x));
+        if (!wear.length) wear = null;
+        clothed = wear ? true : null;
+      }
+      paintWear(); paintMore(); KN.motion.fire("select");
     });
+    body.addEventListener("change", paintWear);   // 日付が夏冬をまたぐとパジャマの重さが変わる
     paintMeal();
     paintWear();
     paintMore();
@@ -3823,7 +3856,7 @@
         kg: val,
         fat: Number.isFinite(fatRaw) && fatRaw > 0 ? fatRaw : null,
         memo: body.querySelector(".js-memo").value.trim(),
-        meal, clothed,
+        meal, clothed, wear,
         // 手が入ったものは手が入ったものです。次の取り込みで機械の値に
         // 戻されないよう、出どころを書き換えます。
         source: "manual",
@@ -4171,6 +4204,24 @@
             </label>
           </div>
         </details>
+        ${/* 服の重さ（g）。体重の紙で押した層の重さを、線・平均から引く。一度量れば済むのでここへ畳む。 */""}
+        <details class="diet-why">
+          <summary>服の重さ (g)</summary>
+          <div class="field-row">
+            ${KN.util.raw([["js-wu", "下着", g.wearUnderG], ["js-wi", "長袖下着", g.wearInnerG]].map(([c, l, v]) => `
+            <label class="field grow">
+              <span class="field-label">${l}</span>
+              <input class="input ${c}" inputmode="numeric" value="${v == null ? "" : String(v)}">
+            </label>`).join(""))}
+          </div>
+          <div class="field-row">
+            ${KN.util.raw([["js-wp", "パジャマ 冬", g.wearPajamaG], ["js-wps", "パジャマ 夏（6〜9月）", g.wearPajamaSummerG]].map(([c, l, v]) => `
+            <label class="field grow">
+              <span class="field-label">${l}</span>
+              <input class="input ${c}" inputmode="numeric" value="${v == null ? "" : String(v)}">
+            </label>`).join(""))}
+          </div>
+        </details>
       </div>
     `);
 
@@ -4223,6 +4274,8 @@
         sleepTarget: (() => { const hrs = num(".js-sleep"); return hrs == null ? null : Math.round(hrs * 60); })(),
         avgWindowDays: (() => { const n = num(".js-avg-days"); return n == null ? null : Math.min(90, Math.round(n)); })(),
         trendWindowDays: (() => { const n = num(".js-trend-days"); return n == null ? null : Math.min(90, Math.round(n)); })(),
+        ...Object.fromEntries([["wearUnderG", ".js-wu"], ["wearInnerG", ".js-wi"], ["wearPajamaG", ".js-wp"], ["wearPajamaSummerG", ".js-wps"]]
+          .map(([k, sel]) => { const n = num(sel); return [k, n == null ? null : Math.min(5000, Math.round(n))]; })),
       });
       h.close();
       render();

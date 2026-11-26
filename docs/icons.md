@@ -43,6 +43,7 @@ CLAUDE.md から見出しごと移した、詳しい決めごと（2026年9月26
   `svg { fill:none }` / `svg { stroke:… }` に消されたり太らされたりしないため。
 - 体重計（`scale`）だけ Phosphor に適切な代替が無い（`scales` は天びんで、買うものの「比べる」と紛れる）。
   線の IconOven `weight-scale`（線1.5＝Phosphor Regular と同じ）を `icons-phosphor.js` のいちばん下に stroke で置く。
+  服の層（`wear-under`・`wear-inner`・`wear-pajama`）も同じ置き方で Hugeicons（線1.5・MIT）から。
 - 空の画面の4枚（`empty-art.js`）も線のセット（IconOven・andrsrxn）。色は `.empty-art` の `--c-primary`。
   **画面に出る手描きの絵はもう無い**（2026年11月8日）。`icon-system.js` は 2026年11月8日に消した。
 - 経緯と A/B/C/D の対応表は `ICON-PHOSPHOR.md`。

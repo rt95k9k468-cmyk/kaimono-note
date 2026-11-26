@@ -33,6 +33,44 @@
    * 測っていない日を前日の値で埋めることはしません——埋めた点は
    * 「測らなかった」という事実を消したうえ、移動平均をなだらかに見せます。
    */
+  /* 服の層と、その重さ（g）を持つ設定の欄。順は内から外（下着 → 長袖下着 → パジャマ）。 */
+  const WEAR = [
+    { id: "under",  label: "下着",     ico: "wear-under",  key: "wearUnderG" },
+    { id: "inner",  label: "長袖下着", ico: "wear-inner",  key: "wearInnerG" },
+    { id: "pajama", label: "パジャマ", ico: "wear-pajama", key: "wearPajamaG", summer: "wearPajamaSummerG" },
+  ];
+
+  /**
+   * 量ったとき着ていた服の重さ（kg）。引けないときは null——
+   * 着衣が未記入・層を書いていない「着衣あり」（前からの記録）・重さを量っていない層を着ていた。
+   * 設定から引くので、重さを直すと前の記録の線も直る（記録の kg は動かない）。
+   * パジャマは記録の日の月で夏（6〜9月）と冬を選び、片方が空ならもう一方。
+   */
+  function wearKg(w) {
+    if (!w || w.clothed === false) return w ? 0 : null;
+    if (w.clothed !== true || !Array.isArray(w.wear) || !w.wear.length) return null;
+    const g = store.get().diet.goal;
+    const m = Number(String(w.day || "").slice(5, 7));
+    const summer = m >= 6 && m <= 9;
+    let sum = 0;
+    for (const id of w.wear) {
+      const L = WEAR.find((x) => x.id === id);
+      if (!L) return null;   // 知らない層（新しい版の）は重さが分からない
+      const v = L.summer
+        ? (summer ? (g[L.summer] ?? g[L.key]) : (g[L.key] ?? g[L.summer]))
+        : g[L.key];
+      if (!(v > 0)) return null;
+      sum += v;
+    }
+    return sum / 1000;
+  }
+
+  /** 服を引いた体重。引けなければ量った値のまま。 */
+  function bodyKg(w) {
+    const c = wearKg(w);
+    return c ? Math.round((w.kg - c) * 100) / 100 : w.kg;
+  }
+
   function weightPoints(fromDay, toDay) {
     const seen = new Map();
     store.get().diet.weights.forEach((w) => {
@@ -44,7 +82,8 @@
     });
     return [...seen.values()]
       .sort((a, b) => a.day.localeCompare(b.day))
-      .map((w) => ({ day: w.day, kg: w.kg, fat: w.fat, source: w.source, id: w.id,
+      /* kg は服を引いた値（線・平均・傾き・気づいたことはこれで）。量った値は measured。 */
+      .map((w) => ({ day: w.day, kg: bodyKg(w), measured: w.kg, fat: w.fat, source: w.source, id: w.id,
                      meal: w.meal, clothed: w.clothed }));
   }
 
@@ -234,7 +273,7 @@
     if (!last || g.targetKg == null || !g.targetDay) return null;
     const days = U.daysUntil(g.targetDay);
     if (days == null || days <= 0) return null;
-    return round((g.targetKg - last.kg) / (days / 7), 2);
+    return round((g.targetKg - bodyKg(last)) / (days / 7), 2);
   }
 
   /* ---------------- 食事 ---------------- */
@@ -1608,7 +1647,7 @@
   KN.diet = {
     URGE, urgeCat, urgeCats, urgeOutcome,
     burnedOf,
-    daysBetween, weightPoints, movingAverage, trendLine, slopePerWeek,
+    daysBetween, weightPoints, movingAverage, trendLine, slopePerWeek, WEAR, wearKg, bodyKg,
     weightSummary, neededPace, outlook,
     dayTotals, remaining, pfcRatio, dayCard, slotTotals, energySplit, countedIntake,
     analyze, coverage,

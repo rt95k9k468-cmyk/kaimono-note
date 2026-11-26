@@ -131,7 +131,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   await page.evaluate(() => KN.store.update((s) => { s.diet.drinks = []; }));
   await show();
   const noBeer = await legend();
-  t.check("飲んだ日の無い期間は「飲んだ日」を出さない", noBeer && /実測/.test(noBeer) && !/飲んだ日/.test(noBeer), noBeer);
+  t.check("飲んだ日の無い期間は「飲んだ日」を出さない", noBeer && /食前/.test(noBeer) && !/飲んだ日/.test(noBeer), noBeer);
   await page.evaluate(() => KN.store.addDrink({ day: KN.util.shiftDay(KN.util.todayKey(), -2), time: "20:00",
     kind: "beer", volumeMl: 350, abv: 5, alcoholG: 14, kcal: 140 }));
   await show();
@@ -174,6 +174,61 @@ const EMOJI = /\p{Extended_Pictographic}/u;
   t.check("目標日を選ぶと「その日はおよそ◯kg」（選ぶ前・過ぎた日は出さない）",
     est.before && est.text === est.want && est.past, JSON.stringify(est));
   await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+
+  /* ---- 服を引く（2026年11月26日。層 wear と目標の紙の「服の重さ」。量った kg は動かさない） ---- */
+  const wearOut = await page.evaluate(async () => {
+    const U = KN.util, S = KN.store, D = KN.diet, day = (n) => U.shiftDay(U.todayKey(), -n);
+    S.update((s) => { s.diet.weights = []; });
+    S.setGoal({ wearUnderG: 100, wearInnerG: 200, wearPajamaG: 500, wearPajamaSummerG: 300 });
+    S.addWeight({ day: day(2), time: "07:00", kg: 70, meal: "before", clothed: true, wear: ["under", "pajama"] });
+    S.addWeight({ day: day(1), time: "07:00", kg: 70, meal: "after", clothed: true });              // 前からの「着衣あり」
+    S.addWeight({ day: day(0), time: "07:00", kg: 70, meal: "before", clothed: false, wear: ["under"] }); // なしなら層は消える
+    const pts = D.weightPoints(null, U.todayKey());
+    const recs = S.get().diet.weights;
+    const summer = D.wearKg({ day: "2026-07-01", clothed: true, wear: ["pajama"] });
+    const noW = (S.setGoal({ wearInnerG: null }), D.wearKg({ day: day(0), clothed: true, wear: ["inner"] }));
+    /* 推移の点：食前は白抜き、ほかは塗り。出どころの印（is-health）は無い。 */
+    KN.screens.diet.render();
+    await new Promise((r) => setTimeout(r, 200));
+    const dots = [...document.querySelectorAll("#screen-diet .diet-dot")].map((c) => c.classList.contains("is-before"));
+    return { kgs: pts.map((p) => p.kg), measured: pts.map((p) => p.measured), raw: recs.map((w) => w.kg),
+      wear: recs.map((w) => w.wear), summer, noW, dots,
+      health: document.querySelectorAll("#screen-diet .diet-dot.is-health").length };
+  });
+  t.check("服を引く：層と重さが分かる日だけ引く（前からの着衣ありは引かない）",
+    JSON.stringify(wearOut.kgs) === "[69.4,70,70]" && JSON.stringify(wearOut.measured) === "[70,70,70]", JSON.stringify(wearOut));
+  t.check("服を引く：記録の kg は量ったまま・着衣なしなら層は残らない",
+    JSON.stringify(wearOut.raw) === "[70,70,70]" && JSON.stringify(wearOut.wear) === '[["under","pajama"],null,null]', JSON.stringify(wearOut));
+  t.check("服を引く：パジャマは6〜9月が夏の重さ・量っていない層は引かない", wearOut.summer === 0.3 && wearOut.noW === null, JSON.stringify(wearOut));
+  t.check("推移の点：食前は白抜き・食後は塗り・出どころの印なし",
+    JSON.stringify(wearOut.dots) === "[true,false,true]" && wearOut.health === 0, JSON.stringify(wearOut));
+
+  /* 体重の紙：服装は「なし」と三つの層の札（絵つき）。押すと層が付き、引く重さがラベルの横に出て、保存される。 */
+  const sheetOut = await page.evaluate(async () => {
+    KN.store.setGoal({ wearInnerG: 200 });
+    KN.screens.diet.openWeightSheet(null);
+    await new Promise((r) => setTimeout(r, 300));
+    const sh = document.querySelector(".sheet.is-open");
+    const chips = [...sh.querySelectorAll(".js-wear .chip")];
+    const out = { ids: chips.map((c) => c.dataset.id), ico: chips.map((c) => !!c.querySelector("svg")) };
+    sh.querySelector(".js-kg").value = "65.0";
+    const press = (id) => sh.querySelector(`.js-wear .chip[data-id="${id}"]`).click();
+    press("none"); press("under"); press("inner");
+    out.pressed = chips.map((c) => c.getAttribute("aria-pressed"));
+    out.off = sh.querySelector(".js-wear-off").textContent.trim();
+    sh.querySelector(".js-save").click();
+    await new Promise((r) => setTimeout(r, 300));
+    const w = KN.store.latestWeight();
+    out.saved = { kg: w.kg, clothed: w.clothed, wear: w.wear };
+    return out;
+  });
+  t.check("体重の紙：服装は なし・下着・長袖下着・パジャマ（層に絵）",
+    JSON.stringify(sheetOut.ids) === '["none","under","inner","pajama"]' && JSON.stringify(sheetOut.ico) === "[false,true,true,true]", JSON.stringify(sheetOut));
+  t.check("体重の紙：層を押すと「なし」が外れ、引く重さが出て、保存される",
+    JSON.stringify(sheetOut.pressed) === '["false","true","true","false"]' && sheetOut.off === "−0.3kg"
+      && sheetOut.saved.kg === 65 && sheetOut.saved.clothed === true && JSON.stringify(sheetOut.saved.wear) === '["under","inner"]',
+    JSON.stringify(sheetOut));
   await page.waitForTimeout(300);
 
   /* ---- 記録を変えない ---- */

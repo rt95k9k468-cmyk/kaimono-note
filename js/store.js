@@ -266,6 +266,9 @@
            ——頑張るほど遠のく目盛りは、目盛りとして間違っています。
            固定の線なら超えられますし、超えたぶんも見えます。 */
         stepsTarget: null, burnTarget: null, sleepTarget: null,
+        /* 服の重さ（g）。体重の線・平均は、量った値から着ていた層の重さを引いて描く（記録の wear）。
+           null は「量っていない」——その層を着た日は引かない。パジャマは夏（6〜9月）と冬で別、空ならもう一方。 */
+        wearUnderG: null, wearInnerG: null, wearPajamaG: null, wearPajamaSummerG: null,
       },
       /* 最後にヘルスケアを取り込んだ時刻と、そのとき入った件数。
          lockedAt は「読めない便が届いた時刻」——iPhoneがロックされている
@@ -320,6 +323,12 @@
          分からないものは分からないままにしておきます。 */
       meal: (w.meal === "before" || w.meal === "after") ? w.meal : null,
       clothed: w.clothed === true ? true : (w.clothed === false ? false : null),
+      /* 着ていた層（"under" 下着・"inner" 長袖下着・"pajama"）。clothed が true のときだけ意味を持つ——
+         古い版が着衣を「なし」「未記入」に直すと、ここは残っても clothed に従って消える。
+         null は「層を書いていない」（前からの「着衣あり」はこれ。重さが分からないので引かない）。 */
+      wear: w.clothed === true && Array.isArray(w.wear)
+        ? [...new Set(w.wear.filter((x) => typeof x === "string" && x && x.length <= 20))].slice(0, 8)
+        : null,
       source: w.source === "health" ? "health" : "manual",
       externalId: typeof w.externalId === "string" ? w.externalId : null,
       importedAt: w.importedAt || null,
@@ -636,6 +645,10 @@
     ["avgWindowDays", "trendWindowDays"].forEach((k) => {
       const n = posNum(out.goal[k]);
       out.goal[k] = n == null ? null : Math.min(90, Math.round(n));
+    });
+    ["wearUnderG", "wearInnerG", "wearPajamaG", "wearPajamaSummerG"].forEach((k) => {
+      const n = posNum(out.goal[k]);
+      out.goal[k] = n == null ? null : Math.min(5000, Math.round(n));
     });
     return out;
   }
@@ -4080,11 +4093,11 @@
 
   /* --- 体重 --- */
 
-  function addWeight({ day, time, kg, fat, memo, meal, clothed, source, externalId } = {}) {
+  function addWeight({ day, time, kg, fat, memo, meal, clothed, wear, source, externalId } = {}) {
     const rec = cleanWeight({
       day: day || KN.util.todayKey(),
       time: time || KN.util.nowTime(),
-      kg, fat, memo, meal, clothed, source, externalId,
+      kg, fat, memo, meal, clothed, wear, source, externalId,
       importedAt: source === "health" ? new Date().toISOString() : null,
     }, 0);
     if (!rec) return null;
@@ -4132,7 +4145,8 @@
    */
   function lastWeightCondition() {
     const found = sortedWeights().find((w) => w.meal != null || w.clothed != null);
-    return found ? { meal: found.meal, clothed: found.clothed } : { meal: null, clothed: null };
+    return found ? { meal: found.meal, clothed: found.clothed, wear: found.wear || null }
+      : { meal: null, clothed: null, wear: null };
   }
 
   /* --- 食事 --- */
