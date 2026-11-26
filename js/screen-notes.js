@@ -1476,16 +1476,22 @@
     const selNow = () => (lv ? (live.sel() || lastSel) : [textIn.selectionStart, textIn.selectionEnd]);
     const setSel = (s, e) => { if (lv) live.place(s, e); else textIn.setSelectionRange(s, e); };
     const paintView = () => { F.render(textIn.value, viewEl); paintPics(); paintCover(); paintToc(); };
-    /* 口絵（意3 ④）：一枚目の画像を題の上に。一覧の表紙（picOf）と同じ出どころ・同じ塗り。鍵のあいだは組まない。 */
+    /* 口絵（意3 ④）：一枚目の画像を題の上に。一覧の表紙（picOf）と同じ出どころ・同じ塗り。鍵のあいだは組まない。
+       読めるまで枠だけ取る（is-wait）——開いてから絵が出ると、題と本文が一コマで約190px 下へ跳んだ。読めない画像なら枠を畳む。 */
     const coverEl = body.querySelector(".js-cover");
     const paintCover = () => {
       const I = KN.noteImg;
       const id = (!(KN.lock && KN.lock.hides("notes")) && I && I.idsIn(textIn.value)[0]) || "";
       if ((coverEl.dataset.pic || "") === id) return;
       coverEl.classList.remove("is-pic");
+      coverEl.classList.toggle("is-wait", !!id);
       coverEl.dataset.pic = id;
       if (!id) return;
-      const put = (v) => { if (v && v.url && coverEl.dataset.pic === id) { U.setVar(coverEl, "--pic", `url("${v.url}")`); coverEl.classList.add("is-pic"); } };
+      const put = (v) => {
+        if (coverEl.dataset.pic !== id) return;
+        coverEl.classList.remove("is-wait");
+        if (v && v.url) { U.setVar(coverEl, "--pic", `url("${v.url}")`); coverEl.classList.add("is-pic"); }
+      };
       if (I.known(id)) put(I.known(id)); else I.look(id).then(put);
     };
     /* 画像の行（段5。docs/image-design.md）：幅いっぱいの画像。見つからない・入れ物が開かない日は、

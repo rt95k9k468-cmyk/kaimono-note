@@ -4997,9 +4997,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   outline: none;
 }
 .note-title-in { font-size: var(--fs-xl); font-weight: var(--fw-bold); }
-/* 口絵（意3 ④。screen-notes.js の paintCover）：一枚目の画像を題の上に。読めるまで出さない。 */
+/* 口絵（意3 ④。screen-notes.js の paintCover）：一枚目の画像を題の上に。読めるまでは絵の台の色で枠だけ（題を跳ばさない）。 */
 .note-cover { display: none; }
-.note-cover.is-pic { display: block; aspect-ratio: 2 / 1; max-height: 240px; border-radius: var(--r-lg); background: var(--pic) center / cover no-repeat; }
+.note-cover.is-wait,
+.note-cover.is-pic { display: block; aspect-ratio: 2 / 1; max-height: 240px; border-radius: var(--r-lg); }
+.note-cover.is-wait { background: var(--c-surface-2); }
+.note-cover.is-pic { background: var(--pic) center / cover no-repeat; }
 /* 書く紙の題は折り返す textarea（screen-notes.js の growTitle）。 */
 textarea.note-title-in {
   display: block;

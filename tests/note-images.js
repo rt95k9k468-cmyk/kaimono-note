@@ -8,7 +8,7 @@
    道具の絵が無い・ノートは書ける／書き出し（zip に images/<id>.jpg と相対の参照・まとめる md は打ったまま）／
    Dropbox（JSON に画像が入らない・画像は一度だけ・戻すと手元に無い画像を読む・名前とハッシュが違えば
    書かない）／plain・検索・カードの冒頭が参照を出さない・http の画像は画像にならず fetch もしない／
-   段5より前のノートは読み込みの前後で同じ・入れ物の版は1のまま／展開の時点で縮める（守5：向き6・小さい写真・使えない端末）。
+   段5より前のノートは読み込みの前後で同じ・入れ物の版は1のまま／口絵は読めるまで枠だけ（題が跳ばない）／展開の時点で縮める（守5：向き6・小さい写真・使えない端末）。
 
    画像は台本の中で canvas から作る。本物の Dropbox には繋がない（page.route）。
 
@@ -397,12 +397,33 @@ const IMG_DB = "kaimono-note-images";
   const r6 = await page.evaluate(() => KN.noteImg.sweep());
   t.check("ふだんの日なら同じ画像は消える（止めていたのは条件）", r6 && r6.gone === 1 && !(await imgKeys()).some((x) => x.id === Q));
 
+  /* 口絵は読めるまで枠だけ取る：一覧を通らず開くと（リンク・さがす・起動のすぐ後）絵の読み出しが遅れ、出た拍に題と本文が約190px 跳んだ。
+     読み出しを止めて開き、放して比べる（箱は offset で。開く動きの縮尺に左右されない）。 */
+  await page.click('.tab[data-tab="todo"]');
+  await settled("todo");
+  await reload();
+  await page.evaluate(() => { const I = KN.noteImg, look = I.look; window.__hold = new Promise((r) => { window.__go = r; }); I.look = (id) => window.__hold.then(() => look(id)); });
+  await page.evaluate((i) => KN.screens.notes.open(i), ids.a);
+  await page.waitForSelector(".sheet.is-note.is-open .js-view:not([hidden])");
+  const coverAt = () => page.evaluate(() => {
+    const s = document.querySelector(".sheet.is-note.is-open"), c = s.querySelector(".js-cover");
+    return { h: c.offsetHeight, wait: c.classList.contains("is-wait"), pic: c.classList.contains("is-pic"), ti: s.querySelector(".js-title").offsetTop };
+  });
+  const held = await coverAt();
+  await page.evaluate(() => window.__go());
+  await page.waitForSelector(".sheet.is-note.is-open .js-cover.is-pic", { timeout: 4000 }).catch(() => {});
+  const got = await coverAt();
+  t.check("口絵は読めるまで枠だけ取り、読めても題は動かない", held.wait && held.h > 100 && got.pic && !got.wait && got.h === held.h && got.ti === held.ti,
+    JSON.stringify({ held, got }));
+  await closeSheet();
+
   /* ---- 7. 見つからない ---- */
   const body7 = await page.evaluate((i) => KN.notes.get(i).body, ids.a);
   await dropImg(P);
   await reload();
   await openNote(ids.a);
   await page.waitForSelector(".sheet.is-note.is-open .js-view .nv-img.is-gone svg", { timeout: 4000 }).catch(() => {});
+  t.check("口絵は枠のまま残らない（読めたら敷く・読めなければ畳む）", await page.evaluate(() => !document.querySelector(".sheet.is-note.is-open .js-cover.is-wait")));
   const gone7 = await page.evaluate(() => {
     const g = document.querySelector(".sheet.is-note.is-open .js-view .nv-img.is-gone");
     return g ? { text: g.textContent.trim(), svg: !!g.querySelector("svg") } : null;
