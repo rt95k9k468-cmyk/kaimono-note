@@ -1,5 +1,5 @@
 /* 空の画面に説明の一文を置かない（roadmap-3.2 の H2。2026年10月17日）。買うもの・価格の二つ。
-   題には text-wrap: balance（「す。」だけの行を作らない）。
+   題には text-wrap: balance（「す。」だけの行を作らない）。題は「〜はありません」の短い形（点検30、2026年11月25日）。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/empty-no-text.js */
 const { open, checker } = require("./lib");
 
@@ -14,11 +14,12 @@ const { open, checker } = require("./lib");
         const scr = document.querySelector(`#screen-${n}`);
         const t = scr.querySelector(".empty .empty-title");
         return { empty: !!scr.querySelector(".empty"), text: !!scr.querySelector(".empty-text"),
-          wrap: t ? getComputedStyle(t).textWrap : "" };
+          wrap: t ? getComputedStyle(t).textWrap : "", title: t ? t.textContent.trim() : "" };
       }, name);
       c.check(`${name} ${vp.width}：空の画面が出る`, r.empty);
       c.check(`${name} ${vp.width}：説明の一文は出さない`, !r.text);
       c.check(`${name} ${vp.width}：題は balance`, r.wrap === "balance", r.wrap);
+      c.check(`${name} ${vp.width}：題は「〜はありません」`, /^\S+はありません$/.test(r.title), r.title);
     }
     c.check(`エラーなし ${vp.width}`, errors.length === 0, errors.join("|"));
     await browser.close();

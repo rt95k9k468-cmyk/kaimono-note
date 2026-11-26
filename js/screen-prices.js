@@ -147,7 +147,7 @@
       els.body.append(node(html`
         <div class="empty">
           <div class="empty-art">${KN.util.raw(KN.emptyArt.priceTag)}</div>
-          <h2 class="empty-title">商品がまだありません</h2>
+          <h2 class="empty-title">商品はありません</h2>
         </div>
       `));
       return;

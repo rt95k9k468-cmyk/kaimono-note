@@ -822,7 +822,7 @@
     const add = node(html`<div class="notes-list notes-asks is-new"><div class="note-row is-card is-ask"><button class="note-open notes-ask-new js-ask-new">${icon("plus")}<span class="note-t">問いをつくる</span></button></div></div>`);
     add.querySelector(".js-ask-new").addEventListener("click", () => { KN.motion.fire("select"); makeAsk(add.firstElementChild); });
     box.append(add);
-    if (!rows.length && !yet.length && !restYet.length && !noYet.length) { box.append(node(html`<p class="notes-asks-empty">問いはまだありません</p>`)); return; }
+    if (!rows.length && !yet.length && !restYet.length && !noYet.length) { box.append(node(html`<p class="notes-asks-empty">問いはありません</p>`)); return; }
 
     const card = (r) => {
       const where = r.n ? (headOf(r.n) || "ノート") : `${U.formatDate(`${r.day}T00:00`)} の日記`;

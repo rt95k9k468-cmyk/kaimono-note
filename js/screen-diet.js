@@ -1011,7 +1011,7 @@
     if (pts.length < 2) {
       return node(html`
         <div class="empty diet-empty">
-          <div class="empty-text">${pts.length ? "線は2日ぶんから引けます。" : "この期間の記録がありません。"}</div>
+          <div class="empty-text">${pts.length ? "線は2日ぶんから引けます。" : "記録はありません"}</div>
         </div>
       `);
     }

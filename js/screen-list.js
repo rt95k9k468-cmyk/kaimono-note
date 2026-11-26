@@ -1195,7 +1195,7 @@
     const wrap = node(html`
       <div class="empty">
         <div class="empty-art">${KN.util.raw(KN.emptyArt.basket)}</div>
-        <h2 class="empty-title">買うものを追加しましょう</h2>
+        <h2 class="empty-title">買うものはありません</h2>
         <button class="btn btn-soft js-sample mt-2">サンプルを入れて試す</button>
       </div>
     `);
