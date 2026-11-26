@@ -489,22 +489,34 @@ const AT = new Date(2026, 9, 6, 12, 34);
     folded: [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => p.classList.contains("is-folded")),
     tools: [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => { const a = p.querySelector(".arc-post-acts");
       return !!a && getComputedStyle(a).display !== "none"; }) }));
+  /* 道具は器ごと伸び縮み（11月26日の点検。motion の reveal）：行の高さの動きが終わるまで待って読む。 */
+  const settle = () => page.waitForFunction(() => [...document.querySelectorAll("#screen-archive .arc-post")]
+    .every((p) => !p.getAnimations().length), null, { timeout: 3000 });
   const tap0 = await tapState();
   t.check("道具は押すまで出ない", tap0.tools.every((x) => !x), JSON.stringify(tap0));
   await page.click("#screen-archive .arc-post[data-k=\"2\"] .arc-post-text");
-  await page.waitForTimeout(200);
+  const grows = await page.evaluate(() => document.querySelector("#screen-archive .arc-post[data-k=\"2\"]").getAnimations()
+    .some((a) => JSON.stringify(a.effect.getKeyframes()).includes("height")));
+  t.check("道具は一コマで出ず、行ごと伸びる", grows);
+  await settle();
   const tap1 = await tapState();
   t.check("言葉の行を押すと道具（畳みは変えない・書く紙は開かない）", !tap1.sheet && tap1.folded[2] === false && tap1.tools[2] && !tap1.tools[1], JSON.stringify(tap1));
+  /* 隣へ移すと片方が伸び片方が縮む——同じ曲線なのでカードの背は揺れない（曲線が違うと一度 40px ほど伸びて戻った）。 */
+  await page.evaluate(() => { const card = document.querySelector("#screen-archive .arc-log-row.is-chat"); window.__ch = [];
+    const t0 = performance.now(); const tick = () => { window.__ch.push(card.getBoundingClientRect().height);
+      if (performance.now() - t0 < 500) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
   await page.click("#screen-archive .arc-post[data-k=\"1\"] .arc-post-text");
-  await page.waitForTimeout(200);
+  await settle();
   const tap2 = await tapState();
   t.check("ほかの行を押すと道具はそちらへ", !tap2.sheet && tap2.tools[1] && !tap2.tools[2], JSON.stringify(tap2));
+  const sway = await page.evaluate(() => Math.max(...window.__ch) - Math.min(...window.__ch));
+  t.check("…移るあいだカードの背は揺れない", sway <= 2, `${sway.toFixed(1)}px`);
   await page.click("#screen-archive .arc-post[data-k=\"1\"] .arc-post-text");
-  await page.waitForTimeout(200);
+  await settle();
   const tap3 = await tapState();
   t.check("もう一度押すと道具は閉じる", !tap3.sheet && tap3.tools.every((x) => !x), JSON.stringify(tap3));
   await page.click("#screen-archive .arc-post[data-k=\"1\"] .arc-post-text");
-  await page.waitForTimeout(200);
+  await settle();
   const acts = await page.evaluate(() => [...document.querySelectorAll("#screen-archive .arc-log-row.is-chat .arc-post")].map((p) => {
     const a = p.querySelector(".arc-post-acts");
     return { has: !!a, names: a ? [...a.querySelectorAll("button")].map((b) => b.textContent.trim()).join("・") : "",

@@ -665,6 +665,26 @@
       if (!opening) d.open = false;
     };
   }
+  /* 行の中の段（daily の一件の道具ほか）を出し入れするときも、器ごと伸び縮みする（上の fold と同じ形）。
+     set(v) が姿を替える。閉じるときは縮み終わるまで中身を見せておく。part は浮かんで入る中身。 */
+  const revealing = new WeakMap();
+  function reveal(el, on, set, part) {
+    const h0 = el.isConnected ? el.getBoundingClientRect().height : 0;
+    const was = revealing.get(el);
+    if (was) { was.cancel(); revealing.delete(el); }
+    set(on);
+    if (still() || !h0) return;
+    const h1 = el.getBoundingClientRect().height;
+    if (Math.abs(h1 - h0) < 1) return;
+    if (!on) set(true);
+    /* 出すのも畳むのも同じ曲線：隣の行へ移すと片方が伸び片方が縮む。曲線が違うと足し引きがずれて、
+       カードごと一度 40px ほど伸びてから戻っていた。 */
+    const timing = { duration: ms("--m-grow"), easing: ease("--ease-out") };
+    const run = el.animate([{ height: `${h0}px`, overflow: "clip" }, { height: `${h1}px`, overflow: "clip" }], timing);
+    if (part) part.animate(on ? [{ opacity: 0, translate: "0 -6px" }, { opacity: 1, translate: "0 0" }] : [{ opacity: 1 }, { opacity: 0 }], timing);
+    revealing.set(el, run);
+    run.onfinish = () => { revealing.delete(el); if (!on) set(false); };
+  }
   document.addEventListener("click", (e) => {
     const s = e.target && e.target.closest && e.target.closest("summary");
     if (!s || still() || e.defaultPrevented) return;
@@ -712,7 +732,7 @@
 
   /** 送りの behavior。JS で "smooth" と書いた送りはブラウザが「動きを減らす」でも止めないので、ここを通す（P7）。 */
   const smooth = () => (still() ? "auto" : "smooth");
-  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, smooth, feel, arrive, onArrive, depart, warm, wakeSound, EVENTS };
+  KN.motion = { fire, press, ms, ease, curve, glide, rubber, still, smooth, feel, arrive, onArrive, depart, warm, wakeSound, reveal, EVENTS };
 
   /* 指の重さ（roadmap-unify の U4・docs/motion.md の「指の重さは一か所」）。同じ身ぶりは
      どこでも同じ重さ。払いだけ二つ——行き先へ送る（日・面・暦の段）と、閉じる・戻る（紙・

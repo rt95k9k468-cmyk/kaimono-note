@@ -1523,10 +1523,11 @@
       const sel = window.getSelection && window.getSelection();
       return !!(sel && sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode));
     };
+    /* 道具は器ごと伸び縮み（一コマで出て下の行が跳んでいた。11月26日の点検。motion の reveal）。 */
     const setTools = (el, on) => {
-      el.classList.toggle("is-tools", on);
       const tx = el.querySelector(".arc-post-text");
       if (tx) tx.setAttribute("aria-expanded", String(on));
+      KN.motion.reveal(el, on, (v) => el.classList.toggle("is-tools", v), el.querySelector(".arc-post-acts"));
     };
     row.querySelectorAll(".arc-post").forEach((el) => {
       const k = Number(el.dataset.k);
@@ -1567,7 +1568,7 @@
       if (!el.querySelector(".arc-post-acts")) return;
       const toggle = () => {
         if (selecting(el)) return;
-        const on = !el.classList.contains("is-tools");
+        const on = text.getAttribute("aria-expanded") !== "true";   // 縮んでいる途中も is-tools は付いている
         row.querySelectorAll(".arc-post.is-tools").forEach((o) => setTools(o, false));
         setTools(el, on);
         KN.motion.fire("select");
