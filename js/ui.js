@@ -440,7 +440,7 @@
   const seenBox = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
     && r.right > 0 && r.left < window.innerWidth;
 
-  /* 写しに、元の見た目を焼きつける項目（grow.bake の画面だけ）。やることの行は時刻・線・札の置き場・字の太さ・色・縁を
+  /* 写しに、元の見た目を焼きつける項目（grow.bake の紙だけ。やることの行・daily の候の絵）。やることの行は時刻・線・札の置き場・字の太さ・色・縁を
      `.tl-list >`・`#screen-todo` の規則と祖先の変数から得ていて、紙の層へ出した写しでは外れた——時刻が流れに入って札が
      約60px右へ寄り、丸は赤く、閉じ終わる一コマで本物へ跳んでいた（11月26日、一コマずつ撮って）。全部を写すと 700項目×
      20要素で CPU 4倍 120ms かかるので、外へ出すと食い違う項目だけ（行のふつう・いま・ごろ・済みで洗い出した）。 */
@@ -448,7 +448,8 @@
     "width", "height", "min-width", "min-height", "font-size", "line-height", "font-weight", "letter-spacing",
     "padding-top", "padding-right", "padding-bottom", "padding-left", "margin-top", "margin-right", "margin-bottom", "margin-left",
     "border-top-left-radius", "border-top-right-radius", "border-bottom-left-radius", "border-bottom-right-radius",
-    "overflow-x", "overflow-y", "z-index", "background-color", "background-image", "translate", "box-shadow",
+    "overflow-x", "overflow-y", "z-index", "background-color", "background-image", "background-size", "background-position",
+    "translate", "box-shadow",
     "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "color",
     "outline-color", "outline-offset", "outline-style", "outline-width", "list-style-type", "filter", "opacity",
     "align-items", "text-decoration-line"];

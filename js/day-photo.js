@@ -62,7 +62,8 @@
   function show(u, from, label) {
     const sel = from && from.dataset.id ? `.arc-photo[data-id="${CSS.escape(from.dataset.id)}"]` : ".arc-season-art";
     const h = KN.ui.sheet({ title: "", content: node(html`<div class="note-pic"><img alt="" src="${u}"></div>`), cls: "is-pic", pull: () => true,
-      grow: from ? { from, back: () => document.querySelector(`.screen.is-active ${sel}`) } : null });
+      /* bake：額の絵は daily の中の規則から地の絵・大きさを得ていて、紙の層の写しでは灰色の四角になっていた（ui.js の BAKE）。 */
+      grow: from ? { from, bake: true, back: () => document.querySelector(`.screen.is-active ${sel}`) } : null });
     h.el.setAttribute("aria-label", label);
   }
   function view(id, from) {

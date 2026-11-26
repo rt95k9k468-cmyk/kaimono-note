@@ -288,6 +288,20 @@ const ROOT = path.resolve(__dirname, "..");
   c.check("ノートの地（暗い面）：4.5:1 以上（さらに薄く）", cnd.worst >= 4.5 && cnd.tint < 38 && cnd.head >= 3, JSON.stringify(cnd));
   await page.evaluate(() => document.documentElement.removeAttribute("data-theme"));
 
+  /* 過ぎた日の額の絵を押すと全面へ膨らむ。額から出る写しは絵を持つ（ui.js の BAKE）。前は daily の中の規則から地の絵を得て
+     いたので紙の層の写しでは灰色の四角になり、閉じると額が白く抜けたまま約0.3秒残った（11月26日）。 */
+  await page.evaluate(() => { KN.app.showScreen("archive"); KN.screens.archive.goDay(KN.util.shiftDay(KN.util.todayKey(), -3)); });
+  await wait(1200);
+  const ghostArt = await page.evaluate(() => new Promise((ok) => {
+    const art = document.querySelector("#screen-archive .arc-season .arc-season-art");
+    if (!art) { ok("額が無い"); return; }
+    art.click();
+    requestAnimationFrame(() => { const g = document.querySelector(".arc-season-art.sheet-morph"); ok(g ? getComputedStyle(g).backgroundImage.slice(0, 40) : "写しが無い"); });
+  }));
+  c.check("額の絵から膨らむ写しは絵を持つ（灰色の四角にならない）", /^url\(/.test(ghostArt), ghostArt);
+  await page.keyboard.press("Escape");
+  await wait(900);
+
   c.check("daily に評価の言葉を出さない", await page.evaluate(() => !/目標|連続|平均|先月/.test(document.querySelector("#screen-archive").textContent)));
   c.check("ページのエラーが無い", errors.length === 0, errors.join(" / "));
   await browser.close();
