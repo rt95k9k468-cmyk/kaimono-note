@@ -12,7 +12,7 @@
      --attire modern 装い（base.css の「モダン」）を列に足す。「今」はいつも撮る
      --css 'B=.x{…}'          差し替えの style。名前=中身、または 名前=ファイル。何度でも。'B@modern=…' で装いも。「今」（差し替えなし）はいつも撮る
      --empty                  試しの記録を入れない
-     --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）
+     --view 1440x900          窓の大きさ（既定 393x852）。--dpr 1 で倍率（既定 2）。--touch で指の窓（pointer: coarse。電話を横に ほか）
      --out <dir>              置き場（既定 /tmp/kn-shots）
      --page 'tools/x.html#a,…' 見本の頁をそのまま撮る（記録を入れない・並べた一枚は作らない。--view・--dpr は効く）
 
@@ -40,6 +40,7 @@ const EMPTY = process.argv.includes("--empty");
 const [VW, VH] = String(arg("view", "393x852")).split("x").map(Number);
 const VIEW = { width: VW, height: VH };
 const DPR = +arg("dpr", 2);
+const TOUCH = process.argv.includes("--touch") ? { hasTouch: true, isMobile: true } : {};
 const PAGES = list("page", "");
 const VARIANTS = [{ name: "今", css: "" }, ...list("attire", "").map((a) => ({ name: a, css: "", attire: a })), ...all("css").map((s) => {
   const i = s.indexOf("=");
@@ -142,7 +143,7 @@ async function openSheet(which) {
 }
 
 async function shoot(browser, v, combo) {
-  const ctx = await browser.newContext({ serviceWorkers: "block", viewport: VIEW, deviceScaleFactor: DPR });
+  const ctx = await browser.newContext({ serviceWorkers: "block", viewport: VIEW, deviceScaleFactor: DPR, ...TOUCH });
   /* tests/lib.js の open() と同じ前置き：控えのトースト・ノートブックの小窓・やることの面。 */
   await ctx.addInitScript((face) => {
     try {
