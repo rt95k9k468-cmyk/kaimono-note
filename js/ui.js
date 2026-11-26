@@ -2208,14 +2208,14 @@
 
   /* 紙が開いた拍に、帯の上に残っている押せない一言を退ける（書き終えてすぐ＋で次を書くと、前の「保存しました」が
      新しい紙の帯の上に 3.6 秒乗っていた。11月26日の点検）。入ってくる途中の一言（同じ押しで出たもの）は画面の上へ、
-     出ていたものは薄れて下がる。「元に戻す」付きは、紙を開いた押しで下がっている（toast の elsewhere）。 */
+     出ていた短い一言は薄れて下がる。「…しています」・長い文は上へ。「元に戻す」付きは、紙を開いた押しで下がっている（elsewhere）。 */
   function toastsAside() {
     if (!toasts.size || !window.matchMedia("(max-width: 639.98px)").matches) return;
     const root = toastRoot();
     if (root.classList.contains("is-top")) return;
     const young = Date.now() - KN.motion.ms("--m-add");
     let up = false;
-    toasts.forEach((t) => { if (t.acts || t.at > young) up = true; else t.fade(); });
+    toasts.forEach((t) => { if (!t.brief || t.at > young) up = true; else t.fade(); });
     if (up) root.classList.add("is-top");
   }
 
@@ -2256,7 +2256,7 @@
 
     let gone = false, timer = null, left = duration, since = 0;
     const self = {
-      acts: acts.length > 0, at: Date.now(),
+      acts: acts.length > 0, at: Date.now(), brief: duration === TOAST_MS && !stay,
       /* 見えていないあいだは数えない。戻ったら残りから。 */
       pause() { if (timer) { clearTimeout(timer); timer = null; left -= Date.now() - since; } },
       resume() { if (!gone && !stay && !timer) { since = Date.now(); timer = setTimeout(dismiss, Math.max(left, 0)); } },
