@@ -27,6 +27,15 @@ const { open, checker } = require("./lib");
     return KN.app.scrollerOf(scr) === old;
   });
   c.check("同じ5分のうちは紙を組み直さない", kept);
+  /* 暦の段（題を押して 週→月）は紙の中身を変えない（2026年11月26日：設定ごと見分けていて、伸ばすたびに紙を組み直した）。 */
+  const calKept = await page.evaluate(() => {
+    const scr = document.querySelector("#screen-todo");
+    const old = KN.app.scrollerOf(scr);
+    KN.store.setCalPref("todo", { open: !KN.store.calPrefs("todo").open });
+    return KN.app.scrollerOf(scr) === old;
+  });
+  c.check("暦を伸ばす・畳むで紙を組み直さない", calKept);
+  await page.evaluate(() => KN.store.setCalPref("todo", { open: !KN.store.calPrefs("todo").open }));
   await page.clock.setFixedTime(new Date(2026, 9, 6, 9, 45));
   const fell = await page.evaluate(() => {
     const scr = document.querySelector("#screen-todo");

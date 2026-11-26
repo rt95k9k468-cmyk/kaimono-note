@@ -2686,7 +2686,8 @@
       glanceCopyData && glanceCopyData.at, copyLaterOpen, [...copySent.keys()],   // PC の写し（段4の④・②）
       day === todayKey() ? planNow() : "",
       day === todayKey() && KN.screens.archive ? KN.screens.archive.midSig(day) : "",   // 頭の頁（構4a）
-      st.settings,
+      /* 暦の段（calAll。題を押して 暦なし／週／月）は紙の中身を変えない——入れると、暦を伸ばすたびに紙を丸ごと組み直した（CPU 4倍で約300ms）。 */
+      { ...st.settings, calAll: 0 },
       (store.dayLog(day) || {}).wake || "", (store.dayLog(day) || {}).sleep || "",
       [...openSubs].sort(),
       [...shelfOpen].sort(),   // 待つ・いつかの畳み（B1）
