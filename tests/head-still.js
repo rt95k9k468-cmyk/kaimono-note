@@ -559,6 +559,23 @@ const { open, checker } = require("./lib");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
 
+  /* 暦のある席 → ノート：題（日付⇄Notes）は印と同じ拍で薄れはじめ（前は様式が先に決まり、一コマ目で入れ替わっていた）、
+     出ていく暦は紙ごと上がる（ノートの盆は透けるので、裏が無いと暦の字・輪・罫線が写真の上に一、二コマ描かれた。11月26日）。 */
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.evaluate(() => KN.app.showScreen("diet"));
+  await page.waitForTimeout(900);
+  const cross = await page.evaluate(() => new Promise((ok) => {
+    document.querySelector('.tabbar [data-tab="notes"]').click();
+    requestAnimationFrame(() => {
+      const fade = (sel) => document.querySelector(sel).getAnimations().some((a) => a.transitionProperty === "opacity");
+      const cal = document.querySelector("#head .head-cal.is-cal-out");
+      ok({ name: fade("#head .head-name"), day: fade("#head .topbar-day"), paper: cal ? getComputedStyle(cal, "::before").backgroundColor : "暦が出ていかない" });
+    });
+  }));
+  c.check("暦のある席→ノート：題（日付⇄Notes）は動き出しから薄れて入れ替わる", cross.name && cross.day, JSON.stringify(cross));
+  c.check("暦のある席→ノート：出ていく暦は紙を連れて上がる（写真の上に字・罫線を描かない）", /^rgb\(/.test(cross.paper), cross.paper);
+  await page.waitForTimeout(900);
+
   c.check("ページのエラーなし", errors.length === 0, errors.join(" | "));
   await browser.close();
   c.done();

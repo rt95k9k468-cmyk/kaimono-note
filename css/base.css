@@ -775,6 +775,16 @@ a { color: var(--c-primary); }
   pointer-events: none;
   animation: cal-out var(--m-nav) var(--ease-out) forwards;
 }
+/* 出ていく暦は自分の紙を連れて上がる。行き先の盆は透けている（is-bare）ので、裏が無いと暦の字・輪・罫線が写真の上に
+   一、二コマ描かれていた（11月26日、一コマずつ撮って）。紙は盆の元の形（盆の余白ぶん外・上の丸角）で、暦と一緒に薄れる。 */
+.head-cal.is-cal-out::before {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-2)) calc(-1 * var(--sp-2));
+  z-index: -1;
+  background: var(--c-bg);
+  border-radius: 24px 24px 0 0;
+}
 /* 入ってくるほうは、同じ道を逆に。`reverse` にしないこと——曲線まで裏返って `--ease-in` になり、横の流れとずれます。 */
 .head-cal.is-cal-in { animation: cal-in var(--m-nav) var(--ease-out); }
 .panes.is-cal-out { animation: panes-rise var(--m-nav) var(--ease-out); }
@@ -818,7 +828,7 @@ a { color: var(--c-primary); }
 /* 薄れたものには Tab も読み上げも止まらない（visibility。B3）。 */
 .head.is-notes :is(.topbar-day, .js-go-today, .head-eye) { opacity: 0; pointer-events: none; visibility: hidden; }
 .head.is-notes .js-upcoming { display: none; }
-.head.is-cal-moving :is(.head-name, .topbar-day, .js-go-today, .head-eye) {
+.head:is(.is-cal-moving, .is-name-fade) :is(.head-name, .topbar-day, .js-go-today, .head-eye) {
   transition: opacity var(--m-nav) var(--ease-out), visibility var(--m-nav);
 }
 /* ---- 帯の空（docs/sky.md・js/sky.js） ----
@@ -1069,12 +1079,14 @@ a { color: var(--c-primary); }
   .topbar { padding: var(--safe-t) var(--sp-6) var(--sp-3) var(--sp-8); }
   .head-tray { padding: 14px var(--sp-6) var(--sp-2); }
   .head-cal.is-cal-out { left: var(--sp-6); right: var(--sp-6); }
+  .head-cal.is-cal-out::before { inset: -14px calc(-1 * var(--sp-6)) calc(-1 * var(--sp-2)); }
 }
 @media (min-width: 840px) {
   .deck { --head-top: calc(104px + var(--safe-t)); }
   .topbar { padding: var(--safe-t) 28px 14px 36px; }
   .head-tray { padding-inline: 28px; }
   .head-cal.is-cal-out { left: 28px; right: 28px; }
+  .head-cal.is-cal-out::before { inset-inline: -28px; }
 }
 
 /* ---------------- tab bar ---------------- */

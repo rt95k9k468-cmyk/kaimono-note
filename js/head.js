@@ -135,6 +135,7 @@
      並べ直させてから測ることになります（やることへ移るたびに 約19ms）。まだ何も
      書き換えていない頭で撮れば、前の一拍の配置のまま安く測れます。 */
   let pre = null;
+  let nameT = 0;          // 題の薄れ（is-name-fade）を外す時計
   let fromH = null;       // 出ていく席の暦の置き場の背（enter が pre から引き取り、moveCal が使う）
   /** 席を移る直前（app.js の show の頭）に、出ていく暦の印を写しておく。暦の置き場の背と、背の高い月の
       写真の敷き方も（席を移るときに背が違えば滑らせる——resizeCal）。 */
@@ -162,9 +163,17 @@
        ——配置がまだ前の一拍のままで、測るのが安いので。show() からなら、その頭で
        撮ってあります（上の snapFor）。 */
     snap = id !== owner ? (early ? early.marks : snapMarks()) : null;
+    const was = owner;
     owner = id;
     root.hidden = false;
     const notes = id === "notes";
+    /* 題（日付 ⇄ Notes）の薄れは、印と**同じ拍で**付ける。前は moveCal の is-cal-moving を待っていて、その間の
+       組み立てと paintTabs の測りで様式が先に決まり、題だけ一コマ目で入れ替わっていた（11月26日、一コマずつ撮って）。 */
+    if (was && TABS.includes(was) && notes !== root.classList.contains("is-notes") && !KN.motion.still()) {
+      root.classList.add("is-name-fade");
+      clearTimeout(nameT);
+      nameT = setTimeout(() => root.classList.remove("is-name-fade"), KN.motion.ms("--m-nav") + 40);
+    }
     root.classList.toggle("is-notes", notes);
     els.name.setAttribute("aria-hidden", String(!notes));
     /* 虫めがねは一つなので、光るかどうかは入ってくるタブの窓で決めます
