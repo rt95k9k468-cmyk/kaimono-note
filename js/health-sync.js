@@ -163,6 +163,26 @@
     return n > 100 ? n / 1000 : n;
   }
 
+  /* どの日のぶんか。ショートカットの「日付を書式設定」は選ぶ形で「2026-11-26」「2026/11/26」
+     「2026年11月26日 木曜日」「今日」「昨日」・ISO 8601・RFC 2822 を出す。年・月・日の並びは自分で読む
+     （iPhone の Safari は「2026-8-5」を new Date で読めない）。時刻つきの ISO だけは new Date で端末の日へ。
+     **読めなければ null**——前は黙って今日にしていて、昨日の便が今日の歩数・睡眠を上書きできた。 */
+  const REL_DAY = { 今日: 0, きょう: 0, today: 0, 昨日: -1, きのう: -1, yesterday: -1, 一昨日: -2, おととい: -2 };
+  function dayOf(raw) {
+    if (typeof raw === "number") return Number.isFinite(raw) ? U.dayKey(new Date(raw)) || null : null;
+    const s = String(raw == null ? "" : raw).normalize("NFKC").trim();
+    if (!s) return null;
+    const rel = REL_DAY[s.toLowerCase()];
+    if (rel != null) return U.shiftDay(U.todayKey(), rel);
+    const m = /T\d{1,2}:\d{2}/.test(s) ? null : /^(\d{4})\s*[-/.年]\s*(\d{1,2})\s*[-/.月]\s*(\d{1,2})(?!\d)/.exec(s);
+    if (m) {
+      const [y, mo, d] = [+m[1], +m[2], +m[3]];
+      const at = new Date(y, mo - 1, d);
+      return at.getFullYear() === y && at.getMonth() === mo - 1 && at.getDate() === d ? U.dayKey(at) : null;
+    }
+    return U.dayKey(new Date(s)) || null;
+  }
+
   /* ---------------- かんたん書式 ---------------- */
 
   function parsePlain(text) {
@@ -171,6 +191,7 @@
     let time = null;
     let source = "ヘルスケア";
     let unknown = 0;
+    let badDay = 0;   // 日付が読めずに入れなかった数（その day= から次の day= までの行）
 
     String(text).split(/\r?\n/).forEach((lineRaw) => {
       const line = lineRaw.trim();
@@ -183,13 +204,10 @@
       // 空欄は「取れなかった」。書かなかったのと同じ扱いにします。
       if (!value) return;
 
-      if (key === "day") {
-        const d = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : U.dayKey(new Date(value));
-        if (d) day = d;
-        return;
-      }
+      if (key === "day") { day = dayOf(value); return; }
       if (key === "time") { time = U.isTime(value) ? value : null; return; }
       if (key === "source") { source = value; return; }
+      if (!day) { badDay++; return; }
 
       if (key === "workout") {
         // 名前,分,kcal — 後ろ二つは無くても通します
@@ -209,8 +227,10 @@
       out.push({ type: key, day, time, value: v, source });
     });
 
-    return { samples: out, unknown };
+    return { samples: out, unknown, badDay };
   }
+
+  const BAD_DAY = "日付が読めませんでした（day=2026-11-26 の形で）";
 
   /* ---------------- 睡眠のステージ ----------------
 
@@ -343,12 +363,15 @@
       : Array.isArray(obj.data) ? obj.data : null;
     if (!rows) return null;
     const out = [];
+    let badDay = 0;
     rows.forEach((r) => {
       if (!r || typeof r !== "object") return;
       const type = normKey(r.type || r.name || r.identifier);
       if (!type || type === "day" || type === "time" || type === "source") return;
-      const day = /^\d{4}-\d{2}-\d{2}$/.test(r.day) ? r.day
-        : (r.date || r.start || r.startDate ? U.dayKey(new Date(r.date || r.start || r.startDate)) : U.todayKey());
+      // 日付の書いてない一件は今日のぶん。書いてあって読めなければ入れない（dayOf）。
+      const given = [r.day, r.date, r.start, r.startDate].find((v) => v != null && v !== "");
+      const day = given == null ? U.todayKey() : dayOf(given);
+      if (!day) { badDay++; return; }
       const raw = r.value != null ? r.value : r.qty != null ? r.qty : r.amount;
       const value = type === "sleep" ? toMinutes(raw)
         : type === "distance" ? toKm(raw)
@@ -366,7 +389,7 @@
           : (typeof r.externalId === "string" ? r.externalId : null),
       });
     });
-    return { samples: out, unknown: rows.length - out.length };
+    return { samples: out, unknown: rows.length - out.length - badDay, badDay };
   }
 
   /* ---------------- 取り込み ---------------- */
@@ -483,9 +506,9 @@
         ? (s.label || "") + (s.kcal != null ? ` ・ ${s.kcal}kcal` : "") : "",
     }));
     if (!rows.length) {
-      return { ok: false, error: "読めるものがありませんでした", rows: [], unknown: parsed.unknown || 0 };
+      return { ok: false, error: parsed.badDay ? BAD_DAY : "読めるものがありませんでした", rows: [], unknown: parsed.unknown || 0 };
     }
-    return { ok: true, rows, unknown: parsed.unknown || 0 };
+    return { ok: true, rows, unknown: parsed.unknown || 0, badDay: parsed.badDay || 0 };
   }
 
   /* 便と便の仕切り（中継所が付けます）。ASCII の RS。 */
@@ -567,7 +590,8 @@
     }
 
     if (!parsed.samples.length) {
-      return { ok: false, error: "取り込めるデータが見つかりませんでした", added: 0, updated: 0, skipped: parsed.unknown || 0 };
+      return { ok: false, error: parsed.badDay ? BAD_DAY : "取り込めるデータが見つかりませんでした",
+               added: 0, updated: 0, skipped: (parsed.unknown || 0) + (parsed.badDay || 0) };
     }
     parsed = { ...parsed, samples: foldSamples(parsed.samples) };
 
@@ -634,7 +658,7 @@
     });
 
     store.markSynced({ added, updated });
-    return { ok: true, added, updated, kept, skipped: skipped + (parsed.unknown || 0),
+    return { ok: true, added, updated, kept, skipped: skipped + (parsed.unknown || 0) + (parsed.badDay || 0),
              days: [...days].sort(), byType };
   }
 
@@ -809,6 +833,6 @@
     importText, importFromClipboard, describe, preview,
     locked, LOCKED_MSG,
     clipboardState, explain, readClipboard,
-    parsePlain, parseJson, foldSamples, toMinutes, toKm, UNITS, TYPE_LABEL,
+    parsePlain, parseJson, foldSamples, toMinutes, toKm, dayOf, UNITS, TYPE_LABEL,
   };
 })();

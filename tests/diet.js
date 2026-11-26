@@ -49,6 +49,21 @@ const { open, checker } = require("./lib");
   /* 歩行距離：数に続く m はメートル（前は「50m」を 50km と読んだ）。 */
   const kms = await page.evaluate(() => ["50m", "6100 m", "6.1km", "6.1", "800", "3,200メートル"].map((s) => KN.healthSync.toKm(s)).join(","));
   t.check("歩行距離の m・km・単位なしの読み", kms === "0.05,6.1,6.1,6.1,0.8,3.2", kms);
+  /* 取り込みの日付：ショートカットの書式の形を読む。読めない日付は今日へ入れない（前は黙って今日にし、今日の歩数を上書きできた）。 */
+  const days = await page.evaluate(() => ["2026-09-27", "2026/9/27", "2026年9月27日 日曜日", "２０２６－０９－２７", "昨日", "2026-09-27T12:30:00+09:00",
+    "2026-02-30", "あさって", ""].map((s) => KN.healthSync.dayOf(s) || "×").join(","));
+  t.check("取り込みの日付は年月日・スラッシュ・全角・昨日・ISO を読み、無い日は読まない", days === "2026-09-27,2026-09-27,2026-09-27,2026-09-27,2026-09-28,2026-09-27,×,×,×", days);
+  const bad = await page.evaluate(() => {
+    const H = KN.healthSync, S = KN.store, today = KN.util.todayKey();
+    const a = H.importText("day=あさって\nsteps=5000", { auto: true });
+    const b = H.importText("day=2026-09-27\nsteps=100\nday=ばつ\nsteps=200");
+    const steps = (d) => S.healthOfDay(d, "steps").map((h) => h.value).join("+") || "なし";
+    const out = { a: a.ok + "|" + a.error, b: b.ok + "|" + b.skipped, today: steps(today), d27: steps("2026-09-27") };
+    S.update((s) => { s.diet.health = s.diet.health.filter((h) => h.type !== "steps"); });
+    return out;
+  });
+  t.check("読めない日付の便は今日の歩数にならず、読めた日の行だけ入る",
+    bad.a.startsWith("false|日付が読めません") && bad.b === "true|1" && bad.today === "なし" && bad.d27 === "100", JSON.stringify(bad));
 
   /* ---- 記録する ---- */
   await plusPick("体重");
