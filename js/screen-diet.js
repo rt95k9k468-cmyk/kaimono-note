@@ -2203,8 +2203,10 @@
       if (!q.value.trim() && !picked.length) return;
 
       if (q.value.trim() && !typed.length) {
-        readBox.append(node(html`
-          <p class="diet-note is-warn">読めませんでした（例：ビール350ml 2本）</p>`));
+        /* ノンアルは量があっても数えない（drinks.js の NA）。読めなかったのではないので、警告にしない。 */
+        readBox.append(DR.nonAlc && DR.nonAlc(q.value)
+          ? node(html`<p class="diet-note">ノンアルは数えません</p>`)
+          : node(html`<p class="diet-note is-warn">読めませんでした（例：ビール350ml 2本）</p>`));
         if (!picked.length) return;
       }
       const t = DR.totals(items);

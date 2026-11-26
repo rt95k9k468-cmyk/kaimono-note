@@ -98,6 +98,9 @@
   /* 飲んでいない、と書いたとき。ここを読み落として「お酒」として
      記録すると、飲んでいない日が飲んだ日になります。 */
   const NONE = /(飲|呑|の)(ん|ま|み)?(で|は)?(い)?な(い|かった)|飲まず|禁酒|休肝|抜き|ゼロ|0本|なし|無し|ノンアル|ノンアルコール/;
+  /* ノンアル。量が書いてあっても飲んでいない（2026年11月26日、利用者が選んだ。前は「ノンアルビール 350ml」が
+     度数5%のビールとして数えられた）。「ストロングゼロ」「糖質ゼロ」はお酒なので、ここには入れない。 */
+  const NA = /ノンアル|のんある|アルコールフリー|alcohol[\s-]*free|0\.00\s*%|オールフリー|ドライゼロ|ゼロイチ/i;
 
   const KANJI = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10, 半: 0.5 };
 
@@ -130,7 +133,8 @@
     const out = [];
     parts.forEach((p) => {
       const pieces = p.split(/と(?=[^と]*$)|と/);
-      if (pieces.length > 1 && pieces.every((x) => kindOf(x))) out.push(...pieces.map((x) => x.trim()));
+      // ノンアルの一杯も酒の名前と同じに切る（「ビール2本とノンアル1本」のビールを残す）。
+      if (pieces.length > 1 && pieces.every((x) => kindOf(x) || NA.test(x))) out.push(...pieces.map((x) => x.trim()));
       else out.push(p);
     });
     return out.filter(Boolean);
@@ -155,8 +159,9 @@
     /* 全角・半角カナ・ℓ を一つの形に（NFKC）。前は全角の数字だけを直していて、「500ML」「５００ｍＬ」の量が読めなかった。 */
     const t = text.normalize("NFKC");
 
-    // 飲んでいない、と書いてあるなら、何も作りません。
+    // 飲んでいない、と書いてあるなら、何も作りません。ノンアルは量が書いてあっても。
     if (NONE.test(t) && !/\d/.test(t.replace(/0/g, ""))) return null;
+    if (NA.test(t)) return null;
 
     /* 銘柄だけを書くことがあります（「アサヒスーパードライ 350ml 2本」）。
        種類が分からなくても、量か数が書いてあるなら、それはお酒の話です。
@@ -265,7 +270,7 @@
     let unknown = 0;
     parts.forEach((p) => {
       const one = parseOne(p);
-      if (one) items.push(one); else if (p.trim()) unknown++;
+      if (one) items.push(one); else if (p.trim() && !NA.test(p.normalize("NFKC"))) unknown++;
     });
     // 何も切り出せなかったが、一行としてなら読めることがあります。
     if (!items.length) {
@@ -424,6 +429,7 @@
   }
 
   KN.drinks = {
+    nonAlc: (text) => NA.test(String(text || "").normalize("NFKC")),
     KINDS, GLASS, BOTTLE, GUIDE_G, MOOD_MAX_LEN, FAV_MAX,
     kindOf, byId, parse, parseOne, describeItem, totals, moodSuggestions,
     favorites, fromFavorite,

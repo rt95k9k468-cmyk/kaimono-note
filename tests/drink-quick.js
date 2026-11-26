@@ -50,6 +50,10 @@ const { open, checker } = require("./lib");
   const vols = await page.evaluate(() => ["ビール 500ML", "ビール５００ｍＬ 2本", "ハイボール 1.5Ｌ", "ビール 350ml"]
     .map((s) => KN.drinks.parse(s).items[0].volumeMl).join(","));
   c.check("お酒の量は ML・全角の ｍＬ・Ｌ も読む", vols === "500,1000,1500,350", vols);
+  /* ノンアルは量があっても数えない（11月26日、利用者が選んだ）。混ぜて書いた行のお酒は残す。「〜ゼロ」のお酒はお酒。 */
+  const na = await page.evaluate(() => ["ノンアルビール 350ml", "ノンアルコールビール2本", "ビール2本とノンアル1本", "ストロングゼロ 500ml", "糖質ゼロ ビール 350ml"]
+    .map((s) => { const r = KN.drinks.parse(s); return `${r.items.map((i) => i.volumeMl).join("+") || 0}/${r.unknown}`; }).join(" "));
+  c.check("ノンアルは数えない・読めない行にも数えない・お酒の行は残る", na === "0/0 0/0 700/0 500/0 350/0", na);
 
   await page.evaluate(() => KN.app.showScreen("diet"));
   await page.waitForFunction(() => KN.app.activeScreen() === "diet" && document.querySelector("#screen-diet .diet-hero-value"));
@@ -181,6 +185,15 @@ const { open, checker } = require("./lib");
   c.check("週の一行は画面に出ない", await page.evaluate(() => !document.querySelector("#screen-diet .hl-drink-week") && !/350ml 缶で/.test(document.querySelector("#screen-diet").innerText)));
 
   c.check("絵文字なし", await page.evaluate(() => !/\p{Extended_Pictographic}/u.test(document.body.innerText)));
+  /* ノンアルと打ったら「読めませんでした」の警告ではなく、数えないと一言。 */
+  await page.evaluate(() => { KN.screens.diet.openDrinkSheet(KN.util.todayKey()); });
+  await page.waitForTimeout(700);
+  await page.fill(".sheet.is-open .js-q", "ノンアルビール 350ml");
+  await page.waitForTimeout(300);
+  const naSay = await page.evaluate(() => { const r = [...document.querySelectorAll(".sheet.is-open")].pop().querySelector(".js-read");
+    return { t: r.textContent.trim(), warn: !!r.querySelector(".is-warn") }; });
+  c.check("ノンアルは「ノンアルは数えません」（警告にしない）", naSay.t === "ノンアルは数えません" && !naSay.warn, JSON.stringify(naSay));
+  await page.keyboard.press("Escape");
   c.check("ページの例外なし", errors.length === 0, errors.join("\n"));
   await browser.close();
   c.done();
