@@ -46,6 +46,9 @@ const { open, checker } = require("./lib");
     return `${p.name}|${p.qty}|${p.unit}`;
   }).join(" "));
   t.check("食品の一行読みは L・mL・全角の単位も量にする", units === "牛乳|1|l 水|500|ml 牛乳|0.5|l ご飯|150|g 牛乳|200|ml ご飯|150|g", units);
+  /* 歩行距離：数に続く m はメートル（前は「50m」を 50km と読んだ）。 */
+  const kms = await page.evaluate(() => ["50m", "6100 m", "6.1km", "6.1", "800", "3,200メートル"].map((s) => KN.healthSync.toKm(s)).join(","));
+  t.check("歩行距離の m・km・単位なしの読み", kms === "0.05,6.1,6.1,6.1,0.8,3.2", kms);
 
   /* ---- 記録する ---- */
   await plusPick("体重");

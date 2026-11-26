@@ -157,7 +157,8 @@
     const n = toNum(s);
     if (n == null) return null;
     if (/km/i.test(s)) return n;
-    if (/\bm\b|メートル/i.test(s)) return n / 1000;
+    /* 数のすぐ後ろの m（「50m」「6100 m」）。前の \bm\b は数に続く m を拾えず、「50m」を 50km と読んでいた。 */
+    if (/\d\s*m(?![a-z])|メートル/i.test(s)) return n / 1000;
     // 単位なし。100を超える値をkmと読むと、毎日ウルトラマラソンになります。
     return n > 100 ? n / 1000 : n;
   }
