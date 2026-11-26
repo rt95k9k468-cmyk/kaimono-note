@@ -884,7 +884,7 @@
       /* どこから開いても、四隅の丸いカード（＋から開いたのと同じ形）。 */
       card: true,
       grow: rowEl ? {
-        from: rowEl, hide: ".tl-node",
+        from: rowEl, hide: ".tl-node", bake: true,
         back: () => document.querySelector(`.screen.is-active ${rowEl.matches(".tl-row") ? ".tl-row" : ".item-wrap"}`
           + `[data-todo-id="${CSS.escape(todoId)}"]`),
       } : null,

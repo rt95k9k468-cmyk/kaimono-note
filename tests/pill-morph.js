@@ -258,6 +258,30 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(500);
   }
 
+  /* 行の写し（.tl-row.sheet-morph）は紙の層に出ても行と同じ形（ui.js の BAKE）。前は時間割の中の規則と変数が外れ、時刻が
+     流れに入って札が約60px右へ寄り・丸は赤く・LI の印が付き、閉じ終わる一コマで本物へ跳んでいた（11月26日）。 */
+  {
+    const box = await row.locator(".tl-open").boundingBox();
+    await tap(box.x + box.width / 2, box.y + box.height / 2);
+    await page.waitForTimeout(900);
+    const same = await page.evaluate(() => new Promise((ok) => {
+      document.querySelector(".sheet.is-open .js-close").click();
+      setTimeout(() => {
+        const g = document.querySelector(".tl-row.sheet-morph");
+        const real = document.querySelector(`#screen-todo .tl-list > li.tl-row[data-todo-id="${g && g.dataset.todoId}"]`);
+        if (!g || !real) { ok({ missing: true }); return; }
+        const at = (root, sel) => { const e = root.querySelector(sel); const b = e.getBoundingClientRect(), r = root.getBoundingClientRect(); return Math.round(b.left - r.left); };
+        const col = (root) => getComputedStyle(root.querySelector(".check")).borderTopColor;
+        ok({ time: [at(g, ".tl-time"), at(real, ".tl-time")], item: [at(g, ".tl-item"), at(real, ".tl-item")],
+          check: [col(g), col(real)], mark: getComputedStyle(g).listStyleType });
+      }, 120);
+    }));
+    t.check("閉じる途中の行の写しは、時刻・札・丸の色が行と同じ（紙の層でも様式が外れない）",
+      !same.missing && same.time[0] === same.time[1] && same.item[0] === same.item[1] && same.check[0] === same.check[1] && same.mark === "none",
+      JSON.stringify(same));
+    await page.waitForTimeout(600);
+  }
+
   /* 新しく足す紙（＋）には、伸びてくる行が無い。 */
   {
     await page.locator(".screen.is-active .js-open-add, .js-open-add").first().click();

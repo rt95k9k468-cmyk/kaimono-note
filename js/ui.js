@@ -440,10 +440,29 @@
   const seenBox = (r) => r.width && r.height && r.bottom > 0 && r.top < window.innerHeight
     && r.right > 0 && r.left < window.innerWidth;
 
+  /* 写しに、元の見た目を焼きつける項目（grow.bake の画面だけ）。やることの行は時刻・線・札の置き場・字の太さ・色・縁を
+     `.tl-list >`・`#screen-todo` の規則と祖先の変数から得ていて、紙の層へ出した写しでは外れた——時刻が流れに入って札が
+     約60px右へ寄り、丸は赤く、閉じ終わる一コマで本物へ跳んでいた（11月26日、一コマずつ撮って）。全部を写すと 700項目×
+     20要素で CPU 4倍 120ms かかるので、外へ出すと食い違う項目だけ（行のふつう・いま・ごろ・済みで洗い出した）。 */
+  const BAKE = ["position", "left", "top", "right", "bottom", "display", "grid-template-columns", "grid-template-rows",
+    "width", "height", "min-width", "min-height", "font-size", "line-height", "font-weight", "letter-spacing",
+    "padding-top", "padding-right", "padding-bottom", "padding-left", "margin-top", "margin-right", "margin-bottom", "margin-left",
+    "border-top-left-radius", "border-top-right-radius", "border-bottom-left-radius", "border-bottom-right-radius",
+    "overflow-x", "overflow-y", "z-index", "background-color", "background-image", "translate", "box-shadow",
+    "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "color",
+    "outline-color", "outline-offset", "outline-style", "outline-width", "list-style-type", "filter", "opacity",
+    "align-items", "text-decoration-line"];
+  function bake(src, dst) {
+    const cs = getComputedStyle(src);
+    for (const p of BAKE) dst.style.setProperty(p, cs.getPropertyValue(p));
+    for (let i = 0; i < src.children.length && i < dst.children.length; i++) bake(src.children[i], dst.children[i]);
+  }
+
   /** カードの写し（字が薄れて／現れて入れ替わるためのもの）。hide … 写しで隠すもの
-      （やることの行の丸薬。丸薬は自分で頭へ飛ぶので、写しに残すと二つに見える）。 */
-  function cardGhost(card, r, z, hide) {
+      （やることの行の丸薬。丸薬は自分で頭へ飛ぶので、写しに残すと二つに見える）。baked … 元の見た目を焼きつける（BAKE）。 */
+  function cardGhost(card, r, z, hide, baked) {
     const g = card.cloneNode(true);
+    if (baked) bake(card, g);
     g.setAttribute("aria-hidden", "true");
     g.inert = true;
     g.classList.add("sheet-morph");
@@ -505,7 +524,7 @@
       run.finish();
       if (aim && el.contains(aim)) keepAim(aim, e);
     }, { once: true });
-    const g = cardGhost(card, a, z + 1, grow.hide);
+    const g = cardGhost(card, a, z + 1, grow.hide, grow.bake);
     /* 写しは窓の角と同じ速さで滑る（薄れるのは前半で）。先に紙の頭まで着くと、紙が行より上に
        開くとき（やること）、写しが窓の外へ出て上の行に重なっていた。 */
     g.animate([
@@ -560,7 +579,7 @@
     const timing = { duration: KN.motion.ms("--m-settle"), easing: KN.motion.ease("--ease-settle"), fill: "forwards" };
     const run = el.animate(frames(b), timing);
     kids(el).forEach((k) => k.animate([{ opacity: 1 }, { opacity: 0, offset: .5 }, { opacity: 0 }], timing));
-    const g = cardGhost(card, b, z + 1, grow.hide);
+    const g = cardGhost(card, b, z + 1, grow.hide, grow.bake);
     const fade = g.animate([{ opacity: 0 }, { opacity: 0, offset: .4 }, { opacity: 1 }], timing);
     card.style.visibility = "hidden";
 
