@@ -50,6 +50,9 @@ const t = checker("work-plan-fields");
     out.yr = [S.fallsOn(yr, "2027-03-10"), S.fallsOn(yr, "2027-03-11"), S.fallsOn(yr, "2026-04-10")];
     out.yrNext = S.nextDue({ ...yr, due: "2030-03-10" });
     out.leapNext = S.nextDue({ ...yr, due: "2032-02-29" });
+    // 毎月の日にちは丸めない：31日は31日の無い月を飛ばし、30日は2月を飛ばす（前は 30日・28日へ移って居ついた）
+    const mo = (due) => S.nextDue({ repeat: "monthly", repeatDays: [], repeatNth: null, due, skipDays: [] });
+    out.moNext = [mo("2030-10-31"), mo("2031-01-31"), mo("2031-01-30"), mo("2030-10-15"), mo("2031-12-31")];
     // 今週の印
     out.inWeek = S.inWeek({ weekMark: today });
     out.lastWeek = S.inWeek({ weekMark: U.shiftDay(today, -14) });
@@ -78,6 +81,8 @@ const t = checker("work-plan-fields");
   t.check("隔週の次は二週あと", st.biNext === "2030-01-21", st.biNext);
   t.check("毎年は同じ月日だけ", JSON.stringify(st.yr) === "[true,false,false]", JSON.stringify(st.yr));
   t.check("毎年の次は一年あと", st.yrNext === "2031-03-10", st.yrNext);
+  t.check("毎月の31日・30日は、その日の無い月を飛ばす（月末へ丸めない）",
+    JSON.stringify(st.moNext) === JSON.stringify(["2030-12-31", "2031-03-31", "2031-03-30", "2030-11-15", "2032-01-31"]), JSON.stringify(st.moNext));
   t.check("2月29日はうるう年まで飛ぶ", st.leapNext === "2036-02-29", st.leapNext);
   t.check("今週の印は今週だけ", st.inWeek && !st.lastWeek);
   t.check("addTodo が◯週ごと・終わりの日を持つ", st.wAdd[0] === 2 && !!st.wAdd[1], JSON.stringify(st.wAdd));

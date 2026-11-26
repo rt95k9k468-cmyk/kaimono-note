@@ -2868,6 +2868,16 @@
           if (key && key > next) { next = key; return; }
         }
       }
+      /* 日にちの毎月は丸めない（fallsOn と同じ）。31日の用事は、31日の無い月を飛ばす。前は月末へ丸めていて、
+         済ませた拍に due が 30日・28日へ移り、以後ずっとその日に立っていた（2026年11月26日の点検）。 */
+      if (!nth && todo.repeat === "monthly") {
+        const dd = Number(String(todo.due || next).slice(8, 10));
+        const d = U.dayDate(next);
+        for (let m = 1; d && dd && m <= 12; m++) {
+          const probe = new Date(d.getFullYear(), d.getMonth() + m, dd);
+          if (probe.getDate() === dd) { next = U.dayKey(probe); return; }
+        }
+      }
       next = U.shiftMonth(next, 1);
     };
 
