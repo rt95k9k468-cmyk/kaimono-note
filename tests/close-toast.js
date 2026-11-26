@@ -121,6 +121,15 @@ const { open, checker } = require("./lib");
   c.check("品物：名前を直してすぐ閉じても「更新しました」", (await said()) === "更新しました", await said());
   c.check("…名前は残っている", (await page.evaluate((p) => KN.store.getProduct(p).name, pid)) === `${before}2`);
 
+  /* 知らせのボタンは一度きり：フォーカスしたまま Enter を二度押しても、元に戻すは一度だけ走る（11月26日の点検）。 */
+  await clear();
+  await page.evaluate(() => { window.__undo = 0; KN.ui.toast("試しの知らせ", { action: { label: "元に戻す", onClick: () => { window.__undo++; } } }); });
+  await page.focus("#toast-root .toast-action");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(300);
+  c.check("知らせのボタンは Enter の二度押しでも一度だけ", (await page.evaluate(() => window.__undo)) === 1, String(await page.evaluate(() => window.__undo)));
+
   c.check("エラー0", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();

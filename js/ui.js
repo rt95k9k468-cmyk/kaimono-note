@@ -2187,6 +2187,9 @@
         // Stop it reaching the tap-to-dismiss below: the action closes the
         // toast itself, and running both would be doing the same work twice.
         e.stopPropagation();
+        /* 一度きり。消えかけは CSS が押しを止めるが、キーボード（Enter の二度押し）は通るので、二度目の「元に戻す」で
+           同じ一件が二重に戻っていた（品物の紙の「リストから外しました」ほか。2026年11月26日の点検）。 */
+        if (gone) return;
         acts[i].onClick(b);
         dismiss();
       });
