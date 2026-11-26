@@ -161,7 +161,7 @@ const TODAY = "2026-10-06";
     };
   });
   let s = await sec();
-  c.check("欄の名は「時刻なし」（R3。前は「これから」）", /^時刻なし/.test(s.head), s.head);
+  c.check("欄の名は「日付なし」（R3 の「時刻なし」から点検2 で改名。その前は「これから」）", /^日付なし/.test(s.head), s.head);
   c.check("待つ・いつかは畳んで「待つ1」「いつか1」", JSON.stringify(s.folds) === '["待つ1","いつか1"]' && !s.wait.length, JSON.stringify(s));
   c.check("これからの行に待つ・いつかは混ざらない", !s.next.includes("見積もりの返事") && !s.next.includes("ギターを習う")
     && s.next.includes("押し入れの整理"), JSON.stringify(s.next));
