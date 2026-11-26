@@ -144,6 +144,10 @@
    * @param {boolean} [o.recycle] false なら、据えたあとの控えの回し直しと
    *                              先組みをしません（着いてから画面ごと組み直す
    *                              ダイエット）
+   * @param {Function} [o.lift]   (el) => 差し込んだ隣の紙を縦にずらす px（`translate`）。着いた日を据える
+   *                              送り位置が今と違う画面（やることの今日は頭の頁を送って開く）が、着いた
+   *                              瞬間に中身が跳ばないように、払っているあいだから着く位置に見せる。
+   *                              据えるときに外す——送り位置を合わせるのは `commit` の側。
    * @param {Function} [o.busy]   () => true なら、この指は取りません
    * @param {Function} [o.lock]   (bool) 掴んでいるあいだ、組み直しを止める
    * @returns {{warm:Function, drop:Function}} 控えの組み直し口。画面の側が
@@ -307,6 +311,11 @@
         } else {
           track.append(el);
         }
+        if (o.lift) {
+          el.style.translate = "";   // 控えから戻った一枚は前のずらしを持っている
+          const y = Math.round(o.lift(el) || 0);
+          if (y) el.style.translate = `0 ${y}px`;
+        }
       }
       // 並べた直後に、同じ拍で位置を書きます（一拍も見せません）。
       paint();
@@ -356,6 +365,7 @@
       /* 覗き見の一枚ではなく、**いま見ている紙**になります（`inert` は
          もともと付けていません。画面が付けたものはそのまま）。 */
       keep.classList.remove("is-peek");
+      keep.style.translate = "";   // o.lift のずらし。送り位置は commit が合わせる
       peeks = null;
       originX = 0;
       track.style.transition = "";

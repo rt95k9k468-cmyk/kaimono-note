@@ -266,6 +266,39 @@ const { open, checker } = require("./lib");
     c.check("daily：空白を右へ払うと前の日", (await title()).includes(want), `${await title()} / ${want}`);
   }
 
+  /* 着いた紙が跳ばない：今日は頭の頁（.tk-page）を送って開き、ほかの日は頭から（goDay と同じ据え方）。前は送り位置を
+     持ち越して、払っているあいだ隣の日の帯が 146px 上（帯の裏）に隠れ、着いた瞬間に下へ跳んだ。逆向きは今日の頭の頁が出たまま着いた。 */
+  const stripY = (peek) => page.evaluate((pk) => {
+    const s = document.querySelector(`#screen-todo .day-slide${pk ? ".is-peek" : ":not(.is-peek)"} .day-strip`);
+    return s ? Math.round(s.getBoundingClientRect().top) : null;
+  }, peek);
+  await go("todo");
+  await page.evaluate(() => KN.store.addWeight({ day: "2026-09-15", time: "07:00", kg: 60 }));   // 「いま」より上の頁に一行（朝の体重）
+  const scTop = () => page.evaluate(() => KN.app.scrollerOf(document.getElementById("screen-todo")).scrollTop);
+  let todayHome = null;
+  for (const [from, dx, label] of [["2026-09-15", -170, "今日→明日"], ["2026-09-16", 170, "明日→今日"]]) {
+    if (from === "2026-09-15") await at("2026-09-16");   // goDay は同じ日なら何もしない。一度離れて今日へ（toNow が頭の頁を送る）
+    await at(from);
+    const lifted = await scTop();
+    if (from === "2026-09-15") todayHome = lifted;
+    const q = await page.evaluate(() => { const r = document.querySelector("#screen-todo .day-car").getBoundingClientRect(); return { x: r.left + r.width / 2, y: Math.min(innerHeight - 160, r.top + 200) }; });
+    const t0 = Date.now() / 1000;
+    await touch(t0, "touchStart", 0, q.x, q.y);
+    for (let i = 1; i <= 8; i++) { await touch(t0, "touchMove", i * 16, q.x + dx * i / 8, q.y); await page.waitForTimeout(16); }
+    await page.waitForTimeout(60);
+    const during = await stripY(true);
+    await touch(t0, "touchEnd", 9 * 16);
+    await settled();
+    const after = await stripY(false);
+    c.check(`${label}：払っているあいだの帯の位置のまま着く（跳ばない）`, during != null && after != null && Math.abs(during - after) <= 2,
+      `送り ${lifted}px・払う途中 ${during}・着いた ${after}`);
+    const landed = await scTop(), want = from === "2026-09-15" ? 0 : todayHome;
+    c.check(`${label}：着いた日は暦で日を押したときと同じ送り位置（明日は頭から・今日は頭の頁を送る）`, Math.abs(landed - want) <= 2, `${landed} / ${want}`);
+  }
+  c.check("今日の面は頭の頁を送って開いている（上の確かめが空振りでない）", await page.evaluate(() =>
+    !!document.querySelector("#screen-todo .day-slide:not(.is-peek) > .tk-page")
+    && KN.app.scrollerOf(document.getElementById("screen-todo")).scrollTop > 20));
+
   /* 動きを減らす設定では転がらない。 */
   await page.emulateMedia({ reducedMotion: "reduce" });
   await go("todo");

@@ -5212,6 +5212,9 @@
          日で絞る前のもの）。掴んでいるあいだ組み直しは止まっているので、
          この控えが古くなることはありません。 */
       slide: (d) => faceSlide(d, open),
+      /* 隣の紙は、着いたときに据える送り位置（homeOf）に見せる。今日は頭の頁を送って開き、ほかの日は頭から
+         （goDay と同じ）——送り位置を持ち越すと、今日→明日で紙が 146px 跳んでいた。週・月の面は今までどおり。 */
+      lift: (el) => (dayFaceNow() ? swipeTop - homeOf(KN.app.scrollerOf(root), el) : 0),
       /* **組み直しません。** 滑りきった `kept` が、もう「その日」の紙です
          ——同じものをもう一度組むために 134ms 固まると、次の日が「いきなり
          出てきた」ように見えます（実測・CPU 4倍）。
@@ -5239,6 +5242,13 @@
           fitCalH();
         }
         markDay(next, true);
+        /* 着いた一枚を、払っているあいだ見せていた位置（lift）のまま据える。ずらしは adopt が外したので、
+           同じ拍で送り位置を合わせる（一拍も跳んだ絵を見せない）。 */
+        if (kept && dayFaceNow() && root) {
+          keepAim++;
+          const sc = KN.app.scrollerOf(root);
+          sc.scrollTop = Math.min(homeOf(sc, kept), Math.max(0, sc.scrollHeight - sc.clientHeight));
+        }
         /* 週をまたいだら、週の帯を送った向きから滑り込ませ、輪は滑らせずに
            置き直します（帯ごと入れ替わるので、前の週の端から輪が横切って
            くると、動きが二つ重なって見えます）。 */
@@ -5251,9 +5261,12 @@
       },
       /* 道で連れを運んでいる指も向こうのもの（day-road.js の段8）。 */
       busy: () => !!tlDrag || KN.reorder.isActive() || KN.dayRoad.carrying(),
-      lock: (on) => { swiping = on; },
+      /* 掴んだ拍の送り位置（隣を差し込む前。配置が済んでいる拍なので読んでも組み直しを起こさない）。 */
+      lock: (on) => { swiping = on; if (on && root) swipeTop = KN.app.scrollerOf(root).scrollTop; },
     });
   }
+  let swipeTop = 0;
+  const dayFaceNow = () => !weekFace() && !monthFace();
 
   /* 一覧で見ているときの横払い。棚は日で中身が変わらないので、隣の紙は
      組みません（買うものと同じ・day-swipe.js の「隣の紙を持たない画面」）
@@ -7240,13 +7253,17 @@
       いつもこの下（2026年10月28日、利用者「タスクが多い日には圧迫する」「ただ畳むというのもな」）。畳まない——
       上へ戻せば出る（月の面の過ぎた日と同じ。hidePastDays）。 */
   function doneRest(sc) {
+    return homeOf(sc, root && root.querySelector(".day-slide:not(.is-peek)"));
+  }
+  /** その日の一枚を据える送り位置（doneRest をどの一枚にも。頁の無い日は 0＝紙の頭。goDay と同じ据え方）。
+      払う隣の紙もこれで測る——今日だけ頭の頁を送って開くので、送り位置を持ち越すと着いた瞬間に中身が跳んだ。 */
+  function homeOf(sc, slide) {
     /* 構4a からは「いま」より上の頁（.tk-page）を同じ形で送る（済ませたものの一覧は R3 から下の一枚で、送らない）。 */
-    const done = root && root.querySelector(".day-slide:not(.is-peek) > .tk-page");
+    const done = slide && slide.querySelector(":scope > .tk-page");
     if (!done || !sc) return 0;
     /* 測るのは箱の組みの位置（下の余白を引く）。箱は開いた一拍に下から滑ってくる（.m-in-i の translate）ので、
        箱の rect は使わず、紙（滑らない）の頭からの offset で。 */
     const pad = parseFloat(getComputedStyle(done).paddingBottom) || 0;
-    const slide = done.parentElement;
     const at = done.offsetParent === slide ? done.offsetTop : done.offsetTop - slide.offsetTop;
     return Math.max(0, Math.round(sc.scrollTop + slide.getBoundingClientRect().top + at + done.offsetHeight - pad
       - sc.getBoundingClientRect().top - sc.clientTop - faceFloor()));
