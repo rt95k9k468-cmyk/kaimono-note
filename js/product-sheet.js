@@ -16,10 +16,16 @@
    * @param {Element} [opts.from] 押した行の絵。紙の頭の絵へ伸び、閉じると帰る（ui.js の morphPill）
    * @param {Function} [opts.back] 帰り先の行の絵を引く（保存で組み直されるので要素ではなく引き方）
    */
-  function open(productId, { itemId, from, back } = {}) {
+  /* price：値段の欄に先に入れておく（買うものの足す紙の「298円を記録」。店は紙で選ぶ。点検4）。 */
+  function open(productId, { itemId, from, back, price } = {}) {
     const product = store.getProduct(productId);
     if (!product) return;
-    return openV2(productId, { itemId, from, back });
+    const h = openV2(productId, { itemId, from, back });
+    if (price) requestAnimationFrame(() => {
+      const el = document.querySelector(".sheet.is-open .price-add .js-price");
+      if (el) { el.value = String(price); el.dispatchEvent(new Event("input", { bubbles: true })); }
+    });
+    return h;
   }
 
   /* ---------------- fields ---------------- */

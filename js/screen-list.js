@@ -265,11 +265,15 @@
     }
 
     function submit({ keep = false } = {}) {
-      const name = nameEl.value.trim();
-      if (!name) { nameEl.focus(); return; }
+      const typed = nameEl.value.trim();
+      if (!typed) { nameEl.focus(); return; }
 
       const many = pieces();
-      if (many.length >= 2) { submitMany(name, many, keep); return; }
+      if (many.length >= 2) { submitMany(typed, many, keep); return; }
+      /* 名前の後ろの「3個」「298円」は品名に入れない。数はメモへ、値段は一言の「◯円を記録」から品物の紙の値段の欄へ
+         （店は紙で選ぶ——店の無い値段はどこにも出ないので、黙って記録しない。2026年11月25日の点検4、利用者が選んだ）。 */
+      const cut = picked ? { name: typed, qty: "", price: null } : KN.splitItems.tail(typed);
+      const name = cut.name;
 
       const product = picked || store.findProductByName(name)
         || store.addProduct({ name, categoryId: cat.current });
@@ -286,7 +290,7 @@
         store.learnCategory(product.name, cat.current);
       }
 
-      const memo = memoEl.value.trim();
+      const memo = [cut.qty, memoEl.value.trim()].filter(Boolean).join(" ");
       const already = store.get().items.find((i) => i.productId === product.id && !i.checked);
       let itemId, said;
       if (already) {
@@ -312,9 +316,11 @@
         said = `${c.name} に「${product.name}」を追加しました`;
       }
       KN.motion.fire("save");
+      const priced = cut.price ? { action: { label: `${cut.price.toLocaleString()}円を記録`,
+        onClick: () => KN.productSheet.open(product.id, { itemId, price: cut.price }) } } : undefined;
       /* 改行キー：紙は開いたまま空にして、次を打つ（後ろの一覧で行が光る）。 */
       if (keep) {
-        KN.ui.toast(said);
+        KN.ui.toast(said, priced);
         flashRow(itemId);
         again();
         return;
@@ -329,6 +335,7 @@
       f.hero.style.visibility = "hidden";
       handle.close();
       landOnRow(itemId, from, ghost, said);
+      if (priced) KN.ui.toast(said, priced);
     }
 
     /* 紙の頭（絵と名前）が、一覧のその行の場所・大きさへ飛んで入り、着いたら行が光る。 */

@@ -88,5 +88,22 @@
     return lines.length >= 2 ? lines : [lines.join(" ")];
   }
 
-  KN.splitItems = { shop, todo };
+  /** 品名の後ろに空白で区切った数と値段を外す（買うものの足す紙。点検4）。「トマト 3個 298円」→
+      { name: "トマト", qty: "3個", price: 298 }。数は単位か「×」の付いたもの、値段は「円」か「¥」の付いたものだけ
+      （「単3 4本」の「単3」は残る）。全角も読む。外すものが無ければ打ったまま。 */
+  const QTY = /^(?:[x×]\d+|\d+(?:個|本|袋|パック|枚|缶|箱|玉|束|株|切れ|尾|房|g|kg|ml|L|l))$/;
+  const YEN = /^(?:[¥￥](\d[\d,]*)|(\d[\d,]*)円)$/;
+  function tail(text) {
+    const words = String(text || "").trim().split(/[\s\u3000]+/);
+    let qty = "", price = null;
+    while (words.length > 1) {
+      const w = words[words.length - 1].normalize("NFKC"), m = YEN.exec(w);
+      if (price == null && m) { price = Number((m[1] || m[2]).replace(/,/g, "")); words.pop(); continue; }
+      if (!qty && QTY.test(w)) { qty = w; words.pop(); continue; }
+      break;
+    }
+    return { name: words.join(" "), qty, price: price > 0 ? price : null };
+  }
+
+  KN.splitItems = { shop, todo, tail };
 })();

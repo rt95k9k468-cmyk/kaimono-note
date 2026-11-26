@@ -79,6 +79,28 @@ const { open, checker } = require("./lib");
   });
   t.check("★とメモを付けて足せる", added && added.fav && added.memo === "大きいほう" && added.cat === "掃除・洗剤", JSON.stringify(added));
 
+  /* 点検4：「トマト 3個 298円」は品名トマト・数はメモ・値段は一言の「298円を記録」から品物の紙の値段の欄へ（店は紙で選ぶ）。 */
+  await page.waitForTimeout(400);
+  await page.click("#dock .add-fab");
+  await page.waitForTimeout(800);
+  await page.keyboard.type("トマト 3個 298円");
+  await page.click(".sheet.is-open .js-add");
+  await page.waitForTimeout(900);
+  const tom = await page.evaluate(() => {
+    const S = KN.store, p = S.get().products.find((x) => x.name === "トマト");
+    const it = p && S.get().items.find((i) => i.productId === p.id && !i.checked);
+    const act = [...document.querySelectorAll("#toast-root .toast:not(.is-out) .toast-action")].map((b) => b.textContent);
+    return { name: !!p, odd: S.get().products.some((x) => /298円/.test(x.name)), memo: it && it.memo, prices: p ? p.prices.length : -1, act };
+  });
+  t.check("点検4：品名はトマト・数はメモ・値段は黙って記録しない・一言に「298円を記録」", tom.name && !tom.odd && tom.memo === "3個"
+    && tom.prices === 0 && tom.act.includes("298円を記録"), JSON.stringify(tom));
+  await page.evaluate(() => [...document.querySelectorAll("#toast-root .toast-action")].find((b) => b.textContent === "298円を記録").click());
+  await page.waitForTimeout(900);
+  const pv = await page.evaluate(() => { const i = document.querySelector(".sheet.is-open .price-add .js-price"); return i ? i.value : null; });
+  t.check("点検4：「298円を記録」で品物の紙の値段の欄に 298", pv === "298", String(pv));
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+
   /* ---- 直す紙 ---- */
   await page.evaluate((id) => {
     const it = KN.store.get().items.find((i) => i.id === id);
