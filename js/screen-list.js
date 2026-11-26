@@ -842,7 +842,11 @@
           const slots = [];
           s.items.forEach((it, i) => { if (inGroup.has(it.id)) slots.push(i); });
           const byId = new Map(s.items.map((it) => [it.id, it]));
-          ids.forEach((id, k) => { s.items[slots[k]] = byId.get(id); });
+          /* 持っているあいだに一覧が変わった（ほかの窓が書いた・消えた行）なら書かない。前は数が食い違うと、
+             行が一つ消えて空（undefined）が入り、次の描き直しと読み込みで落ちた（2026年11月26日の点検）。 */
+          const want = ids.filter((id) => byId.has(id));
+          if (want.length !== slots.length) return;
+          want.forEach((id, k) => { s.items[slots[k]] = byId.get(id); });
         });
         KN.motion.fire("save");
       },

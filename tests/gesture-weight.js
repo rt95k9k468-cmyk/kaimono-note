@@ -80,9 +80,29 @@ const { open, checker } = require("./lib.js");
     await page.mouse.down();
     await wait(G.HOLD + 120);
     c.check("買うものの行も HOLD で持ち上がる", await active());
+    /* 持っているあいだに一覧が変わっても（ほかの窓が同じ欄の行を消した）、運んで離して行が消えたり空が入ったりしない
+       （11月26日の点検。前は ids と席の数が食い違い、行が一つ消えて undefined が入った）。 */
+    const gone = await page.evaluate(({ x, y }) => {
+      /* 持っている行のすぐ下（欄の二つ目）を消す。最後の行だと、前の書き方でも害の無い所に当たって見えない。 */
+      const w = document.elementFromPoint(x, y).closest(".item-wrap");
+      const sibs = w ? [...w.parentElement.querySelectorAll(":scope > .item-wrap")] : [];
+      const sib = sibs.length > 2 ? sibs[sibs.indexOf(w) + 1] : null;
+      const id = sib && sib.dataset.itemId;
+      const n = KN.store.get().items.length;
+      if (id) KN.store.update((s) => { s.items = s.items.filter((i) => i.id !== id); });
+      return { id, n };
+    }, item);
+    c.check("持っている欄に行が三つ以上ある（消して運ぶ試しのため）", !!gone.id);
+    await page.mouse.move(item.x, item.y + 70, { steps: 8 });
+    await wait(200);
     await page.mouse.up();
     await page.waitForFunction(() => !KN.reorder.isActive(), null, { timeout: 3000 }).catch(() => {});
     await wait(300);
+    if (gone.id) {
+      const after = await page.evaluate(() => KN.store.get().items.map((i) => (i && i.id) || null));
+      c.check("持っているあいだに行が消えても、離したあと空の行は無く数も合う",
+        !after.includes(null) && after.length === gone.n - 1 && !after.includes(gone.id), JSON.stringify([gone.n, after.length]));
+    }
   }
 
   /* ---------- 左端から戻る ---------- */
