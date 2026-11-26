@@ -42,11 +42,32 @@
     const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(String(value || "").trim());
     if (!m) return null;
     if (m[4] === undefined || /VALUE=DATE(?!-)/.test(params || "")) return { day: `${m[1]}-${m[2]}-${m[3]}`, time: null, allDay: true };
-    if (m[7]) {
-      const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)));
+    const wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+    const tz = /(?:^|;)TZID="?([^";:]+)"?/.exec(params || "");
+    const at = m[7] ? wall : tz ? zoned(wall, tz[1]) : null;
+    if (at !== null) {
+      const d = new Date(at);
       return { day: U.dayKey(d), time: `${pad(d.getHours())}:${pad(d.getMinutes())}`, allDay: false };
     }
     return { day: `${m[1]}-${m[2]}-${m[3]}`, time: `${m[4]}:${m[5]}`, allDay: false };
+  }
+
+  /** その時間帯（TZID）の壁の時刻（UTC として組んだ数）→ 本当の時刻。知らない名（Windows の名など）は null＝端末の時刻として読む。 */
+  const zoneFmt = new Map();
+  function zoned(wall, tz) {
+    let f = zoneFmt.get(tz);
+    if (f === undefined) {
+      try { f = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" }); }
+      catch (err) { f = null; }
+      zoneFmt.set(tz, f);
+    }
+    if (!f) return null;
+    const off = (t) => {
+      const p = Object.fromEntries(f.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+      return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - t;
+    };
+    const t1 = wall - off(wall);
+    return wall - off(t1);
   }
 
   function rruleOf(v) {
@@ -178,7 +199,10 @@
     } else if (ev.end && !ev.end.allDay) {
       const a = ev.start.time.split(":").map(Number), b = ev.end.time.split(":").map(Number);
       if (span === 0) minutes = (b[0] * 60 + b[1]) - (a[0] * 60 + a[1]);
-      else if (ev.end.time === "00:00" && span >= 1) endDn = dnOf(day) + span - 1;
+      else if (ev.end.time === "00:00" && span >= 1) {
+        endDn = dnOf(day) + span - 1;
+        if (span === 1) minutes = 24 * 60 - (a[0] * 60 + a[1]);   // 23:00〜翌0:00 は その日の60分
+      }
     }
     const endDay = endDn > dnOf(day) ? dayOf(endDn) : null;
     const past = (endDay || day) < today;

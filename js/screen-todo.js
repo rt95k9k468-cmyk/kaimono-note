@@ -2452,7 +2452,7 @@
       x0 = e.clientX; y0 = e.clientY; pid = e.pointerId;
       document.addEventListener("pointermove", moved);
       timer = setTimeout(() => {
-        timer = 0;
+        clear();   // 決まったら揺れはもう見ない（丸が描き直しで消えると pointerup が届かず、document の見張りが残った）
         const t = store.getTodo(id);
         if (!t || t.done || finishing.has(id)) return;
         todoHoldAt.set(id, Date.now());

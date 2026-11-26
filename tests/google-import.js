@@ -17,6 +17,9 @@ const { open, checker } = require("./lib");
       "BEGIN:VEVENT", "UID:a1", "DTSTART:20200302T010000Z", "DTEND:20200302T023000Z", "SUMMARY:過去の会議", "DESCRIPTION:本文", "LOCATION:会議室",
       "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:アラーム", "END:VALARM", "STATUS:CONFIRMED", "END:VEVENT",
       // 終日・何日か（DTEND は含まない日）
+      // よその時間帯（TZID）：ニューヨークの 9:00（冬）は日本の 23:00。知らない名は端末の時刻のまま
+      "BEGIN:VEVENT", "UID:z1", "DTSTART;TZID=America/New_York:20200302T090000", "DTEND;TZID=America/New_York:20200302T100000", "SUMMARY:よその会議", "END:VEVENT",
+      "BEGIN:VEVENT", "UID:z2", "DTSTART;TZID=Tokyo Standard Time:20200303T090000", "SUMMARY:窓の名", "END:VEVENT",
       "BEGIN:VEVENT", "UID:a2", "DTSTART;VALUE=DATE:20200310", "DTEND;VALUE=DATE:20200313", "SUMMARY:出張", "END:VEVENT",
       // これからの単発・折り返し行
       "BEGIN:VEVENT", "UID:a3", `DTSTART:${fut}T000000Z`, `DTEND:${fut}T010000Z`, "SUMMARY:先の予", " 定", "END:VEVENT",
@@ -65,6 +68,9 @@ const { open, checker } = require("./lib");
   const a1 = one("e:a1");
   t.check("UTC は端末の時間に（10:00・90分）・過ぎたものは済", a1 && a1.time === "10:00" && a1.minutes === 90 && a1.done && a1.due === "2020-03-02" && a1.kind === "event", JSON.stringify(a1));
   t.check("説明は場所＋本文・VALARM の字は入らない", a1 && a1.memo === "会議室\n本文", JSON.stringify(a1 && a1.memo));
+  const z1 = one("e:z1"), z2 = one("e:z2");
+  t.check("TZID はその時間帯から端末の時間に（NY 9:00 → 23:00）・知らない名はそのまま", z1 && z1.due === "2020-03-02" && z1.time === "23:00" && z1.minutes === 60
+    && z2 && z2.due === "2020-03-03" && z2.time === "09:00", JSON.stringify([z1 && [z1.due, z1.time, z1.minutes], z2 && [z2.due, z2.time]]));
   const a2 = one("e:a2");
   t.check("終日の何日かは終わりの日（含まない日を引く）", a2 && a2.due === "2020-03-10" && a2.endDay === "2020-03-12" && a2.time === null, JSON.stringify(a2));
   const a3 = one("e:a3");
