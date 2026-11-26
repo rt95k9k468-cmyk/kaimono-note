@@ -340,7 +340,7 @@
       title: st.name,
       titleMark: KN.util.raw(`<span class="dot" style="background:${KN.util.escapeHtml(st.color)};width:14px;height:14px"></span>`),
       content: body,
-      footer: node(html`<button class="btn btn-primary btn-block js-done">完了</button>`),
+      footer: node(html`<button class="btn btn-primary btn-block js-done">保存</button>`),
       menu: KN.ui.delMenu(removePrice, { sheet: () => handle, after: () => onChanged && onChanged() }),
     });
     handle.el.querySelector(".js-done").addEventListener("click", () => handle.close());
@@ -972,7 +972,7 @@
       if (typed || seen() !== opened) KN.ui.toast("更新しました");
     };
 
-    const foot = node(html`<button class="btn btn-primary btn-block">完了</button>`);
+    const foot = node(html`<button class="btn btn-primary btn-block">保存</button>`);
     /* 物から生まれる紙（roadmap-unify の U15）：押した行の絵が頭の絵へ伸び、閉じると行へ帰る。 */
     const handle = KN.ui.sheet({ title: product.name, hero: f.hero, menu, content: f.body, footer: foot,
       morph: from ? { from, to: f.mark, back } : null, onClose: updated });

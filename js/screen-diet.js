@@ -1553,7 +1553,7 @@
     timeIn.addEventListener("change", () => { timeTouched = true; paintCap(); });
     paintCap();
 
-    const foot = node(html`<button class="btn btn-primary btn-block js-save">${editing ? "保存" : "記録する"}</button>`);
+    const foot = node(html`<button class="btn btn-primary btn-block js-save">${editing ? "保存" : "追加"}</button>`);
     const h = KN.ui.sheet({
       title: editing ? "飲みたくなったとき" : "飲みたくなった", hero,
       content: body, footer: foot, guard: true,
@@ -2108,7 +2108,7 @@
 
     const foot = node(html`
       <div class="btn-row">
-        <button class="btn btn-primary js-save grow">${editing ? "保存" : "記録する"}</button>
+        <button class="btn btn-primary js-save grow">${editing ? "保存" : "追加"}</button>
       </div>
     `);
     KN.ui.whenFields(body);
@@ -2452,7 +2452,7 @@
         </div>
       </div>
     `);
-    const f = node(html`<button class="btn btn-primary btn-block">記録する</button>`);
+    const f = node(html`<button class="btn btn-primary btn-block">追加</button>`);
     KN.ui.whenFields(b);
     const hh = KN.ui.sheet({ title: "ワークアウトを記録", content: b, footer: f, guard: true });
     f.addEventListener("click", () => {
@@ -3782,7 +3782,7 @@
 
     const foot = node(html`
       <div class="btn-row">
-        <button class="btn btn-primary js-save grow">${w ? "保存" : "記録する"}</button>
+        <button class="btn btn-primary js-save grow">${w ? "保存" : "追加"}</button>
       </div>
     `);
 
@@ -3897,7 +3897,7 @@
 
     const foot = node(html`
       <div class="btn-row">
-        <button class="btn btn-primary js-save grow">${meal ? "保存" : "記録する"}</button>
+        <button class="btn btn-primary js-save grow">${meal ? "保存" : "追加"}</button>
       </div>
     `);
 
@@ -3974,7 +3974,7 @@
           ${it.estimated ? html`<p class="diet-note">推定の数です。</p>` : ""}
         </div>
       `);
-      const f = node(html`<button class="btn btn-primary btn-block">直す</button>`);
+      const f = node(html`<button class="btn btn-primary btn-block">保存</button>`);
       const hh = KN.ui.sheet({ title: "数を直す", content: b, footer: f, guard: true });
       f.addEventListener("click", () => {
         const num = (sel, d) => {

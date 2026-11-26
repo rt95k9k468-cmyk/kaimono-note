@@ -333,7 +333,7 @@
     ];
     h = KN.ui.sheet({
       title, content: body, menu, cls: "is-card", clear: true, guard: false,
-      footer: U.node(U.html`<button class="btn btn-primary btn-block js-ok">${fresh ? "保存する" : "閉じる"}</button>`),
+      footer: U.node(U.html`<button class="btn btn-primary btn-block js-ok">${fresh ? "追加" : "閉じる"}</button>`),
       onClose: close,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => h.close());

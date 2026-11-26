@@ -142,7 +142,7 @@ const { open, checker, ASKS } = require("./lib");
       const c = el.querySelector(".ask-ctx"), it = KN.store.get().asks[0];
       return { q: el.querySelector(".ask-sheet-q").textContent.trim(), v: a.value, focus: document.activeElement === a, ok: el.querySelector(".js-ok").textContent.trim(),
         ctx: !!c && c.offsetHeight > 0 && c.querySelector(".ask-ctx-from").textContent === it.from && c.querySelector(".ask-ctx-t").textContent === it.hint }; });
-    t.check("答える紙：問いは欄の外・欄は空・「保存する」", s.q === q && s.v === "" && s.focus && s.ok === "保存する", JSON.stringify(s));
+    t.check("答える紙：問いは欄の外・欄は空・「保存」（点検32）", s.q === q && s.v === "" && s.focus && s.ok === "保存", JSON.stringify(s));
     t.check("答える紙：問いの下に出典と文脈（畳まない）", s.ctx, JSON.stringify(s));
     await page.keyboard.insertText("答えの字");
     await ok();
@@ -218,6 +218,15 @@ const { open, checker, ASKS } = require("./lib");
       await ok();
     };
     const n1 = await page.evaluate(() => KN.notes.list().length);
+    /* 点検32：問いをつくる紙は中身の背（画面いっぱいにしない）・主のボタンは「追加」。 */
+    await page.click("#screen-notes .js-ask-new");
+    await page.waitForSelector(".sheet.is-open .js-q", { timeout: 4000 });
+    await grown();
+    const mkSheet = await page.evaluate(() => { const el = document.querySelector(".sheet.is-open");
+      return { h: Math.round(el.getBoundingClientRect().height), H: innerHeight, ok: el.querySelector(".js-ok").textContent.trim() }; });
+    t.check("点検32：問いをつくる紙は中身の背・ボタンは「追加」", mkSheet.h < mkSheet.H * 0.6 && mkSheet.ok === "追加", JSON.stringify(mkSheet));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(600);
     await mk("試験でつくった問い");
     /* ノートは書き込みを待って増える（IndexedDB）。並べて回すと読むのが先になる（2026年11月11日、6本ずつの回）。 */
     await page.waitForFunction(() => KN.notes.list().some((n) => n.body === "？試験でつくった問い"), null, { timeout: 4000 }).catch(() => {});

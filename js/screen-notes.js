@@ -946,10 +946,10 @@
     onEnter(ta, () => h.close());
     /* ＋問いをつくるのカードから膨らみ、閉じたら、できた問いのカード（無ければ＋）へ縮む。 */
     const own = (k) => root && root.querySelector(`.notes-asks .note-row[data-ask="${CSS.escape(k)}"]`);
+    /* 中身は一つの欄なので、背いっぱいのカード（is-card）にしない（画面いっぱいに空きが出ていた。点検32）。 */
     const h = KN.ui.sheet({
       title: "問いをつくる",
       content: box,
-      cls: "is-card",
       clear: true,
       guard: false,
       grow: from && from.isConnected ? {
@@ -959,7 +959,7 @@
           return (q && own(askKey(q))) || (root && root.querySelector(".notes-asks.is-new .note-row")) || null;
         },
       } : null,
-      footer: node(html`<button class="btn btn-primary btn-block js-ok">保存する</button>`),
+      footer: node(html`<button class="btn btn-primary btn-block js-ok">追加</button>`),
       onClose: close,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });
@@ -3004,7 +3004,7 @@
         from,
         back: (o && o.back) || (() => (root && root.querySelector(`.notes-asks .note-row[data-ask="${CSS.escape(askKey(q))}"]`)) || null),
       } : null,
-      footer: node(html`<div class="ask-foot"><button class="btn btn-ghost js-rest">${resting ? "再開する" : "一区切り"}</button><button class="btn btn-primary js-ok">保存する</button></div>`),
+      footer: node(html`<div class="ask-foot"><button class="btn btn-ghost js-rest">${resting ? "再開する" : "一区切り"}</button><button class="btn btn-primary js-ok">保存</button></div>`),
       onClose: close,
     });
     h.el.querySelector(".js-ok").addEventListener("click", () => { KN.motion.fire("select"); h.close(); });

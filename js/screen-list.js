@@ -140,7 +140,7 @@
     const known  = f.known;
     const favBtn = f.fav;
 
-    const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>リストに追加</button>`);
+    const foot = node(html`<button class="btn btn-primary btn-block js-add" disabled>追加</button>`);
     const addBtn = foot;
 
     const handle = KN.ui.sheet({ title: "買うものを追加", hero: f.hero, content: body, footer: foot, guard: true,
