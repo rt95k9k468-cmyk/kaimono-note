@@ -103,7 +103,7 @@ async function openSheet(which) {
   } else if (which === "log") {
     KN.app.showScreen("archive");
     await wait(400);
-    document.querySelector('.screen.is-active button[aria-label="書く"], button[aria-label="書く"]').click();
+    document.querySelector("#screen-archive .js-desk-write").click();   // 机の一行の書く口（log も diary も同じ紙）
   } else if (which === "weight" || which === "meal") {
     KN.app.showScreen("diet");
     await wait(400);
@@ -119,7 +119,7 @@ async function openSheet(which) {
   } else if (which === "diary") {
     KN.app.showScreen("archive");
     await wait(400);
-    document.querySelector("#screen-archive .js-think-write").click();
+    document.querySelector("#screen-archive .js-desk-write").click();
   } else if (which === "note" || which === "note-menu") {
     KN.screens.notes.open("n-shot0");
     if (which === "note-menu") { await wait(900); (document.querySelector(".sheet.is-note .js-note-more, .sheet.is-note .js-menu, .sheet.is-note [aria-label*='操作']") || document.body).click(); }
