@@ -152,7 +152,8 @@
   function parseOne(raw) {
     const text = String(raw || "").trim();
     if (!text) return null;
-    const t = text.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+    /* 全角・半角カナ・ℓ を一つの形に（NFKC）。前は全角の数字だけを直していて、「500ML」「５００ｍＬ」の量が読めなかった。 */
+    const t = text.normalize("NFKC");
 
     // 飲んでいない、と書いてあるなら、何も作りません。
     if (NONE.test(t) && !/\d/.test(t.replace(/0/g, ""))) return null;
@@ -161,7 +162,7 @@
        種類が分からなくても、量か数が書いてあるなら、それはお酒の話です。
        読めなかったことにして捨てるより、「お酒」として残すほうがいい——
        あとから種類を直せますが、捨てた記録は戻りません。 */
-    const looksLikeDrink = /(\d|[一二三四五六七八九十半])\s*(ml|mL|cc|l|L|本|缶|杯|合|グラス)/.test(t);
+    const looksLikeDrink = /(\d|[一二三四五六七八九十半])\s*(ml|cc|l|本|缶|杯|合|グラス)/i.test(t);
     const kind = kindOf(t)
       || (/(酒|さけ|飲|呑|のん)/.test(fold(t)) || looksLikeDrink ? byId("other") : null);
     if (!kind) return null;
@@ -178,8 +179,8 @@
 
     // 容量。「350ml」「500cc」「1.5L」「一合」
     let ml = null;
-    const mMl = /(\d+(?:\.\d+)?)\s*(ml|mL|ｍｌ|cc|CC)/.exec(t);
-    const mL = /(\d+(?:\.\d+)?)\s*(l|L|リットル|ℓ)(?![a-z])/.exec(t);
+    const mMl = /(\d+(?:\.\d+)?)\s*(ml|cc)/i.exec(t);
+    const mL = /(\d+(?:\.\d+)?)\s*(l|リットル)(?![a-z])/i.exec(t);
     const mGo = /([\d一二三四五六七八九十半]+)\s*合/.exec(t);
     if (mMl) ml = Number(mMl[1]);
     else if (mL) ml = Number(mL[1]) * 1000;

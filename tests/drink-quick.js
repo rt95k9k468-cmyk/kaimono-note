@@ -46,6 +46,10 @@ const { open, checker } = require("./lib");
     const rec = KN.store.addDrink({ ...it, day: KN.util.shiftDay(KN.util.todayKey(), -3), raw: "日本酒1合" });
     return JSON.stringify(rec);
   });
+  /* 量は大文字・全角でも読む（前は「500ML」「５００ｍＬ」が読めず一本ぶんの 350ml。11月26日の点検）。 */
+  const vols = await page.evaluate(() => ["ビール 500ML", "ビール５００ｍＬ 2本", "ハイボール 1.5Ｌ", "ビール 350ml"]
+    .map((s) => KN.drinks.parse(s).items[0].volumeMl).join(","));
+  c.check("お酒の量は ML・全角の ｍＬ・Ｌ も読む", vols === "500,1000,1500,350", vols);
 
   await page.evaluate(() => KN.app.showScreen("diet"));
   await page.waitForFunction(() => KN.app.activeScreen() === "diet" && document.querySelector("#screen-diet .diet-hero-value"));
