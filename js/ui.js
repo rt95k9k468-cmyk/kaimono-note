@@ -460,14 +460,20 @@
   /** 押した先を覚えておき、指を離した所が別の物なら、ふつうの click を止めて覚えた物を押す（払ったら何もしない）。 */
   function keepAim(aim, e) {
     const block = (c) => { c.preventDefault(); c.stopPropagation(); };
-    window.addEventListener("pointerup", (u) => {
-      if (Math.hypot(u.clientX - e.clientX, u.clientY - e.clientY) > 10) return;
+    /* 指が送りに取られた（pointercancel）ら構えを解く。解かないと次に離した指まで残り、あとで同じ所を押すと
+       閉じた紙のボタンが押され、その押しは食べられた（2026年11月26日の点検）。 */
+    const off = () => { window.removeEventListener("pointerup", up, true); window.removeEventListener("pointercancel", off, true); };
+    const up = (u) => {
+      off();
+      if (!aim.isConnected || Math.hypot(u.clientX - e.clientX, u.clientY - e.clientY) > 10) return;
       const now = document.elementFromPoint(u.clientX, u.clientY);
       if (now && aim.contains(now)) return;
       if (aim.matches("input, textarea, select, [contenteditable]")) aim.focus(); else aim.click();
       document.addEventListener("click", block, { capture: true, once: true });
       setTimeout(() => document.removeEventListener("click", block, { capture: true }), KN.motion.ms("--m-state"));
-    }, { capture: true, once: true });
+    };
+    window.addEventListener("pointerup", up, true);
+    window.addEventListener("pointercancel", off, true);
   }
 
   /** 行き。育てたら true。 */

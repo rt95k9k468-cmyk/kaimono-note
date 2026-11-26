@@ -183,6 +183,36 @@ const { open, checker } = require("./lib");
     t.check("膨らむ途中で押した × で閉じる", await page.evaluate(() => !document.querySelector(".sheet.is-open")));
   }
 
+  /* ---- 膨らむ途中に触れた指が送りに取られた（pointercancel）ら、押し直しの構えは解く（2026年11月26日の点検）。
+     前は次に離した指まで構えが残り、閉じたあとで同じ所を押すと、閉じた紙の × が押され、その押しは食べられた ---- */
+  {
+    await rowOf("試験の用事").locator(".tl-open").click({ noWaitAfter: true });
+    await page.waitForTimeout(40);
+    const at = await page.evaluate(() => {
+      document.getAnimations().forEach((a) => { const e = a.effect.getComputedTiming().endTime; if (isFinite(e) && e > 0) { a.pause(); a.currentTime = e * 0.3; } });
+      const x = document.querySelector(".sheet.is-open .sheet-x, .sheet.is-open [aria-label='閉じる']");
+      const r = x.getBoundingClientRect(), p = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      window.__xHit = 0;
+      x.addEventListener("click", () => { window.__xHit++; });
+      const o = { bubbles: true, cancelable: true, clientX: p.x, clientY: p.y, pointerId: 7, pointerType: "touch", isPrimary: true };
+      document.getAnimations().forEach((a) => a.play());
+      const armed = document.getAnimations().some((a) => a.effect.target && a.effect.target.matches && a.effect.target.matches(".sheet.is-open") && a.playState === "running");
+      x.dispatchEvent(new PointerEvent("pointerdown", o));
+      x.dispatchEvent(new PointerEvent("pointercancel", o));
+      return { ...p, armed };
+    });
+    await page.waitForTimeout(500);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(900);
+    await page.evaluate(() => { window.__clicks = 0; document.addEventListener("click", () => { window.__clicks++; }); });
+    await page.mouse.click(at.x, at.y);
+    await page.waitForTimeout(100);
+    const hit = await page.evaluate(() => ({ x: window.__xHit, clicks: window.__clicks }));
+    t.check("取られた指のあと：閉じた紙の × は押されず、次の押しは届く", at.armed && hit.x === 0 && hit.clicks === 1, JSON.stringify({ ...hit, armed: at.armed }));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(700);
+  }
+
   /* ---- RM：記録の紙の頭は、押したカードの絵から飛ぶ ---- */
   {
     await page.evaluate(() => { KN.store.addWeight({ day: KN.util.todayKey(), kg: 64 }); KN.app.showScreen("diet"); });
