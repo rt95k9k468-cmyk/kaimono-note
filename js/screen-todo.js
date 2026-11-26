@@ -7116,7 +7116,11 @@
           const slots = [];
           s.todos.forEach((t, i) => { if (inGroup.has(t.id)) slots.push(i); });
           const byId = new Map(s.todos.map((t) => [t.id, t]));
-          ids.forEach((id, k) => { s.todos[slots[k]] = byId.get(id); });
+          /* 持っているあいだに用事が消えていたら書かない（screen-list の並べ替えと同じ。前は数が食い違うと
+             用事が一つ消えて空が入り、下の order を書く所で落ちて、消えたまま次の保存に乗った。2026年11月26日の点検）。 */
+          const want = ids.filter((id) => byId.has(id));
+          if (want.length !== slots.length) return;
+          want.forEach((id, k) => { s.todos[slots[k]] = byId.get(id); });
           // The hand-order is what sorts within a day, so it has to be written
           // down rather than left to the order of the array alone.
           s.todos.forEach((t, i) => { t.order = i; });

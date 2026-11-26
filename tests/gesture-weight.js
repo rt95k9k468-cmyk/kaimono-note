@@ -105,6 +105,43 @@ const { open, checker } = require("./lib.js");
     }
   }
 
+  /* やることの一覧の面（時間割を切ったとき）でも同じ：持っているあいだに二つ目の用事が消えても、空も欠けも出ない。 */
+  await page.evaluate(() => {
+    const S = KN.store, d = KN.util.todayKey();
+    S.update((s) => { s.settings.todoTimeline = false; });
+    ["並べ替え一", "並べ替え二", "並べ替え三", "並べ替え四"].reverse().forEach((title) => S.addTodo({ title, due: d }));
+  });
+  await page.click('.tab[data-tab="todo"]');
+  await wait(800);
+  const trow = await page.evaluate(() => {
+    const w = [...document.querySelectorAll("#screen-todo .item-wrap")].find((x) => /並べ替え一/.test(x.textContent));
+    if (!w) return null;
+    const r = w.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height };
+  });
+  c.check("やることの一覧に並べ替えの行がある", !!trow);
+  if (trow) {
+    await page.mouse.move(trow.x, trow.y);
+    await page.mouse.down();
+    await wait(G.HOLD + 120);
+    const tgone = await page.evaluate(() => {
+      const t = KN.store.get().todos.find((x) => x.title === "並べ替え二");
+      const n = KN.store.get().todos.length;
+      KN.store.update((s) => { s.todos = s.todos.filter((x) => x.id !== t.id); });
+      return { id: t.id, n };
+    });
+    await page.mouse.move(trow.x, trow.y + trow.h * 1.6, { steps: 8 });
+    await wait(200);
+    await page.mouse.up();
+    await page.waitForFunction(() => !KN.reorder.isActive(), null, { timeout: 3000 }).catch(() => {});
+    await wait(400);
+    const tafter = await page.evaluate(() => KN.store.get().todos.map((t) => (t && t.title) || null));
+    c.check("やることも、持っているあいだに消えた用事のせいで空も欠けも出ない",
+      !tafter.includes(null) && tafter.length === tgone.n - 1 && ["並べ替え一", "並べ替え三", "並べ替え四"].every((x) => tafter.includes(x)),
+      JSON.stringify(tafter));
+  }
+  await page.evaluate(() => KN.store.update((s) => { s.settings.todoTimeline = true; }));
+
   /* ---------- 左端から戻る ---------- */
   await page.evaluate(() => {
     const host = document.createElement("div");
