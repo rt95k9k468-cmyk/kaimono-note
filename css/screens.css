@@ -1497,6 +1497,12 @@
   background: var(--c-surface-2);
 }
 .log-row.is-current { background: var(--c-primary-soft); }
+/* 品物の紙の「値段の記録」（畳んだ一行。開くと線と、店ごとの記録） */
+.pd-hist-host > .pd-hist { margin: 0; }
+.pd-hist > .pd-hist-spark { margin-top: var(--sp-2); padding: 12px; }
+.pd-hist-st { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: var(--sp-3); }
+.pd-hist-name { display: flex; align-items: center; gap: var(--sp-2); font-weight: var(--fw-bold); color: var(--c-text); }
+.pd-hist-name .dot { width: 10px; height: 10px; }
 .log-date  { flex: none; width: 56px; font-size: var(--fs-sm); color: var(--c-text-2); }
 .log-price { flex: none; width: 74px; font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .log-unit  { flex: 1; min-width: 0; font-size: var(--fs-xs); color: var(--c-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
