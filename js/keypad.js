@@ -248,9 +248,29 @@
     // Published so a sheet can sit above the pad exactly as it sits above a
     // real keyboard — same mechanism, see --kb in app.js.
     requestAnimationFrame(() => {
-      document.documentElement.style.setProperty("--pad", pad.offsetHeight + "px");
-      pad.classList.add("is-open");
+      follow(() => {
+        document.documentElement.style.setProperty("--pad", pad.offsetHeight + "px");
+        pad.classList.add("is-open");
+      });
       opts.onOpen && opts.onOpen();
+    });
+  }
+
+  /* 紙は鍵盤と同じ長さ・曲線で上がる（11月26日、一コマずつの点検）。--pad を書くと紙は一拍で鍵盤の上の
+     背丈へ跳び、滑って上がる鍵盤とのあいだに地と下の帯が約150ms透けた。書く前と後の上端・背丈を測り、
+     前の姿から送る。transition は紙の開け閉め（is-from-origin ほか）と取り合うので、Web Animations で上に重ねる。 */
+  function follow(write) {
+    const sheets = [...document.querySelectorAll(".sheet.is-open")];
+    const box = (el) => { const cs = getComputedStyle(el); return { top: cs.top, height: cs.height }; };
+    const from = sheets.map(box);
+    write();
+    const dur = KN.motion.ms("--m-reorder");
+    if (KN.motion.still() || dur < 1) return;
+    const easing = KN.motion.ease("--ease-out");
+    sheets.forEach((el, i) => {
+      const to = box(el);
+      if (to.top === from[i].top && to.height === from[i].height) return;
+      el.animate([{ ...from[i], maxHeight: "none" }, { ...to, maxHeight: "none" }], { duration: dur, easing });
     });
   }
 

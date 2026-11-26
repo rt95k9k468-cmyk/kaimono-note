@@ -72,6 +72,20 @@ const { open, checker } = require("./lib");
   await page.evaluate((id) => { KN.productSheet.open(id); }, ids.one);
   await wait(700);
   const rate0 = await page.evaluate((id) => Math.round(KN.store.taxRate(KN.store.getProduct(id)) * 100), ids.one);
+  /* 点検（11月26日）：紙は鍵盤と一緒に上がる。鍵盤の上がりの 15% の所で止めて、紙の下の縁と鍵盤の上の縁のあいだを測る
+     （直す前は紙が一拍で鍵盤の上へ跳び、約100px 地と帯が透けた）。 */
+  const rise = await page.evaluate(async () => {
+    document.querySelector(".sheet.is-open .price-add .js-price").focus();
+    await new Promise((r) => requestAnimationFrame(r));
+    const pad = document.querySelector(".keypad");
+    const sh = [...document.querySelectorAll(".sheet.is-open")].pop();
+    const all = [...pad.getAnimations(), ...sh.getAnimations()];
+    all.forEach((a) => { a.pause(); a.currentTime = KN.motion.ms("--m-reorder") * 0.15; });
+    const gap = Math.round(pad.getBoundingClientRect().top - sh.getBoundingClientRect().bottom);
+    all.forEach((a) => a.finish());
+    return { gap, n: all.length };
+  });
+  t.check("点検：鍵盤が上がるあいだ、紙と鍵盤のあいだが透けない", rise.n >= 2 && rise.gap <= 1, JSON.stringify(rise));
   await page.click(".sheet.is-open .price-add .js-price");
   await wait(400);
   const key = (k) => page.locator(".keypad .js-grid .key", { hasText: new RegExp(`^${k}$`) }).click();

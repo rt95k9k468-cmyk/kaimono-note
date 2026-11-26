@@ -195,6 +195,7 @@ pull-refresh。
 `.sheet` は `bottom: calc(var(--kb) + var(--pad))`・`max-height` は `--vvh` まで。
 `--kb` は「紙を何px持ち上げるか」。
 640px〜の真ん中の紙も、`top` と `max-height` から `--pad`（自前の鍵盤）を引いて鍵盤の上の空きの真ん中へ（11月13日、利用者が見比べで選んだ。値段の欄は `.price-add` ごと送って見せる）。
+自前の鍵盤が上がるあいだ、紙は前の姿から鍵盤と同じ長さ・曲線で送る（`keypad.js` の `follow`。Web Animations で。`transition` は紙の開け閉めと取り合う。11月26日）。
 
 - **`--kb` は数で推さず、床を測る**（2026年9月27日）。前は
   `innerHeight − 可視の高さ` だけで、iPhone のホーム画面アプリでは 0 だった
