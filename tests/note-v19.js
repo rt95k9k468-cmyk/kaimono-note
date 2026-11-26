@@ -6,6 +6,7 @@
    - 払うのは左端でなくてもよい（V26）。横に送れる中身の上で始まった指は取らない
    - 一番上まで送ってあれば、中身を下へ引いて閉じる（カードへ縮む）
    - 途中まで送ってあれば、下へ引いても中身が送られるだけ
+   - 本文のリンクから重ねたノートは閉じると下へ帰る（下の紙に隠れた一覧の行へ縮まない）
    localStorage は変わらない。
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/note-v19.js */
 const { open, checker } = require("./lib");
@@ -154,6 +155,34 @@ const { open, checker } = require("./lib");
   await frames();
   const pullEnd = await clipEnd();
   t.check("一番上で下へ引くと、カードへ縮んで閉じる", near(pullEnd, await cardBox(second)) && near(c1, await cardBox(second)), JSON.stringify({ pullEnd, c1 }));
+  await gone();
+
+  /* 本文のリンクから重ねたノートは、閉じると来た道（下）へ帰る——下の紙に隠れた一覧の行へ縮まない（縮むと下の紙の本文の真ん中にカードの影が浮いた）。 */
+  await page.evaluate(() => KN.notes.addMany([
+    { id: "v19-b", title: "V19 行き先", body: "行き先の本文", notebook: "", tags: [], fav: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: "v19-a", title: "V19 リンク", body: "[行き先](note:v19-b)\n本文", notebook: "", tags: [], fav: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }]));
+  await page.waitForSelector('.notes-list .note-row[data-id="v19-b"]');
+  await openCard('.notes-list .note-row[data-id="v19-a"]');
+  await page.click(".sheet.is-note .js-view [data-note]");
+  await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 2);
+  await page.waitForTimeout(700);
+  await page.evaluate(() => {
+    window.__w = [];
+    const t0 = performance.now();
+    const tick = () => {
+      const a = document.querySelectorAll(".sheet.is-note");
+      if (a.length > 1) window.__w.push(Math.round(a[a.length - 1].getBoundingClientRect().width));
+      if (performance.now() - t0 < 700) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    const a = document.querySelectorAll(".sheet.is-note .js-close");
+    a[a.length - 1].click();
+  });
+  await page.waitForTimeout(900);
+  const lw = await page.evaluate(() => ({ w: window.__w, n: document.querySelectorAll(".sheet.is-note").length }));
+  t.check("リンクから重ねたノートは下へ帰る（隠れた行へ縮まない）・下の紙は開いたまま", lw.w.length > 3 && Math.min(...lw.w) >= 380 && lw.n === 1,
+    JSON.stringify({ min: Math.min(...lw.w), n: lw.n }));
+  await page.click(".sheet.is-note .js-close");
   await gone();
 
   t.check("localStorage は変わらない", (await page.evaluate(() => (localStorage.getItem("kaimono-note-v2") || "").length)) === lsBefore);

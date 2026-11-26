@@ -2335,6 +2335,8 @@
         back: () => {
           /* 中のノートは、親の紙の「中のノート」のカードへ戻る（段1）。 */
           const at = o.within && o.within.isConnected ? o.within : root;
+          /* 下にまだ紙があれば、席の一覧はその下（リンクから重ねたノート）。隠れた行へ縮むと、下の紙の本文の真ん中にカードの影が浮いた。 */
+          if (at === root && papers.some((x) => x !== me)) return null;
           return (at && at.querySelector(`${o.back || ".notes-list .note-row"}[data-id="${CSS.escape(note.id)}"]`)) || null;
         },
       },
