@@ -4,6 +4,7 @@
    - 右の段に開いたまま席を移る：席の印が先に替わっても、閉じる紙が真ん中の大きな紙の姿にならない
    閉じる動きは今までの紙の閉じ方（右へ --desk-shift 滑って薄れる）。動きは足さない。
    - 段の紙がずれる幅は席の移り・「›」と同じ --desk-shift（P7）
+   - 一覧のほかのノートで入れ替える：二枚が一緒に薄れて後ろが透けない（前の紙は地を残して中身だけ薄れる）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-dock.js */
 const { open, checker } = require("./lib");
 
@@ -81,6 +82,25 @@ const { open, checker } = require("./lib");
   const shift = await page.evaluate(() => ({
     want: parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--desk-shift")), first: window.__x }));
   t.check("段の紙は --desk-shift だけずれて入る（席の移り・「›」と揃う）", shift.want > 0 && Math.abs(shift.first - shift.want) < 0.5, JSON.stringify(shift));
+
+  /* 4. 一覧のほかのノートで入れ替える：二枚が一緒に薄れて後ろ（額の広重・帯）が透けない。毎コマ、段を覆う濃さ（1−Π(1−不透明度)）を取る。 */
+  await page.waitForTimeout(600);
+  await page.evaluate(() => {
+    window.__c = [];
+    const t0 = performance.now();
+    const tick = () => {
+      const s = [...document.querySelectorAll(".sheet.is-note")].map((e) => +getComputedStyle(e).opacity);
+      if (s.length) window.__c.push(+(1 - s.reduce((m, o) => m * (1 - o), 1)).toFixed(2));
+      if (performance.now() - t0 < 700) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  await page.click('#screen-notes .note-row.is-card[data-id="n-k1"]');
+  await page.waitForTimeout(900);
+  const sw = await page.evaluate(() => ({ c: window.__c, n: document.querySelectorAll(".sheet.is-note").length,
+    t: document.querySelector(".sheet.is-note .js-title").value }));
+  t.check("入れ替え：段は毎コマ覆われたまま（後ろが透けない）・入れ替わったあと紙は一枚", sw.c.length > 5 && Math.min(...sw.c) >= 0.99 && sw.n === 1 && sw.t === "二つめ",
+    JSON.stringify({ min: Math.min(...sw.c), n: sw.n, t: sw.t, c: sw.c.slice(0, 12) }));
 
   t.check("エラーなし", !errors.length, errors.join(" | "));
   await browser.close();

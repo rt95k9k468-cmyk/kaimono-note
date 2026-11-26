@@ -1224,7 +1224,7 @@
       if (!fresh && papers[papers.length - 1].id === id) return;
       /* 閉じた拍に一覧が組み直され、押した行からカーソルが外れる——組み直した同じ行の同じ口へ戻す（閉じたら帰る先）。 */
       const was = document.activeElement, row = was && was.closest && was.closest("[data-id]");
-      closePapers();
+      closePapers(true);
       if (row && !was.isConnected && root) {
         const r2 = root.querySelector(`[data-id="${CSS.escape(row.dataset.id)}"]`);
         const to = r2 && (was.classList[0] ? r2.querySelector(`.${CSS.escape(was.classList[0])}`) : r2);
@@ -2755,7 +2755,7 @@
     treeEl.scrollTop = keep;
   }
 
-  function closePapers() {
+  function closePapers(under) {
     const list = papers.slice().reverse();
     /* 右の段の紙は、閉じるあいだ段の形のまま留める（P7）。閉じた直後に一覧が出る・席を移ると段の規則が変わり、閉じる紙が
        380px 跳んだり、真ん中の大きな紙の姿で一瞬出たりしていた（席の印は onLeave より先に替わるので、段の形は開いたときの印 is-docked でも効く）。
@@ -2767,6 +2767,12 @@
         if (!r) return;
         Object.assign(x.h.el.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, right: "auto", bottom: "auto" });
         if (x.h.backdrop) x.h.backdrop.style.display = "none";
+        /* 入れ替え（under：すぐ次の紙が同じ段に開く）は、地を残して中身だけ薄れ、上に来る紙が濃くなりきってから外れる。
+           二枚が一緒に薄れると、その一拍に後ろの額の広重と帯が透けていた。 */
+        if (!under) return;
+        Object.assign(x.h.el.style, { transition: "none", opacity: "1", transform: "none" });
+        if (!KN.motion.still()) [...x.h.el.children].forEach((c) => c.animate([{ opacity: 1 }, { opacity: 0 }],
+          { duration: KN.motion.ms("--m-state"), easing: KN.motion.ease("--ease"), fill: "forwards" }));
       });
     }
     list.forEach((x) => x.h.close());
@@ -2775,7 +2781,7 @@
   /** 木のノートへ：重ねた紙にあればそこまで戻る。無ければ紙を閉じて、そのノートを開く。 */
   function fromTree(id) {
     if (papers.some((x) => x.id === id)) { toNote(id); return; }
-    closePapers();
+    closePapers(true);
     openNote(id);
   }
 
