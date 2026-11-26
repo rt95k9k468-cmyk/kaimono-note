@@ -734,12 +734,13 @@
      out: 「198+250」、「128*3」、「980/2」. Written out rather than handed to
      eval — a shopping note has no business running code, and the grammar here
      is four operators and a number, which is a dozen lines. */
-  const FULLWIDTH = "０１２３４５６７８９．＋－×÷／";
-  const ASCII     = "0123456789.+-*/ /";
+  /* 二つの字は一字ずつ同じ位置で対応する（前は「／」の位置に空白があり、全角の「980／2」が 9802 になった）。 */
+  const FULLWIDTH = "０１２３４５６７８９．＋－×÷／＊％";
+  const ASCII     = "0123456789.+-*//*%";
 
   function normalizeExpr(v) {
     return String(v == null ? "" : v)
-      .replace(/[０-９．＋－×÷／]/g, (c) => ASCII[FULLWIDTH.indexOf(c)])
+      .replace(/[０-９．＋－×÷／＊％]/g, (c) => ASCII[FULLWIDTH.indexOf(c)])
       .replace(/[×✕✖]/g, "*")
       .replace(/÷/g, "/")
       .replace(/[−–—ー]/g, "-")

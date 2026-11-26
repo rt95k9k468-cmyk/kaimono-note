@@ -78,6 +78,9 @@ const { open, checker } = require("./lib");
   for (const k of ["1", "0", "0"]) await key(k);
   const padKeys = await page.$$eval(".keypad .keypad-actions .key", (x) => x.map((e) => e.textContent.trim()));
   t.check("S3：鍵盤に「税抜」と率の札（前の 税+8%・税+10% は無い）", padKeys[0] === "税抜" && padKeys[1] === `${rate0}%` && !padKeys.some((k) => /\+\d+%/.test(k)), JSON.stringify(padKeys));
+  /* 全角で打った式（パソコン・iPad の日本語入力）も同じ答え。前は「／」が消えて「980／2」が 9802 だった（11月26日の点検）。 */
+  const wide = await page.evaluate(() => ["980／2", "１２８×３", "３９８－１２％", "１９８＋２５０", "１．５＊２", "980/2"].map((v) => KN.util.calc(v)));
+  t.check("全角の式も同じ答え（／ × － ％ ＋ ． ＊）", JSON.stringify(wide) === JSON.stringify([490, 384, 350, 448, 3, 490]), JSON.stringify(wide));
   await page.click(".keypad .js-net");
   await wait(200);
   const out = () => page.$eval(".sheet.is-open .js-calc-out", (e) => e.textContent);
