@@ -130,6 +130,26 @@ const { open, checker } = require("./lib");
   await page.waitForTimeout(300);
   c.check("知らせのボタンは Enter の二度押しでも一度だけ", (await page.evaluate(() => window.__undo)) === 1, String(await page.evaluate(() => window.__undo)));
 
+  /* 紙が開いたら、帯の上に残った押せない一言は退く（11月26日の点検。書き終えてすぐ＋で次を書くと、前の「保存しました」が
+     新しい紙の帯の上に乗っていた）：出ていたものは薄れ、同じ拍に出たものは画面の上へ。 */
+  const aside = async (late) => { await clear(); return page.evaluate(async (late) => {
+    const root = document.getElementById("toast-root");
+    root.classList.remove("is-top");
+    KN.ui.toast("試しの一言");
+    if (late) await new Promise((r) => setTimeout(r, 700));
+    const h = KN.ui.sheet({ title: "試し", content: document.createElement("div") });
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const t = root.querySelector(".toast");
+    const r = { top: root.classList.contains("is-top"), out: !t || t.classList.contains("is-out") };
+    h.close();
+    return r;
+  }, late); };
+  const old = await aside(true);
+  c.check("紙が開くと、出ていた一言は薄れて下がる", old.out && !old.top, JSON.stringify(old));
+  await page.waitForTimeout(600);
+  const young = await aside(false);
+  c.check("同じ拍に出た一言は、画面の上へ（消さない）", !young.out && young.top, JSON.stringify(young));
+
   c.check("エラー0", errors.length === 0, errors.join(" / "));
   await browser.close();
   c.done();

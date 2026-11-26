@@ -1040,6 +1040,7 @@
       if ((seed || grown) && morph && !closed) unmorph = morphPill(morph, el, floor + 1 + depth * 2);
       backdrop.classList.add("is-open");
       el.classList.add("is-open");
+      if (!closed) toastsAside();
     };
     /* 行から広がる紙は、growCard がもう並べて動かし始めている。次のコマを待たず、押した拍のうちに（呼んだ側が中身を
        足し終えたあと＝microtask）——次のコマで丸薬の影武者を組むと、動き出しの一コマが落ちた（CPU 4倍で 22〜28ms）。 */
@@ -2205,6 +2206,19 @@
      （週に一度の控え。docs/storage.md）。 */
   const TOAST_LONG_MS = 8000, TOAST_UNTIL_MS = 60000;
 
+  /* 紙が開いた拍に、帯の上に残っている押せない一言を退ける（書き終えてすぐ＋で次を書くと、前の「保存しました」が
+     新しい紙の帯の上に 3.6 秒乗っていた。11月26日の点検）。入ってくる途中の一言（同じ押しで出たもの）は画面の上へ、
+     出ていたものは薄れて下がる。「元に戻す」付きは、紙を開いた押しで下がっている（toast の elsewhere）。 */
+  function toastsAside() {
+    if (!toasts.size || !window.matchMedia("(max-width: 639.98px)").matches) return;
+    const root = toastRoot();
+    if (root.classList.contains("is-top")) return;
+    const young = Date.now() - KN.motion.ms("--m-add");
+    let up = false;
+    toasts.forEach((t) => { if (t.acts || t.at > young) up = true; else t.fade(); });
+    if (up) root.classList.add("is-top");
+  }
+
   function toast(message, { action, actions, long, until, stay, say } = {}) {
     const root = toastRoot();
     /* 押せるものは二つまで（済ませたときの「時刻」と「元に戻す」）。 */
@@ -2247,6 +2261,7 @@
       pause() { if (timer) { clearTimeout(timer); timer = null; left -= Date.now() - since; } },
       resume() { if (!gone && !stay && !timer) { since = Date.now(); timer = setTimeout(dismiss, Math.max(left, 0)); } },
       drop() { gone = true; clearTimeout(timer); toasts.delete(self); off(); el.remove(); },
+      fade: () => dismiss(),
     };
     /* 押せるもの付きは、ほかを押したら下がる（送るだけでは下がらない）。出した押し（指を離した所で
        出す消し方）に続く click は数えない。 */
