@@ -99,7 +99,7 @@ const frameFn = () => {
     slideW = Math.round(slide.getBoundingClientRect().width);
     read = Math.round(slideW - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
   }
-  return { vw, vh, app, bodyBg, appBg, cap, bar, fab, read, slideW };
+  return { vw, vh, app, bodyBg, appBg, cap, bar, fab, read, slideW, alone: !!(slide && slide.classList.contains("is-alone")) };
 };
 
 /** 中で送る器が、棒のぶん狭くなって横に送れるようになっていない。 */
@@ -167,7 +167,8 @@ async function seed(page) {
       t.check(`${at}：アプリの地は窓いっぱい（灰の帯が無い）`,
         !!fr && fr.app.l === 0 && fr.app.r === fr.vw && fr.bodyBg === fr.appBg, JSON.stringify(fr && { app: fr.app, body: fr.bodyBg, bg: fr.appBg }));
       if (w >= 640) {
-        const two = !!fr && fr.slideW >= 768;
+        /* 右の段（いまごろ）の無い今日は一列で読む幅（点検24）。二段の幅を見るのは右の段があるときだけ。 */
+        const two = !!fr && fr.slideW >= 768 && !fr.alone;
         const want = two ? Math.min(1180, fr.slideW - 32) : w >= 840 ? 760 : 680;
         t.check(`${at}：中身は読む幅 ${want}px に寄る${two ? "（daily の二段）" : ""}`, !!fr && fr.read != null && fr.read <= want + 1 && fr.read >= Math.min(want, fr.vw - (w >= 840 ? 300 : 0)) - 1,
           JSON.stringify(fr && { read: fr.read, slide: fr.slideW }));
