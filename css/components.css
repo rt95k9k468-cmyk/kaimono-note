@@ -1311,7 +1311,7 @@ button.hero-node:active { scale: var(--press-dot); }
   overscroll-behavior: contain;
 }
 
-/* ボタンの帯。**貼りつけません**——中身の最後に、ふつうに並びます。
+/* ボタンの帯。打っているあいだは**貼りつけません**——中身の最後に、ふつうに並びます（打っていない時は下の規則で貼る）。
    キーボードの上に固定していたころは、指は届くかわりに読めるところが
    一段ぶん狭くなっていました。書き終えて下まで来れば、そこにあります。
    （途中でやめようとしたときは、閉じる前に一度聞きます——ui.js の
@@ -1323,6 +1323,11 @@ button.hero-node:active { scale: var(--press-dot); }
   display: flex;
   gap: var(--sp-2);
 }
+/* ただしキーボードが出ていないあいだは、紙の下に貼る（手順やメモが長いと「保存」が下へ隠れていた。2026年11月25日の
+   点検13、利用者が選んだ）。打っているあいだ（.kb-open）は上のとおり中身の最後——読める所を食べないように。 */
+/* 紙の下の余白（.sheet-body の sp-5）まで帯で覆う——貼り付いたとき、その余白に中身が透けていた。 */
+:root:not(.kb-open) .sheet-foot { position: sticky; bottom: calc(-1 * var(--sp-5)); z-index: 1;
+  margin-bottom: calc(-1 * var(--sp-5)); padding-bottom: var(--sp-5); background: var(--c-sheet); }
 
 /* Product icons size themselves off the surrounding font-size, so every place
    that sets a size for the mark gets the icon at that size for free. Slightly

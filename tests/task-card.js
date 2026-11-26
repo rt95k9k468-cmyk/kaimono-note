@@ -202,6 +202,28 @@ const { open, checker } = require("./lib");
     await page.waitForTimeout(700);
   }
 
+  /* ---- 点検13：手順やメモが長い用事の紙でも、打っていなければ「保存」は紙の下に見える。打っているあいだは中身の最後 ---- */
+  {
+    const foot = await page.evaluate(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      KN.app.showScreen("todo"); await wait(400);
+      const id = KN.store.addTodo({ title: "長い用事", due: KN.util.todayKey(), time: "16:00", minutes: 30,
+        memo: Array.from({ length: 14 }, (_, i) => `メモ ${i}`).join("\n"), subs: Array.from({ length: 8 }, (_, i) => ({ title: `手順${i}` })) }).id;
+      KN.screens.todo.open(id); await wait(900);
+      if (document.activeElement) document.activeElement.blur();
+      document.documentElement.classList.remove("kb-open"); await wait(200);
+      const f = document.querySelector(".sheet.is-open .sheet-foot");
+      const out = { seen: f.getBoundingClientRect().bottom <= innerHeight + 1, pos: getComputedStyle(f).position };
+      document.documentElement.classList.add("kb-open"); await wait(100);
+      out.typing = getComputedStyle(f).position;
+      document.documentElement.classList.remove("kb-open");
+      return out;
+    });
+    t.check("点検13：長い用事の紙でも「保存」は下に見える・打っているあいだは貼らない", foot.seen && foot.pos === "sticky" && foot.typing === "static", JSON.stringify(foot));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(700);
+  }
+
   /* ---- 構4b の二つめ：席1 の線の下の札は外した（今日の用事は席3 の時間割で済ませる） ---- */
   await page.evaluate(() => KN.app.showScreen("archive"));
   await page.waitForTimeout(500);
