@@ -5662,6 +5662,7 @@
      なってから一件目の「6:20」に4px かかっていた（2026年11月1日の撮り比べ）。字の大きさ（--fs-k）で伸びる。 */
   function clockGap() { const B = clockBox(); return (22 / 20 * B.h + B.h) / 2 + 3; }   // 22 は .tl-now の札の高さ
   const SHORT_CARD = 50;                    // これより低い札は一行（.is-short。左の時刻も札の縦中央）
+  const LOW_CARD = 76;                      // これより低い札はメモを外す（.is-low。題2行・メモ・事実が入らず、題の頭が欠けた）
 
   /* 左の時刻の字が列の中で占める縦の幅（CSS の .tl-time と同じ置き方）。「ごろ」（.tl-about）は時刻の下に
      浮くので、札の高さや隣の時刻を見るときはそのぶんも数える——数えずにいて、30分の札の「ごろ」が次の札の
@@ -6752,7 +6753,7 @@
     /* 時刻を決めていない（組み立てが詰めた目安の）用事。「ごろ」と、紙に沈めた札（is-about）の両方がこれを見る。 */
     const rough = !it.fixed && !closed && !!it.at;
     /* 札の大きさで中身を削る：低い札は題だけ、三列では絵も外す（幅が約90px）。 */
-    const size = c && c.height < SHORT_CARD ? "is-short" : "";
+    const size = !c ? "" : c.height < SHORT_CARD ? "is-short is-low" : c.height < LOW_CARD ? "is-low" : "";
     const li = node(html`
       <li class="tl-row ${closed ? "is-done" : ""} ${rough ? "is-about" : ""} ${size} ${c && c.lanes > 1 ? "is-lane" : ""} ${c && c.lanes > 2 ? "is-narrow" : ""}"
           data-todo-id="${t.id}" data-flip="${t.id}"

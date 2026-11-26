@@ -101,6 +101,27 @@ const PX_MIN = 1.2;
   c.check("「＋n」を押すと、入りきらなかった用事の一覧の紙", listed.length === 1 && !r.rows.some((x) => x.title.includes(listed[0])),
     JSON.stringify({ listed, rows: r.rows.map((x) => x.title.trim()) }));
 
+  /* 札の中身があふれても題の頭は欠けない（2026年11月26日：二列の 30分の札に手順・メモを付けると、真ん中寄せのまま題の頭が上で切れた）。
+     日付なしの行の URL の題も箱の外へ出ない。 */
+  await page.keyboard.press("Escape");
+  const LONG = "とても長い題の用事でどこまでも続いていく名前", URL = "https://example.com/very/long/path/that/never/breaks/index.html?q=aaaaaaaaaaaa";
+  await page.evaluate(([day, L, U]) => {
+    const s = KN.store;
+    s.addTodo({ title: L, due: day, time: "10:00", minutes: 30, subs: [{ title: "a" }] });
+    s.addTodo({ title: U, due: day, time: "10:00", minutes: 30, subs: [{ title: "a" }] });
+    s.addTodo({ title: L + L, due: day, time: "13:00", minutes: 30, subs: [{ title: "a" }], memo: "メモ" });
+    s.addTodo({ title: U });
+  }, [DAY, LONG, URL]);
+  await page.waitForTimeout(600);
+  const fit = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll("#screen-todo .tl-list > .tl-row > .tl-item")].filter((it) => /とても長い|example/.test(it.textContent));
+    const cut = cards.map((it) => { const r = it.getBoundingClientRect(), n = it.querySelector(".item-name").getBoundingClientRect(); return n.top < r.top - 1 ? `${it.textContent.slice(0, 8)} ${Math.round(n.top - r.top)}` : ""; }).filter(Boolean);
+    const any = document.querySelector("#screen-todo .tl-any"), name = [...document.querySelectorAll("#screen-todo .tl-any .item-name")].find((x) => /example/.test(x.textContent));
+    return { n: cards.length, cut, out: name && any ? Math.round(name.getBoundingClientRect().right - any.getBoundingClientRect().right) : null };
+  });
+  c.check("低い札・二列の札は題の頭が欠けない（手順・メモ付き）", fit.n === 3 && !fit.cut.length, JSON.stringify(fit));
+  c.check("日付なしの URL の題は箱の中で折れる", fit.out !== null && fit.out <= 0, JSON.stringify(fit));
+
   c.check("エラーなし", !errors.length, errors.join("\n"));
   await browser.close();
   c.done();

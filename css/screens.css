@@ -3653,6 +3653,7 @@ button.tl-over:active { opacity: var(--press-fade); }
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  overflow-wrap: anywhere;   /* URL の題の幅が行の最小幅として上へ伝わり、カードの外へ出ていた */
   flex: none;
   /* 実測 16px。17px から一段落としました——参考画面の題は、副題との差で
      大きく見えているので、絶対値はここまでで足ります。 */
@@ -3703,6 +3704,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
   transition: background var(--m-press) var(--ease), transform var(--m-press) var(--ease), scale var(--m-press) var(--ease);
 }
 .tl-subs-chip:active { scale: var(--press-wide); }
+.tl-list .tl-facts > .tl-subs-chip { margin-block: -4px; }   /* 札の中では字の一行ぶんの背に（見た目はそのまま。30分の札で下が欠けた） */
 /* 中の小さな□。参考画面はここだけ濃い灰の塗りに白い✓で、丸薬の地から
    一段沈ませてあります——数のほうを読ませたいので。 */
 .tl-subs-box {
@@ -3936,12 +3938,12 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
    次の札の時刻にかかった。2026年10月24日）。JS の clockSpan も同じ置き方で数える。 */
 .tl-list > li.tl-row.is-short > .tl-time:has(.tl-about) { translate: 0 calc(-50% - var(--fs-xs) / 2); }
 .tl-list > li.tl-row.is-short > .item.tl-item { padding-top: 3px; padding-bottom: 3px; align-items: center; }
-.tl-list > li.tl-row.is-short .tl-cap { display: none; }
+.tl-list > li.tl-row.is-low .tl-cap { display: none; }
+.tl-list > li.tl-row.is-low.is-lane .tl-len { display: none; }   /* 列を分けた低い札は長さを外す（高さが言う。手順の札と二段になって下が欠けた） */
 .tl-list > li.tl-row.is-short .tl-body { display: flex; align-items: center; gap: var(--sp-2); }
 .tl-list > li.tl-row.is-short .tl-open { flex: 1; min-width: 0; }
 .tl-list > li.tl-row.is-short .tl-facts { flex: none; margin-top: 0; flex-wrap: nowrap; }
 .tl-list > li.tl-row.is-short .tl-item .item-name { -webkit-line-clamp: 1; }
-.tl-list > li.tl-row.is-short.is-lane .tl-len { display: none; }   /* 列を分けた低い札は題を残す（長さは札の高さが言う） */
 .tl-list > li.tl-row.is-narrow .tl-ico, .tl-list > li.tl-row.is-narrow .tl-cap,
 .tl-list > li.tl-row.is-narrow .tl-facts { display: none; }
 .tl-list > li.tl-row.is-narrow .tl-body { padding-left: 0; }
@@ -4678,7 +4680,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 .nt-bks { margin: var(--sp-2) var(--sp-4) 0; }
 .nt-bk.arc-spine { --spine: var(--deep, var(--cat)); width: 40px; height: 128px; }
 .nt-bk.arc-spine[data-pt="none"] { --spine: var(--c-surface-3); color: var(--c-text); }
-.nt-bk.arc-spine b { max-height: 112px; overflow: hidden; }
+.nt-bk.arc-spine b { max-height: 112px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }  /* 長い名は一列のまま…に（折ると背から出た） */
 /* 冊を運ぶ（note-drag の shelf）：寄る冊は transform で滑り、持ち上げた冊は指につく（滑らない）。 */
 .nt-bks.is-carrying > .nt-bk { transition: transform var(--m-reorder) var(--ease); }
 .nt-bks.is-carrying > .nt-bk.is-lifted { position: relative; z-index: 2; transition: scale var(--m-press) var(--ease); scale: 1.06; }
@@ -4697,6 +4699,7 @@ button.tl-doneat { font: inherit; padding: 4px 2px; margin: -4px -2px; backgroun
 /* モダンの表紙は色の面に白い題（和柄と題箋は出さない。docs/redesign.md 4節）。 */
 :root[data-attire="modern"] .nt-cv::after { display: none; }
 .nt-tags { margin-top: var(--sp-2); flex-wrap: wrap; }
+.nt-tags .chip { max-width: 100%; } .nt-tags .chip > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* 長いタグは札の中で…に */
 .notes-books.has-shelves, #screen-notes[data-season] .notes-books.has-shelves { padding: 0; background: none; box-shadow: none; overflow: visible; }
 /* 6つの棚（SHELF）：一冊の面は棚の色の薄いカード（暗い面は塗りを濃く字を白へ）。見出しの字は 60%（66% では暗い thinking が 4.47）。 */
 .nt-shelf { --shelf-a: 8%; --shelf-c: color-mix(in srgb, var(--shelf) 85%, #888);
@@ -7294,12 +7297,12 @@ html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-s
 /* 店ごとの値段の棒（productSheet.bars）。長さは scale（transform の原則）、描かれるときは左から伸びる。 */
 .pbars { display: flex; flex-direction: column; gap: var(--sp-2); }
 /* 店名の列は 8em（7em では「ドラッグストア」が「ドラッグス…」に切れた。点検14）。 */
-.pbar { display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) 4.2em; gap: 10px; align-items: center; font-size: var(--fs-md); color: var(--c-text); }
+.pbar { display: grid; grid-template-columns: minmax(0, 8em) minmax(0, 1fr) minmax(4.2em, max-content); gap: 10px; align-items: center; font-size: var(--fs-md); color: var(--c-text); }
 .pbar-s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 .pbar-b { display: block; height: 10px; border-radius: 5px; background: var(--c-surface-2); overflow: hidden; }
 .pbar-b > i { display: block; height: 100%; border-radius: 5px; background: var(--c-border-2); transform-origin: left center; scale: var(--w, 1) 1; animation: stack-grow var(--m-fill) var(--ease-out) both; }
 :is(.pbar, .price-row).is-best .pbar-b > i { background: var(--c-yamabuki-fill); }
-.pbar-y { text-align: right; font-family: var(--font-num); font-weight: var(--fw-bold); }
+.pbar-y { text-align: right; font-family: var(--font-num); font-weight: var(--fw-bold); white-space: nowrap; }
 #screen-prices .pbar { font-size: var(--fs-sub); }
 #screen-prices .pbar-b { height: 6px; }
 /* 今日買ったもの：一枚の行（絵の台・題・品数・＞）。ひらくと下に買った行のカード。 */
