@@ -164,6 +164,26 @@ const KNOWN = { open: [], import: [] };
   t.check("日の行を直す道：知らない欄と今日の一枚が残る・外した睡眠の型は戻らない", day.fut === "未来の欄" && day.photo && !day.stages, JSON.stringify(day));
   t.check("日の行を直す道：一枚だけの日は本文を消しても行が残り、外すと参照だけ消える", day.kept && day.off, JSON.stringify(day));
 
+  /* 並びの中の物でない一件（null・字）は読むときに落とす（2026年11月26日、利用者が選んだ）。前は一つでも混ざると
+     読めない記録になって保存が止まった。中身のある一件は一つも減らない。開く道（adoptRaw＝起動の読み込み）で見る。 */
+  await seed();
+  const holes = await page.evaluate(() => {
+    const S = KN.store;
+    S.saveNow();   // 待っている保存を元へ（元の字と記憶を同じにしてから比べる）
+    const was = S.countsOf();
+    const raw = JSON.parse(S.rawLive());
+    raw.categories.splice(1, 0, null); raw.stores.push(null, "x"); raw.products.splice(0, 0, null);
+    raw.products[1].prices = [null].concat(raw.products[1].prices || []);
+    raw.items.push(null, 3); raw.diet.weights.push(null); raw.diet.meals.unshift(null);
+    const ok = S.adoptRaw(JSON.stringify(raw));
+    const st = S.get();
+    const flat = [st.categories, st.stores, st.products, st.items, st.diet.weights, st.diet.meals, ...st.products.map((p) => p.prices)];
+    return { ok, err: S.loadError(), was: JSON.stringify(was), now: JSON.stringify(S.countsOf()),
+      clean: flat.every((a) => Array.isArray(a) && a.every((x) => x && typeof x === "object")) };
+  });
+  t.check("並びの空の一件は読むときに落ち、保存は止まらない・中身のある記録は減らない",
+    holes.ok && !holes.err && holes.clean && holes.was === holes.now, JSON.stringify(holes));
+
   t.check("エラーが出ない", errors.length === 0, errors.join("\n"));
   await browser.close();
   t.done();

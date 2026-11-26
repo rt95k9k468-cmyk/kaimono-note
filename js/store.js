@@ -607,12 +607,14 @@
   function reconcileDiet(d) {
     const base = emptyDiet();
     const src = (d && typeof d === "object" && !Array.isArray(d)) ? d : {};
-    /* 知らない欄は残す（keepUnknown。箱も一件も）。食事は明細と AI の欄まで（cleanMeal の keep）。 */
-    const list = (a, clean) => (Array.isArray(a) ? a : []).map((x, i) => keepUnknown(x, clean(x, i))).filter(Boolean);
+    /* 知らない欄は残す（keepUnknown。箱も一件も）。食事は明細と AI の欄まで（cleanMeal の keep）。
+       物でない一件（null など）は落とす——前は体重・食事の一件が null だと読み込みごと投げた。 */
+    const objs = (a) => (Array.isArray(a) ? a.filter((x) => x && typeof x === "object" && !Array.isArray(x)) : []);
+    const list = (a, clean) => objs(a).map((x, i) => keepUnknown(x, clean(x, i))).filter(Boolean);
     const out = {
       ...src,
       weights: list(src.weights, cleanWeight),
-      meals: (Array.isArray(src.meals) ? src.meals : []).map((m, i) => keepUnknown(m, cleanMeal(m, i, true))).filter(Boolean),
+      meals: objs(src.meals).map((m, i) => keepUnknown(m, cleanMeal(m, i, true))).filter(Boolean),
       foods: list(src.foods, cleanUserFood),
       health: list(src.health, cleanHealth),
       /* 前からある記録には drinks がありません。空で足すだけなので、
@@ -815,10 +817,14 @@
     if (!["gothic", "maru", "mincho"].includes(out.settings.font)) out.settings.font = "gothic";
     if (!ATTIRES.includes(out.settings.attire)) out.settings.attire = "now";
     if (out.settings.headFont !== "same") out.settings.headFont = "mincho";
-    out.categories = Array.isArray(s.categories) && s.categories.length ? s.categories : base.categories;
-    out.stores   = Array.isArray(s.stores)   ? s.stores   : [];
-    out.products = Array.isArray(s.products) ? s.products : [];
-    out.items    = Array.isArray(s.items)    ? s.items    : [];
+    /* 並びの中の物でない一件（null・字・数）は落とす（やることと同じ。2026年11月26日、利用者が選んだ）。前は一つでも
+       混ざると下の c.order・p.prices で投げ、読めない記録として保存を止めていた。中身のある一件は動かさない。 */
+    const objs = (a) => (Array.isArray(a) ? a.filter((x) => x && typeof x === "object" && !Array.isArray(x)) : []);
+    const cats = objs(s.categories);
+    out.categories = cats.length ? cats : base.categories;
+    out.stores   = objs(s.stores);
+    out.products = objs(s.products);
+    out.items    = objs(s.items);
     /* いつもの組（R11）。鍵が無い保存（この機能より前）は空。名前の無いもの・
        形の崩れたものは落とし、品物の id は重ねない。消えた品物を指す id は
        ここでは消しません（使うときに見ないだけ）——復元で品物が戻れば、また
@@ -922,7 +928,7 @@
       if (!c.color) c.color = CATEGORY_COLORS[i % CATEGORY_COLORS.length];
     });
     out.products.forEach((p) => {
-      if (!Array.isArray(p.prices)) p.prices = [];
+      p.prices = objs(p.prices);
       /* 手で並べた順。触っていないカテゴリの商品は null のままで、
          そこは五十音のままです（並べた覚えのない棚が勝手に並び替わって
          いるほうが、よほど分からない）。 */
