@@ -231,7 +231,7 @@
         /* 店の名前の下に値段の棒（docs/redesign.md R5。比べたときの最安は山吹）。 */
         const row = node(html`
           <div class="price-row ${isBest ? "is-best" : ""}">
-            <button class="price-main js-open" aria-label="${st.name} の値段をくわしく見る">
+            <button class="price-main js-open" aria-label="${st.name} ${yen(pr.price)}${up ? ` ${up.text}` : ""} ${relativeDate(pr.date)}${isBest ? " いちばん安い" : ""}。くわしく見る">
               <span class="price-store-wrap">
                 <span class="price-store">${st.name}</span>
                 ${isBest ? html`<span class="crown" aria-label="いちばん安い">${icon("crown", "is-sub")}</span>` : ""}

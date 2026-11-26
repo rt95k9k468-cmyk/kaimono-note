@@ -2143,7 +2143,7 @@
     const open = rows.some((_, i) => seasonTurn(day, i));
     const el = node(html`
       <section class="arc-season arc-door${open ? " is-open" : ""}" data-day="${day}">
-        <button type="button" class="arc-door-face${S().seasonArt === false ? "" : " arc-season-art"}" aria-expanded="${open}" aria-label="${s.kou}　季節のひとこと">
+        <button type="button" class="arc-door-face${S().seasonArt === false ? "" : " arc-season-art"}" aria-expanded="${open}" aria-label="${s.kou} ${s.kouYomi}、${s.sekki} ${["初候", "次候", "末候"][s.part]} ${rows[1][2]}。季節のひとこと">
           <b class="arc-door-ko">${s.kou}</b><span class="arc-door-yomi">${s.kouYomi}</span>
           <span class="arc-door-sekki">${s.sekki}　${["初候", "次候", "末候"][s.part]}<b>${rows[1][2]}</b></span>
         </button>

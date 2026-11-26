@@ -1257,7 +1257,7 @@
         <textarea class="note-title-in grow-field js-title" placeholder="タイトル" aria-label="タイトル"
                   rows="1" autocomplete="off" enterkeyhint="next"></textarea>
         <div class="note-sub">
-          <button type="button" class="note-when js-when" aria-label="作った日">${stampOf(note.createdAt, note.noTime)}</button>
+          <button type="button" class="note-when js-when" aria-label="作った日 ${stampOf(note.createdAt, note.noTime)}">${stampOf(note.createdAt, note.noTime)}</button>
           <div class="note-labels js-labels"></div>
         </div>
         <div class="note-view js-view" hidden></div>
@@ -2064,6 +2064,7 @@
         if (stored) N().setCreated(note.id, iso, true);
         else { note.createdAt = iso; note.noTime = true; }
         whenBtn.textContent = stampOf(note.createdAt, note.noTime);
+        whenBtn.setAttribute("aria-label", `作った日 ${whenBtn.textContent}`);
       });
     });
 

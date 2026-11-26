@@ -3789,8 +3789,10 @@
       const next = nowMin == null ? null : live.find((it) => it.fixed && it.atMin > nowMin);
       const left = next ? next.atMin - nowMin : 0;
       const sum = [S.planned ? `予定 ${P.humanSpan(S.planned)}` : "", `空き ${P.humanSpan(Math.max(0, S.free))}`].filter(Boolean).join("・");
+      /* 読み上げは名だけを読むので、見えている「次は◯◯・予定と空き」も名に入れる。 */
+      const said = cur ? `いまは ${cur.todo.title}、${tlClock(cur.until)}まで。` : next ? `次は ${tlClock(next.at)} ${next.todo.title}${left > 0 ? `、あと${P.humanSpan(left)}` : ""}。` : "";
       box.append(node(html`
-        <button type="button" class="strip-open" aria-expanded="false" aria-label="一日の道をひらく">
+        <button type="button" class="strip-open" aria-expanded="false" aria-label="${said}${sum}。一日の道をひらく">
           ${cur || next ? html`<span class="strip-top">
             <span class="strip-next">${cur ? html`いまは ${cur.todo.title}` : html`次は ${tlClock(next.at)} ${next.todo.title}`}</span>
             <span class="strip-left">${cur ? `${tlClock(cur.until)}まで` : left > 0 ? `あと${P.humanSpan(left)}` : "いまから"}</span>
@@ -6733,7 +6735,7 @@
     if (sc.total && !t.trace) {
       facts.push(html`
         <button type="button" class="tl-subs-chip" aria-expanded="${String(subsOpen)}"
-                aria-label="${t.title} の手順を${subsOpen ? "たたむ" : "ひらく"}">
+                aria-label="${t.title} の手順 ${sc.done}/${sc.total}、${subsOpen ? "たたむ" : "ひらく"}">
           <span class="tl-subs-box">${icon("check")}</span>
           <span class="tl-subs-n">${sc.done}/${sc.total}</span>
           <span class="tl-subs-arrow">${icon("chevron")}</span>

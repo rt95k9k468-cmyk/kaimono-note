@@ -56,6 +56,8 @@ const { open, checker } = require("./lib");
   await openW();
   await pickDay(".js-day", "2026-10-05");
   t.check("体重：暦で選ぶと字が変わる", (await btnOf(".js-day").textContent()) === "10/5(月)");
+  t.check("読み上げの名も値を言う（「日付 10/5(月)」。名だけだと値が読まれない）", (await btnOf(".js-day").getAttribute("aria-label")) === "日付 10/5(月)",
+    await btnOf(".js-day").getAttribute("aria-label"));
   await closeSheet();
   let w = JSON.parse(await weight());
   t.check("体重：日だけ変えて閉じる → 保存", (await sheets()) === 0 && w.day === "2026-10-05" && w.time === "07:05", JSON.stringify(w));
