@@ -105,8 +105,11 @@
     return null;
   }
 
-  /** その日を含む週の日曜日。暦が日曜始まりなので、週の頭もそこに合わせる。 */
-  const weekTop = (key) => U.shiftDay(key, -(U.dayOfWeek(key) || 0));
+  /** その日を含む週の月曜日。アプリの暦・週の面（util.weekOf）と同じ月曜はじまり（2026年11月26日、利用者が選んだ。
+      前は日曜はじまりで、土曜の「今週の金曜」がきのう、日曜の「来週」が週の面の来週の外になっていた）。 */
+  const weekTop = (key) => U.weekOf(key).from;
+  /** 今週の土曜。週の終わりの日曜なら、その日（「今週末」「今週中」）。 */
+  const weekEnd = (key) => (U.dayOfWeek(key) === 0 ? key : nextWd(6, key));
 
   /** その月の最後の日。 */
   function endOfMonth(key, add) {
@@ -187,17 +190,20 @@
     { re: "月末", read: (m, c) => ({ due: endOfMonth(c.today, 0) }) },
     { re: RE_WEEK + "末", read: (m, c) => {
         const add = m[1] === "来週" ? 7 : m[1] === "再来週" ? 14 : 0;
-        return { due: add ? U.shiftDay(weekTop(c.today), add + 6) : nextWd(6, c.today) };
+        return { due: add ? U.shiftDay(weekTop(c.today), add + 5) : weekEnd(c.today) };
       } },
     { re: "週末", read: (m, c) => ({ due: nextWd(6, c.today) }) },
     { re: RE_WEEK + "の?" + RE_WD, read: (m, c) => {
         const add = m[1] === "来週" ? 7 : m[1] === "再来週" ? 14 : 0;
-        return { due: nextWd(WDS.indexOf(m[2]), U.shiftDay(weekTop(c.today), add)) };
+        const wd = WDS.indexOf(m[2]);
+        const d = nextWd(wd, U.shiftDay(weekTop(c.today), add));
+        /* 今週のその曜日がもう過ぎていたら、次に来るその曜日（過ぎた日へは置かない）。 */
+        return { due: !add && d < c.today ? nextWd(wd, c.today) : d };
       } },
     /* 「来週」だけのときは、その週のはじめ（月曜）。日を言っていないので、
        週の頭に置いて、あとから動かしてもらう。 */
     { re: "(来週|再来週)", read: (m, c) => ({
-        due: U.shiftDay(weekTop(c.today), (m[1] === "来週" ? 7 : 14) + 1) }) },
+        due: U.shiftDay(weekTop(c.today), m[1] === "来週" ? 7 : 14) }) },
     { re: RE_WD, read: (m, c) => ({ due: nextWd(WDS.indexOf(m[1]), c.today) }) },
     { re: "(\\d{1,2})日", read: (m, c) => { const d = nextDom(+m[1], c); return d ? { due: d } : null; } },
   ];
@@ -312,7 +318,7 @@
       read: (m, c) => { const p = r.read(m, c); return p && p.due ? { deadline: p.due } : null; },
     })),
     { kind: "deadline", re: "(?:今日|本日|きょう)中(?:に)?", read: (m, c) => ({ deadline: c.today }) },
-    { kind: "deadline", re: "今週中(?:に)?", read: (m, c) => ({ deadline: nextWd(6, c.today) }) },
+    { kind: "deadline", re: "今週中(?:に)?", read: (m, c) => ({ deadline: weekEnd(c.today) }) },
     { kind: "deadline", re: "今月中(?:に)?", read: (m, c) => ({ deadline: endOfMonth(c.today, 0) }) },
 
     /* ---- 日付 ---- */
