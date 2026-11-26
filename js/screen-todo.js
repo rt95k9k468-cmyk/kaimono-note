@@ -1183,7 +1183,7 @@
             <span class="sub-grip js-sub-grip" aria-hidden="true">${icon("grip")}</span>
             <button type="button" class="sub-check js-sub-check ${subOn(s) || subSkip(s) ? "is-on" : ""}" role="checkbox"
                     aria-checked="${subOn(s) ? "true" : subSkip(s) ? "mixed" : "false"}" aria-label="${i + 1}つめの手順を済ませる${subSkip(s) ? "（できなかった）" : ""}">${subSkip(s) && !subOn(s) ? icon("minus") : icon("check")}</button>
-            <input class="input js-sub" value="${s.title}" placeholder="手順" data-blank-ok
+            <input class="input js-sub" value="${s.title}" placeholder="手順" data-blank-ok data-draft="sub:${s.id}"
                    aria-label="${i + 1}つめの手順" autocomplete="off" enterkeyhint="enter">
             <button type="button" class="icon-btn js-sub-del"
                     aria-label="この手順を消す">${icon("close")}</button>

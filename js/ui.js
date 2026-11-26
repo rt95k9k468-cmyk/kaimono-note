@@ -733,10 +733,13 @@
   /** 紙ごとの「開き直し方」。id は控えた draft.id。 */
   function reopen(kind, fn) { reopeners[kind] = fn; }
 
-  /* 欄の名札：組み直しても同じ欄を指すように、種類・js- の印・見本の字と、同じ名札の何番目か。 */
+  /* 欄の名札：組み直しても同じ欄を指すように、種類・js- の印・見本の字と、同じ名札の何番目か。
+     増えたり消えたりする欄（やることの手順）は data-draft に自分の id を持ち、それで照らす——何番目かで照らすと、
+     一つ消して打ち替えた字が消した欄へ入り、閉じるとその題が書き換わった（2026年11月26日の点検）。 */
   function fieldKeys(list) {
     const seen = {};
     return list.map((f) => {
+      if (f.dataset.draft) return "id:" + f.dataset.draft;
       const sig = [f.tagName, f.type, [...f.classList].filter((c) => c.startsWith("js-")).join("."),
         f.getAttribute("placeholder") || ""].join(":");
       seen[sig] = (seen[sig] || 0) + 1;

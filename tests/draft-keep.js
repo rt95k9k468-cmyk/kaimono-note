@@ -142,6 +142,29 @@ const { open, checker, URL } = require("./lib");
   const ex = await page.evaluate(() => KN.store.exportJSON());
   t.check("5 控えは書き出しに乗らない", !!(await kept()) && !ex.includes(KEY) && !ex.includes("窓を拭く"));
 
+  /* 6. 手順を一つ消して、残りを打ち替えた紙（2026年11月26日の点検）：打ち替えた字は、その手順の欄へ戻る。
+     前は欄を「同じ名札の何番目か」で照らしたので、消した一つめの欄へ二つめの字が入り、閉じると一つめの題が書き換わった。 */
+  await show();
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 3000 }).catch(() => {});
+  const id6 = await page.evaluate(() => KN.store.addTodo({ title: "棚を組む", due: null,
+    subs: [{ id: "s6a", title: "板を出す", done: false }, { id: "s6b", title: "ねじを留める", done: false }] }).id);
+  await page.waitForTimeout(400);
+  await page.evaluate((id) => KN.screens.todo.open(id), id6);
+  await sheetOpen(".js-sub");
+  await page.click(".sheet .sub-line .js-sub-del");
+  await page.fill(".sheet .js-sub", "ねじを全部留める");
+  await hide();
+  await coldOpen(".js-title", "棚を組む");
+  await page.waitForTimeout(300);
+  const subs6 = await page.evaluate(() => [...document.querySelectorAll(".sheet .js-sub")].map((f) => f.value));
+  t.check("6 打ち替えた字は、その手順の欄へ（消した手順の欄へ入らない）",
+    subs6.length === 2 && subs6[0] === "板を出す" && subs6[1] === "ねじを全部留める", JSON.stringify(subs6));
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 3000 }).catch(() => {});
+  const rec6 = await page.evaluate((id) => (KN.store.getTodo(id).subs || []).map((x) => `${x.id}:${x.title}`), id6);
+  t.check("6 閉じても、ほかの手順の題は書き換わらない", rec6.includes("s6a:板を出す"), JSON.stringify(rec6));
+
   t.check("エラー0", !errors.length, errors.join(" / "));
   await browser.close();
   t.done();
