@@ -113,6 +113,56 @@ const { open, checker } = require("./lib");
   await wait(700);
   const low = await page.$eval(".sheet.is-open .pd-low", (e) => e.textContent.replace(/\s+/g, " ")).catch(() => "");
   t.check("S4：これまでの最安（店・日）", low.includes(`これまでの最安 ¥${saved.price}`) && low.includes("試しの店B"), low);
+  /* 店の札の帯は横にだけ送る（11月26日：当たりのはみ出しで縦にも動いていた）。 */
+  const wrap = await page.$eval(".sheet.is-open .price-add .chip-wrap", (e) => ({ oy: getComputedStyle(e).overflowY, sh: e.scrollHeight, ch: e.clientHeight }));
+  t.check("店の札の帯は縦に送れない", wrap.oy === "hidden" && wrap.sh <= wrap.ch, JSON.stringify(wrap));
+  await page.keyboard.press("Escape");
+  await wait(600);
+
+  /* 値段の記録（11月26日）：畳んだ一行・店ごとに新しい順と前回との差。前の日の記録は詳細で直しても書き換えず、今日として足す。 */
+  const old = await page.evaluate((id) => {
+    const S = KN.store, a = S.get().stores.find((s) => s.name === "試しの店A");
+    const rec = { id: KN.util.uid("pr"), storeId: a.id, price: 230, amount: null, date: new Date(Date.now() - 10 * 864e5).toISOString() };
+    S.update((s) => { s.products.find((p) => p.id === id).prices.unshift(rec); });
+    return rec.id;
+  }, ids.two);
+  await page.evaluate((id) => { KN.productSheet.open(id); }, ids.two);
+  await wait(700);
+  const hist = await page.evaluate((pid) => {
+    const d = document.querySelector(".sheet.is-open .pd-hist");
+    if (!d) return null;
+    const closed = !d.open;
+    d.open = true;
+    const g = [...d.querySelectorAll(".pd-hist-st")].map((x) => x.textContent.replace(/\s+/g, " ").trim());
+    return { closed, sum: d.querySelector("summary").textContent.trim(), g, n: KN.store.getProduct(pid).prices.length };
+  }, ids.two);
+  t.check("値段の記録：畳んだ一行に件数", !!hist && hist.closed && hist.sum === `値段の記録（${hist.n}件）`, JSON.stringify(hist));
+  t.check("値段の記録：店ごとに新しい順と前回との差", !!hist && hist.g.some((x) => x.startsWith("試しの店A") && /¥215.*−¥15.*¥230/.test(x)), JSON.stringify(hist && hist.g));
+  await page.keyboard.press("Escape");
+  await wait(600);
+  /* 店Aのいまの記録（¥215）を三日前にして、紙の店Aの行から詳細を開いて直す。 */
+  const cur = await page.evaluate((pid) => {
+    const S = KN.store, p = S.getProduct(pid), a = S.get().stores.find((s) => s.name === "試しの店A");
+    const r = S.priceAt(p, a.id);
+    S.update((s) => { s.products.find((x) => x.id === pid).prices.find((x) => x.id === r.id).date = new Date(Date.now() - 3 * 864e5).toISOString(); });
+    return r.id;
+  }, ids.two);
+  await page.evaluate((id) => { KN.productSheet.open(id); }, ids.two);
+  await wait(700);
+  await page.locator(".sheet.is-open .price-row .js-open", { hasText: "試しの店A" }).click();
+  await wait(700);
+  await page.evaluate(() => {
+    const i = [...document.querySelectorAll(".sheet.is-open")].pop().querySelector(".js-price");
+    i.value = "240"; i.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await wait(900);
+  const after = await page.evaluate(([pid, prid, oid]) => {
+    const p = KN.store.getProduct(pid);
+    return { n: p.prices.length, cur: (p.prices.find((x) => x.id === prid) || {}).price, old: (p.prices.find((x) => x.id === oid) || {}).price, has240: p.prices.some((x) => x.price === 240) };
+  }, [ids.two, cur, old]);
+  t.check("詳細で前の日の値段を直すと、今日の記録として足す（前は残る）", after.n === hist.n + 1 && after.cur === 215 && after.old === 230 && after.has240, JSON.stringify(after));
+  await page.keyboard.press("Escape");
+  await wait(600);
   await page.keyboard.press("Escape");
   await wait(600);
 

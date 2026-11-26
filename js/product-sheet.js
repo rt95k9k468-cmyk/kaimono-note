@@ -279,6 +279,9 @@
 
     section.append(addPriceForm(productId, () => renderPrices(container, productId)));
     container.append(section);
+    /* 足す・消す・直すのどれでも、同じ紙の「値段の記録」が追う。 */
+    const hist = container.closest(".sheet") && container.closest(".sheet").querySelector(".pd-hist-host");
+    if (hist) paintHistory(hist, productId);
   }
 
   /** 店ごとの値段を棒で比べる（docs/redesign.md R5）。長さは一番高い値段に対して、最安は比べたときだけ山吹。
@@ -348,6 +351,18 @@
     function save() {
       const price = KN.keypad.price(priceEl);
       store.setTaxRate(productId, parseFloat(priceEl.dataset.rate));
+      /* 前の日の記録は書き換えない。値段が変われば今日の記録として足し、ここからはそれを直す（履歴を残す。11月26日、利用者）。
+         前の日の打ち間違いは、下の「このお店での記録」の × で消す。 */
+      const cur = (store.getProduct(productId) || { prices: [] }).prices.find((x) => x.id === priceId);
+      if (cur && price != null && isFinite(price) && price >= 0 && price !== cur.price
+          && isoToDay(cur.date) < isoToDay(new Date().toISOString())) {
+        const rec = store.addPrice(productId, { storeId: cur.storeId, price, amount: cur.amount });
+        priceId = rec.id;
+        dateEl.value = isoToDay(rec.date);
+        paint();
+        onChanged && onChanged();
+        return;
+      }
       store.update((s) => {
         const prod = s.products.find((x) => x.id === productId);
         const rec = prod && prod.prices.find((x) => x.id === priceId);
@@ -671,41 +686,82 @@
 
   /* ---------------- history ---------------- */
 
+  /* 値段の記録（11月26日、利用者「常に見えなくていいが、履歴は残したい。この店でこうなった、とか」）。
+     記録が二つ以上で、畳んだ一行。開くと線（三つ以上）と、店ごとに新しい順の日・値段・その店の前回との差。
+     店は最後に見た日の新しい順。描き直しても開いたまま。 */
   function historySection(productId) {
+    const host = node(html`<div class="pd-hist-host"></div>`);
+    paintHistory(host, productId);
+    return host;
+  }
+
+  function paintHistory(host, productId) {
     const p = store.getProduct(productId);
-    if (!p.prices || p.prices.length < 3) return document.createDocumentFragment();
+    const was = host.querySelector("details");
+    const open = !!(was && was.open);
+    host.innerHTML = "";
+    const all = (p && p.prices ? p.prices : []).filter((x) => store.getStore(x.storeId));
+    if (all.length < 2) return;
 
-    const sorted = [...p.prices].sort((a, b) => new Date(a.date) - new Date(b.date));
-    const values = sorted.map((x) => x.price);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const span = max - min || 1;
+    const sorted = [...all].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const box = node(html`<details class="set-more pd-hist"><summary>値段の記録（${String(sorted.length)}件）</summary></details>`);
+    if (open) box.open = true;
 
-    const W = 300, H = 48, PAD = 4;
-    const pts = sorted.map((pr, i) => {
-      const x = sorted.length === 1 ? W / 2 : (i / (sorted.length - 1)) * (W - PAD * 2) + PAD;
-      const y = H - PAD - ((pr.price - min) / span) * (H - PAD * 2);
-      return [x, y];
-    });
-
-    const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-    const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`;
-
-    return node(html`
-      <div class="field">
-        <span class="field-label">値段の記録（${sorted.length}件）</span>
-        <div class="card" style="padding:12px">
+    if (sorted.length >= 3) {
+      const values = sorted.map((x) => x.price);
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const span = max - min || 1;
+      const W = 300, H = 48, PAD = 4;
+      const pts = sorted.map((pr, i) => [
+        (i / (sorted.length - 1)) * (W - PAD * 2) + PAD,
+        H - PAD - ((pr.price - min) / span) * (H - PAD * 2),
+      ]);
+      const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+      const area = `${line} L${pts[pts.length - 1][0].toFixed(1)},${H} L${pts[0][0].toFixed(1)},${H} Z`;
+      box.append(node(html`
+        <div class="card pd-hist-spark">
           <svg class="spark" viewBox="0 0 ${String(W)} ${String(H)}" preserveAspectRatio="none" aria-hidden="true">
             <path class="spark-area" d="${area}"></path>
             <path class="spark-line" d="${line}"></path>
           </svg>
           <div class="spread mt-2">
-            <span class="fine-note">いちばん安いとき ${yen(min)}</span>
+            <span class="fine-note">安いとき ${yen(min)}</span>
             <span class="fine-note">高いとき ${yen(max)}</span>
           </div>
         </div>
-      </div>
-    `);
+      `));
+    }
+
+    const byStore = new Map();
+    sorted.forEach((x) => {
+      if (!byStore.has(x.storeId)) byStore.set(x.storeId, []);
+      byStore.get(x.storeId).push(x);
+    });
+    const groups = [...byStore.entries()]
+      .sort((a, b) => new Date(b[1][b[1].length - 1].date) - new Date(a[1][a[1].length - 1].date));
+    groups.forEach(([storeId, list]) => {
+      const st = store.getStore(storeId);
+      const g = node(html`
+        <div class="pd-hist-st">
+          <span class="pd-hist-name"><span class="dot" style="background:${st.color}"></span>${st.name}</span>
+        </div>
+      `);
+      list.slice().reverse().forEach((x, i, rev) => {
+        const prev = rev[i + 1];
+        const d = prev ? x.price - prev.price : 0;
+        const say = !prev || d === 0 ? "" : `${d > 0 ? "+" : "−"}${yen(Math.abs(d))}`;
+        g.append(node(html`
+          <div class="log-row" aria-label="${st.name} ${formatDate(x.date)} ${yen(x.price)}${say ? ` 前回から${say}` : ""}">
+            <span class="log-date">${formatDate(x.date)}</span>
+            <span class="log-price">${yen(x.price)}</span>
+            <span class="log-unit">${say}</span>
+          </div>
+        `));
+      });
+      box.append(g);
+    });
+    host.append(box);
   }
 
   /* ---------------- danger ---------------- */
@@ -888,7 +944,8 @@
       fav: item ? !!item.fav : null, memo: item ? item.memo || "" : "",
     });
     const pricesWrap = node(html`<div class="stack gap-3"></div>`);
-    const rerenderPrices = () => { renderPrices(pricesWrap, productId); paintCap(); };
+    const histWrap = historySection(productId);
+    const rerenderPrices = () => { renderPrices(pricesWrap, productId); paintHistory(histWrap, productId); paintCap(); };   // 初めの一度は紙の外なので、ここでも描く
 
     const paintMark = () => { f.mark.innerHTML = store.productMark(store.getProduct(productId)); paintCap(); };
     function paintCap() {
@@ -932,7 +989,7 @@
     /* 値段が先（RS の③、11月12日：開いていちばん多いのは店の値段を見る・足す）。カテゴリ・内容量・メモはその下のカード。 */
     f.body.querySelector(".d-card").before(pricesWrap);
     rerenderPrices();
-    f.body.append(historySection(productId));
+    f.body.append(histWrap);
 
     /* 今回のリストから外す（商品は残る）はよく使うので紙の下にすぐ押せる形で。
        商品そのものを消すのは滅多にしないので ⋯ の中。 */

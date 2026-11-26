@@ -480,6 +480,7 @@ button, [role="tab"] {
   display: flex;
   gap: var(--sp-2);
   overflow-x: auto;
+  overflow-y: hidden;   /* 横にだけ送る（.price-add .chip-wrap と同じ。11月26日） */
   scrollbar-width: none;
   /* Vertical room so the taller chips are not clipped by the scroller
      (overflow-x:auto makes the cross axis clip too). The horizontal padding
@@ -1215,12 +1216,15 @@ button.hero-node:active { scale: var(--press-dot); }
 .pd-hero .pd-fav.is-on { background: var(--c-surface); color: var(--c-warn); }
 /* 値段を足す欄（product-sheet.js の addPriceForm）。枠の箱は無し、お店の札は一列で横に送る。 */
 .price-add { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); scroll-margin-bottom: var(--sp-4); }
+/* 横にだけ送る。札の当たり（::after の 44px）が上下へ 4px はみ出し、帯が縦にも動いていた（11月26日、利用者）——
+   はみ出しを余白で受け、縦は送らない（縦の指は紙へ渡る）。 */
 .price-add .chip-wrap {
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
-  margin: 0 calc(var(--sp-4) * -1);
-  padding: 0 var(--sp-4);
+  margin: -4px calc(var(--sp-4) * -1);
+  padding: 4px var(--sp-4);
 }
 .price-add .chip-wrap::-webkit-scrollbar { display: none; }
 .price-add .chip { flex: none; }
