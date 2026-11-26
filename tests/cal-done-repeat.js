@@ -36,9 +36,11 @@ const { open, checker } = require("./lib");
     const cell = document.querySelector(`#screen-todo .cal-day[data-day="${d}"], .cal-day[data-day="${d}"]`);
     const vis = (e) => getComputedStyle(e).display !== "none";
     const m = cell && cell.querySelector(".cal-more");
-    return { names: cell ? [...cell.querySelectorAll(".cal-name")].filter(vis).length : -1, more: m && vis(m) ? getComputedStyle(m, "::before").content : null };
+    const n0 = cell && cell.querySelector(".cal-name");
+    return { names: cell ? [...cell.querySelectorAll(".cal-name")].filter(vis).length : -1, more: m && vis(m) ? getComputedStyle(m, "::before").content : null,
+      fs: n0 ? parseFloat(getComputedStyle(n0).fontSize) : 0 };
   });
-  t.check("点検8：5件の日は名前一つと「+4」", more.names === 1 && more.more === '"+4"', JSON.stringify(more));
+  t.check("点検8：5件の日は名前一つと「+4」・札の字は 11px", more.names === 1 && more.more === '"+4"' && more.fs >= 11, JSON.stringify(more));
   t.check("ページのエラーなし", !errors.length, errors.join(" / "));
   await browser.close();
   t.done();
