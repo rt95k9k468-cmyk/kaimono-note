@@ -1206,7 +1206,7 @@
      （notes-idb.js）。閉じても払っても、閉じた拍に書き切ります。 */
   /* from … 押した一覧のカード。紙はそのカードから膨らむ（段4.3）。
      o … { parent: 親の id（中に足す）, nb: ノートブック（その面の＋）, within: 戻り先のカードを探す場所,
-           after: 閉じたあとに, calm: 焦点を奪わない（意5） }（段1） */
+           after: 閉じたあとに, made: 新しいノートを作った拍に（帯の＋が id を控える）, calm: 焦点を奪わない（意5） }（段1） */
   function openNote(id, from, o) {
     o = o || {};
     const st = N().state();
@@ -1235,6 +1235,7 @@
       const up = o.parent ? N().get(o.parent) : null;
       if (up) { note.parent = up.id; note.notebook = up.notebook; }
       else if (o.nb) note.notebook = o.nb;
+      if (o.made) o.made(note);
     }
     let stored = !fresh;
     /* 閉じたときの「更新しました」は、開いたときと比べて決めます。 */
@@ -1881,6 +1882,26 @@
         if (!writing) toWrite(c);
       }, { title: "リンク", skip: note.id });
     };
+    /* 帯の＋：親を入れ物へ置き、中に新しいノートを開く。題を付けて閉じたら、押した場所へリンクを貼る
+       （何も書かずに閉じたら貼らない。選んでいるあいだ親の字は動かない）。 */
+    const addChild = ([s, e]) => {
+      if (!settle()) return;
+      let kid = null;
+      openNote(null, null, {
+        parent: note.id, within: kidsEl, back: ".nt-row",
+        made: (n) => { kid = n; },
+        after: () => {
+          paintKids();
+          const to = kid && N().get(kid.id);
+          if (closed || !to || to.deletedAt) return;
+          const v = val();
+          const at = Math.min(s, v.length), end = Math.min(Math.max(e, at), v.length);
+          const label = (headOf(to) || "ノート").replace(/\[/g, "［").replace(/\]/g, "］").replace(/\s*\n\s*/g, " ");
+          const text = `[${label}](note:${to.id})`;
+          apply({ from: at, to: end, text, s: at + text.length, e: at + text.length }, "tool");
+        },
+      });
+    };
     /** 打って「[[」（全角も）になったら選ぶ紙。変換のあいだは見ない（決まってから）。 */
     const brackets = (composing) => {
       if (composing) return;
@@ -1927,10 +1948,12 @@
         run: () => apply(F.shift(val(), ...selNow(), 1), "tool") },
       { k: "image", ico: "image", label: "画像", run: () => pickImage() },
       { k: "link", ico: "link", label: "リンク", run: () => linkAt(...selNow(), "sel") },
+      /* 右端の＋（縦線で分ける）：中に新しいノートを足し、書いて閉じたらカーソルの場所へ `[題](note:id)` を貼る。 */
+      { k: "child", ico: "plus", label: "中にノートを足す", run: () => addChild(selNow()) },
     ];
     const tools = node(html`
       <div class="note-tools" role="toolbar" aria-label="装飾">
-        ${TOOLS.map((t) => html`<button type="button" class="note-tool js-tool" data-k="${t.k}" aria-label="${t.label}">${icon(t.ico)}</button>`)}
+        ${TOOLS.map((t) => html`<button type="button" class="note-tool js-tool${t.k === "child" ? " note-tool-add" : ""}" data-k="${t.k}" aria-label="${t.label}">${icon(t.ico)}</button>`)}
       </div>
     `);
     const keep = (e) => e.preventDefault();

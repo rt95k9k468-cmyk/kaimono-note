@@ -33,18 +33,21 @@
    * 測っていない日を前日の値で埋めることはしません——埋めた点は
    * 「測らなかった」という事実を消したうえ、移動平均をなだらかに見せます。
    */
-  /* 服の層と、その重さ（g）を持つ設定の欄。順は内から外（下着 → 長袖下着 → パジャマ）。 */
+  /* 服の層と、その重さ（g）を持つ設定の欄。順は内から外。パジャマは季節でなく薄・厚で選ぶ（group は一つだけ点く）。
+     old の「パジャマ」は前の記録の読み方——札には出さず、記録の日の月で夏（薄）・冬（厚）を選ぶ。 */
   const WEAR = [
-    { id: "under",  label: "下着",     ico: "wear-under",  key: "wearUnderG" },
-    { id: "inner",  label: "長袖下着", ico: "wear-inner",  key: "wearInnerG" },
-    { id: "pajama", label: "パジャマ", ico: "wear-pajama", key: "wearPajamaG", summer: "wearPajamaSummerG" },
+    { id: "under",       label: "下着",           ico: "wear-under",  key: "wearUnderG" },
+    { id: "inner",       label: "下着（長袖）",   ico: "wear-inner",  key: "wearInnerG" },
+    { id: "pajamaThin",  label: "パジャマ（薄）", ico: "wear-pajama", key: "wearPajamaSummerG", group: "pajama" },
+    { id: "pajamaThick", label: "パジャマ（厚）", ico: "wear-pajama", key: "wearPajamaG",       group: "pajama" },
+    { id: "pajama",      label: "パジャマ",       ico: "wear-pajama", key: "wearPajamaG", summer: "wearPajamaSummerG", old: true },
   ];
 
   /**
    * 量ったとき着ていた服の重さ（kg）。引けないときは null——
    * 着衣が未記入・層を書いていない「着衣あり」（前からの記録）・重さを量っていない層を着ていた。
    * 設定から引くので、重さを直すと前の記録の線も直る（記録の kg は動かない）。
-   * パジャマは記録の日の月で夏（6〜9月）と冬を選び、片方が空ならもう一方。
+   * 前の記録の「パジャマ」は記録の日の月で夏（6〜9月）＝薄・冬＝厚を選び、片方が空ならもう一方。
    */
   function wearKg(w) {
     if (!w || w.clothed === false) return w ? 0 : null;

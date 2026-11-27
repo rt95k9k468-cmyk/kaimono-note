@@ -3653,15 +3653,9 @@
   const MEAL_CHIPS = [
     { id: "before", label: "食前" },
     { id: "after", label: "食後" },
-    { id: "", label: "未記入" },
   ];
-  /* 服装は重ね着の層（D.WEAR）を足し引きする札と「なし」。何も押していなければ未記入。
+  /* 服装は重ね着の層（D.WEAR）を足し引きする札と「着衣なし」。何も押していなければ未記入。
      層を書いた日は、設定（目標の紙の「服の重さ」）の重さを線・平均から引く。 */
-  const wearLabel = (clothed, wear) => (clothed === false ? "着衣なし"
-    : clothed !== true ? ""
-    : wear && wear.length ? wear.map((id) => (D.WEAR.find((L) => L.id === id) || { label: "" }).label).filter(Boolean).join("・")
-    : "着衣あり");
-  const mealLabel = (v) => (v === "before" ? "食前" : v === "after" ? "食後" : "");
 
   /* 二桁打ったら、三桁目の前に小数点を入れます。体重も体脂肪率も
      「58.6」「13.2」の形にしかならないので、毎回「.」を探して打つのは
@@ -3727,7 +3721,7 @@
     let clothed = seed.clothed == null ? null : seed.clothed;
     let wear = clothed === true && Array.isArray(seed.wear) ? seed.wear.slice() : null;
 
-    /* RS 2回目：何（体重・体脂肪）→ いつ（日付と時刻の札）→ 詳細（量ったとき・服装・メモ。前回の条件が入っている）。 */
+    /* 何（体重・体脂肪）→ いつ（日付と時刻の札）→ 量ったとき・服装・メモ（畳まない。前回の条件が入っている）。 */
     const last = w ? null : store.latestWeight();
     const body = node(html`
       <div class="stack diet-form">
@@ -3749,26 +3743,27 @@
           <label class="rec-when-i">${icon("clock")}<input type="hidden" data-when="time" data-clear class="input js-time"
             aria-label="時刻" value="${w && w.time ? w.time : U.nowTime()}"></label>
         </div>
-        <button type="button" class="urge-more js-more" aria-expanded="false">
-          <span class="urge-more-t"></span><span class="urge-more-c">${icon("chevron")}</span>
-        </button>
-        <div class="stack js-rest" hidden>
-          <div class="field">
-            <span class="field-label">量ったとき</span>
-            <div class="js-meal"></div>
+        <div class="field">
+          <span class="field-label">量ったとき</span>
+          <div class="seg js-meal" role="group" aria-label="量ったとき">
+            ${KN.util.raw(MEAL_CHIPS.map((m) => `<button type="button" class="seg-btn" data-id="${m.id}">${m.label}</button>`).join(""))}
           </div>
-          <div class="field">
-            <span class="field-label">服装<span class="wear-off js-wear-off"></span></span>
-            <div class="chip-row wear-row js-wear">
-              <button type="button" class="chip" data-id="none">なし</button>
-              ${KN.util.raw(D.WEAR.map((L) => `<button type="button" class="chip" data-id="${L.id}">${icon(L.ico)}${L.label}</button>`).join(""))}
-            </div>
-          </div>
-          <label class="field">
-            <span class="field-label">メモ</span>
-            <input class="input js-memo" value="${w ? w.memo : ""}">
-          </label>
         </div>
+        <div class="field">
+          <span class="field-label wear-head">服装<span class="wear-off js-wear-off"></span></span>
+          <div class="wear-grid js-wear">
+            ${KN.util.raw(D.WEAR.filter((L) => !L.old || (wear && wear.includes(L.id))).map((L) => `
+            <button type="button" class="wear-tile" data-id="${L.id}">
+              <span class="wear-ico">${icon(L.ico)}</span>
+              <span class="wear-t"><span class="wear-name">${L.label}</span><span class="wear-g js-g"></span></span>
+            </button>`).join(""))}
+            <button type="button" class="wear-tile is-none" data-id="none">着衣なし</button>
+          </div>
+        </div>
+        <label class="field">
+          <span class="field-label">メモ</span>
+          <input class="input js-memo" value="${w ? w.memo : ""}">
+        </label>
         ${w && w.source === "health" ? html`
           <p class="diet-note">ヘルスケアから入った記録です。直すと手入力になります。</p>` : ""}
       </div>
@@ -3791,56 +3786,59 @@
     };
     body.addEventListener("change", paintCap);
     paintCap();
-    let open = !!(w && w.memo);
-    const restEl = body.querySelector(".js-rest"), moreEl = body.querySelector(".js-more");
-    const paintMore = () => {
-      restEl.hidden = !open;
-      moreEl.setAttribute("aria-expanded", String(open));
-      moreEl.classList.toggle("is-open", open);
-      const said = [mealLabel(meal), wearLabel(clothed, wear)].filter(Boolean).join("・");
-      moreEl.querySelector(".urge-more-t").textContent = open ? "詳細をとじる" : said ? `詳細　${said}` : "詳細";
-    };
-    moreEl.addEventListener("click", () => { open = !open; paintMore(); KN.motion.fire("select"); });
     const kgEl = body.querySelector(".js-kg");
     const fatEl = body.querySelector(".js-fat");
     // 体重を打ち終えたら、そのまま体脂肪へ。
     autoDecimal(kgEl, fatEl);
     autoDecimal(fatEl, "close");   // 打ち終えたら鍵盤を閉じる
 
-    const paintMeal = () => KN.ui.chipRow(body.querySelector(".js-meal"), MEAL_CHIPS, {
-      activeId: meal || "",
-      onPick: (id) => { meal = id || null; paintMeal(); paintMore(); },
+    /* 食前｜食後の二つ。選んでいるほうをもう一度押すと未記入。 */
+    const mealEl = body.querySelector(".js-meal");
+    const paintMeal = () => mealEl.querySelectorAll(".seg-btn").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.id === meal)));
+    mealEl.addEventListener("click", (e) => {
+      const el = e.target.closest(".seg-btn");
+      if (!el) return;
+      meal = meal === el.dataset.id ? null : el.dataset.id;
+      paintMeal(); KN.motion.fire("select");
     });
     /* 層は押すたびに着る・脱ぐ。「なし」は層を外す。もう一度押すと未記入。層を全部外しても未記入。
        前からの「着衣あり」（層なし）は、どの札も点けずに残る——触れなければそのまま保存する。 */
     const wearEl = body.querySelector(".js-wear");
     const paintWear = () => {
-      wearEl.querySelectorAll(".chip").forEach((el) => {
+      const day = body.querySelector(".js-day").value;
+      wearEl.querySelectorAll(".wear-tile").forEach((el) => {
         const id = el.dataset.id;
         el.setAttribute("aria-pressed", String(id === "none" ? clothed === false : !!(wear && wear.includes(id))));
+        const gEl = el.querySelector(".js-g");
+        const kg = gEl && D.wearKg({ day, clothed: true, wear: [id] });
+        if (gEl) gEl.textContent = kg ? `${Math.round(kg * 1000)}g` : "";
       });
       /* 引く重さ。量っていない層があれば出さない（引かない）。 */
-      const off = D.wearKg({ day: body.querySelector(".js-day").value, clothed, wear });
-      body.querySelector(".js-wear-off").textContent = off ? ` −${off.toFixed(2).replace(/0$/, "")}kg` : "";
+      const off = D.wearKg({ day, clothed, wear });
+      body.querySelector(".js-wear-off").textContent = off ? `−${off.toFixed(2).replace(/0$/, "")}kg` : "";
     };
     wearEl.addEventListener("click", (e) => {
-      const el = e.target.closest(".chip");
+      const el = e.target.closest(".wear-tile");
       if (!el) return;
       const id = el.dataset.id;
       if (id === "none") { clothed = clothed === false ? null : false; wear = null; }
       else {
         const on = new Set(wear || []);
-        if (on.has(id)) on.delete(id); else on.add(id);
+        const L = D.WEAR.find((x) => x.id === id);
+        if (on.has(id)) on.delete(id);
+        else {
+          if (L && L.group) D.WEAR.forEach((x) => { if (x.group === L.group || (x.old && L.group === "pajama")) on.delete(x.id); });
+          on.add(id);
+        }
         wear = D.WEAR.map((L) => L.id).filter((x) => on.has(x));
         if (!wear.length) wear = null;
         clothed = wear ? true : null;
       }
-      paintWear(); paintMore(); KN.motion.fire("select");
+      paintWear(); KN.motion.fire("select");
     });
-    body.addEventListener("change", paintWear);   // 日付が夏冬をまたぐとパジャマの重さが変わる
+    body.addEventListener("change", paintWear);   // 前の記録の「パジャマ」は日付が夏冬をまたぐと重さが変わる
     paintMeal();
     paintWear();
-    paintMore();
 
     foot.querySelector(".js-save").addEventListener("click", () => {
       /* 全角の「６３．５」も読む（NFKC。前は字を捨てて「体重を入れてください」と出た。点検27）。全角の三桁「６３０」は
@@ -4208,14 +4206,14 @@
         <details class="diet-why">
           <summary>服の重さ (g)</summary>
           <div class="field-row">
-            ${KN.util.raw([["js-wu", "下着", g.wearUnderG], ["js-wi", "長袖下着", g.wearInnerG]].map(([c, l, v]) => `
+            ${KN.util.raw([["js-wu", "下着", g.wearUnderG], ["js-wi", "下着（長袖）", g.wearInnerG]].map(([c, l, v]) => `
             <label class="field grow">
               <span class="field-label">${l}</span>
               <input class="input ${c}" inputmode="numeric" value="${v == null ? "" : String(v)}">
             </label>`).join(""))}
           </div>
           <div class="field-row">
-            ${KN.util.raw([["js-wp", "パジャマ 冬", g.wearPajamaG], ["js-wps", "パジャマ 夏（6〜9月）", g.wearPajamaSummerG]].map(([c, l, v]) => `
+            ${KN.util.raw([["js-wps", "パジャマ（薄）", g.wearPajamaSummerG], ["js-wp", "パジャマ（厚）", g.wearPajamaG]].map(([c, l, v]) => `
             <label class="field grow">
               <span class="field-label">${l}</span>
               <input class="input ${c}" inputmode="numeric" value="${v == null ? "" : String(v)}">
