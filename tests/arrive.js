@@ -334,8 +334,11 @@ const readBars = (page) => page.evaluate(() => {
     };
     await page.waitForSelector("#screen-list .item .item-name");
     await holdStill();
-    await page.waitForFunction(() => document.querySelector('.tab[data-tab="list"] .tab-ico-face.is-poke'), null, { timeout: 1500 }).catch(() => {});
-    const favPoke = await faceOf("list");
+    /* 応えは見つけたその場で読む（待つのと読むのを別の往復にすると、混んだ機械では読む前に応え終わる。10本並べ）。 */
+    const favPoke = await page.waitForFunction(() => {
+      const f = document.querySelector('.tab[data-tab="list"] .tab-ico-face.is-poke');
+      return f && { on: true, name: getComputedStyle(f).animationName };
+    }, null, { timeout: 1500 }).then((h) => h.jsonValue()).catch(() => faceOf("list"));
     t.check("★を付けると、帯のカートが応える", favPoke.on && favPoke.name === "poke-roll", JSON.stringify(favPoke));
     await settle();
     await holdStill();
