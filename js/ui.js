@@ -705,12 +705,27 @@
     };
     let baseline = snapshot();
     /* 開いた直後に自分で埋める紙があります（前回と同じ条件、いまの時刻…）。
-       それを「その人が書いた」と数えないよう、一拍おいて取り直します。 */
-    setTimeout(() => { if (!isClosed()) baseline = snapshot(); }, 60);
+       それを「その人が書いた」と数えないよう、一拍おいて取り直します——60ms か、最初の指・キー（捕まえる段。
+       押しが効く前）の早いほうで一度だけ。混むと時計は遅れ、指が先に通る：前は取り直す前の中身と比べ、何も
+       変えずに閉じても「保存できませんでした」が出た（お酒の紙。よく飲むものの札は紙を作ったあとに描く）。
+       遅れた取り直しが先の一押しを呑めば、閉じると黙って捨てえた。 */
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(settleT);
+      window.removeEventListener("pointerdown", settle, true);
+      window.removeEventListener("keydown", settle, true);
+      if (!isClosed()) baseline = snapshot();
+    };
+    const settleT = setTimeout(settle, 60);
+    window.addEventListener("pointerdown", settle, true);
+    window.addEventListener("keydown", settle, true);
 
     /* 同じ見張りを、隠れる瞬間の書きかけの控え（下の keepDraft）も借ります。 */
     tryClose.changed = () => !isClosed() && snapshot() !== baseline;
     tryClose.fields = fields;
+    tryClose.settle = settle;   // 書きかけを埋め直す前に（reopen）
     return tryClose;
 
     function tryClose() {
@@ -802,10 +817,11 @@
     try { reopeners[d.kind](d.id); } catch (_) { return false; }
     const h = openSheets.length > before ? openSheets[openSheets.length - 1] : null;
     if (!h || !h.draft || h.draft.kind !== d.kind) return false;
-    /* 開いた紙は、一拍あとに「開いたときの中身」を取り直します（makeGuard の 60ms）。埋めるのはそのあと
-       ——埋めた字を「開いたときの中身」と数えると、閉じたときに保存されない。 */
+    /* 開いた紙は、一拍あとに「開いたときの中身」を取り直します（makeGuard の settle）。埋めるのはそのあと
+       ——埋めた字を「開いたときの中身」と数えると、閉じたときに保存されない。時計の順に頼らず先に済ませる。 */
     setTimeout(() => {
       if (!h.el.isConnected) return;
+      if (h.tryClose.settle) h.tryClose.settle();
       d.vals.forEach((kv) => {
         if (!Array.isArray(kv)) return;
         const list = h.tryClose.fields();

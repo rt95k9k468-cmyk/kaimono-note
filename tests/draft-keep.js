@@ -5,7 +5,8 @@
    2. やることの紙（直す）：題を打ち替えて閉じられる → その用事の紙に打ち替えた題。記録は元のまま。
    3. 買うものを追加・体重・食事を書く：同じく戻る。体重・食事は記録に入っていない。
    4. 戻さないもの：何も変えていない紙は控えない／閉じられずに戻ってきたら控えを捨てる／16分たった控え。
-   5. 控えは記録の外（書き出しに乗らない）。 */
+   5. 控えは記録の外（書き出しに乗らない）。
+   7. 閉じる守りの取り直し（makeGuard の settle）：60ms の時計より先の指でも、変えていなければ保存せず、先の一押しは呑まない。 */
 const { open, checker, URL } = require("./lib");
 
 (async () => {
@@ -164,6 +165,44 @@ const { open, checker, URL } = require("./lib");
   await page.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 3000 }).catch(() => {});
   const rec6 = await page.evaluate((id) => (KN.store.getTodo(id).subs || []).map((x) => `${x.id}:${x.title}`), id6);
   t.check("6 閉じても、ほかの手順の題は書き換わらない", rec6.includes("s6a:板を出す"), JSON.stringify(rec6));
+
+  /* 7. 閉じる守りの取り直し（makeGuard の settle）は、60ms か最初の指の早いほう。混むと時計が遅れて指が先に通る：
+     前は何も変えずに閉じても保存を押し（お酒の紙で「保存できませんでした」。urge-quick が10本並べで落ちた）、遅れた
+     取り直しが先の一押しを呑んで黙って捨てた。作る一拍の 60ms の時計を止め、作ったあとに札を描く紙で見る。 */
+  const guardSheet = () => page.evaluate(() => {
+    const st = window.setTimeout;
+    window.__held = [];
+    window.__saved = 0;
+    window.setTimeout = function (fn, ms, ...a) {
+      if (ms === 60) { window.__held.push(fn); return st(() => {}, 2147483647); }
+      return st.call(this, fn, ms, ...a);
+    };
+    const body = document.createElement("div");
+    const foot = document.createElement("div");
+    foot.innerHTML = '<button type="button" class="btn btn-primary js-save">保存</button>';
+    let h;
+    try { h = KN.ui.sheet({ title: "守りの試し", content: body, footer: foot, guard: true }); } finally { window.setTimeout = st; }
+    foot.querySelector(".js-save").addEventListener("click", () => { window.__saved++; h.close(); });
+    body.insertAdjacentHTML("beforeend", '<button type="button" class="chip js-k" aria-pressed="false">札</button>');
+    const k = body.querySelector(".js-k");
+    k.addEventListener("click", () => k.setAttribute("aria-pressed", String(k.getAttribute("aria-pressed") !== "true")));
+  });
+  const runHeld = () => page.evaluate(() => { (window.__held || []).forEach((fn) => fn()); window.__held = []; });
+  const shut = () => page.waitForFunction(() => !document.querySelector(".sheet.is-open"), null, { timeout: 3000 }).catch(() => {});
+  await guardSheet();
+  await page.click(".sheet.is-open .js-close");
+  await shut();
+  await runHeld();
+  const g1 = await page.evaluate(() => ({ saved: window.__saved, open: document.querySelectorAll(".sheet.is-open").length }));
+  t.check("7 時計の前に閉じても、何も変えていなければ保存を押さずに閉じる", g1.saved === 0 && g1.open === 0, JSON.stringify(g1));
+  await page.waitForFunction(() => !document.querySelector(".sheet"), null, { timeout: 3000 }).catch(() => {});
+  await guardSheet();
+  await page.click(".sheet.is-open .js-k");
+  await runHeld();
+  await page.click(".sheet.is-open .js-close");
+  await shut();
+  const g2 = await page.evaluate(() => ({ saved: window.__saved, open: document.querySelectorAll(".sheet.is-open").length }));
+  t.check("7 時計の前に押した一押しは、遅れた取り直しに呑まれない（閉じると保存）", g2.saved === 1 && g2.open === 0, JSON.stringify(g2));
 
   t.check("エラー0", !errors.length, errors.join(" / "));
   await browser.close();
