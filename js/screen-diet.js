@@ -3761,7 +3761,7 @@
             <span class="field-label">服装<span class="wear-off js-wear-off"></span></span>
             <div class="chip-row wear-row js-wear">
               <button type="button" class="chip" data-id="none">なし</button>
-              ${KN.util.raw(D.WEAR.map((L) => `<button type="button" class="chip" data-id="${L.id}">${icon(L.ico)}${L.label}</button>`).join(""))}
+              ${KN.util.raw(D.WEAR.filter((L) => !L.old || (wear && wear.includes(L.id))).map((L) => `<button type="button" class="chip" data-id="${L.id}">${icon(L.ico)}${L.label}</button>`).join(""))}
             </div>
           </div>
           <label class="field">
@@ -3830,14 +3830,19 @@
       if (id === "none") { clothed = clothed === false ? null : false; wear = null; }
       else {
         const on = new Set(wear || []);
-        if (on.has(id)) on.delete(id); else on.add(id);
+        const L = D.WEAR.find((x) => x.id === id);
+        if (on.has(id)) on.delete(id);
+        else {
+          if (L && L.group) D.WEAR.forEach((x) => { if (x.group === L.group || (x.old && L.group === "pajama")) on.delete(x.id); });
+          on.add(id);
+        }
         wear = D.WEAR.map((L) => L.id).filter((x) => on.has(x));
         if (!wear.length) wear = null;
         clothed = wear ? true : null;
       }
       paintWear(); paintMore(); KN.motion.fire("select");
     });
-    body.addEventListener("change", paintWear);   // 日付が夏冬をまたぐとパジャマの重さが変わる
+    body.addEventListener("change", paintWear);   // 前の記録の「パジャマ」は日付が夏冬をまたぐと重さが変わる
     paintMeal();
     paintWear();
     paintMore();
@@ -4208,14 +4213,14 @@
         <details class="diet-why">
           <summary>服の重さ (g)</summary>
           <div class="field-row">
-            ${KN.util.raw([["js-wu", "下着", g.wearUnderG], ["js-wi", "長袖下着", g.wearInnerG]].map(([c, l, v]) => `
+            ${KN.util.raw([["js-wu", "下着", g.wearUnderG], ["js-wi", "下着（長袖）", g.wearInnerG]].map(([c, l, v]) => `
             <label class="field grow">
               <span class="field-label">${l}</span>
               <input class="input ${c}" inputmode="numeric" value="${v == null ? "" : String(v)}">
             </label>`).join(""))}
           </div>
           <div class="field-row">
-            ${KN.util.raw([["js-wp", "パジャマ 冬", g.wearPajamaG], ["js-wps", "パジャマ 夏（6〜9月）", g.wearPajamaSummerG]].map(([c, l, v]) => `
+            ${KN.util.raw([["js-wps", "パジャマ（薄）", g.wearPajamaSummerG], ["js-wp", "パジャマ（厚）", g.wearPajamaG]].map(([c, l, v]) => `
             <label class="field grow">
               <span class="field-label">${l}</span>
               <input class="input ${c}" inputmode="numeric" value="${v == null ? "" : String(v)}">

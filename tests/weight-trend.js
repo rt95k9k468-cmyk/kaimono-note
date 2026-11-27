@@ -187,20 +187,23 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     const pts = D.weightPoints(null, U.todayKey());
     const recs = S.get().diet.weights;
     const summer = D.wearKg({ day: "2026-07-01", clothed: true, wear: ["pajama"] });
+    const thin = D.wearKg({ day: "2026-12-01", clothed: true, wear: ["pajamaThin"] });
+    const thick = D.wearKg({ day: "2026-07-01", clothed: true, wear: ["pajamaThick"] });
     const noW = (S.setGoal({ wearInnerG: null }), D.wearKg({ day: day(0), clothed: true, wear: ["inner"] }));
     /* 推移の点：食前は白抜き、ほかは塗り。出どころの印（is-health）は無い。 */
     KN.screens.diet.render();
     await new Promise((r) => setTimeout(r, 200));
     const dots = [...document.querySelectorAll("#screen-diet .diet-dot")].map((c) => c.classList.contains("is-before"));
     return { kgs: pts.map((p) => p.kg), measured: pts.map((p) => p.measured), raw: recs.map((w) => w.kg),
-      wear: recs.map((w) => w.wear), summer, noW, dots,
+      wear: recs.map((w) => w.wear), summer, thin, thick, noW, dots,
       health: document.querySelectorAll("#screen-diet .diet-dot.is-health").length };
   });
   t.check("服を引く：層と重さが分かる日だけ引く（前からの着衣ありは引かない）",
     JSON.stringify(wearOut.kgs) === "[69.4,70,70]" && JSON.stringify(wearOut.measured) === "[70,70,70]", JSON.stringify(wearOut));
   t.check("服を引く：記録の kg は量ったまま・着衣なしなら層は残らない",
     JSON.stringify(wearOut.raw) === "[70,70,70]" && JSON.stringify(wearOut.wear) === '[["under","pajama"],null,null]', JSON.stringify(wearOut));
-  t.check("服を引く：パジャマは6〜9月が夏の重さ・量っていない層は引かない", wearOut.summer === 0.3 && wearOut.noW === null, JSON.stringify(wearOut));
+  t.check("服を引く：前の「パジャマ」は6〜9月が薄・量っていない層は引かない", wearOut.summer === 0.3 && wearOut.noW === null, JSON.stringify(wearOut));
+  t.check("服を引く：パジャマ（薄）（厚）は月によらない", wearOut.thin === 0.3 && wearOut.thick === 0.5, JSON.stringify(wearOut));
   t.check("推移の点：食前は白抜き・食後は塗り・出どころの印なし",
     JSON.stringify(wearOut.dots) === "[true,false,true]" && wearOut.health === 0, JSON.stringify(wearOut));
 
@@ -221,12 +224,25 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     await new Promise((r) => setTimeout(r, 300));
     const w = KN.store.latestWeight();
     out.saved = { kg: w.kg, clothed: w.clothed, wear: w.wear };
+    /* パジャマは薄・厚どちらか一つ。前の記録の「パジャマ」は開いたときだけ札に出て、薄・厚を押すと替わる。 */
+    KN.store.update((s) => { s.diet.weights.push({ id: "old-pj", day: "2026-01-05", time: "07:00", kg: 66, clothed: true, wear: ["under", "pajama"], memo: "" }); });
+    KN.screens.diet.openWeightSheet(KN.store.get().diet.weights.find((x) => x.id === "old-pj"));
+    await new Promise((r) => setTimeout(r, 300));
+    const s2 = document.querySelectorAll(".sheet.is-open");
+    const sh2 = s2[s2.length - 1];
+    const ids2 = () => [...sh2.querySelectorAll(".js-wear .chip")].filter((c) => c.getAttribute("aria-pressed") === "true").map((c) => c.dataset.id);
+    out.oldOn = ids2();
+    const p2 = (id) => sh2.querySelector(`.js-wear .chip[data-id="${id}"]`).click();
+    p2("pajamaThin"); out.thinOn = ids2(); p2("pajamaThick"); out.thickOn = ids2();
     return out;
   });
-  t.check("体重の紙：服装は なし・下着・長袖下着・パジャマ（層に絵）",
-    JSON.stringify(sheetOut.ids) === '["none","under","inner","pajama"]' && JSON.stringify(sheetOut.ico) === "[false,true,true,true]", JSON.stringify(sheetOut));
+  t.check("体重の紙：服装は なし・下着・下着（長袖）・パジャマ（薄）（厚）（層に絵）",
+    JSON.stringify(sheetOut.ids) === '["none","under","inner","pajamaThin","pajamaThick"]' && JSON.stringify(sheetOut.ico) === "[false,true,true,true,true]", JSON.stringify(sheetOut));
+  t.check("体重の紙：パジャマは一つだけ・前の「パジャマ」は薄・厚に替わる",
+    JSON.stringify(sheetOut.oldOn) === '["under","pajama"]' && JSON.stringify(sheetOut.thinOn) === '["under","pajamaThin"]'
+      && JSON.stringify(sheetOut.thickOn) === '["under","pajamaThick"]', JSON.stringify(sheetOut));
   t.check("体重の紙：層を押すと「なし」が外れ、引く重さが出て、保存される",
-    JSON.stringify(sheetOut.pressed) === '["false","true","true","false"]' && sheetOut.off === "−0.3kg"
+    JSON.stringify(sheetOut.pressed) === '["false","true","true","false","false"]' && sheetOut.off === "−0.3kg"
       && sheetOut.saved.kg === 65 && sheetOut.saved.clothed === true && JSON.stringify(sheetOut.saved.wear) === '["under","inner"]',
     JSON.stringify(sheetOut));
   await page.waitForTimeout(300);
