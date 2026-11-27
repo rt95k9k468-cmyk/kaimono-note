@@ -5,21 +5,18 @@
    データの欄だけを記憶の state に差し替えて見せます。入れるのは設定で
    （「iPhone の写しを見る」。この端末だけの印 store.REPLICA_KEY）。
 
-   - 写しは記録にしない。字は大きな保存場所の meta の "replica" に置く（棚は足さない
-     ＝版を上げない）。記録（kaimono-note-v2）は store が書かない。
-   - 写しのあいだは、自動の控え・記録の写し・日記の写し・過去のやることの棚・
-     中継所・鳴らす役・通知を動かさない（ここで口を差し替える。中身には触れない）。
-     Dropbox へは控えを送らない（js/dropbox.js が store.replica() を見る）。ノートは今の同期。
+   - 写しは記録にしない。字は大きな保存場所の meta の "replica" に置く（棚は足さない＝版を上げない）。
+     記録（kaimono-note-v2）は store が書かない。
+   - 写しのあいだは、自動の控え・記録の写し・日記の写し・過去のやることの棚・中継所・鳴らす役・通知を
+     動かさない（ここで口を差し替える。中身には触れない）。控えは Dropbox へ送らない。ノートは今の同期。
    - 版（rev）が変わったときだけ読む：開いた・前に出た・見えているあいだ EVERY おき・引いて読み直す。
-   - iPhone だけの操作（済み・★・＋）は薄く、押せば「iPhoneで操作できます」。
+   - iPhone だけの操作（やることの済みほか）は薄く、押せば「iPhoneで操作できます」。
      ほかの道からの書き換えは store の update が写しへ戻す。
    - 困ったときだけ歯車に点（trouble。設定の頭に一行）：読めない（fail）・届かないまま3日（far）・
      写しの元が置かれてから3日（old）。数は出さない。確かめた時刻は OK_KEY（印は store が書き直すので別）。
    - 段3（docs/sync.md）：出どころを部屋に（FROM が "room" で、部屋につないであるときだけ。既定は切ったまま）。
-     部屋の中身（js/sync.js の read）を見せ、Dropbox の控えは今までどおり読んで、戻る先と inboxSeen
-     （受け箱の重ねを外す印。部屋には送らない欄）・並びの目安に使う。部屋が取れない・鍵が無い・作り直された
-     ときは Dropbox の写しへ黙って戻る。取るのは WebSocket の知らせ・前に出た・電波が戻ったとき。
-     紙が開いているあいだは当てず、15秒おきに待つ（受け箱の取り込みと同じ）。
+     Dropbox の控えは戻る先と inboxSeen（受け箱の重ねを外す印。部屋には無い欄）・並びの目安に使う。取れない・
+     鍵が無い・作り直されたときは Dropbox の写しへ黙って戻る。紙が開いているあいだは当てず、15秒おきに待つ。
    ========================================================= */
 (function () {
   "use strict";
@@ -170,10 +167,10 @@
   }
 
   /* iPhone だけの操作。薄くするのは css/screens.css の「写しの端末」（同じ並び）。
-     やること・買うもの・daily の＋は薄くせず、受け箱へ足す紙を開く（js/desk-inbox.js）。 */
+     やること・買うもの・daily の＋は薄くせず、受け箱へ足す紙を開く（js/desk-inbox.js）。 買うものの直しは依頼になる（edit）ので #screen-list は除く。 */
   const ADD = 'html:is([data-screen="todo"], [data-screen="list"], [data-screen="archive"]) #dock .add-fab';
   const ONLY = [
-    '.screen:not(#screen-notes):not(#screen-settings) :is(.check, .sub-check, .tl-tick, .fav)',
+    '.screen:not(#screen-notes):not(#screen-settings):not(#screen-list) :is(.check, .sub-check, .tl-tick, .fav)',
     'html:not([data-screen="notes"]):not([data-screen="todo"]):not([data-screen="list"]):not([data-screen="archive"]) #dock .add-fab',
   ].join(", ");
   function guard() {

@@ -1458,9 +1458,15 @@
     mutator(state);
     if (dataText(state) !== replicaData) {
       const settings = state.settings;
+      const after = state;
       state = JSON.parse(replicaData);
       state.settings = settings;
-      if (Date.now() - handAt < HAND_MS && Date.now() - refusedAt > 1500 && KN.ui) {
+      /* 買うものだけの直しは受け箱の依頼へ（js/desk-inbox.js の edit。写しに重なって見える）。 */
+      let taken = false;
+      if (KN.deskInbox && KN.deskInbox.edit) {
+        try { taken = KN.deskInbox.edit(JSON.parse(replicaData), after); } catch (err) { console.warn("replica edit", err); }
+      }
+      if (!taken && Date.now() - handAt < HAND_MS && Date.now() - refusedAt > 1500 && KN.ui) {
         refusedAt = Date.now();
         KN.ui.toast("iPhoneで操作できます");
       }

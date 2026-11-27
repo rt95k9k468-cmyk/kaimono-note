@@ -9,6 +9,10 @@
    - 済んだ id は記録の inboxSeen に。ファイルは inbox/.done/ へ。もう一度取りこんでも・同じファイルが戻っても二度当てない
    - 読めない・知らない kind・大きすぎるものは当てず・消さず・動かさない。職場の受け箱（inbox 直下）にも触れない
    - ノートへ移すは、そのノートが手元に届いてから外す
+   買うものの直し（kind shop。写しの端末で 買った・★・数・メモ・消す・しまう・戻す を直すと依頼になる）：
+   - 写しの上に重なって見え、記録は一字も変わらない。並べ替え・値段などの対応外は依頼にせず今までどおり戻る
+   - 主：前の値がそのままの欄だけ当てる。iPhone が変えていた欄・もう無い品は動かさない・戻さない。二度当てない
+   - iPhone が控えを送れば、写しの重ねは外れて iPhone の中身が見える
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-inbox.js */
 const { open, checker, URL, pen } = require("./lib");
 
@@ -274,7 +278,146 @@ const { open, checker, URL, pen } = require("./lib");
   const n4 = await B.evaluate(() => KN.deskInbox.take());
   t.check("主：開き直してもう一度取りこんでも何も当てない", n4 === 0 && (await snap(B)) === end, String(n4));
 
+  /* ================= 買うものの直し（写し → 受け箱 → 主 → 写し） ================= */
+  await M.browser.close();   // 前の主の一台が残っていると、ここの依頼を勝手に取りこむ
+  files.clear(); sizes.clear(); puts.length = 0; hideBox = false;
+  const PRODS = [["p-egg", "たまご"], ["p-milk", "牛乳"], ["p-bread", "パン"], ["p-tea", "お茶"], ["p-salt", "塩"], ["p-oil", "油"]];
+  const mk = (id, pid, extra) => ({ id, productId: pid, qty: 1, memo: "", checked: false, fav: false, addedAt: "2026-11-20", ...(extra || {}) });
+  const shopBase = () => ({
+    products: PRODS.map(([id, name]) => ({ id, name, categoryId: "other", prices: [] })),
+    items: [mk("i-egg", "p-egg"), mk("i-milk", "p-milk"), mk("i-bread", "p-bread"), mk("i-tea", "p-tea"), mk("i-salt", "p-salt")],
+  });
+  files.set("/kurashi-latest.json", latest(shopBase()));
+  const R2 = await open({ viewport: { width: 1440, height: 900 }, before: route });
+  const C = R2.page;
+  await C.evaluate(() => {
+    localStorage.setItem("kaimono-note-dropbox", JSON.stringify({ appKey: "k", refresh: "r", access: "a", expires: Date.now() + 864e5, sender: false }));
+    localStorage.setItem("kn-replica", JSON.stringify({ on: true }));
+  });
+  await C.reload();
+  await booted(C);
+  await C.waitForFunction(() => KN.store.get().items.length === 5, null, { timeout: 8000 }).catch(() => {});
+  const ownS0 = await C.evaluate(() => localStorage.getItem("kaimono-note-v2"));
+  const rowOf = (id) => `.screen.is-active .item-wrap[data-item-id="${id}"]`;
+  await C.click(".tab-list");
+  await C.waitForSelector(rowOf("i-egg"), { timeout: 8000 });
+  const thin = await C.evaluate((sel) => getComputedStyle(document.querySelector(sel + " .check")).opacity, rowOf("i-egg"));
+  t.check("写し・買うもの：済みの丸は薄くしない（直せる）", Number(thin) === 1, thin);
+
+  /* 丸を押す（買った）。 */
+  await C.click(rowOf("i-egg") + " .check");
+  await C.waitForTimeout(2200);
+  const heldN = () => C.evaluate(() => JSON.parse(localStorage.getItem("kn-desk-held") || "[]").filter((h) => h.o.kind === "shop").length);
+  const stateOf = (id) => C.evaluate((i) => (KN.store.get().items.find((x) => x.id === i) || null), id);
+  const egg = await stateOf("i-egg");
+  t.check("写し・買うもの：丸を押すと買った印が重なり、依頼が一件置かれる", egg && egg.checked === true && !!egg.checkedAt && (await heldN()) === 1, JSON.stringify(egg));
+  /* 右クリックの小窓から ★。 */
+  await C.click(rowOf("i-milk") + " .item-body", { button: "right" });
+  await C.waitForSelector("text=今回買う", { timeout: 4000 });
+  await C.click("text=今回買う");
+  await C.waitForTimeout(900);
+  t.check("写し・買うもの：右クリックの小窓から★（依頼二件目）", (await stateOf("i-milk")).fav === true && (await heldN()) === 2);
+  /* 口から：数・メモ・消す・しまう（元に戻す）・戻す・名前・棚。 */
+  await C.evaluate(() => {
+    const S = KN.store;
+    S.update((s) => { const r = s.items.find((i) => i.id === "i-bread"); r.qty = 3; r.memo = "薄切り"; });
+    S.update((s) => { s.items = s.items.filter((i) => i.id !== "i-tea"); });
+    S.update((s) => { const p = s.products.find((x) => x.id === "p-salt"); p.name = "天然塩"; p.categoryId = "c-other"; });
+    S.setArchived("p-salt", true);
+    S.addItem("p-oil");
+  });
+  await C.waitForTimeout(900);
+  const view = await C.evaluate(() => {
+    const s = KN.store.get();
+    const byId = (id) => s.items.find((i) => i.id === id) || null;
+    return { bread: byId("i-bread"), tea: byId("i-tea"), salt: byId("i-salt"), prod: s.products.find((p) => p.id === "p-salt"),
+      oil: s.items.filter((i) => i.productId === "p-oil").length };
+  });
+  t.check("写し・買うもの：数・メモ・消す・しまう（品が外れる）・名前・足すも重なって見える", view.bread.qty === 3 && view.bread.memo === "薄切り" && !view.tea
+    && !view.salt && view.prod.archived === true && view.prod.name === "天然塩" && view.oil === 1, JSON.stringify(view));
+  t.check("写し・買うもの：操作ごとに一件（一回の操作は一件）", (await heldN()) === 7, String(await heldN()));
+  /* 対応外：並べ替え・値段・新しい品物は依頼にしない（今までどおり戻る）。 */
+  const before = await heldN();
+  const order0 = await C.evaluate(() => KN.store.get().items.map((i) => i.id).join());
+  await C.evaluate(() => {
+    KN.store.update((s) => { s.items.reverse(); });
+    KN.store.update((s) => { s.products.find((p) => p.id === "p-egg").prices.push({ id: "pr1", storeId: null, price: 100, amount: null, date: "2026-11-27" }); });
+    KN.store.update((s) => { s.products.push({ id: "p-new", name: "新しい品", categoryId: "other", prices: [] }); });
+    KN.store.update((s) => { s.todos.push({ id: "t-x", title: "やること", due: null }); });
+  });
+  await C.waitForTimeout(500);
+  const order1 = await C.evaluate(() => KN.store.get().items.map((i) => i.id).join());
+  t.check("写し・買うもの：並べ替え・値段・新しい品物・ほかの欄は依頼にしない（戻る）", (await heldN()) === before && order1 === order0
+    && (await C.evaluate(() => KN.store.get().products.every((p) => p.id !== "p-new" && !p.prices.length) && KN.store.get().todos.every((x) => x.id !== "t-x"))));
+  const ownS1 = await C.evaluate(() => localStorage.getItem("kaimono-note-v2"));
+  t.check("写し・買うもの：記録（kaimono-note-v2）は一字も変わらない", ownS1 === ownS0);
+  t.check("写し・買うもの：依頼は端末の入れ物へ一件一ファイル", box().length === 7 && (await C.evaluate(() => JSON.parse(localStorage.getItem("kn-desk-held") || "[]").every((h) => h.sent))), String(box().length));
+  await C.reload();
+  await booted(C);
+  const again2 = await stateOf("i-egg");
+  t.check("写し・買うもの：開き直しても重ねて見える", again2 && again2.checked === true, JSON.stringify(again2));
+
+  /* iPad の縦（640〜839px）：丸を押せば同じ。 */
+  await C.setViewportSize({ width: 820, height: 1180 });
+  await C.waitForTimeout(700);
+  if (await C.evaluate(() => document.documentElement.dataset.screen !== "list")) await C.click(".tab-list");   // 居る席をもう一度押すと価格へめくる
+  await C.waitForSelector(rowOf("i-milk"), { timeout: 8000 });
+  await C.click(rowOf("i-milk") + " .check");
+  await C.waitForTimeout(2200);
+  t.check("写し・買うもの：iPad の縦の幅でも丸を押せる", (await stateOf("i-milk")).checked === true && (await heldN()) === 8, String(await heldN()));
+  await C.setViewportSize({ width: 1440, height: 900 });
+
+  /* ---- 主の一台：iPhone が先に変えていた欄は動かさない。もう無い品は戻さない ---- */
+  hideBox = true;   // 記録を用意するあいだ、勝手な取り込みを走らせない
+  const M2 = await open({ before: route });
+  const D = M2.page;
+  await D.evaluate(([base]) => {
+    KN.store.update((s) => {
+      s.products = base.products.map((p) => ({ ...p }));
+      s.items = base.items.map((i) => ({ ...i }));
+      s.items.find((i) => i.id === "i-bread").memo = "iPhoneのメモ";   // 写しの「メモ」依頼は当てない（前の値が違う）
+      s.items = s.items.filter((i) => i.id !== "i-milk");              // もう無い品に★・丸が来ても戻さない
+    });
+    KN.store.saveNow();
+    localStorage.setItem("kaimono-note-dropbox", JSON.stringify({ appKey: "k", refresh: "r", access: "a", expires: Date.now() + 864e5, sender: true, lastAt: "2026-11-27T00:00:00Z" }));
+  }, [shopBase()]);
+  await D.waitForTimeout(800);
+  await D.reload();
+  await booted(D);
+  await D.evaluate(() => KN.diaryIdb.ready());
+  const sentS = puts.length;
+  hideBox = false;
+  const nS = await D.evaluate(() => KN.deskInbox.take());
+  await D.waitForTimeout(600);
+  const gotS = await D.evaluate(() => {
+    const s = KN.store.get();
+    const it = (id) => s.items.find((i) => i.id === id) || null;
+    return { egg: it("i-egg"), milk: it("i-milk"), bread: it("i-bread"), tea: it("i-tea"), salt: it("i-salt"),
+      salt0: s.products.find((p) => p.id === "p-salt"), oil: s.items.filter((i) => i.productId === "p-oil").length,
+      seen: Object.keys(s.inboxSeen || {}).length, snaps: KN.backup.list().map((x) => x.reason) };
+  });
+  t.check("主・買うもの：買った印・数・消す・しまう・名前・足すを当てる", gotS.egg.checked === true && !!gotS.egg.checkedAt && gotS.bread.qty === 3 && !gotS.tea
+    && !gotS.salt && gotS.salt0.archived === true && gotS.salt0.name === "天然塩" && gotS.oil === 1, JSON.stringify(gotS));
+  t.check("主・買うもの：iPhone が変えていた欄は動かさない（メモ）・もう無い品は戻さない", gotS.bread.memo === "iPhoneのメモ" && !gotS.milk, JSON.stringify(gotS.bread));
+  t.check("主・買うもの：先に自動の控え・済んだ依頼は inboxSeen へ・ファイルは .done へ", gotS.snaps.includes("受け箱の取り込み前") && gotS.seen === 8
+    && box().length === 0 && done().length === 8 && nS >= 5, JSON.stringify({ nS, seen: gotS.seen, box: box().length, done: done().length }));
+  const snapS = await D.evaluate(() => JSON.stringify(KN.store.get().items));
+  const nS2 = await D.evaluate(() => KN.deskInbox.take());
+  t.check("主・買うもの：二度当てない", nS2 === 0 && (await D.evaluate(() => JSON.stringify(KN.store.get().items))) === snapS);
+  t.check("主・買うもの：取りこんだら控えを早めに送る", puts.slice(sentS).includes("/kurashi-latest.json"), puts.slice(sentS).join(" "));
+
+  /* ---- 写しへ戻る：iPhone の控えが届けば、重ねは外れて iPhone の中身が見える ---- */
+  await C.evaluate(() => KN.replica.refresh());
+  await C.waitForTimeout(1200);
+  const backS = await C.evaluate(() => {
+    const s = KN.store.get();
+    return { held: JSON.parse(localStorage.getItem("kn-desk-held") || "[]").length, bread: s.items.find((i) => i.id === "i-bread"), milk: s.items.find((i) => i.id === "i-milk") || null };
+  });
+  t.check("写し・買うもの：iPhone の控えが届けば重ねは外れ、iPhone の中身（メモ・無い品）が見える", backS.held === 0 && backS.bread.memo === "iPhoneのメモ" && !backS.milk, JSON.stringify(backS));
+  t.check("エラーなし（買うものの直し）", !R2.errors.length && !M2.errors.length, [...R2.errors, ...M2.errors].join(" | "));
+  await R2.browser.close();
+  await M2.browser.close();
+
   t.check("エラーなし", !R.errors.length && !M.errors.length, [...R.errors, ...M.errors].join(" | "));
   t.done();
-  await M.browser.close();
 })().catch((e) => { console.error(e); process.exit(1); });

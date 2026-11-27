@@ -1,27 +1,20 @@
 /* =========================================================
    くらしノート — 写しの端末から足す道（docs/desk.md「段15 の設計」の③）
 
-   写しの端末（js/replica.js）は記録を書かない。足す・直すは一件ずつ Dropbox の
-   受け箱 `inbox/<端末>/<時刻>-<乱数>.json` へ `add` で置き（上書きしない）、
-   主の一台（控えを送る役の iPhone）が取りこむ。
-   職場の受け箱（js/dropbox.js の inbox 直下・op-）とは別：こちらは端末ごとの
-   入れ物（desk-…）の中だけ。古い版は入れ物（folder）を読まない。
+   写しの端末（js/replica.js）は記録を書かない。足す・直すは一件ずつ Dropbox の受け箱
+   `inbox/<端末>/<時刻>-<乱数>.json` へ `add` で置き、主の一台（控えを送る役の iPhone）が取りこむ。
+   職場の受け箱（js/dropbox.js の inbox 直下）とは別：端末ごとの入れ物（desk-…）の中だけ。
 
-   中身 `{ v: 1, id, at, kind, … }`。at は置いた時刻（ISO。取り込みはこの順）。
-     todo   { todo: { id, title, due, time } }   やること（id は写しの端末が振る）
-     item   { item: { id, name } }               買うもの（同じ品がリストにあれば寄せる）
-     diary  { day, mark, text }                  日記の一件（その日の時刻の順の位置へ）
-     fix    { day, pos, was, text }              直す（was＝写しで見た一件の字。時刻の行から）
-     drop   { day, pos, was }                    外す
-     toNote { day, pos, was, note }              ノートへ移す（ノートが手元に届いてから外す）
-   直しは diary-posts.js の swap・take と同じ決まり：was の一件がそのままあれば当てる。
-   無ければ 直す→新しい一件として足す、外す・移す→外さない（字は消えない）。
+   中身 `{ v: 1, id, at, kind, … }`（at は置いた時刻。取り込みはこの順）。
+     todo { todo: { id, title, due, time } } ／ item { item: { id, name } }（同じ品があれば寄せる）
+     diary { day, mark, text } ／ fix { day, pos, was, text } ／ drop { day, pos, was } ／ toNote { day, pos, was, note }
+     shop { ops }  買うものの直し（一回の操作＝一件。下の「買うものの直し」）
+   直しは was の一件がそのままあれば当てる（diary-posts.js の swap・take と同じ）。無ければ 直す→新しい一件、外す・移す→外さない。
 
-   写しの端末：置く前に localStorage の小さな控え（HELD。記録の外）へ書き、写しの
-   inboxSeen に id が見えるまで持って、写しの上に重ねて見せる（lay）。
-   主の一台（take）：日記の突き合わせが済み・記録が見当たらない日でなく・紙が一枚も
-   開いていないとき。先に自動の控え → at の順に一度の update で当てる → 済んだ id を
-   記録の inboxSeen へ（30日で間引く）→ 書いてから `inbox/.done/` へ移す（30日で消す）。
+   写しの端末：置く前に localStorage の控え（HELD。記録の外）へ書き、写しの inboxSeen に id が見えるまで
+   持って、写しの上に重ねて見せる（lay）。
+   主の一台（take）：日記の突き合わせが済み・記録が見当たらない日でなく・紙が開いていないとき。先に自動の控え →
+   at の順に一度の update で当てる → 済んだ id を inboxSeen へ（30日）→ `inbox/.done/` へ移す（30日で消す）。
    読めない・知らない kind・大きすぎるものは当てず・消さず・動かさない。
    ========================================================= */
 (function () {
@@ -38,7 +31,7 @@
   const DONE_RE = /^\/inbox\/\.done\/desk-[0-9a-f]{8}\/(\d{13})-[0-9a-f]{6}(?: \(\d+\))?\.json$/;
   const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
   const ID_RE = /^[\w-]{1,64}$/;
-  const KINDS = ["todo", "item", "diary", "fix", "drop", "toNote"];
+  const KINDS = ["todo", "item", "diary", "fix", "drop", "toNote", "shop"];
   const MAX = 64 * 1024;              // これより大きいファイルは読まない
   const TEXT = 20000;                 // 一件の字の上限
   const KEEP = 30 * 864e5;            // 済んだ id・.done を持つ日数
@@ -66,12 +59,111 @@
       const i = o.item;
       return !!i && str(i.id, 64) && ID_RE.test(i.id) && str(i.name, 200) && !!i.name.trim();
     }
+    if (o.kind === "shop") return !!o.shop && shopValid(o.shop.ops);
     if (!DAY_RE.test(o.day || "")) return false;
     if (o.kind === "diary") return str(o.text, TEXT) && !!P().markOf(o.mark || "");
     if (!str(o.was, TEXT) || !o.was || !(Number.isInteger(o.pos) && o.pos >= 0)) return false;
     if (o.kind === "fix") return str(o.text, TEXT);
     if (o.kind === "toNote") return str(o.note, 64) && ID_RE.test(o.note);
     return true;
+  }
+
+  /* ---------------- 買うものの直し（docs/desk.md「買うものを直せる」） ----------------
+     store の replicaUpdate が一回の操作を一件の依頼 shop にする（edit）。ops：
+       set { t, s: "items"|"products", id, was: {欄: 前}, set: {欄: 後} } ／ del { t, s: "items", id, was: { checked } } ／ add { t, id, name, 欄… }
+     当てるのは前の値がいまもそのままの欄だけ。無い品は戻さない。ここに無い欄・並べ替え・値段・新しい品物は依頼にしない。 */
+  const TYPE = {
+    b: (v) => typeof v === "boolean", d: (v) => v === null || str(v, 40), m: (v) => str(v, 1000),
+    q: (v) => Number.isInteger(v) && v > 0 && v < 1000, n: (v) => str(v, 200) && !!v.trim(), i: (v) => str(v, 64) && ID_RE.test(v),
+  };
+  const SHOP = {
+    items: { checked: "b", checkedAt: "d", fav: "b", qty: "q", memo: "m" },
+    products: { name: "n", categoryId: "i", archived: "b", archivedAt: "d" },
+    add: { productId: "i", qty: "q", memo: "m", fav: "b", checked: "b", checkedAt: "d", addedAt: "d" },
+  };
+  const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  const same = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+  function shopValid(ops) {
+    if (!Array.isArray(ops) || !ops.length || ops.length > 50) return false;
+    return ops.every((op) => {
+      if (!plain(op) || !str(op.id, 64) || !ID_RE.test(op.id)) return false;
+      if (op.t === "add") return str(op.name, 200) && !!op.name.trim() && Object.keys(op).every((k) => ["t", "id", "name"].includes(k) || (SHOP.add[k] && TYPE[SHOP.add[k]](op[k])));
+      if (op.t === "del") return op.s === "items" && plain(op.was) && typeof op.was.checked === "boolean";
+      const f = SHOP[op.s];
+      if (op.t !== "set" || !f || op.s === "add" || !plain(op.set) || !plain(op.was)) return false;
+      const ks = Object.keys(op.set);
+      return !!ks.length && ks.length === Object.keys(op.was).length && ks.every((k) => f[k] && TYPE[f[k]](op.set[k]) && k in op.was);
+    });
+  }
+
+  /** 品を足す（item と shop の add）。同じ id・リストに未チェックの同じ品があれば足さない。 */
+  function putItem(s, it, atIso) {
+    if (s.items.some((i) => i.id === it.id)) return "kept";
+    const name = it.name.trim();
+    let prod = (it.productId && s.products.find((p) => p.id === it.productId)) || s.products.find((p) => fold(p.name) === fold(name));
+    if (prod && !it.checked && s.items.some((i) => i.productId === prod.id && !i.checked)) return "kept";
+    if (!prod) {
+      prod = { id: `p-${it.id}`, name, categoryId: store.guessCategory(name) || store.OTHER_CATEGORY, order: null, amount: null, unit: "", note: "", prices: [] };
+      s.products.push(prod);
+    }
+    prod.archived = false;
+    const rec = { id: it.id, productId: prod.id, qty: it.qty || 1, memo: it.memo || "", checked: !!it.checked, fav: !!it.fav, addedAt: it.addedAt || atIso.slice(0, 10) };
+    if (rec.checked && it.checkedAt) rec.checkedAt = it.checkedAt;
+    s.items.unshift(rec);
+    return "ok";
+  }
+
+  /** shop の ops を当てる。一つでも当たれば "ok"。 */
+  function applyShop(s, o) {
+    let n = 0;
+    for (const op of o.shop.ops) {
+      if (op.t === "add") { if (putItem(s, op, o.at) === "ok") n++; continue; }
+      const rec = (s[op.s] || []).find((x) => x && x.id === op.id);
+      if (!rec) continue;
+      if (op.t === "del") {
+        if (!!rec.checked === op.was.checked) { s.items = s.items.filter((x) => x !== rec); n++; }
+        continue;
+      }
+      Object.keys(op.set).forEach((k) => { if (same(rec[k], op.was[k])) { rec[k] = op.set[k]; n++; } });
+    }
+    return n ? "ok" : "kept";
+  }
+
+  /** 写しの記録の前と後が買うものだけの直しなら ops。ほかの欄・並び・新しい品物・知らない欄が動いていたら null。 */
+  function diffShop(b, a) {
+    if (!plain(b) || !plain(a) || !["items", "products"].every((k) => Array.isArray(b[k]) && Array.isArray(a[k]))) return null;
+    for (const k of new Set([...Object.keys(b), ...Object.keys(a)])) {
+      if (k !== "settings" && k !== "items" && k !== "products" && JSON.stringify(b[k]) !== JSON.stringify(a[k])) return null;
+    }
+    const idSet = (l) => new Set(l.map((x) => x.id));
+    const ids = (l, keep) => l.filter((x) => !keep || keep.has(x.id)).map((x) => x.id).join();
+    const ops = [];
+    const rows = (shelf, was, now) => {
+      const wm = new Map(was.map((x) => [x.id, x]));
+      for (const x of now) {
+        const w = wm.get(x.id), set = {}, prev = {};
+        for (const k of new Set(w ? [...Object.keys(w), ...Object.keys(x)] : [])) {
+          if (same(w[k], x[k])) continue;
+          if (!SHOP[shelf][k]) return false;
+          set[k] = x[k] === undefined ? null : x[k];
+          prev[k] = w[k] === undefined ? null : w[k];
+        }
+        if (Object.keys(set).length) ops.push({ t: "set", s: shelf, id: x.id, was: prev, set });
+      }
+      return true;
+    };
+    if (ids(b.products) !== ids(a.products) || !rows("products", b.products, a.products)) return null;
+    const bi = idSet(b.items), ai = idSet(a.items);
+    if (ids(b.items, ai) !== ids(a.items, bi) || !rows("items", b.items, a.items)) return null;
+    b.items.filter((x) => !ai.has(x.id)).forEach((x) => ops.push({ t: "del", s: "items", id: x.id, was: { checked: !!x.checked } }));
+    for (const x of a.items.filter((y) => !bi.has(y.id))) {
+      const prod = a.products.find((p) => p.id === x.productId);
+      if (!prod) return null;
+      const op = { t: "add", id: x.id, name: prod.name, productId: prod.id };
+      Object.keys(SHOP.add).slice(1).forEach((k) => { if (x[k] != null) op[k] = x[k]; });
+      ops.push(op);
+    }
+    return ops;
   }
 
   /* ---------------- 当てる（記録にも写しにも同じ決まり。s を書き換える） ---------------- */
@@ -146,20 +238,8 @@
       s.todos.unshift(rec);
       return "ok";
     }
-    if (o.kind === "item") {
-      if (s.items.some((i) => i.id === o.item.id)) return "kept";
-      const name = o.item.name.trim();
-      let prod = s.products.find((p) => fold(p.name) === fold(name));
-      /* 同じ品がリストにあれば足さずに寄せる。 */
-      if (prod && s.items.some((i) => i.productId === prod.id && !i.checked)) return "kept";
-      if (!prod) {
-        prod = { id: `p-${o.item.id}`, name, categoryId: store.guessCategory(name) || store.OTHER_CATEGORY, order: null, amount: null, unit: "", note: "", prices: [] };
-        s.products.push(prod);
-      }
-      prod.archived = false;
-      s.items.unshift({ id: o.item.id, productId: prod.id, qty: 1, memo: "", checked: false, fav: false, addedAt: o.at.slice(0, 10) });
-      return "ok";
-    }
+    if (o.kind === "item") return putItem(s, { id: o.item.id, name: o.item.name }, o.at);
+    if (o.kind === "shop") return applyShop(s, o);
     const cur = dayRow(s, o.day);
     if (store.memoOut(cur)) return "wait";
     const memo = cur ? String(cur.memo || "") : "";
@@ -268,14 +348,23 @@
   /** 依頼を一件置く（写しの端末だけ）。控えに書き、写しに重ね、送る。 */
   function put(kind, fields) {
     if (!replica()) return null;
-    const o = { v: 1, id: `q${hex(12)}`, at: new Date().toISOString(), kind, ...fields };
-    if (!valid(o)) return null;
     const list = readHeld();
+    /* at は取り込みの順：同じ一刻みの二つ（品を足してすぐ★）が入れ替わらないよう、前より後ろへ。 */
+    const top = list.reduce((m, h) => Math.max(m, Date.parse(h.o.at) || 0), 0);
+    const o = { v: 1, id: `q${hex(12)}`, at: new Date(Math.max(Date.now(), top + 1)).toISOString(), kind, ...fields };
+    if (!valid(o)) return null;
     list.push({ o, path: `${ROOT}/${device()}/${Date.now()}-${hex(6)}.json`, sent: false });
     saveHeld(list);
     if (KN.replica && KN.replica.redraw) KN.replica.redraw();
     send();
     return o;
+  }
+
+  /** store の replicaUpdate から：前と後が買うものだけの直しなら依頼を一件置く（true）。でなければ false（写しへ戻る）。 */
+  function edit(before, after) {
+    if (!replica()) return false;
+    const ops = diffShop(before, after);
+    return !!(ops && ops.length && put("shop", { shop: { ops } }));
   }
 
   /* ---------------- 写しの端末：足す紙 ---------------- */
@@ -454,7 +543,7 @@
     return n;
   }
 
-  KN.deskInbox = { on: replica, put, send, lay, take, post, addTodo, addItem, valid, applyTo, insert, locate };
+  KN.deskInbox = { on: replica, put, send, lay, take, post, addTodo, addItem, valid, applyTo, insert, locate, edit };
 
   /* ---------------- 起動（KN.deskInbox を置いてから。写しの redraw が lay を引く） ---------------- */
 

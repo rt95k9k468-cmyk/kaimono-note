@@ -7057,7 +7057,7 @@ button.note-when:active { opacity: var(--press-fade); }
 .icon-btn.is-sm { width: 28px; height: 28px; }
 
 /* ---- 写しの端末（js/replica.js。docs/desk.md「段15」）：iPhone だけの操作は薄く。押せば言う（js が止める） ---- */
-html.is-replica .screen:not(#screen-notes):not(#screen-settings) :is(.check, .sub-check, .tl-tick, .fav),
+html.is-replica .screen:not(#screen-notes):not(#screen-settings):not(#screen-list) :is(.check, .sub-check, .tl-tick, .fav),
 html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-screen="list"]):not([data-screen="archive"]) #dock .add-fab { opacity: .35; cursor: default; }
 
 /* ---- 電話を横に（base.css の同じ名前の節。docs/desk.md）：紙も島とその向かい（--safe-l/r）の下へ出さない ---- */

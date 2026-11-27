@@ -930,7 +930,7 @@
     row.querySelector(".check").addEventListener("click", (e) => {
       const wasChecked = item.checked;
       /* 店で絞っているあいだ（今日の紙）は、買った一拍に値段を訊く（S2・askPrice）。値段は買った印と同じ一回で書く。 */
-      const at = !wasChecked && shopAt && KN.head.shopDay() === KN.util.todayKey() ? shopAt : null;
+      const at = !wasChecked && !store.replica() && shopAt && KN.head.shopDay() === KN.util.todayKey() ? shopAt : null;
       const commit = (price) => store.update((s) => {
         const rec = s.items.find((i) => i.id === item.id);
         if (rec) {
@@ -945,14 +945,8 @@
       // （取り消しは出来事ではないので、見せ場を作りません。todo と同じ約束）。
       if (wasChecked) { KN.motion.fire("save"); commit(); return; }
 
-      /* 買った瞬間は、やることと同じ三段です——光る → 落ちる → 組み直す。
-         押したそばから店が変わると、火花は散っているのに行はもう無く、
-         何も起きなかったように見えます（screens.css の「済ませたときの動き」）。
-         落ちる向きは下。行き先の「買ったもの」がそこにあるので、どこへ
-         行ったかを探さずに済みます。 */
-      /* やることと同じ返し方にします——線が引かれ、絵の丸がひと回りし、
-         行を光が通る。そのあとで「今日買ったもの」の束へしまわれます（tuck）。
-         同じ「済ませた」が、タブごとに違う返り方をしないように。 */
+      /* 買った瞬間はやることと同じ三段——光る → 線が引かれ丸がひと回り → 「今日買ったもの」の束へしまう（tuck。下向き。
+         screens.css の「済ませたときの動き」）。押したそばから店が変わると、何も起きなかったように見える。 */
       if (finishing.has(item.id)) return;      // 二度押しても一度だけ
       finishing.add(item.id);
       KN.motion.fire("check");
@@ -1013,7 +1007,6 @@
 
     /* 右クリック（パソコン。docs/desk.md の段6）：★・買った と、価格の払う二つ（リストから外す・アーカイブ）。 */
     KN.ui.rowMenu(wrap, () => {
-      if (store.replica()) return [];   // 写しの端末は直さない（docs/desk.md「段15」）
       const rec = store.get().items.find((i) => i.id === item.id) || item;
       const more = KN.screens.prices ? KN.screens.prices.menuOf(product) : [];
       return [
