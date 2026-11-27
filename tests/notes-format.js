@@ -198,8 +198,27 @@ const { open, checker } = require("./lib");
   });
   /* 11 個：取り消す・やり直す・太字（10月7日）・見出し・点・番号・チェック・引用・区切り・上げる・下げる。 */
   /* 12 は段5の画像の絵を足した数（docs/image-design.md）。 */
-  t.check("道具の帯はぜんぶ一列（送れば見える）、閉じる口は無い", bar.n === 13 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
+  t.check("道具の帯はぜんぶ一列（送れば見える）、閉じる口は無い", bar.n === 14 && bar.inside && bar.oneRow && !bar.done, JSON.stringify(bar));
   t.check("道具の帯は底から少し浮く、丸い塗った一本（ぼかさない）", bar.gap === 8 && bar.side === 8 && bar.round && bar.solid && bar.over, JSON.stringify(bar));
+  /* 右端の＋：縦線で分け、右端に留まる。押すと中に新しいノートが開き、題を付けて閉じるとカーソルの場所へリンクが貼られる。 */
+  const plus = await page.$eval(".sheet.is-note", (s) => {
+    const tb = s.querySelector(".note-tools").getBoundingClientRect();
+    const all = [...s.querySelectorAll(".note-tool")];
+    const p = s.querySelector('.note-tool[data-k="child"]').getBoundingClientRect();
+    const line = getComputedStyle(s.querySelector(".note-tool-add"), "::before");
+    return { last: all[all.length - 1].dataset.k === "child", right: Math.round(tb.right - p.right), line: line.width, bg: line.backgroundColor };
+  });
+  t.check("＋は帯の右端・縦線で分ける", plus.last && plus.right >= 0 && plus.right <= 12 && plus.line === "1px" && plus.bg !== "rgba(0, 0, 0, 0)", JSON.stringify(plus));
+  await page.keyboard.insertText("・");
+  const cur0 = (await field()).s;
+  await tool("child");
+  await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 2);
+  await page.keyboard.type("子の題");
+  await page.click(".sheet.is-note.is-open:last-of-type .js-close");
+  await page.waitForFunction(() => document.querySelectorAll(".sheet.is-note.is-open").length === 1);
+  const kid = await page.evaluate(() => { const n = KN.notes.list().find((x) => x.parent && (x.title || x.body).includes("子の題")); return n && n.id; });
+  const body1 = await page.evaluate(() => [...document.querySelectorAll(".sheet.is-note .js-text")].map((e) => e.value).find((v) => v.includes("おわり")) || "");
+  t.check("＋で子のノートができ、カーソルの場所へリンクが貼られる", !!kid && body1.slice(cur0).startsWith("[子の題](note:" + kid + ")") && body1.slice(0, cur0).endsWith("・"), body1.slice(-60));
   t.check("上の帯（theme-color）とページの地は変えない（帯は地として見せる）", await page.evaluate(() =>
     !document.documentElement.classList.contains("is-note-full")
     && [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content).join() === "#f4efe5,#1b1916"));
@@ -241,7 +260,7 @@ const { open, checker } = require("./lib");
   const id = await page.evaluate(() => KN.notes.list()[0].id);
   await closeSheet();
   const stored = await page.evaluate((i) => KN.notes.get(i), id);
-  t.check("本文は印のまま入れ物へ", stored.body === "# 買うもの\n- [x] 牛乳\n- [ ] 卵\n---\nおわり", JSON.stringify(stored.body));
+  t.check("本文は印のまま入れ物へ", stored.body === "# 買うもの\n- [x] 牛乳\n- [ ] 卵\n---\nおわり・[子の題](note:" + kid + ")", JSON.stringify(stored.body));
 
   /* ---- 一覧：題と冒頭は印を外す・行の背は揃う（意4a） ---- */
   const card = await page.$eval(`#screen-notes .note-row[data-id="${id}"]`, (r) => {

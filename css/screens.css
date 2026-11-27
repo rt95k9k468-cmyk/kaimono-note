@@ -5286,7 +5286,9 @@ textarea.note-title-in {
 }
 .note-tools::-webkit-scrollbar { display: none; }
 .note-tools > .note-tool:first-child { margin-inline-start: auto; }
-.note-tools > .note-tool:last-child { margin-inline-end: auto; }
+/* 右端の＋は用途がちがう（中にノートを足す）ので、縦線で分けて右に留める（送っても見える）。 */
+.note-tools > .note-tool-add { position: sticky; right: 0; margin-inline-start: auto; margin-inline-end: 0; background: var(--c-surface); }
+.note-tool-add::before { content: ""; position: absolute; left: -2px; top: 10px; bottom: 10px; width: 1px; background: var(--c-border-2); }
 .sheet.is-note.is-writing .note-tools { display: flex; }
 /* 広い紙では本文の列（--note-measure）に少し足した幅で真ん中に（紙いっぱいだと道具が散らばる）。 */
 .sheet.is-note:not(.is-wide) .note-tools {
