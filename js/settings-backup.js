@@ -1381,5 +1381,12 @@
     if (document.visibilityState === "visible") soon(2);
   });
 
-  Object.assign(S, { keepRows, syncingRows, ioRows, deviceRows, dataOutRows, dataInRows, dailyImportRows, DIARY_IN_NOTE, dropboxRows, nudge });
+  /** 控えを送っていた端末が、黙って役を降りたとき、設定の頭に出す一行（押すと Dropbox の紙＝取り戻す口）。 */
+  function senderAlert() {
+    const d = KN.dropbox;
+    if (!d || !d.status().stepped) return null;
+    return card(navRow({ ico: "upload", tint: TINT.warn, title: "この端末から控えを送っていません", alert: true, onTap: () => go("dropbox") }));
+  }
+
+  Object.assign(S, { keepRows, syncingRows, ioRows, deviceRows, dataOutRows, dataInRows, dailyImportRows, DIARY_IN_NOTE, dropboxRows, nudge, senderAlert });
 })();

@@ -767,6 +767,9 @@
       sender: cfg.sender !== false,
       /* 控えを送る役と決まった（主の一台。写しの端末の受け箱を取りこむ。js/desk-inbox.js） */
       main: cfg.sender === true,
+      /* 前は送っていたのに、役を降りた（ほかの端末が kurashi-latest.json を置いた）。stepDown は error を消すので、
+         降りたことは黙って残る——設定の頭に知らせる（settings-backup.js の senderAlert。11月27日・iPhone）。 */
+      stepped: connected() && !!cfg.lastAt && cfg.sender === false && !store.replica(),
       error: cfg.error || "",
       errorAt: cfg.errorAt || "",
       keep: KEEP,

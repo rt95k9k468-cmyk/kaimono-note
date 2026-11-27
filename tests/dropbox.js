@@ -313,6 +313,8 @@ const { open, checker } = require("./lib");
     r13 === "sent" && uploads().some((u) => u.arg.path === "/kurashi-latest.json" && u.arg.mode === "overwrite")
       && files.get("/kurashi-latest.json") !== latestBefore && (await page.evaluate(() => KN.dropbox.status().sender)), r13);
 
+  t.check("役を取っていれば、降りた知らせの印は立たない", (await page.evaluate(() => KN.dropbox.status().stepped)) === false);
+
   // 14. ほかの端末が役を取った（最新の版が変わった）→ 上書きせずに降りる
   files.set("/kurashi-latest.json", "{\"app\":\"kaimono-note\",\"other\":1}");
   bump("/kurashi-latest.json");
@@ -325,7 +327,17 @@ const { open, checker } = require("./lib");
      「ほかの端末から」と出て取り戻せず、受け箱の取り込みも黙って止まったままだった。11月27日・iPhone）。 */
   await page.evaluate(() => KN.app.showScreen("settings"));
   await page.waitForTimeout(400);
-  await page.locator(".set-layer:last-child .set-row", { hasText: "控え" }).first().click();
+  /* 降りたことは黙って残らない：設定の頭に一行。押すと Dropbox の紙（取り戻す口）。 */
+  const alertRow = () => page.locator(".set-layer:last-child .set-row.is-alert-row", { hasText: "この端末から控えを送っていません" });
+  t.check("降りた端末は、設定の頭に「この端末から控えを送っていません」が出る",
+    (await page.evaluate(() => KN.dropbox.status().stepped)) === true && (await alertRow().count()) === 1);
+  await alertRow().first().click();
+  await page.waitForTimeout(400);
+  t.check("その知らせを押すと Dropbox の紙が開く（取り戻す口がある）",
+    (await page.locator(".set-layer:last-child .set-row", { hasText: "この端末から控えを送る" }).count()) === 1);
+  await page.evaluate(() => KN.settingsParts.back());
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox・戻す" }).first().click();
   await page.waitForTimeout(400);
   await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox へ自動で送る" }).first().click();
   await page.waitForTimeout(400);

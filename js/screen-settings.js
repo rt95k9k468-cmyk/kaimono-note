@@ -757,6 +757,7 @@
     if (store.saveError()) L.body.append(saveErrorBanner());
     if (S.notesSyncAlert) put([S.notesSyncAlert()]);
     if (S.syncAlert) put([S.syncAlert()]);
+    if (S.senderAlert) put([S.senderAlert()]);
     /* 写しの端末が困ったとき（js/replica.js の trouble）。数は出さない。押すと Dropbox（最後の控えの時刻はそこ）。 */
     const rep = KN.replica && KN.replica.trouble && KN.replica.trouble();
     if (rep) L.body.append(card(navRow({

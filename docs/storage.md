@@ -187,6 +187,8 @@
   読み直しを起こさない）。断られたら降りる前に置き場を読み直す（`siblingRev`）。試験は `tests/desk-windows.js`。
   ノートの記憶も窓ごとなので、書いた窓は合図（BroadcastChannel `kn-notes`。localStorage に書かない＝ノートの試験が見張る）を出し、ほかの窓は記録と同じく頁ごと
   読み直す（app.js の storage）。合図が無いと古い本文のまま直して、ほかの窓の直しを上書きしていた。
+- 降りた端末（前に送っていた＝lastAt あり・sender が false）は、設定の頭に「この端末から控えを送っていません」（`status().stepped`・
+  `senderAlert`）。押すと Dropbox の紙（取り戻す口）。役を渡したつもりでも出続ける（消す口は持たない。11月27日）。
 - 中継所・AI の窓口の URL（`healthRelayUrl`・`dietAiUrl`）は資格情報なので、書き出しと Dropbox には
   載せない（`store.js` の `keyUrls()`）。戻すとき控えに欄が無ければ今の値を残す。端末の中の自動の控えには載る。
 - 試験は `tests/dropbox.js`（本物には繋がない）。
