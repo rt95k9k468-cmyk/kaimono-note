@@ -1214,8 +1214,9 @@
     const last = s.lastAt ? `最後に送ったのは${whenText(s.lastAt)}。` : "まだ送っていません。";
     const err = s.error ? `${whenText(s.errorAt)}に送れませんでした（${s.error}）。` : "";
     /* 控えを送るのは一台だけ（js/dropbox.js「控えを送る端末は一台だけ」）。ほかの端末は役を取れるだけ。
-       役が決まる前（戻した直後の空の端末など）に「いま送る」を押すと、送らずに役が「ほか」になり14日黙るので出さない（守2）。 */
-    const send = s.main || s.lastAt
+       役が決まる前（戻した直後の空の端末など）に「いま送る」を押すと、送らずに役が「ほか」になり14日黙るので出さない（守2）。
+       降りた端末（sender が false）は、前に送っていても取り戻す口を出す（「いま送る」では取り戻せない）。 */
+    const send = s.main || (s.lastAt && s.sender)
       ? navRow({
         ico: "upload", tint: TINT.data, title: "いま送る", act: true,
         onTap: async () => {

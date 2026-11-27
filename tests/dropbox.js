@@ -321,6 +321,17 @@ const { open, checker } = require("./lib");
   t.check("ほかの端末が最新を置いていたら、上書きせずに送る役を降りる",
     r14 === "other" && files.get("/kurashi-latest.json").includes("\"other\":1")
       && (await page.evaluate(() => KN.dropbox.status().sender)) === false, r14);
+  /* 送ったことのある端末（lastAt あり）が降りたあとも、役を取り戻す口が出る（前は「いま送る」だけで、押しても
+     「ほかの端末から」と出て取り戻せず、受け箱の取り込みも黙って止まったままだった。11月27日・iPhone）。 */
+  await page.evaluate(() => KN.app.showScreen("settings"));
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "控え" }).first().click();
+  await page.waitForTimeout(400);
+  await page.locator(".set-layer:last-child .set-row", { hasText: "Dropbox へ自動で送る" }).first().click();
+  await page.waitForTimeout(400);
+  const rows14 = await page.locator(".set-layer:last-child .set-row").allTextContents();
+  t.check("送っていた端末が降りたら「いま送る」でなく「この端末から控えを送る」",
+    rows14.some((r) => r.includes("この端末から控えを送る")) && !rows14.some((r) => r.includes("いま送る")), rows14.join(" / "));
 
   // 15. 戻すとき：控えに URL の欄が無ければ、今の端末の値を残す（空で上書きしない）
   const urlKept = await page.evaluate(async () => {
