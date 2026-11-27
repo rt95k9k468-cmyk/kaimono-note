@@ -952,7 +952,7 @@
 .sheet .stack.diet-form { gap: var(--sp-4); }
 .sheet .stack.diet-form > :empty { display: none; }
 /* 服装の層（体重の紙）。丸札が並ぶと見分けられない（2026年11月27日）——二列の板に、絵の台・名前・重さ。
-   選ぶと台が主色に塗られ、板は淡い主色。引く合計は見出しの右。「着ていない」は細い一枚。 */
+   選ぶと台が主色に塗られ、板は淡い主色。引く合計は見出しの右。「着衣なし」は細い一枚。 */
 .wear-head { display: flex; align-items: baseline; }
 .wear-off { margin-left: auto; color: var(--c-text); font-variant-numeric: tabular-nums; }
 .wear-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }

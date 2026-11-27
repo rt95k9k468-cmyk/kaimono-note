@@ -3654,7 +3654,7 @@
     { id: "before", label: "食前" },
     { id: "after", label: "食後" },
   ];
-  /* 服装は重ね着の層（D.WEAR）を足し引きする札と「着ていない」。何も押していなければ未記入。
+  /* 服装は重ね着の層（D.WEAR）を足し引きする札と「着衣なし」。何も押していなければ未記入。
      層を書いた日は、設定（目標の紙の「服の重さ」）の重さを線・平均から引く。 */
 
   /* 二桁打ったら、三桁目の前に小数点を入れます。体重も体脂肪率も
@@ -3757,7 +3757,7 @@
               <span class="wear-ico">${icon(L.ico)}</span>
               <span class="wear-t"><span class="wear-name">${L.label}</span><span class="wear-g js-g"></span></span>
             </button>`).join(""))}
-            <button type="button" class="wear-tile is-none" data-id="none">着ていない</button>
+            <button type="button" class="wear-tile is-none" data-id="none">着衣なし</button>
           </div>
         </div>
         <label class="field">

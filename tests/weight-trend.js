@@ -241,7 +241,7 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     p2("pajamaThin"); out.thinOn = ids2(); p2("pajamaThick"); out.thickOn = ids2();
     return out;
   });
-  t.check("体重の紙：畳まない・服装は 下着・下着（長袖）・パジャマ（薄）（厚）の板（絵と重さ）と「着ていない」",
+  t.check("体重の紙：畳まない・服装は 下着・下着（長袖）・パジャマ（薄）（厚）の板（絵と重さ）と「着衣なし」",
     !sheetOut.fold && JSON.stringify(sheetOut.ids) === '["under","inner","pajamaThin","pajamaThick","none"]'
       && JSON.stringify(sheetOut.ico) === "[true,true,true,true,false]" && JSON.stringify(sheetOut.g) === '["100g","200g","300g","500g","-"]', JSON.stringify(sheetOut));
   t.check("体重の紙：量ったときは食前｜食後・もう一度押すと未記入", JSON.stringify(sheetOut.meal) === '["after","","before"]' && sheetOut.saved.meal === "before", JSON.stringify(sheetOut));
