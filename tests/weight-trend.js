@@ -213,36 +213,43 @@ const EMOJI = /\p{Extended_Pictographic}/u;
     KN.screens.diet.openWeightSheet(null);
     await new Promise((r) => setTimeout(r, 300));
     const sh = document.querySelector(".sheet.is-open");
-    const chips = [...sh.querySelectorAll(".js-wear .chip")];
-    const out = { ids: chips.map((c) => c.dataset.id), ico: chips.map((c) => !!c.querySelector("svg")) };
+    const chips = [...sh.querySelectorAll(".js-wear .wear-tile")];
+    const out = { ids: chips.map((c) => c.dataset.id), ico: chips.map((c) => !!c.querySelector("svg")),
+      g: chips.map((c) => (c.querySelector(".js-g") || { textContent: "-" }).textContent), fold: !!sh.querySelector(".js-more, .js-rest") };
+    /* 量ったとき：食前｜食後。選んだほうをもう一度押すと未記入。 */
+    const seg = (id) => sh.querySelector(`.js-meal .seg-btn[data-id="${id}"]`);
+    const segOn = () => [...sh.querySelectorAll(".js-meal .seg-btn")].filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.dataset.id).join();
+    seg("after").click(); out.meal = [segOn()]; seg("after").click(); out.meal.push(segOn()); seg("before").click(); out.meal.push(segOn());
     sh.querySelector(".js-kg").value = "65.0";
-    const press = (id) => sh.querySelector(`.js-wear .chip[data-id="${id}"]`).click();
+    const press = (id) => sh.querySelector(`.js-wear .wear-tile[data-id="${id}"]`).click();
     press("none"); press("under"); press("inner");
     out.pressed = chips.map((c) => c.getAttribute("aria-pressed"));
     out.off = sh.querySelector(".js-wear-off").textContent.trim();
     sh.querySelector(".js-save").click();
     await new Promise((r) => setTimeout(r, 300));
     const w = KN.store.latestWeight();
-    out.saved = { kg: w.kg, clothed: w.clothed, wear: w.wear };
+    out.saved = { kg: w.kg, clothed: w.clothed, wear: w.wear, meal: w.meal };
     /* パジャマは薄・厚どちらか一つ。前の記録の「パジャマ」は開いたときだけ札に出て、薄・厚を押すと替わる。 */
     KN.store.update((s) => { s.diet.weights.push({ id: "old-pj", day: "2026-01-05", time: "07:00", kg: 66, clothed: true, wear: ["under", "pajama"], memo: "" }); });
     KN.screens.diet.openWeightSheet(KN.store.get().diet.weights.find((x) => x.id === "old-pj"));
     await new Promise((r) => setTimeout(r, 300));
     const s2 = document.querySelectorAll(".sheet.is-open");
     const sh2 = s2[s2.length - 1];
-    const ids2 = () => [...sh2.querySelectorAll(".js-wear .chip")].filter((c) => c.getAttribute("aria-pressed") === "true").map((c) => c.dataset.id);
+    const ids2 = () => [...sh2.querySelectorAll(".js-wear .wear-tile")].filter((c) => c.getAttribute("aria-pressed") === "true").map((c) => c.dataset.id);
     out.oldOn = ids2();
-    const p2 = (id) => sh2.querySelector(`.js-wear .chip[data-id="${id}"]`).click();
+    const p2 = (id) => sh2.querySelector(`.js-wear .wear-tile[data-id="${id}"]`).click();
     p2("pajamaThin"); out.thinOn = ids2(); p2("pajamaThick"); out.thickOn = ids2();
     return out;
   });
-  t.check("体重の紙：服装は なし・下着・下着（長袖）・パジャマ（薄）（厚）（層に絵）",
-    JSON.stringify(sheetOut.ids) === '["none","under","inner","pajamaThin","pajamaThick"]' && JSON.stringify(sheetOut.ico) === "[false,true,true,true,true]", JSON.stringify(sheetOut));
+  t.check("体重の紙：畳まない・服装は 下着・下着（長袖）・パジャマ（薄）（厚）の板（絵と重さ）と「着ていない」",
+    !sheetOut.fold && JSON.stringify(sheetOut.ids) === '["under","inner","pajamaThin","pajamaThick","none"]'
+      && JSON.stringify(sheetOut.ico) === "[true,true,true,true,false]" && JSON.stringify(sheetOut.g) === '["100g","200g","300g","500g","-"]', JSON.stringify(sheetOut));
+  t.check("体重の紙：量ったときは食前｜食後・もう一度押すと未記入", JSON.stringify(sheetOut.meal) === '["after","","before"]' && sheetOut.saved.meal === "before", JSON.stringify(sheetOut));
   t.check("体重の紙：パジャマは一つだけ・前の「パジャマ」は薄・厚に替わる",
     JSON.stringify(sheetOut.oldOn) === '["under","pajama"]' && JSON.stringify(sheetOut.thinOn) === '["under","pajamaThin"]'
       && JSON.stringify(sheetOut.thickOn) === '["under","pajamaThick"]', JSON.stringify(sheetOut));
   t.check("体重の紙：層を押すと「なし」が外れ、引く重さが出て、保存される",
-    JSON.stringify(sheetOut.pressed) === '["false","true","true","false","false"]' && sheetOut.off === "−0.3kg"
+    JSON.stringify(sheetOut.pressed) === '["true","true","false","false","false"]' && sheetOut.off === "−0.3kg"
       && sheetOut.saved.kg === 65 && sheetOut.saved.clothed === true && JSON.stringify(sheetOut.saved.wear) === '["under","inner"]',
     JSON.stringify(sheetOut));
   await page.waitForTimeout(300);
