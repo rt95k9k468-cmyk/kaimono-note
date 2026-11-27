@@ -226,6 +226,17 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
       await booted(p);
       await ready(p);
     };
+    /* A の保存待ち（store.js の saveWhenStill・120ms）を、B が書き終えるまで止める。混むと A から B へ移るうちに
+       120ms が過ぎ、A が先に書いて譲る場面が起きなかった（10本並べ）。放すと setTimeout を戻し、待ちが残っていれば書き出す。 */
+    const holdSave = (p) => p.evaluate(() => {
+      const st = window.setTimeout;
+      window.setTimeout = function (fn, ms, ...a) {
+        return fn && fn.name === "saveWhenStill" ? st(() => {}, 2147483647) : st.call(this, fn, ms, ...a);
+      };
+      window.__release = () => { window.setTimeout = st; KN.store.flush(); };
+    });
+    /* B の合図でもう読み直しに入っていれば、頁ごと替わっている（止めた時計も無い）。 */
+    const release = (p) => p.evaluate(() => window.__release && window.__release()).catch(() => {});
 
     /* 一つの窓だけが書く：今までどおり元へ・控えは取らない。B は読み直す。 */
     let b0 = nav.B;
@@ -237,8 +248,10 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
     /* 続けて書く（A は保存待ちのまま、B が書き終える）。 */
     const a0 = nav.A;
     b0 = nav.B;
+    await holdSave(A2);
     await A2.evaluate(() => KN.store.addTodo({ title: "窓Aの用事", due: KN.util.todayKey() }));
     await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの用事", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    await release(A2);
     await settle(A2, "A", a0);
     await A2.waitForTimeout(600);
     const raw = await disk();
@@ -289,8 +302,10 @@ const { open, checker, URL, fakeDropbox, pen } = require("./lib");
       window.__take = KN.backup.take;
       KN.backup.take = () => Promise.resolve("failed");
     });
+    await holdSave(A2);
     await A2.evaluate(() => KN.store.addTodo({ title: "窓Aの残す分", due: KN.util.todayKey() }));
     await B2.evaluate(() => { KN.store.addTodo({ title: "窓Bの四つめ", due: KN.util.todayKey() }); KN.store.saveNow(); });
+    await release(A2);
     await A2.waitForTimeout(1500);
     const lost = await A2.evaluate(() => ({
       asked: window.__asked,

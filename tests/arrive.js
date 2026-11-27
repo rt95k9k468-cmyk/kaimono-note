@@ -79,12 +79,26 @@ const readBars = (page) => page.evaluate(() => {
         else if (seen) { window.__off = performance.now(); mo.disconnect(); }
       }).observe(scr, { attributes: true, attributeFilter: ["class"] });
       const t0 = performance.now();
+      /* 最初に見えたコマは、動きを 0 に止めて測って元へ戻す（CSS の動きは本物の時間で進み、混むと最初のコマが
+         もう途中になる。10本並べで幕 0.69。tests/README.md「動きの始め・終わりを…」）。動きが無ければ見たまま。 */
+      const at0 = (els, read) => {
+        const all = els.flatMap((e) => e.getAnimations());
+        const was = all.map((a) => a.currentTime);
+        all.forEach((a) => { a.currentTime = 0; });
+        const out = read();
+        all.forEach((a, i) => { a.currentTime = was[i]; });
+        return out;
+      };
+      window.__bar0 = null; window.__wipe0 = null;
       const tick = () => {
         const d = document.querySelector("#screen-diet .js-day-card");
         const wipe = d && d.querySelector(".diet-plot-chart .hl-wipe");
+        const bs = d ? [...d.querySelectorAll(".hl-met .hl-bars i.is-now")] : [];
+        if (bs.length && !window.__bar0) window.__bar0 = at0(bs, () => bs.map((b) => b.getBoundingClientRect().height));
+        if (wipe && window.__wipe0 == null) window.__wipe0 = at0([wipe], () => wipe.getBoundingClientRect().width / wipe.offsetWidth);
         window.__rec.push({ at: performance.now() - t0,
-          bars: d ? [...d.querySelectorAll(".hl-met .hl-bars i.is-now")].map((b) => ({ h: b.getBoundingClientRect().height,
-            full: b.offsetHeight * parseFloat(getComputedStyle(b).getPropertyValue("--h")) })) : [],
+          bars: bs.map((b) => ({ h: b.getBoundingClientRect().height,
+            full: b.offsetHeight * parseFloat(getComputedStyle(b).getPropertyValue("--h")) })),
           wipe: wipe ? wipe.getBoundingClientRect().width / wipe.offsetWidth : null });
         if (performance.now() - t0 < 3000) requestAnimationFrame(tick);
       };
@@ -111,22 +125,23 @@ const readBars = (page) => page.evaluate(() => {
       null, { timeout: 5000 });
     const took = (await page.evaluate(() => window.__off)) - stamp;
     const rec = await page.evaluate(() => window.__rec);
+    const [bar0, wipe0] = await page.evaluate(() => [window.__bar0, window.__wipe0]);
     const [fill, draw, stag] = await page.evaluate(() => ["--m-fill", "--m-draw", "--m-stagger"].map((k) => KN.motion.ms(k)));
 
     /* 棒ごとの道のり（歩数・総消費・睡眠。飲酒は夕方の記録が無ければ「—」で棒が無い）。 */
     const n = Math.min(...rec.filter((f) => f.bars.length).map((f) => f.bars.length));
     const series = Array.from({ length: n }, (_, i) => rec.filter((f) => f.bars[i]).map((f) => f.bars[i]));
     t.check("伸びる棒が三本以上・十分なフレーム", n >= 3 && rec.length > 30, `${n}本・${rec.length}フレーム`);
-    /* 棒は CSS の動き（ページの時計では止まらない）。混んだ機械では最初のコマがもう少し進んでいる（全部回しで 8%）。 */
+    /* 棒は CSS の動き（ページの時計では止まらない）。はじめは最初のコマを動きの 0 で測ったもの（上の at0）。 */
     t.check("はじめは 0 のあたり（伸びきった棒が先に見えない）",
-      series.every((s) => s[0].h <= s[s.length - 1].full * 0.2 + 0.5), JSON.stringify(series.map((s) => [s[0].h, s[s.length - 1].full])));
+      bar0 && series.every((s, i) => bar0[i] <= s[s.length - 1].full * 0.05 + 0.5), JSON.stringify(series.map((s, i) => [bar0 && bar0[i], s[s.length - 1].full])));
     t.check("棒は縮まない（伸びていくだけ）", series.every((s) => s.every((f, i) => !i || f.h >= s[i - 1].h - 0.01)));
     t.check("終われば本当の背", series.every((s) => Math.abs(s[s.length - 1].h - s[s.length - 1].full) < 0.5),
       JSON.stringify(series.map((s) => s[s.length - 1])));
     const wipes = rec.map((f) => f.wipe).filter((x) => x != null);
     t.check("推移の幕は被ったところから右へ退き、終われば消える（scale 1 → 0）",
-      wipes.length > 10 && wipes[0] > 0.9 && wipes.every((x, i) => !i || x <= wipes[i - 1] + 1e-3) && wipes[wipes.length - 1] < 0.01,
-      JSON.stringify([wipes[0], wipes[wipes.length - 1]]));
+      wipes.length > 10 && wipe0 > 0.9 && wipes.every((x, i) => !i || x <= wipes[i - 1] + 1e-3) && wipes[wipes.length - 1] < 0.01,
+      JSON.stringify([wipe0, wipes[0], wipes[wipes.length - 1]]));
 
     t.check("is-m-arrive は満ち終わると外れる（長さは --m-* から）",
       took >= Math.max(fill * 1.4, draw) && took < Math.max(fill * 1.4, draw) + stag * 4 + 1500, `${Math.round(took)}ms`);

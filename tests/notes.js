@@ -117,7 +117,8 @@ const { open, checker } = require("./lib");
       gear: vis(document.querySelector("#head .js-settings")),
     };
   });
-  const calGone = () => page.waitForFunction(() => !document.querySelector(".is-cal-out, .is-cal-in"), null, { timeout: 3000 });
+  /* 題の薄れ（head.js の is-name-fade）は暦と別の時計で外れる。混むと暦が先に外れ、題がまだ薄れる途中を見て落ちた（10本並べ）。 */
+  const calGone = () => page.waitForFunction(() => !document.querySelector(".is-cal-out, .is-cal-in, .head.is-name-fade, .head.is-cal-moving"), null, { timeout: 3000 });
   await calGone();
   await page.waitForTimeout(500);
   const inNotes = await headLook();
