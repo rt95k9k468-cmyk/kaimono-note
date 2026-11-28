@@ -8,7 +8,7 @@
    中身 `{ v: 1, id, at, kind, … }`（at は置いた時刻。取り込みはこの順）。
      todo { todo: { id, title, due, time } } ／ item { item: { id, name } }（同じ品があれば寄せる）
      diary { day, mark, text } ／ fix { day, pos, was, text } ／ drop { day, pos, was } ／ toNote { day, pos, was, note }
-     shop { ops }  買うものの直し（一回の操作＝一件。下の「買うものの直し」）
+     shop { ops }  買うもの・やることの直し（一回の操作＝一件。下の「買うものの直し」）
    直しは was の一件がそのままあれば当てる（diary-posts.js の swap・take と同じ）。無ければ 直す→新しい一件、外す・移す→外さない。
 
    写しの端末：置く前に localStorage の控え（HELD。記録の外）へ書き、写しの inboxSeen に id が見えるまで
@@ -70,15 +70,18 @@
 
   /* ---------------- 買うものの直し（docs/desk.md「買うものを直せる」） ----------------
      store の replicaUpdate が一回の操作を一件の依頼 shop にする（edit）。ops：
-       set { t, s: "items"|"products", id, was: {欄: 前}, set: {欄: 後} } ／ del { t, s: "items", id, was: { checked } } ／ add { t, id, name, 欄… }
-     当てるのは前の値がいまもそのままの欄だけ。無い品は戻さない。ここに無い欄・並べ替え・値段・新しい品物は依頼にしない。 */
+       set { t, s: "items"|"products"|"todos", id, was: {欄: 前}, set: {欄: 後} } ／ del { t, s: "items", id, was: { checked } } ／ add { t, id, name, 欄… }
+     当てるのは前の値がいまもそのままの欄だけ。無い品は戻さない。ここに無い欄・並べ替え・値段・新しい品物は依頼にしない。
+     やることは直すだけ（消す・足す・くり返しとその跡・手順・時刻は依頼にしない）。 */
   const TYPE = {
-    b: (v) => typeof v === "boolean", d: (v) => v === null || str(v, 40), m: (v) => str(v, 1000),
-    q: (v) => Number.isInteger(v) && v > 0 && v < 1000, n: (v) => str(v, 200) && !!v.trim(), i: (v) => str(v, 64) && ID_RE.test(v),
+    b: (v) => typeof v === "boolean", d: (v) => v === null || str(v, 40), m: (v) => str(v, TEXT), a: (v) => Array.isArray(v) && v.length < 50,
+    q: (v) => Number.isInteger(v) && v > 0 && v < 1000, n: (v) => str(v, 500) && !!v.trim(), i: (v) => str(v, 64) && ID_RE.test(v),
   };
   const SHOP = {
     items: { checked: "b", checkedAt: "d", fav: "b", qty: "q", memo: "m" },
     products: { name: "n", categoryId: "i", archived: "b", archivedAt: "d" },
+    todos: { title: "n", done: "b", doneAt: "d", skipped: "b", due: "d", deadline: "d", memo: "m", flagged: "b", archived: "b",
+      archivedAt: "d", editedAt: "d", review: "d", shelf: "d", waitFor: "d", carried: "d", slips: "a" },
     add: { productId: "i", qty: "q", memo: "m", fav: "b", checked: "b", checkedAt: "d", addedAt: "d" },
   };
   const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
@@ -131,9 +134,9 @@
 
   /** 写しの記録の前と後が買うものだけの直しなら ops。ほかの欄・並び・新しい品物・知らない欄が動いていたら null。 */
   function diffShop(b, a) {
-    if (!plain(b) || !plain(a) || !["items", "products"].every((k) => Array.isArray(b[k]) && Array.isArray(a[k]))) return null;
+    if (!plain(b) || !plain(a) || !["items", "products", "todos"].every((k) => Array.isArray(b[k]) && Array.isArray(a[k]))) return null;
     for (const k of new Set([...Object.keys(b), ...Object.keys(a)])) {
-      if (k !== "settings" && k !== "items" && k !== "products" && JSON.stringify(b[k]) !== JSON.stringify(a[k])) return null;
+      if (!/^(settings|items|products|todos)$/.test(k) && JSON.stringify(b[k]) !== JSON.stringify(a[k])) return null;
     }
     const idSet = (l) => new Set(l.map((x) => x.id));
     const ids = (l, keep) => l.filter((x) => !keep || keep.has(x.id)).map((x) => x.id).join();
@@ -148,10 +151,13 @@
           set[k] = x[k] === undefined ? null : x[k];
           prev[k] = w[k] === undefined ? null : w[k];
         }
-        if (Object.keys(set).length) ops.push({ t: "set", s: shelf, id: x.id, was: prev, set });
+        if (!Object.keys(set).length) continue;
+        if (w.repeat || w.trace) return false;
+        ops.push({ t: "set", s: shelf, id: x.id, was: prev, set });
       }
       return true;
     };
+    if (ids(b.todos) !== ids(a.todos) || !rows("todos", b.todos, a.todos)) return null;
     if (ids(b.products) !== ids(a.products) || !rows("products", b.products, a.products)) return null;
     const bi = idSet(b.items), ai = idSet(a.items);
     if (ids(b.items, ai) !== ids(a.items, bi) || !rows("items", b.items, a.items)) return null;

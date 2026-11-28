@@ -167,10 +167,10 @@
   }
 
   /* iPhone だけの操作。薄くするのは css/screens.css の「写しの端末」（同じ並び）。
-     やること・買うもの・daily の＋は薄くせず、受け箱へ足す紙を開く（js/desk-inbox.js）。 買うものの直しは依頼になる（edit）ので #screen-list は除く。 */
+     やること・買うもの・daily の＋は薄くせず、受け箱へ足す紙を開く（js/desk-inbox.js）。 買うもの・やることの直しは依頼になる（edit）ので除く（くり返し・手順は除かない）。 */
   const ADD = 'html:is([data-screen="todo"], [data-screen="list"], [data-screen="archive"]) #dock .add-fab';
   const ONLY = [
-    '.screen:not(#screen-notes):not(#screen-settings):not(#screen-list) :is(.check, .sub-check, .tl-tick, .fav)',
+    '.screen:not(#screen-notes):not(#screen-settings):not(#screen-list):not(#screen-todo) :is(.check, .sub-check, .tl-tick, .fav), #screen-todo :is(.sub-check, .check.is-repeat, .check.is-trace)',
     'html:not([data-screen="notes"]):not([data-screen="todo"]):not([data-screen="list"]):not([data-screen="archive"]) #dock .add-fab',
   ].join(", ");
   function guard() {

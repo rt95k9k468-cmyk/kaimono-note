@@ -2710,13 +2710,7 @@
         t.repeatEvery = t.repeat === "after"
           ? cleanEvery("repeatEvery" in patch ? patch.repeatEvery : t.repeatEvery) : null;
       }
-      /* 時刻と、毎朝・毎晩は**両立します**。
-         かつては排他でした（「19:30」と「朝」のどちらが本当か決めなおす
-         ことになるから）。ですが毎朝・毎晩は「一日の端に置く」という並び順の
-         指定で、時刻は「いつ報せるか」——同じ問いへの二つの答えではありません。
-         毎朝を一番上に置いたまま、バッジは7時に出す、が言えるようになります。
-         （毎朝・毎晩でない part は cleanPart が落とすので、ここに残るのは
-         その二つだけです。） */
+      /* 時刻と毎朝・毎晩は両立する（buildTodo の但し書き）。 */
       if ("time" in patch) {
         t.time = KN.util.isTime(patch.time) ? patch.time : null;
       }
@@ -3024,14 +3018,7 @@
     const repeating = !before.done && !!before.repeat;
     const due = repeating ? nextDue(before) : before.due;
 
-    /* 繰り返すものを済ませたとき、**その日に「やった」を一件残します**。
-
-       前は次の日へ移すだけでした。毎朝の服薬も、離乳食も、済ませた
-       とたんにその日から消えます。毎日やるものほど、やった跡が残らない。
-
-       残すのは写しです（繰り返さない・その日ぶんの done 一件）。元の
-       ほうは今までどおり次の日へ移ります。写しはアーカイブには入れません
-       ——あそこは「やらずに片づけたもの」の置き場で、性格が違います。 */
+    /* 繰り返すものを済ませたら、その日に「やった」の写し（単発の done）を一件残す。元は次の日へ。アーカイブには入れない。 */
     const traceId = repeating ? uid("t") : null;
     /* 「済ませてから◯日」を先の日で早めに済ませたら、やった跡は**済ませた
        今日**に残します（次もそこから数えるので、跡と数え始めを揃える）。 */
@@ -3054,12 +3041,7 @@
             doneAt: today(),
             archived: false, archivedAt: null,
             trace: true,
-            /* 記録のほうは、**その日ほんとうにどこまでやったか**を
-               そのまま持ちます（写しなので、印もそのまま）。手順の状態は
-               t.subs にではなく、その日ぶんの上書き（subState）に
-               あるので、ここで一度だけ焼き込みます——写しは repeat を
-               持たない単発の記録なので、以後は自分の subs をそのまま
-               読めば足ります（subState はもう要りません）。 */
+            /* その日の手順の印（subState）を、写しの subs に一度だけ焼き込む。以後は subs を読む。 */
             subs: (t.subs || []).map((x) => {
               const st = subStatus(t, x, t.due);
               return { ...x, done: st.done, skipped: st.skipped };
@@ -3071,10 +3053,7 @@
         t.due = due;
         t.done = false;
         t.doneAt = null;
-        /* 翌日へ行くほうは、手順の印を**まっさらに戻します**。
-           きのう済ませた印が付いたまま朝を迎えると、まだ何もしていない
-           のに半分終わっているように見えます。手順そのものは残ります
-           ——毎日同じ順でやるから、まとめてあるので。 */
+        /* 翌日へ行くほうは、手順の印をまっさらに（手順そのものは残す）。 */
         t.subs = (t.subs || []).map((x) => ({ ...x, done: false, skipped: false }));
       } else {
         t.done = !t.done;

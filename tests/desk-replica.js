@@ -3,7 +3,7 @@
      meta（写しの "replica" を除く）が、開く・押す・設定を変える・読み直す・閉じるをまたいで一字も変わらない
    - Dropbox へ kurashi-latest.json・daily/・glance.json・inbox/ を置かない
    - データは iPhone の控えの写し（ノートの noteBook は入れない）、設定はこの端末のもの。版が変われば読み直す
-   - iPhone だけの操作（済み・＋）は薄く、押しても変わらず「iPhoneで操作できます」。ほかの道の書き換えも戻る
+   - iPhone だけの操作（くり返しの済み・からだの＋）は薄く、押しても変わらず「iPhoneで操作できます」。ほかの道の書き換えも戻る
    - 切れば前からの記録のまま開く
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-replica.js */
 const { open, checker, URL } = require("./lib");
@@ -51,7 +51,7 @@ const { open, checker, URL } = require("./lib");
   await A.waitForTimeout(800);
   const iphone = (p, title, memo) => p.evaluate(([title, memo]) => JSON.stringify({
     schema: KN.store.SCHEMA, app: "kaimono-note", exportedAt: new Date().toISOString(),
-    todos: [{ id: "t-ip1", title, due: KN.util.todayKey(), createdAt: KN.util.todayKey() }],
+    todos: [{ id: "t-ip1", title, due: KN.util.todayKey(), repeat: "daily", createdAt: KN.util.todayKey() }],
     archive: { days: [{ date: KN.util.todayKey(), memo }], entries: [] },
     noteBook: { notes: [{ id: "n-ip", title: "写しのノート", body: "" }] },
     settings: { theme: "dark", railFolded: true },
@@ -103,17 +103,17 @@ const { open, checker, URL } = require("./lib");
   t.check("ノート（noteBook）は写しに入れない・設定はこの端末のもの", !seen.note && seen.theme !== "dark", JSON.stringify(seen));
   t.check("日記の本文は読める（日記の写しは動かさない）", seen.body === "ok", seen.body);
 
-  /* 済みの丸は薄く、押しても変わらず言う。 */
+  /* くり返しの丸は依頼にならない：薄く、押しても変わらず言う（ほかの丸は tests/desk-inbox.js）。 */
   await B.click(".tab-todo");
   await B.waitForTimeout(700);
   const chk = B.locator("#screen-todo .check").first();
   const fade = await chk.evaluate((e) => Number(getComputedStyle(e).opacity)).catch(() => null);
-  t.check("済みの丸は薄い", fade != null && fade < 0.5, String(fade));
+  t.check("くり返しの丸は薄い", fade != null && fade < 0.5, String(fade));
   await chk.click().catch(() => {});
-  await B.waitForTimeout(400);
-  const after = await B.evaluate(() => ({ done: KN.store.get().todos.find((x) => x.id === "t-ip1").done,
+  await B.waitForTimeout(1200);
+  const after = await B.evaluate(() => ({ due: KN.store.get().todos.find((x) => x.id === "t-ip1").due === KN.util.todayKey(), n: KN.store.get().todos.length,
     toast: [...document.querySelectorAll(".toast")].map((e) => e.textContent).join("|") }));
-  t.check("済みの丸を押しても済まない・「iPhoneで操作できます」", !after.done && after.toast.includes("iPhoneで操作できます"), JSON.stringify(after));
+  t.check("くり返しの丸を押しても済まない・「iPhoneで操作できます」", after.due && after.n === 1 && after.toast.includes("iPhoneで操作できます"), JSON.stringify(after));
   /* 右クリック：やることの行は行の小窓を出さない（直したと言って戻るだけになるので。ブラウザの小窓のまま）。 */
   const row = await B.evaluate(() => { const e = [...document.querySelectorAll("#screen-todo .tl-row, #screen-todo .todo-wrap, #screen-todo .wk-row")].find((x) => x.getClientRects().length); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
   if (row) { await B.mouse.click(row.x, row.y, { button: "right" }); await B.waitForTimeout(400); }
