@@ -219,6 +219,23 @@
     const ks = Object.keys(v).filter((k) => v[k] !== undefined && typeof v[k] !== "function").sort();
     return "{" + ks.map((k) => JSON.stringify(k) + ":" + canon(v[k])).join(",") + "}";
   }
+  /** 三方（docs/sync.md「書く」）。元・自分・部屋の一件（null＝無い・消した）。欄ごとに変えたほうを取り、両方が違う値なら部屋
+      （先に着いたほう）。消すと直すは直すが勝つ。欄の中（配列・入れ子）は分けない。 */
+  function merge3(b, mine, room) {
+    const same = (x, y) => canon(x) === canon(y);
+    if (mine == null || room == null) {
+      const left = mine == null ? room : mine;
+      return left == null || (b != null && same(left, b)) ? null : left;
+    }
+    const obj = (x) => x && typeof x === "object" && !Array.isArray(x);
+    if (!obj(mine) || !obj(room)) return same(mine, b) || !same(room, b) ? room : mine;
+    const o = {}, bo = obj(b) ? b : {};
+    for (const k of new Set([...Object.keys(room), ...Object.keys(mine), ...Object.keys(bo)])) {
+      const v = same(mine[k], bo[k]) || !same(room[k], bo[k]) ? room[k] : mine[k];
+      if (v !== undefined) o[k] = v;
+    }
+    return o;
+  }
 
   const yearOf = (x) => {
     const d = x && (x.date || x.day);
@@ -779,7 +796,7 @@
   KN.sync = {
     start, status, trouble, onChange, setupCode, join, go, leave, pair, read, watch, SCHEMA,
     /* 試験と門のため（棚の分け方・送らない欄・知らない欄）。 */
-    shelvesOf, unknown: () => unknown.slice(), SEND, LOCAL, now: async () => {
+    shelvesOf, merge3, unknown: () => unknown.slice(), SEND, LOCAL, now: async () => {
       clearTimeout(timer);
       while (running) await new Promise((r) => setTimeout(r, 30));
       return round();

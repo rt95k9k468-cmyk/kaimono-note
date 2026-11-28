@@ -10,6 +10,7 @@
    - 消しすぎは止まって訊き、「送る」で sure つきで届く
    - 照らす：一日に一度、ずれ 0・一件を開いて読み比べる
    - 部屋の約束が上がった（古い版）→ 送るのを止め、歯車の点
+   - 三方 merge3（段4）：欄ごとに変えたほう・両方なら部屋・消すと直すは直す
    段3・読む側（写しの端末が部屋から読む。二つ目の窓）：
    - 二台めの合言葉でつなぐ。出どころは切ったまま（Dropbox の写し）。入れれば部屋の中身（並びも同じ）
    - 知らせ（WebSocket）で続きだけ取る。紙を開いているあいだは当てず、閉じてから
@@ -90,6 +91,25 @@ async function fakeRoom() {
   const shelves = await page.evaluate(() => [...KN.sync.shelvesOf(KN.store.get()).keys()]);
   t.check("設定は棚に無い・日記は年で分かれる", !shelves.some((s) => /settings/.test(s))
     && shelves.includes("archive.days:2025") && shelves.includes("archive.days:2026"), shelves.join(","));
+
+  /* ---- 三方（段4） ---- */
+  const m3 = await page.evaluate(() => {
+    const m = KN.sync.merge3, j = (x) => JSON.stringify(x);
+    const b = { id: "a", name: "牛乳", qty: 1, star: false, memo: "" };
+    return [
+      j(m(b, { ...b, qty: 2 }, { ...b, star: true })) === j({ id: "a", name: "牛乳", qty: 2, star: true, memo: "" }),
+      m(b, { ...b, qty: 2 }, { ...b, qty: 3 }).qty === 3,
+      m(b, { ...b, memo: "x" }, b).memo === "x" && m(b, b, { ...b, memo: "y" }).memo === "y",
+      m(b, null, b) === null && m(b, b, null) === null && m(b, null, null) === null,
+      m(b, null, { ...b, qty: 5 }).qty === 5 && m(b, { ...b, qty: 5 }, null).qty === 5,
+      m(null, { id: "n", a: 1 }, null).a === 1 && m(null, null, { id: "n", b: 2 }).b === 2,
+      j(m(null, { id: "n", a: 1, c: 1 }, { id: "n", b: 2, c: 2 })) === j({ id: "n", b: 2, c: 2, a: 1 }),
+      !("memo" in m(b, { ...b, memo: undefined }, b)) && m(b, { ...b, memo: undefined }, { ...b, memo: "z" }).memo === "z",
+      m(1, 2, 1) === 2 && m(1, 1, 3) === 3 && m(1, 2, 3) === 3,
+      j(m(b, { ...b, tags: [1, 2] }, b).tags) === "[1,2]" && j(m({ t: [1] }, { t: [1, 2] }, { t: [0, 1] }).t) === "[0,1]",
+    ];
+  });
+  t.check("三方：欄ごとに変えたほう・両方なら部屋・消すと直すは直す", m3.every(Boolean), JSON.stringify(m3));
 
   /* ---- 設定の紙（バックアップ → 同期の部屋） ---- */
   const topText = () => page.evaluate(() => {
