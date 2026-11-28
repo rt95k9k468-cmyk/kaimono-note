@@ -8,7 +8,7 @@
    中身 `{ v: 1, id, at, kind, … }`（at は置いた時刻。取り込みはこの順）。
      todo { todo: { id, title, due, time } } ／ item { item: { id, name } }（同じ品があれば寄せる）
      diary { day, mark, text } ／ fix { day, pos, was, text } ／ drop { day, pos, was } ／ toNote { day, pos, was, note }
-     shop { ops }  買うもの・やることの直し（一回の操作＝一件。下の「買うものの直し」）
+     shop { ops }  買うもの・やること・からだの直し（一回の操作＝一件。下の「買うものの直し」）
    直しは was の一件がそのままあれば当てる（diary-posts.js の swap・take と同じ）。無ければ 直す→新しい一件、外す・移す→外さない。
 
    写しの端末：置く前に localStorage の控え（HELD。記録の外）へ書き、写しの inboxSeen に id が見えるまで
@@ -72,10 +72,15 @@
      store の replicaUpdate が一回の操作を一件の依頼 shop にする（edit）。ops：
        set { t, s: "items"|"products"|"todos", id, was: {欄: 前}, set: {欄: 後} } ／ del { t, s: "items", id, was: { checked } } ／ add { t, id, name, 欄… }
      当てるのは前の値がいまもそのままの欄だけ。無い品は戻さない。ここに無い欄・並べ替え・値段・新しい品物は依頼にしない。
-     やることは直すだけ（消す・足す・くり返しとその跡・手順・時刻は依頼にしない）。 */
+     やることは直すだけ（消す・足す・くり返しとその跡・手順・時刻は依頼にしない）。
+     からだ（DIET）は欄を問わず直し、add { s, id, rec } で足し、del { s, id, was: 一件 } はそのままのときだけ消す。 */
+  const DIET = ["weights", "meals", "drinks", "urges"];
+  const kindOf = (s, k) => (DIET.includes(s) ? k !== "id" && "j" : SHOP[s][k]);
+  const shelfOf = (st, n) => (DIET.includes(n) ? st.diet || {} : st)[n] || [];
   const TYPE = {
     b: (v) => typeof v === "boolean", d: (v) => v === null || str(v, 40), m: (v) => str(v, TEXT), a: (v) => Array.isArray(v) && v.length < 50,
     q: (v) => Number.isInteger(v) && v > 0 && v < 1000, n: (v) => str(v, 500) && !!v.trim(), i: (v) => str(v, 64) && ID_RE.test(v),
+    j: (v) => v !== undefined && JSON.stringify(v).length <= TEXT,
   };
   const SHOP = {
     items: { checked: "b", checkedAt: "d", fav: "b", qty: "q", memo: "m" },
@@ -90,12 +95,13 @@
     if (!Array.isArray(ops) || !ops.length || ops.length > 50) return false;
     return ops.every((op) => {
       if (!plain(op) || !str(op.id, 64) || !ID_RE.test(op.id)) return false;
+      const d = DIET.includes(op.s);
+      if (op.t === "add" && op.s) return d && plain(op.rec) && op.rec.id === op.id && TYPE.j(op.rec);
       if (op.t === "add") return str(op.name, 200) && !!op.name.trim() && Object.keys(op).every((k) => ["t", "id", "name"].includes(k) || (SHOP.add[k] && TYPE[SHOP.add[k]](op[k])));
-      if (op.t === "del") return op.s === "items" && plain(op.was) && typeof op.was.checked === "boolean";
-      const f = SHOP[op.s];
-      if (op.t !== "set" || !f || op.s === "add" || !plain(op.set) || !plain(op.was)) return false;
+      if (op.t === "del") return plain(op.was) && (d ? op.was.id === op.id : op.s === "items" && typeof op.was.checked === "boolean");
+      if (op.t !== "set" || !(d || SHOP[op.s]) || op.s === "add" || !plain(op.set) || !plain(op.was)) return false;
       const ks = Object.keys(op.set);
-      return !!ks.length && ks.length === Object.keys(op.was).length && ks.every((k) => f[k] && TYPE[f[k]](op.set[k]) && k in op.was);
+      return !!ks.length && ks.length === Object.keys(op.was).length && ks.every((k) => kindOf(op.s, k) && TYPE[kindOf(op.s, k)](op.set[k]) && k in op.was);
     });
   }
 
@@ -120,11 +126,12 @@
   function applyShop(s, o) {
     let n = 0;
     for (const op of o.shop.ops) {
+      const l = shelfOf(s, op.s), rec = l.find((x) => x && x.id === op.id);
+      if (op.t === "add" && op.s) { if (!rec && s.diet && s.diet[op.s]) { l.push(op.rec); n++; } continue; }
       if (op.t === "add") { if (putItem(s, op, o.at) === "ok") n++; continue; }
-      const rec = (s[op.s] || []).find((x) => x && x.id === op.id);
       if (!rec) continue;
       if (op.t === "del") {
-        if (!!rec.checked === op.was.checked) { s.items = s.items.filter((x) => x !== rec); n++; }
+        if (op.s === "items" ? !!rec.checked === op.was.checked : same(rec, op.was)) { l.splice(l.indexOf(rec), 1); n++; }
         continue;
       }
       Object.keys(op.set).forEach((k) => { if (same(rec[k], op.was[k])) { rec[k] = op.set[k]; n++; } });
@@ -135,9 +142,8 @@
   /** 写しの記録の前と後が買うものだけの直しなら ops。ほかの欄・並び・新しい品物・知らない欄が動いていたら null。 */
   function diffShop(b, a) {
     if (!plain(b) || !plain(a) || !["items", "products", "todos"].every((k) => Array.isArray(b[k]) && Array.isArray(a[k]))) return null;
-    for (const k of new Set([...Object.keys(b), ...Object.keys(a)])) {
-      if (!/^(settings|items|products|todos)$/.test(k) && JSON.stringify(b[k]) !== JSON.stringify(a[k])) return null;
-    }
+    const odd = (x, y, ok) => [...new Set([...Object.keys(x), ...Object.keys(y)])].some((k) => !ok.includes(k) && !same(x[k], y[k]));
+    if (odd(b, a, ["settings", "items", "products", "todos", "diet"]) || odd(b.diet || {}, a.diet || {}, DIET)) return null;
     const idSet = (l) => new Set(l.map((x) => x.id));
     const ids = (l, keep) => l.filter((x) => !keep || keep.has(x.id)).map((x) => x.id).join();
     const ops = [];
@@ -147,7 +153,7 @@
         const w = wm.get(x.id), set = {}, prev = {};
         for (const k of new Set(w ? [...Object.keys(w), ...Object.keys(x)] : [])) {
           if (same(w[k], x[k])) continue;
-          if (!SHOP[shelf][k]) return false;
+          if (!kindOf(shelf, k)) return false;
           set[k] = x[k] === undefined ? null : x[k];
           prev[k] = w[k] === undefined ? null : w[k];
         }
@@ -168,6 +174,12 @@
       const op = { t: "add", id: x.id, name: prod.name, productId: prod.id };
       Object.keys(SHOP.add).slice(1).forEach((k) => { if (x[k] != null) op[k] = x[k]; });
       ops.push(op);
+    }
+    for (const n of DIET) {
+      const bl = shelfOf(b, n), al = shelfOf(a, n), bs = idSet(bl), as = idSet(al);
+      if (!rows(n, bl, al)) return null;
+      bl.filter((x) => !as.has(x.id)).forEach((x) => ops.push({ t: "del", s: n, id: x.id, was: x }));
+      al.filter((x) => !bs.has(x.id)).forEach((x) => ops.push({ t: "add", s: n, id: x.id, rec: x }));
     }
     return ops;
   }

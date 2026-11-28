@@ -7059,7 +7059,7 @@ button.note-when:active { opacity: var(--press-fade); }
 /* ---- 写しの端末（js/replica.js。docs/desk.md「段15」）：iPhone だけの操作は薄く。押せば言う（js が止める） ---- */
 html.is-replica .screen:not(#screen-notes):not(#screen-settings):not(#screen-list):not(#screen-todo) :is(.check, .sub-check, .tl-tick, .fav),
 html.is-replica #screen-todo :is(.sub-check, .check.is-repeat, .check.is-trace),
-html.is-replica:not([data-screen="notes"]):not([data-screen="todo"]):not([data-screen="list"]):not([data-screen="archive"]) #dock .add-fab { opacity: .35; cursor: default; }
+html.is-replica:not([data-screen="notes"]):not([data-screen="diet"]):not([data-screen="todo"]):not([data-screen="list"]):not([data-screen="archive"]) #dock .add-fab { opacity: .35; cursor: default; }
 
 /* ---- 電話を横に（base.css の同じ名前の節。docs/desk.md）：紙も島とその向かい（--safe-l/r）の下へ出さない ---- */
 @media (min-width: 840px) and (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {

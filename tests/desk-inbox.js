@@ -13,6 +13,7 @@
    - 写しの上に重なって見え、記録は一字も変わらない。並べ替え・値段などの対応外は依頼にせず今までどおり戻る
    - 主：前の値がそのままの欄だけ当てる。iPhone が変えていた欄・もう無い品は動かさない・戻さない。二度当てない
    - iPhone が控えを送れば、写しの重ねは外れて iPhone の中身が見える
+   からだ（体重・食事・お酒・飲みたくなったとき）の足す・直す・消すも同じ依頼。目標・ヘルスケアは依頼にしない
    やることの直しも同じ依頼（済ませる・題・メモ・旗・やる日・しまう）。くり返し・時刻・手順・消す・並べ替えは依頼にしない
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-inbox.js */
 const { open, checker, URL, pen } = require("./lib");
@@ -291,6 +292,7 @@ const { open, checker, URL, pen } = require("./lib");
     items: [mk("i-egg", "p-egg"), mk("i-milk", "p-milk"), mk("i-bread", "p-bread"), mk("i-tea", "p-tea"), mk("i-salt", "p-salt")],
     todos: [td("t-a", "済ませる用事"), td("t-b", "毎朝の用事", { repeat: "daily" }), td("t-c", "直す用事"), td("t-d", "しまう用事", { due: null }),
       td("t-e", "時刻の用事", { time: "21:00" })],
+    diet: { weights: [["w-a", 60], ["w-b", 61], ["w-c", 62]].map(([id, kg]) => ({ id, day: TODAY, time: "07:00", kg, createdAt: "2026-11-20T00:00:00.000Z" })) },
   });
   files.set("/kurashi-latest.json", latest(shopBase()));
   const R2 = await open({ viewport: { width: 1440, height: 900 }, before: route });
@@ -409,6 +411,26 @@ const { open, checker, URL, pen } = require("./lib");
     && vT["t-e"].time === "21:00" && !vT["t-c"].subs.length && !!vT["t-a"] && (await C.evaluate(() => KN.store.get().todos[0].id)) !== "t-e");
   t.check("写し・やること：記録（kaimono-note-v2）は一字も変わらない", (await C.evaluate(() => localStorage.getItem("kaimono-note-v2"))) === ownS0);
 
+  /* ---- からだの直し（同じ道。体重・食事・お酒・飲みたくなったときの 足す・直す・消す。目標・ヘルスケアは依頼にしない） ---- */
+  const heldD = () => C.evaluate(() => JSON.parse(localStorage.getItem("kn-desk-held") || "[]").filter((h) => h.o.shop && h.o.shop.ops.some((op) => op.s === "weights")).length);
+  await C.click(".tab-diet");
+  await C.waitForTimeout(600);
+  const fabD = await C.evaluate(() => Number(getComputedStyle(document.querySelector("#dock .add-fab")).opacity));
+  await C.evaluate(() => {
+    const S = KN.store;
+    S.addWeight({ kg: 59.5 });
+    S.updateWeight("w-a", { memo: "写しのメモ" });
+    S.removeWeight("w-b");
+    S.removeWeight("w-c");
+    S.update((s) => { s.diet.goal.targetKg = 55; });
+    S.update((s) => { s.diet.health.push({ id: "h-x", day: "2026-11-20", type: "steps", value: 100 }); });
+  });
+  await C.waitForTimeout(600);
+  const vD = await C.evaluate(() => { const d = KN.store.get().diet; return { kg: d.weights.map((w) => w.kg).sort().join(), memo: d.weights.find((w) => w.id === "w-a").memo, goal: d.goal.targetKg, h: d.health.length }; });
+  t.check("写し・からだ：＋は薄くせず、足す・直す・消すが重なって見える（操作ごとに一件）", fabD === 1 && (await heldD()) === 4 && vD.kg === "59.5,60"
+    && vD.memo === "写しのメモ", JSON.stringify({ fabD, n: await heldD(), vD }));
+  t.check("写し・からだ：目標・ヘルスケアは依頼にしない（戻る）", !vD.goal && !vD.h && (await C.evaluate(() => localStorage.getItem("kaimono-note-v2"))) === ownS0, JSON.stringify(vD));
+
   /* ---- 主の一台：iPhone が先に変えていた欄は動かさない。もう無い品は戻さない ---- */
   hideBox = true;   // 記録を用意するあいだ、勝手な取り込みを走らせない
   const M2 = await open({ before: route });
@@ -421,6 +443,7 @@ const { open, checker, URL, pen } = require("./lib");
       s.items = s.items.filter((i) => i.id !== "i-milk");              // もう無い品に★・丸が来ても戻さない
       s.todos = base.todos.map((x) => ({ ...x }));
       s.todos.find((x) => x.id === "t-c").memo = "iPhoneのメモ";       // やることも同じ：変えていた欄は動かさない
+      s.diet.weights = base.diet.weights.map((w) => ({ ...w, memo: "", kg: w.id === "w-c" ? 63 : w.kg }));   // 変えていた体重は消さない
     });
     KN.store.saveNow();
     localStorage.setItem("kaimono-note-dropbox", JSON.stringify({ appKey: "k", refresh: "r", access: "a", expires: Date.now() + 864e5, sender: true, lastAt: "2026-11-27T00:00:00Z" }));
@@ -439,7 +462,7 @@ const { open, checker, URL, pen } = require("./lib");
     return { egg: it("i-egg"), milk: it("i-milk"), bread: it("i-bread"), tea: it("i-tea"), salt: it("i-salt"),
       salt0: s.products.find((p) => p.id === "p-salt"), oil: s.items.filter((i) => i.productId === "p-oil").length,
       seen: Object.keys(s.inboxSeen || {}).length, snaps: KN.backup.list().map((x) => x.reason),
-      t: Object.fromEntries(s.todos.map((x) => [x.id, x])) };
+      t: Object.fromEntries(s.todos.map((x) => [x.id, x])), w: s.diet.weights.map((w) => `${w.id === "w-a" ? w.memo : ""}${w.kg}`).sort().join() };
   });
   t.check("主・買うもの：買った印・数・消す・しまう・名前・足すを当てる", gotS.egg.checked === true && !!gotS.egg.checkedAt && gotS.bread.qty === 3 && !gotS.tea
     && !gotS.salt && gotS.salt0.archived === true && gotS.salt0.name === "天然塩" && gotS.oil === 1, JSON.stringify(gotS));
@@ -448,8 +471,9 @@ const { open, checker, URL, pen } = require("./lib");
   t.check("主・やること：済み・題・旗・やる日・しまうを当て、iPhone が変えていたメモは動かさない", gT["t-a"].done === true && gT["t-c"].title === "直した用事"
     && gT["t-c"].flagged === true && gT["t-c"].due === LATER && gT["t-c"].memo === "iPhoneのメモ" && gT["t-d"].archived === true
     && !gT["t-b"].done && gT["t-e"].time === "21:00", JSON.stringify(gT["t-c"]));
-  t.check("主・買うもの：先に自動の控え・済んだ依頼は inboxSeen へ・ファイルは .done へ", gotS.snaps.includes("受け箱の取り込み前") && gotS.seen === 12
-    && box().length === 0 && done().length === 12 && nS >= 5, JSON.stringify({ nS, seen: gotS.seen, box: box().length, done: done().length }));
+  t.check("主・買うもの：先に自動の控え・済んだ依頼は inboxSeen へ・ファイルは .done へ", gotS.snaps.includes("受け箱の取り込み前") && gotS.seen === 16
+    && box().length === 0 && done().length === 16 && nS >= 5, JSON.stringify({ nS, seen: gotS.seen, box: box().length, done: done().length }));
+  t.check("主・からだ：足す・直す・消すを当て、iPhone が変えていた一件は消さない", gotS.w === "59.5,63,写しのメモ60", gotS.w);
   const snapS = await D.evaluate(() => JSON.stringify(KN.store.get().items));
   const nS2 = await D.evaluate(() => KN.deskInbox.take());
   t.check("主・買うもの：二度当てない", nS2 === 0 && (await D.evaluate(() => JSON.stringify(KN.store.get().items))) === snapS);

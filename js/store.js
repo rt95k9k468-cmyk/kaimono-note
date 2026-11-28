@@ -626,13 +626,8 @@
       meals: objs(src.meals).map((m, i) => keepUnknown(m, cleanMeal(m, i, true))).filter(Boolean),
       foods: list(src.foods, cleanUserFood),
       health: list(src.health, cleanHealth),
-      /* 前からある記録には drinks がありません。空で足すだけなので、
-         入れ直しても既存のデータは何も動きません。 */
+      /* drinks・urges の無い前の記録は空で足すだけ（既存は動かない）。 */
       drinks: list(src.drinks, cleanDrink),
-      /* urges も同じく、前からある記録には入っていません。空で足すだけです。
-         `diet` の中に置いてあるので、書き出し・復元（`importJSON` は
-         `s.diet = next.diet` で丸ごと入れ替える）と自動バックアップには、
-         何も足さずに乗ります。 */
       urges: list(src.urges, cleanUrge),
       goal: { ...base.goal, ...(src.goal && typeof src.goal === "object" ? src.goal : {}) },
       sync: { ...base.sync, ...(src.sync && typeof src.sync === "object" ? src.sync : {}) },

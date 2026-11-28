@@ -3,7 +3,7 @@
      meta（写しの "replica" を除く）が、開く・押す・設定を変える・読み直す・閉じるをまたいで一字も変わらない
    - Dropbox へ kurashi-latest.json・daily/・glance.json・inbox/ を置かない
    - データは iPhone の控えの写し（ノートの noteBook は入れない）、設定はこの端末のもの。版が変われば読み直す
-   - iPhone だけの操作（くり返しの済み・からだの＋）は薄く、押しても変わらず「iPhoneで操作できます」。ほかの道の書き換えも戻る
+   - iPhone だけの操作（くり返しの済み）は薄く、押しても変わらず「iPhoneで操作できます」。ほかの道の書き換えも戻る
    - 切れば前からの記録のまま開く
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-replica.js */
 const { open, checker, URL } = require("./lib");
@@ -119,11 +119,11 @@ const { open, checker, URL } = require("./lib");
   if (row) { await B.mouse.click(row.x, row.y, { button: "right" }); await B.waitForTimeout(400); }
   t.check("写し：やることの行を右クリックしても行の小窓は出ない", !!row && !await B.evaluate(() => !!document.querySelector(".note-pop.is-open")), JSON.stringify(row));
   await B.keyboard.press("Escape");
-  /* やることの＋は受け箱へ足す紙（段15③。tests/desk-inbox.js）なので薄くしない。からだの＋は薄い。 */
+  /* やることの＋は受け箱へ足す紙（段15③。tests/desk-inbox.js）なので薄くしない。からだの＋も（直しは依頼）。 */
   await B.click(".tab-diet");
   await B.waitForTimeout(600);
   const fab = await B.evaluate(() => Number(getComputedStyle(document.querySelector("#dock .add-fab")).opacity));
-  t.check("からだの＋は薄い", fab < 0.5, String(fab));
+  t.check("からだの＋は薄くしない", fab === 1, String(fab));
   await B.click(".tab-notes");
   await B.waitForTimeout(600);
   const nfab = await B.evaluate(() => Number(getComputedStyle(document.querySelector("#dock .add-fab")).opacity));
