@@ -66,7 +66,7 @@
 
   /* 足した依頼（js/desk-inbox.js）を写しの上に重ねて見せる。 */
   function show(text) {
-    store.showReplica(text, (s) => { if (KN.deskInbox) KN.deskInbox.lay(s); });
+    store.showReplica(text, (s) => { if (KN.sync) KN.sync.lay(s); if (KN.deskInbox) KN.deskInbox.lay(s); });
     text0 = text;
   }
   function redraw() { if (on && text0) { try { show(text0); } catch (err) { console.warn("replica redraw", err); } } }

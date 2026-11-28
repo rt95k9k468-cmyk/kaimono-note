@@ -17,7 +17,8 @@
    - 二台めの合言葉でつなぐ。出どころは切ったまま（Dropbox の写し）。入れれば部屋の中身（並びも同じ）
    - 知らせ（WebSocket）で続きだけ取る。紙を開いているあいだは当てず、閉じてから
    - 作り直された（ahead）・鍵が無い → Dropbox の写しへ黙って戻る。切れば元どおり
-   - そのあいだ、端末の前からの記録（kaimono-note-v2）に触れない・部屋へ送らない */
+   - そのあいだ、端末の前からの記録（kaimono-note-v2）に触れない・印が無ければ部屋へ送らない
+   - 書く（段4の③）：印を開ければ品の直しを部屋へ・409 は三方・切れば送り待ちを依頼に。iPhone の取りこみを切るときは訊く */
 const path = require("path");
 const { pathToFileURL } = require("url");
 const { open, checker, fakeDropbox, ROOT } = require("./lib");
@@ -42,6 +43,7 @@ async function fakeRoom() {
   const room = await fakeRoom();
   const calls = [];
   let cutNext = false;          // 次の push は部屋が受け取ったあとで切る
+  let stopPush = false;         // push を部屋に届けない（写しの端末が送れないまま）
   const files = new Map(), uploads = [];
   const readerCalls = [];
   const roomRoute = (log) => async (route) => {
@@ -51,6 +53,7 @@ async function fakeRoom() {
     if (log) log.push(`${req.method()} ${u.pathname}${u.search}`);
     const headers = { ...req.headers() };
     delete headers["content-length"]; delete headers.host;
+    if (stopPush && u.pathname === "/push") return route.abort("connectionrefused");
     const body = ["GET", "HEAD", "OPTIONS"].includes(req.method()) ? undefined : req.postData();
     if (body) calls.push(body);
     const res = await room.core.handle(new Request(req.url(), { method: req.method(), headers, body }));
@@ -428,6 +431,38 @@ async function fakeRoom() {
   await rp.evaluate(() => KN.replica.room());
   t.check("鍵が戻れば部屋から", await rp.evaluate(() => KN.replica.from().room));
 
+  /* ---- 書く（段4の③）：写しの端末が items を部屋へ。iPhone は取りこむを開けたまま ---- */
+  const isPush = (c) => /^POST \/push/.test(c);
+  t.check("読む側は印が無ければ部屋へ送らない", !readerCalls.some(isPush));
+  const rItem = (id) => rp.evaluate((i) => KN.store.get().items.find((x) => x.id === i), id);
+  const rSet = (id, k, v) => rp.evaluate(([i, kk, vv]) => KN.store.update((s2) => { s2.items.find((x) => x.id === i)[kk] = vv; }), [id, k, v]);
+  const rNow = () => rp.evaluate(() => KN.sync.now());
+  await rp.evaluate(() => KN.sync.writeTo(["items"]));
+  await rSet(A.id, "qty", 7);
+  const shown7 = (await rItem(A.id)).qty === 7;
+  await rNow();
+  await tick();
+  t.check("印を開ければ品の直しは部屋へ（すぐ重ねて見せ、iPhone が取りこむ）", shown7 && readerCalls.some(isPush) && (await rs()).out === 0
+    && (await itemOf(A.id)).qty === 7, JSON.stringify([shown7, (await rs()).out, (await itemOf(A.id)).qty]));
+  await memo(A.id, "iPhone のメモ");
+  await tick();
+  await rSet(A.id, "fav", !A.fav);
+  await rNow();
+  await tick();
+  await rp.evaluate(() => KN.replica.room());
+  const a2 = await itemOf(A.id), r2 = await rItem(A.id);
+  t.check("409 は部屋の版と三方で送り直す（両方の直しが残る）", [a2, r2].every((x) => x.memo === "iPhone のメモ" && x.fav === !A.fav && x.qty === 7)
+    && (await rs()).out === 0, JSON.stringify([a2, r2]));
+  stopPush = true;
+  await rSet(B.id, "memo", "写しのメモ");
+  await rNow();
+  const out1 = (await rs()).out, off = await rp.evaluate(() => KN.sync.writeTo([]));
+  const held = await rp.evaluate(() => JSON.parse(localStorage.getItem("kn-desk-held") || "[]"));
+  stopPush = false;
+  t.check("印を切れば送り待ちを依頼に作り直す（見え方はそのまま）", out1 === 1 && off === true && (await rs()).out === 0
+    && held.some((h) => h.o.kind === "shop" && h.o.shop.ops.some((op) => op.id === B.id && op.set && op.set.memo === "写しのメモ"))
+    && (await rItem(B.id)).memo === "写しのメモ", JSON.stringify([out1, off, held.length]));
+
   /* 設定の紙：Dropbox の紙に畳んだ入口 → 同期の部屋に「部屋から読む」。 */
   await rp.click(".js-settings");
   await rp.waitForTimeout(600);
@@ -436,20 +471,29 @@ async function fakeRoom() {
   t.check("写しの端末の Dropbox の紙に、畳んだ「同期の部屋」", dp === true, String(dp));
   await rp.evaluate(() => KN.settingsParts.go("sync")); await rp.waitForTimeout(500);
   const rpaper = await rp.evaluate(() => { const ls = [...document.querySelectorAll("#screen-settings .set-layer")].filter((e) => e.getClientRects().length); return ls.length ? ls[ls.length - 1].textContent : ""; });
-  t.check("同期の部屋に「部屋から読む」", /部屋から読む/.test(rpaper) && !/送り待ち|照らした/.test(rpaper), rpaper.slice(0, 160));
+  t.check("同期の部屋に「部屋から読む」「買うものを部屋へ書く」", /部屋から読む/.test(rpaper) && /買うものを部屋へ書く/.test(rpaper) && !/送り待ち|照らした/.test(rpaper), rpaper.slice(0, 160));
 
   /* 切れば元どおり。 */
   await rp.evaluate(() => KN.replica.setFrom(false));
   t.check("出どころを切れば Dropbox の写しへ", await rp.evaluate(() => !KN.replica.from().room
     && !KN.store.get().todos.some((x) => x.title === "試験の読む用事を部屋で")));
-  t.check("読む側は部屋へ送らない・控えを置かない", !readerCalls.some((c) => /^POST \/push/.test(c))
-   );
   await rp.evaluate(() => KN.replica.disable());
   await rp.waitForFunction(() => window.KN && KN.replica && !KN.replica.on() && KN.store.get().todos.length > 0, null, { timeout: 8000 });
   t.check("写しを切れば、前からの記録のまま", own === await rp.evaluate(() => localStorage.getItem("kaimono-note-v2"))
     && await rp.evaluate(() => KN.store.get().todos.some((x) => x.title === "この端末の前からの用事")));
   t.check("読む側の頁にエラーが無い", !R.errors || !R.errors.length, (R.errors || []).join(" / ").slice(0, 300));
   await R.browser.close();
+
+  /* iPhone：「買うものを部屋から取りこむ」を切るときは訊く。 */
+  if (await page.evaluate(() => KN.app.activeScreen() !== "settings")) { await page.click(".js-settings"); await page.waitForTimeout(600); }
+  await page.evaluate(() => KN.settingsParts.go("sync")); await page.waitForTimeout(500);
+  const tk = await topText();
+  await page.locator("#screen-settings button.is-sw", { hasText: "買うものを部屋から取りこむ" }).last().click();
+  await page.waitForSelector(".js-ok", { timeout: 4000 }).catch(() => {});
+  const asked = await page.locator(".js-ok").count();
+  await page.locator(".js-ok").last().click().catch(() => {});
+  await page.waitForTimeout(300);
+  t.check("iPhone の紙に「買うものを部屋から取りこむ」・切るときは訊く", /買うものを部屋から取りこむ/.test(tk) && asked > 0 && !(await st()).take.length, tk.slice(0, 160));
 
   /* ---- 古い版 ---- */
   room.db.prepare("UPDATE meta SET v = '9' WHERE k = 'schema'").run();

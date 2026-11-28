@@ -395,14 +395,19 @@
     return o;
   }
 
-  /** store の replicaUpdate から：前と後が買うものだけの直しなら依頼を置く（true。多ければ 8000字ほどずつ分ける）。でなければ false（写しへ戻る）。 */
+  /** store の replicaUpdate から：前と後が買うものだけの直しなら依頼を置く（true。多ければ 8000字ほどずつ分ける）。でなければ false（写しへ戻る）。
+      品（items）は、部屋へ書く印があれば依頼でなく部屋へ（sync.js の「書く」）。 */
   function edit(before, after) {
-    const parts = [];
-    ((replica() && diffShop(before, after)) || []).forEach((op) => {
+    const all = (replica() && diffShop(before, after)) || [], parts = [];
+    const mine = (op) => op.s === "items" || (op.t === "add" && !op.s);
+    const room = KN.sync && KN.sync.writes("items") && all.some(mine);
+    all.filter((op) => !room || !mine(op)).forEach((op) => {
       const p = parts[parts.length - 1];
       if (p && p.length < 50 && JSON.stringify(p).length < 8000) p.push(op); else parts.push([op]);
     });
-    return !!parts.length && parts.every(shopValid) && parts.every((ops) => put("shop", { shop: { ops } }));
+    if (!(room || parts.length) || !parts.every(shopValid)) return false;
+    if (room) KN.sync.write(before.items, after.items);
+    return parts.every((ops) => put("shop", { shop: { ops } }));
   }
 
   /* ---------------- 写しの端末：足す紙 ---------------- */

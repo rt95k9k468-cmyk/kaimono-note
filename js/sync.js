@@ -3,7 +3,7 @@
    =========================================================
 
    段2は**影の運用**：部屋につないだ一台（iPhone）だけが送る。段3：写しの端末（js/replica.js）は部屋から読める
-   （下の「読む」。印 kn-replica-from が "room" のときだけ。書くのは受け箱のまま）。
+   （下の「読む」。印 kn-replica-from が "room" のときだけ。書くのは受け箱か、開けた棚は部屋へ＝下の「書く」）。
    記録の形・書く道（store.update ほか）には触れない。部屋の約束は sync/README.md「約束の形」。
 
    - 入れ物：IndexedDB `kaimono-note-sync`（版1の決め打ち。今の棚の版を上げない）。
@@ -386,8 +386,7 @@
   }
 
   async function push() {
-    if (!meta.token || meta.trouble || !out.size) return;
-    await ensureKey();
+    if (!meta.token || meta.trouble || !out.size || !(await ensureKey(!reader))) return;
     for (let guard = 0; guard < 200; guard++) {
       const open = takes(), ready = [...out.values()].filter((e) => !e.bad && !(e.wait > e.base && open.has(e.shelf)));
       if (!ready.length) return;
@@ -405,7 +404,7 @@
         const len = (c.body || "").length + 200;
         if (batch.length && chars + len > BATCH_CHARS) break;
         chars += len;
-        batch.push([e, c]);
+        batch.push([e, c, e.json]);
       }
       const marks = batch.filter(([e]) => !e.tried).map(([e]) => e);
       marks.forEach((e) => { e.tried = true; });
@@ -429,23 +428,29 @@
       return;
     }
   }
-  /** 返事を当てる。受け取った → 前に合わせた中身へ。版が違った → 取りこむ棚なら取りこんでから三方で（wait）、
-      ほかの棚は書くのはこの一台なので、今の版の上に送り直す。 */
+  /** 返事を当てる。受け取った → 前に合わせた中身へ（送るあいだに直した分は続けて）。版が違った → 写しの端末は部屋の版と三方で、
+      取りこむ棚なら取りこんでから三方で（wait）、ほかの棚は書くのはこの一台なので、今の版の上に送り直す。 */
   async function took(batch, results) {
     const byOp = new Map(results.map((r) => [r.op, r]));
     const done = [], redo = [];
-    for (const [e] of batch) {
+    const fix = (e, c, ver, json, next) => {
+      const b = { ...base.get(e.k), k: e.k, ver, json };
+      if (reader) b.h = c.shelf + "." + c.item;
+      base.set(e.k, b); done.push(b);
+      if (next === json) out.delete(e.k);
+      else { Object.assign(e, { base: ver, from: json, json: next, op: newOp(), tried: false }); redo.push(e); }
+    };
+    for (const [e, c, j] of batch) {
       const r = byOp.get(e.op);
       if (!r) continue;
-      if (r.ok) {
-        const b = { k: e.k, ver: r.ver, json: e.json };
-        base.set(e.k, b);
-        out.delete(e.k);
-        done.push(b);
-      } else if (r.why === "ver" && r.cur) {
-        if (e.json === null && r.cur.del) {
-          const b = { k: e.k, ver: r.cur.ver, json: null };
-          base.set(e.k, b); out.delete(e.k); done.push(b);
+      if (r.ok) fix(e, c, r.ver, j, e.json);
+      else if (r.why === "ver" && r.cur) {
+        if (e.json === null && r.cur.del) fix(e, c, r.cur.ver, null, null);
+        else if (reader) {
+          let d = null;
+          if (r.cur.body) { try { d = (await unseal(r.cur.body, c.shelf, c.item)).d; } catch (_) { continue; } }
+          const p = (x) => (x == null ? null : JSON.parse(x)), v = merge3(p(e.from), p(e.json), d);
+          fix(e, c, r.cur.ver, d === null ? null : canon(d), v === null ? null : canon(v));
         } else if (takes().has(e.shelf)) {
           Object.assign(e, { wait: r.cur.ver, op: newOp(), tried: false });
           redo.push(e);
@@ -480,6 +485,10 @@
      20件か1/5（5件より多い）を越えて変わるなら訊く。無い品物を指す一件は持ち越す（held）。送りの 409 は取りこんでから（wait）。 */
   const TAKE = new Set(["items"]);
   const takes = () => new Set((meta.take || []).filter((x) => TAKE.has(x)));
+  function putRec(s, shelf, key, v) {
+    const l = s[shelf] = Array.isArray(s[shelf]) ? s[shelf] : [], i = l.findIndex((y) => y && "id:" + y.id === key);
+    if (v === null) { if (i >= 0) l.splice(i, 1); } else if (i >= 0) l[i] = v; else l.unshift(v);
+  }
   const busy = () => !!(KN.ui && KN.ui.sheetsOpen && KN.ui.sheetsOpen() > 0);
   function plan(s, recs) {
     const cur = shelvesOf(s), prods = new Set((s.products || []).map((p) => p.id)), res = [], held = [];
@@ -537,11 +546,7 @@
       }
       if (busy() || !settled()) { soon(15000); return true; }
       p = plan(store.get(), recs);
-      store.update((s) => p.res.forEach((c) => {
-        if (c.json === c.was) return;
-        const l = s[c.shelf] = Array.isArray(s[c.shelf]) ? s[c.shelf] : [], i = l.findIndex((y) => y && "id:" + y.id === c.key);
-        if (c.v === null) { if (i >= 0) l.splice(i, 1); } else if (i >= 0) l[i] = c.v; else l.unshift(c.v);
-      }));
+      store.update((s) => p.res.forEach((c) => { if (c.json !== c.was) putRec(s, c.shelf, c.key, c.v); }));
       if (store.saveNow() === false) return true;
     }
     const ups = [];
@@ -567,6 +572,43 @@
     await putMeta({ take: (list || []).filter((x) => TAKE.has(x)), takeSeq: 0, held: [] });
     tell();
     soon(0);
+  }
+
+  /* ---------------- 書く（段4の③。写しの端末） ----------------
+     開けた棚（meta.write。既定は無い）の直しを、受け箱の依頼の代わりに一件ずつ送り待ちへ（from＝そのときの部屋の版）。
+     写しに重ねて見せ（lay）、409 は部屋の版と三方（took）。印を切れば送り待ちを依頼に作り直す（作れなければ切らない）。 */
+  const writes = (x) => phase === "on" && reader && !!meta.token && !meta.trouble && (meta.write || []).includes(x)
+    && !!(KN.replica && KN.replica.from().want);
+  /** js/desk-inbox.js の edit から：前と後の items を一件ずつ。 */
+  function write(b, a) {
+    const m = (l) => new Map((l || []).map((x) => ["items\nid:" + x.id, canon(x)]));
+    const was = m(b), now = m(a), es = [];
+    for (const k of new Set([...was.keys(), ...now.keys()])) {
+      const j = now.has(k) ? now.get(k) : null, bb = base.get(k);
+      if (j === (was.has(k) ? was.get(k) : null)) continue;
+      const e = out.get(k) || { k, shelf: "items", key: k.slice(6), op: newOp(), base: bb ? bb.ver : 0, from: bb && bb.json !== null ? canon(JSON.parse(bb.json)) : null, tried: false };
+      Object.assign(e, { json: j, at: Date.now() });
+      out.set(k, e); es.push(e);
+    }
+    run(["out"], "readwrite", (t) => es.forEach((e) => t.objectStore("out").put(e))).catch(() => {});
+    if (KN.replica) KN.replica.redraw();
+    soon(0);
+  }
+  function lay(s) {
+    if (reader) out.forEach((e) => { if (e.shelf === "items") putRec(s, "items", e.key, e.json === null ? null : JSON.parse(e.json)); });
+  }
+  async function writeTo(list) {
+    while (running) await new Promise((r) => setTimeout(r, 30));
+    const next = (list || []).filter((x) => TAKE.has(x)), es = [...out.values()].filter((e) => !next.includes(e.shelf)), was = meta.write;
+    const a = JSON.parse(JSON.stringify(store.get())), b = JSON.parse(JSON.stringify(a)), p = (x) => (x == null ? null : JSON.parse(x));
+    es.forEach((e) => { putRec(a, "items", e.key, p(e.json)); putRec(b, "items", e.key, p(e.from)); });
+    meta.write = next;
+    if (es.length && canon(a.items) !== canon(b.items) && !(KN.deskInbox && KN.deskInbox.edit(b, a))) { meta.write = was; return false; }
+    es.forEach((e) => out.delete(e.k));
+    await run(["out", "meta"], "readwrite", (t) => { es.forEach((e) => t.objectStore("out").delete(e.k)); t.objectStore("meta").put({ k: "write", v: next }); });
+    if (KN.replica) KN.replica.redraw();
+    tell();
+    return true;
   }
 
   /* ---------------- 照らす（一日に一度） ---------------- */
@@ -618,12 +660,12 @@
     timer = setTimeout(round, ms === undefined ? WAIT : ms);
   }
   async function round() {
-    if (phase !== "on" || !meta.token || !lockHeld) return;
+    if (phase !== "on" || !meta.token || !(lockHeld || reader)) return;
     if (running) { again = true; return; }
     running = true;
     try {
-      await keyOut();
-      if (await take() && await compare()) {
+      if (reader) await push();
+      else if ((await keyOut(), await take()) && await compare()) {
         await push();
         await check();
       }
@@ -662,6 +704,7 @@
     phase = "loading";
     try { await load(); phase = "on"; } catch (_) { phase = "off"; tell(); return; }
     if (!reader) begin();
+    else if (out.size) soon(0);
     tell();
   }
 
@@ -859,7 +902,7 @@
     if (meta.token) { try { await call("DELETE", `/devices/${encodeURIComponent(meta.device || "")}`); } catch (_) { /* 部屋に届かなくても、こちらは忘れる */ } }
     await run(["meta", "base", "out"], "readwrite", (t) => {
       ["url", "token", "device", "room", "joinedAt", "firstDone", "sentAt", "failSince", "checkDay", "checks", "trouble", "redo",
-        "seq", "n", "readRoom", "readAt", "take", "takeSeq", "held"]
+        "seq", "n", "readRoom", "readAt", "take", "takeSeq", "held", "write"]
         .forEach((k) => t.objectStore("meta").delete(k));
       t.objectStore("base").clear();
       t.objectStore("out").clear();
@@ -885,14 +928,14 @@
     return {
       phase, reader, joined: !!meta.token, seq: meta.seq || 0, lock: lockHeld, ask, trouble: trouble(), out: out.size, bad: [...out.values()].filter((e) => e.bad).length,
       live, sentAt: meta.sentAt || 0, checks: (meta.checks || []).slice(), keyOut: !!meta.keyOut, firstDone: !!meta.firstDone,
-      redo: meta.redo || 0, take: [...takes()], held: (meta.held || []).length,
+      redo: meta.redo || 0, take: [...takes()], held: (meta.held || []).length, write: (meta.write || []).slice(),
     };
   }
   function tell() { listeners.forEach((fn) => { try { fn(); } catch (_) { /* 聞き手の失敗は回すほうへ持ちこまない */ } }); }
   function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   KN.sync = {
-    start, status, trouble, onChange, setupCode, join, go, leave, pair, read, watch, takeFrom, SCHEMA,
+    start, status, trouble, onChange, setupCode, join, go, leave, pair, read, watch, takeFrom, writes, write, lay, writeTo, SCHEMA,
     /* 試験と門のため（棚の分け方・送らない欄・知らない欄）。 */
     shelvesOf, merge3, unknown: () => unknown.slice(), SEND, LOCAL, now: async () => {
       clearTimeout(timer);

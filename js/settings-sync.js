@@ -83,6 +83,11 @@
         }).then((ok) => { if (ok) sync.go(); }),
       })));
     }
+    rows.push(card(switchRow({
+      title: "買うものを部屋から取りこむ", on: st.take.includes("items"),
+      onTap: (v) => Promise.resolve(v || KN.ui.confirm({ title: "部屋から取りこまない", message: "取りこんでいない分は消えます。", okLabel: "取りこまない", danger: true }))
+        .then((ok) => ok && sync.takeFrom(v ? ["items"] : [])).then(render, render),
+    })));
     const last = st.checks[st.checks.length - 1];
     const far = st.checks.filter((c) => c.miss || c.extra || c.body === false).length;
     rows.push(foot([
@@ -102,7 +107,7 @@
     return rows;
   }
 
-  /* 写しの端末（段3）：部屋につないで、写しを部屋から読む（書くのは受け箱のまま）。既定は切ったまま。 */
+  /* 写しの端末（段3・4）：部屋につないで、写しを部屋から読む・買うものは部屋へ書く。既定は切ったまま。 */
   function readerRows(st) {
     const sync = KN.sync, rep = KN.replica;
     if (!st.joined) {
@@ -125,6 +130,12 @@
     const rows = [];
     if (st.trouble) rows.push(card(navRow({ ico: "download", tint: TINT.warn, title: TROUBLE[st.trouble], alert: true, act: true, onTap: () => {} })));
     if (rep) rows.push(card(switchRow({ title: "部屋から読む", on: rep.from().want, onTap: (v) => rep.setFrom(v).then(render, render) })));
+    if (rep && rep.from().want) {
+      rows.push(card(switchRow({
+        title: "買うものを部屋へ書く", on: st.write.includes("items"),
+        onTap: (v) => sync.writeTo(v ? ["items"] : []).then((ok) => { if (!ok) KN.ui.toast("いまは切れません"); }).then(render, render),
+      })));
+    }
     rows.push(card(dangerRow({
       ico: "trash", title: "この端末を切る",
       onTap: () => KN.ui.confirm({ title: "この端末を切る", message: "", okLabel: "切る", danger: true })
