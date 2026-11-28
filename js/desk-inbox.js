@@ -73,8 +73,11 @@
        set { t, s: "items"|"products"|"todos", id, was: {欄: 前}, set: {欄: 後} } ／ del { t, s: "items", id, was: { checked } } ／ add { t, id, name, 欄… }
      当てるのは前の値がいまもそのままの欄だけ。無い品は戻さない。ここに無い欄・並べ替え・値段・新しい品物は依頼にしない。
      やることは直すだけ（消す・足す・くり返しとその跡・手順・時刻は依頼にしない）。
-     からだ（DIET）は欄を問わず直し、add { s, id, rec } で足し、del { s, id, was: 一件 } はそのままのときだけ消す。 */
+     からだ（DIET）は欄を問わず直し、add { s, id, rec } で足し、del { s, id, was: 一件 } はそのままのときだけ消す。
+     覚えた分類・絵の言い換え・問いの元（KEY。問いは q が鍵）は key { s, k, was, set }（無い＝null）。 */
   const DIET = ["weights", "meals", "drinks", "urges"];
+  const KEY = { learned: (v) => plain(v) && str(v.category, 64), iconOverrides: (v) => str(v, 64) && !!v, asks: (v, k) => plain(v) && v.q === k };
+  const keyed = (st, n) => new Map(n === "asks" ? (st.asks || []).map((x) => [x.q, x]) : Object.entries(st[n] || {}));
   const kindOf = (s, k) => (DIET.includes(s) ? k !== "id" && "j" : SHOP[s][k]);
   const shelfOf = (st, n) => (DIET.includes(n) ? st.diet || {} : st)[n] || [];
   const TYPE = {
@@ -84,7 +87,7 @@
   };
   const SHOP = {
     items: { checked: "b", checkedAt: "d", fav: "b", qty: "q", memo: "m" },
-    products: { name: "n", categoryId: "i", archived: "b", archivedAt: "d" },
+    products: { name: "n", categoryId: "i", catManual: "b", archived: "b", archivedAt: "d" },
     todos: { title: "n", done: "b", doneAt: "d", skipped: "b", due: "d", deadline: "d", memo: "m", flagged: "b", archived: "b",
       archivedAt: "d", editedAt: "d", review: "d", shelf: "d", waitFor: "d", carried: "d", slips: "a" },
     add: { productId: "i", qty: "q", memo: "m", fav: "b", checked: "b", checkedAt: "d", addedAt: "d" },
@@ -94,6 +97,7 @@
   function shopValid(ops) {
     if (!Array.isArray(ops) || !ops.length || ops.length > 50) return false;
     return ops.every((op) => {
+      if (plain(op) && op.t === "key") return Object.keys(KEY).includes(op.s) &&str(op.k, 2000) && !!op.k && TYPE.j(op.was) && TYPE.j(op.set) && (op.set === null || KEY[op.s](op.set, op.k));
       if (!plain(op) || !str(op.id, 64) || !ID_RE.test(op.id)) return false;
       const d = DIET.includes(op.s);
       if (op.t === "add" && op.s) return d && plain(op.rec) && op.rec.id === op.id && TYPE.j(op.rec);
@@ -126,6 +130,15 @@
   function applyShop(s, o) {
     let n = 0;
     for (const op of o.shop.ops) {
+      if (op.t === "key") {
+        const l = op.s === "asks" && (s.asks = s.asks || []), m = l || (s[op.s] = s[op.s] || {}), was = keyed(s, op.s).get(op.k) || null;
+        if (!same(was, op.was) || same(was, op.set)) continue;
+        if (!l) op.set === null ? delete m[op.k] : (m[op.k] = op.set);
+        else if (was) l.splice(l.indexOf(was), 1, ...(op.set ? [op.set] : []));
+        else l.push(op.set);
+        n++;
+        continue;
+      }
       const l = shelfOf(s, op.s), rec = l.find((x) => x && x.id === op.id);
       if (op.t === "add" && op.s) { if (!rec && s.diet && s.diet[op.s]) { l.push(op.rec); n++; } continue; }
       if (op.t === "add") { if (putItem(s, op, o.at) === "ok") n++; continue; }
@@ -143,7 +156,7 @@
   function diffShop(b, a) {
     if (!plain(b) || !plain(a) || !["items", "products", "todos"].every((k) => Array.isArray(b[k]) && Array.isArray(a[k]))) return null;
     const odd = (x, y, ok) => [...new Set([...Object.keys(x), ...Object.keys(y)])].some((k) => !ok.includes(k) && !same(x[k], y[k]));
-    if (odd(b, a, ["settings", "items", "products", "todos", "diet"]) || odd(b.diet || {}, a.diet || {}, DIET)) return null;
+    if (odd(b, a, ["settings", "items", "products", "todos", "diet", ...Object.keys(KEY)]) || odd(b.diet || {}, a.diet || {}, DIET)) return null;
     const idSet = (l) => new Set(l.map((x) => x.id));
     const ids = (l, keep) => l.filter((x) => !keep || keep.has(x.id)).map((x) => x.id).join();
     const ops = [];
@@ -180,6 +193,10 @@
       if (!rows(n, bl, al)) return null;
       bl.filter((x) => !as.has(x.id)).forEach((x) => ops.push({ t: "del", s: n, id: x.id, was: x }));
       al.filter((x) => !bs.has(x.id)).forEach((x) => ops.push({ t: "add", s: n, id: x.id, rec: x }));
+    }
+    for (const n in KEY) {
+      const bm = keyed(b, n), am = keyed(a, n);
+      new Set([...bm.keys(), ...am.keys()]).forEach((k) => same(bm.get(k), am.get(k)) || ops.push({ t: "key", s: n, k, was: bm.get(k) || null, set: am.get(k) || null }));
     }
     return ops;
   }
@@ -378,11 +395,14 @@
     return o;
   }
 
-  /** store の replicaUpdate から：前と後が買うものだけの直しなら依頼を一件置く（true）。でなければ false（写しへ戻る）。 */
+  /** store の replicaUpdate から：前と後が買うものだけの直しなら依頼を置く（true。多ければ 8000字ほどずつ分ける）。でなければ false（写しへ戻る）。 */
   function edit(before, after) {
-    if (!replica()) return false;
-    const ops = diffShop(before, after);
-    return !!(ops && ops.length && put("shop", { shop: { ops } }));
+    const parts = [];
+    ((replica() && diffShop(before, after)) || []).forEach((op) => {
+      const p = parts[parts.length - 1];
+      if (p && p.length < 50 && JSON.stringify(p).length < 8000) p.push(op); else parts.push([op]);
+    });
+    return !!parts.length && parts.every(shopValid) && parts.every((ops) => put("shop", { shop: { ops } }));
   }
 
   /* ---------------- 写しの端末：足す紙 ---------------- */
