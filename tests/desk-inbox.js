@@ -16,6 +16,7 @@
    からだ（体重・食事・お酒・飲みたくなったとき）の足す・直す・消すも同じ依頼。目標・ヘルスケアは依頼にしない
    やることの直しも同じ依頼（済ませる・題・メモ・旗・やる日・しまう）。くり返し・時刻・手順・消す・並べ替えは依頼にしない
    覚えた分類・絵の言い換え・問いの元も同じ依頼（鍵ごと。前のままの鍵だけ当てる。多い直しは分ける）
+   店・分類も同じ依頼（からだと同じ形。値段の残る店は iPhone で消さない）
    走らせ方：NODE_PATH=/opt/node22/lib/node_modules node tests/desk-inbox.js */
 const { open, checker, URL, pen } = require("./lib");
 
@@ -296,6 +297,7 @@ const { open, checker, URL, pen } = require("./lib");
     diet: { weights: [["w-a", 60], ["w-b", 61], ["w-c", 62]].map(([id, kg]) => ({ id, day: TODAY, time: "07:00", kg, createdAt: "2026-11-20T00:00:00.000Z" })) },
     learned: { 牛乳: { category: "c-cold", label: "牛乳" }, 塩: { category: "c-food", label: "塩" } },
     asks: ["試験の問い一", "試験の問い二"].map((q) => ({ g: "", w: 2, from: "", hint: "", q })),
+    stores: ["s-a", "s-b", "s-c"].map((id, order) => ({ id, name: "店" + id[2], color: "#888888", order })),
   });
   files.set("/kurashi-latest.json", latest(shopBase()));
   const R2 = await open({ viewport: { width: 1440, height: 900 }, before: route });
@@ -451,6 +453,27 @@ const { open, checker, URL, pen } = require("./lib");
     && vK.egg.category === "c-cold" && vK.ic === "apple" && vK.a === 62 && vK.one === "直した" && !vK.two
     && (await C.evaluate(() => localStorage.getItem("kaimono-note-v2"))) === ownS0, JSON.stringify({ n: await heldK(), vK }));
 
+  /* ---- 店・分類（同じ道。からだと同じ形：欄を問わず直す・足す・そのままなら消す。並べ替えも） ---- */
+  const heldR = () => C.evaluate(() => JSON.parse(localStorage.getItem("kn-desk-held") || "[]").filter((h) => h.o.shop && h.o.shop.ops.some((op) => ["stores", "categories"].includes(op.s))).length);
+  await C.evaluate(() => {
+    const S = KN.store;
+    S.update((s) => { s.stores.find((x) => x.id === "s-a").name = "店あ"; });
+    S.addStore("店D");
+    S.update((s) => { s.stores = s.stores.filter((x) => x.id !== "s-b"); });
+    S.update((s) => { s.stores = s.stores.filter((x) => x.id !== "s-c"); });   // iPhone ではこの店に値段がある
+    S.update((s) => { s.categories.find((c) => c.id === "c-veg").name = "やさい"; });
+    S.update((s) => { s.categories.push({ id: "c-new", name: "おやつ", emoji: "", color: "#888888", order: 99 }); });
+    S.update((s) => { s.categories = s.categories.filter((c) => c.id !== "c-meat"); });
+    KN.reorder.applyOrder(S.sortedCategories(), 0, 2, (s) => s.categories);
+  });
+  await C.waitForTimeout(600);
+  const catsOf = (P) => P.evaluate(() => { const s = KN.store.get(); return { st: s.stores.map((x) => x.name).join(), a: (s.stores.find((x) => x.id === "s-a") || {}).color,
+    c: KN.store.sortedCategories().map((c) => c.id).join(), veg: s.categories.find((c) => c.id === "c-veg").name }; });
+  const vR = await catsOf(C);
+  t.check("写し・店・分類：名前・足す・消す・並べ替えが重なって見える（操作ごとに一件）", (await heldR()) === 8 && vR.st === "店あ,店D" && vR.veg === "やさい"
+    && /^c-food,[\w-]+,c-veg,/.test(vR.c) && vR.c.endsWith("c-new") && !vR.c.includes("c-meat")
+    && (await C.evaluate(() => localStorage.getItem("kaimono-note-v2"))) === ownS0, JSON.stringify({ n: await heldR(), vR }));
+
   /* ---- 主の一台：iPhone が先に変えていた欄は動かさない。もう無い品は戻さない ---- */
   hideBox = true;   // 記録を用意するあいだ、勝手な取り込みを走らせない
   const M2 = await open({ before: route });
@@ -466,6 +489,8 @@ const { open, checker, URL, pen } = require("./lib");
       s.diet.weights = base.diet.weights.map((w) => ({ ...w, memo: "", kg: w.id === "w-c" ? 63 : w.kg }));   // 変えていた体重は消さない
       s.learned = { ...base.learned, 牛乳: { category: "c-drink", label: "牛乳" } };   // 変えていた分類は忘れない
       s.asks = base.asks.map((a) => ({ ...a, hint: a.q === "試験の問い二" ? "iPhone" : "" }));   // 変えていた問いは外さない
+      s.stores = base.stores.map((x) => ({ ...x, color: x.id === "s-a" ? "#123456" : x.color }));   // 変えていた色は動かさない
+      s.products.find((p) => p.id === "p-egg").prices = [{ id: "pr-c", storeId: "s-c", price: 100, amount: null, date: "2026-11-27" }];   // 値段のある店は消さない
     });
     KN.store.saveNow();
     localStorage.setItem("kaimono-note-dropbox", JSON.stringify({ appKey: "k", refresh: "r", access: "a", expires: Date.now() + 864e5, sender: true, lastAt: "2026-11-27T00:00:00Z" }));
@@ -489,6 +514,9 @@ const { open, checker, URL, pen } = require("./lib");
   });
   t.check("主・分類・絵・問い：前のままの鍵だけ当てる（iPhone が変えていた分類・問いは残す）", gotS.l === "たまごc-cold,牛乳c-drink" && gotS.ic === "apple"
     && gotS.a === 63 && gotS.hint === "直したiPhone" && gotS.salt0.catManual === true, JSON.stringify({ l: gotS.l, ic: gotS.ic, a: gotS.a, hint: gotS.hint }));
+  const gR = await catsOf(D);
+  t.check("主・店・分類：名前・足す・消す・並べ替えを当て、iPhone が変えていた色・値段のある店は残す", gR.st === "店あ,店c,店D" && gR.a === "#123456"
+    && gR.veg === "やさい" && gR.c === vR.c, JSON.stringify({ gR, vR }));
   t.check("主・買うもの：買った印・数・消す・しまう・名前・足すを当てる", gotS.egg.checked === true && !!gotS.egg.checkedAt && gotS.bread.qty === 3 && !gotS.tea
     && !gotS.salt && gotS.salt0.archived === true && gotS.salt0.name === "天然塩" && gotS.oil === 1, JSON.stringify(gotS));
   t.check("主・買うもの：iPhone が変えていた欄は動かさない（メモ）・もう無い品は戻さない", gotS.bread.memo === "iPhoneのメモ" && !gotS.milk, JSON.stringify(gotS.bread));
@@ -496,8 +524,8 @@ const { open, checker, URL, pen } = require("./lib");
   t.check("主・やること：済み・題・旗・やる日・しまうを当て、iPhone が変えていたメモは動かさない", gT["t-a"].done === true && gT["t-c"].title === "直した用事"
     && gT["t-c"].flagged === true && gT["t-c"].due === LATER && gT["t-c"].memo === "iPhoneのメモ" && gT["t-d"].archived === true
     && !gT["t-b"].done && gT["t-e"].time === "21:00", JSON.stringify(gT["t-c"]));
-  t.check("主・買うもの：先に自動の控え・済んだ依頼は inboxSeen へ・ファイルは .done へ", gotS.snaps.includes("受け箱の取り込み前") && gotS.seen === 22
-    && box().length === 0 && done().length === 22 && nS >= 5, JSON.stringify({ nS, seen: gotS.seen, box: box().length, done: done().length }));
+  t.check("主・買うもの：先に自動の控え・済んだ依頼は inboxSeen へ・ファイルは .done へ", gotS.snaps.includes("受け箱の取り込み前") && gotS.seen === 30
+    && box().length === 0 && done().length === 30 && nS >= 5, JSON.stringify({ nS, seen: gotS.seen, box: box().length, done: done().length }));
   t.check("主・からだ：足す・直す・消すを当て、iPhone が変えていた一件は消さない", gotS.w === "59.5,63,写しのメモ60", gotS.w);
   const snapS = await D.evaluate(() => JSON.stringify(KN.store.get().items));
   const nS2 = await D.evaluate(() => KN.deskInbox.take());

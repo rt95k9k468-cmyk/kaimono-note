@@ -73,12 +73,12 @@
        set { t, s: "items"|"products"|"todos", id, was: {欄: 前}, set: {欄: 後} } ／ del { t, s: "items", id, was: { checked } } ／ add { t, id, name, 欄… }
      当てるのは前の値がいまもそのままの欄だけ。無い品は戻さない。ここに無い欄・並べ替え・値段・新しい品物は依頼にしない。
      やることは直すだけ（消す・足す・くり返しとその跡・手順・時刻は依頼にしない）。
-     からだ（DIET）は欄を問わず直し、add { s, id, rec } で足し、del { s, id, was: 一件 } はそのままのときだけ消す。
+     からだ・店・分類（ROWS）は欄を問わず直し、add { s, id, rec } で足し、del { s, id, was: 一件 } はそのままのときだけ消す（値段のある店は消さない）。
      覚えた分類・絵の言い換え・問いの元（KEY。問いは q が鍵）は key { s, k, was, set }（無い＝null）。 */
-  const DIET = ["weights", "meals", "drinks", "urges"];
+  const DIET = ["weights", "meals", "drinks", "urges"], ROWS = [...DIET, "stores", "categories"];
   const KEY = { learned: (v) => plain(v) && str(v.category, 64), iconOverrides: (v) => str(v, 64) && !!v, asks: (v, k) => plain(v) && v.q === k };
   const keyed = (st, n) => new Map(n === "asks" ? (st.asks || []).map((x) => [x.q, x]) : Object.entries(st[n] || {}));
-  const kindOf = (s, k) => (DIET.includes(s) ? k !== "id" && "j" : SHOP[s][k]);
+  const kindOf = (s, k) => (ROWS.includes(s) ? k !== "id" && "j" : SHOP[s][k]);
   const shelfOf = (st, n) => (DIET.includes(n) ? st.diet || {} : st)[n] || [];
   const TYPE = {
     b: (v) => typeof v === "boolean", d: (v) => v === null || str(v, 40), m: (v) => str(v, TEXT), a: (v) => Array.isArray(v) && v.length < 50,
@@ -99,7 +99,7 @@
     return ops.every((op) => {
       if (plain(op) && op.t === "key") return Object.keys(KEY).includes(op.s) &&str(op.k, 2000) && !!op.k && TYPE.j(op.was) && TYPE.j(op.set) && (op.set === null || KEY[op.s](op.set, op.k));
       if (!plain(op) || !str(op.id, 64) || !ID_RE.test(op.id)) return false;
-      const d = DIET.includes(op.s);
+      const d = ROWS.includes(op.s);
       if (op.t === "add" && op.s) return d && plain(op.rec) && op.rec.id === op.id && TYPE.j(op.rec);
       if (op.t === "add") return str(op.name, 200) && !!op.name.trim() && Object.keys(op).every((k) => ["t", "id", "name"].includes(k) || (SHOP.add[k] && TYPE[SHOP.add[k]](op[k])));
       if (op.t === "del") return plain(op.was) && (d ? op.was.id === op.id : op.s === "items" && typeof op.was.checked === "boolean");
@@ -140,11 +140,11 @@
         continue;
       }
       const l = shelfOf(s, op.s), rec = l.find((x) => x && x.id === op.id);
-      if (op.t === "add" && op.s) { if (!rec && s.diet && s.diet[op.s]) { l.push(op.rec); n++; } continue; }
+      if (op.t === "add" && op.s) { if (!rec && l === shelfOf(s, op.s)) { l.push(op.rec); n++; } continue; }
       if (op.t === "add") { if (putItem(s, op, o.at) === "ok") n++; continue; }
       if (!rec) continue;
       if (op.t === "del") {
-        if (op.s === "items" ? !!rec.checked === op.was.checked : same(rec, op.was)) { l.splice(l.indexOf(rec), 1); n++; }
+        if (op.s === "items" ? !!rec.checked === op.was.checked : same(rec, op.was) && !s.products.some((p) => (p.prices || []).some((r) => r.storeId === op.id))) { l.splice(l.indexOf(rec), 1); n++; }
         continue;
       }
       Object.keys(op.set).forEach((k) => { if (same(rec[k], op.was[k])) { rec[k] = op.set[k]; n++; } });
@@ -156,7 +156,7 @@
   function diffShop(b, a) {
     if (!plain(b) || !plain(a) || !["items", "products", "todos"].every((k) => Array.isArray(b[k]) && Array.isArray(a[k]))) return null;
     const odd = (x, y, ok) => [...new Set([...Object.keys(x), ...Object.keys(y)])].some((k) => !ok.includes(k) && !same(x[k], y[k]));
-    if (odd(b, a, ["settings", "items", "products", "todos", "diet", ...Object.keys(KEY)]) || odd(b.diet || {}, a.diet || {}, DIET)) return null;
+    if (odd(b, a, ["settings", "items", "products", "todos", "diet", "stores", "categories", ...Object.keys(KEY)]) || odd(b.diet || {}, a.diet || {}, DIET)) return null;
     const idSet = (l) => new Set(l.map((x) => x.id));
     const ids = (l, keep) => l.filter((x) => !keep || keep.has(x.id)).map((x) => x.id).join();
     const ops = [];
@@ -188,7 +188,7 @@
       Object.keys(SHOP.add).slice(1).forEach((k) => { if (x[k] != null) op[k] = x[k]; });
       ops.push(op);
     }
-    for (const n of DIET) {
+    for (const n of ROWS) {
       const bl = shelfOf(b, n), al = shelfOf(a, n), bs = idSet(bl), as = idSet(al);
       if (!rows(n, bl, al)) return null;
       bl.filter((x) => !as.has(x.id)).forEach((x) => ops.push({ t: "del", s: n, id: x.id, was: x }));
