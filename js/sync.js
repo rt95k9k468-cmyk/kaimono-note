@@ -313,7 +313,7 @@
     if (!puts.length && !dels.length) { texts.forEach((t, n) => shown.set(n, t)); replaced = rep; return true; }
 
     const ok = allow;
-    allow = null;
+    if (ok !== "room") allow = null;
     if (!meta.firstDone) {
       if (ok !== "first") return hold({ kind: "first", n: puts.length });
     } else {
@@ -389,7 +389,7 @@
     if (!meta.token || meta.trouble || !out.size) return;
     await ensureKey();
     for (let guard = 0; guard < 200; guard++) {
-      const ready = [...out.values()].filter((e) => !e.bad);
+      const open = takes(), ready = [...out.values()].filter((e) => !e.bad && !(e.wait > e.base && open.has(e.shelf)));
       if (!ready.length) return;
       /* 訊いて決めた消し（sure）は、それだけで一回に（部屋は sure を消しの数ちょうどで受ける）。 */
       const sures = ready.filter((e) => e.sure);
@@ -429,8 +429,8 @@
       return;
     }
   }
-  /** 返事を当てる。受け取った → 前に合わせた中身へ。版が違った → 影のあいだは書くのはこの一台なので、
-      今の版の上に送り直す（段4からは三方で合わせる）。 */
+  /** 返事を当てる。受け取った → 前に合わせた中身へ。版が違った → 取りこむ棚なら取りこんでから三方で（wait）、
+      ほかの棚は書くのはこの一台なので、今の版の上に送り直す。 */
   async function took(batch, results) {
     const byOp = new Map(results.map((r) => [r.op, r]));
     const done = [], redo = [];
@@ -446,6 +446,10 @@
         if (e.json === null && r.cur.del) {
           const b = { k: e.k, ver: r.cur.ver, json: null };
           base.set(e.k, b); out.delete(e.k); done.push(b);
+        } else if (takes().has(e.shelf)) {
+          Object.assign(e, { wait: r.cur.ver, op: newOp(), tried: false });
+          redo.push(e);
+          again = true;
         } else {
           Object.assign(e, { base: r.cur.ver, op: newOp(), tried: false });
           redo.push(e);
@@ -469,6 +473,100 @@
     if (!meta.failSince) putMeta({ failSince: Date.now() }).catch(() => {});
     soon(Math.min(30000 * 2 ** Math.min(fails, 6), 30 * 60000));
     tell();
+  }
+
+  /* ---------------- 取りこむ（段4。iPhone） ----------------
+     開けた棚（meta.take。既定は無い）の、ほかの端末の版を merge3(元, 今, 部屋) で記録へ。受け箱と同じ時だけ・先に控え・
+     20件か1/5（5件より多い）を越えて変わるなら訊く。無い品物を指す一件は持ち越す（held）。送りの 409 は取りこんでから（wait）。 */
+  const TAKE = new Set(["items"]);
+  const takes = () => new Set((meta.take || []).filter((x) => TAKE.has(x)));
+  const busy = () => !!(KN.ui && KN.ui.sheetsOpen && KN.ui.sheetsOpen() > 0);
+  function plan(s, recs) {
+    const cur = shelvesOf(s), prods = new Set((s.products || []).map((p) => p.id)), res = [], held = [];
+    for (const r of recs) {
+      const b = base.get(r.k), [shelf, key] = splitK(r.k), mine = (cur.get(shelf) || new Map()).get(key);
+      const v = merge3(b && b.json !== null ? JSON.parse(b.json) : null, mine === undefined ? null : mine, r.d);
+      if (v && v.productId != null && !prods.has(v.productId)) held.push(r.x);
+      else res.push({ ...r, shelf, key, v, json: v === null ? null : canon(v), was: mine === undefined ? null : canon(mine) });
+    }
+    return { res, held, n: res.filter((c) => c.json !== c.was).length };
+  }
+  async function take() {
+    const open = takes();
+    if (!open.size || !meta.firstDone || !settled() || [...out.values()].some((e) => e.tried && open.has(e.shelf))) return true;
+    if (busy()) { soon(15000); return true; }
+    if (KN.diaryIdb && KN.diaryIdb.body() !== "ok") return true;
+    await ensureKey();
+    const sh = new Map(), byH = new Map();
+    for (const x of open) sh.set(await hmac("s\n" + x), x);
+    const add = (x) => { const h = x.shelf + "." + x.item; if (!((byH.get(h) || {}).ver >= x.ver)) byH.set(h, x); };
+    (meta.held || []).forEach(add);
+    let since = meta.takeSeq || 0;
+    for (let guard = 0; guard < 1000; guard++) {
+      let r;
+      try { r = await call("GET", `/pull?since=${since}&limit=1000`); } catch (_) { return true; }
+      if (r.status === 409 && r.body.why === "ahead") { await putMeta({ takeSeq: 0, held: [] }); return true; }
+      if (r.status !== 200 || !Array.isArray(r.body.items) || r.body.schema > SCHEMA) return true;
+      r.body.items.filter((x) => sh.has(x.shelf)).forEach(add);
+      since = Number.isInteger(r.body.next) ? r.body.next : since;
+      if (!r.body.more) break;
+    }
+    const ih = new Map(), recs = [];
+    for (const b of base.values()) { const [s0, k0] = splitK(b.k); if (open.has(s0)) ih.set((await nameOf(s0, k0))[1], b.k); }
+    for (const x of byH.values()) {
+      let k = ih.get(x.item), d = null;
+      if (!x.del) {
+        let o;
+        try { o = await unseal(x.body, x.shelf, x.item); } catch (_) { return true; }
+        if (!o || o.s !== sh.get(x.shelf) || !/^id:[^#]*$/.test(o.i)) continue;
+        k = o.s + "\n" + o.i; d = o.d;
+      }
+      const b = k && base.get(k);
+      if (k && !(b && b.ver >= x.ver)) recs.push({ k, x, d, room: d === null ? null : canon(d) });
+    }
+    let p = plan(store.get(), recs);
+    const ok = allow === "room";
+    if (ok) allow = null;
+    if (p.n) {
+      let live = 0;
+      open.forEach((x) => { live += (store.get()[x] || []).length; });
+      if (!ok && (p.n > 20 || (p.n > 5 && p.n * 5 > live))) return hold({ kind: "room", n: p.n });
+      if (KN.backup && KN.backup.take) {
+        const r = await KN.backup.take("部屋からの取りこみ前", { force: true });
+        if (r !== "taken" && r !== "same") return true;
+      }
+      if (busy() || !settled()) { soon(15000); return true; }
+      p = plan(store.get(), recs);
+      store.update((s) => p.res.forEach((c) => {
+        if (c.json === c.was) return;
+        const l = s[c.shelf] = Array.isArray(s[c.shelf]) ? s[c.shelf] : [], i = l.findIndex((y) => y && "id:" + y.id === c.key);
+        if (c.v === null) { if (i >= 0) l.splice(i, 1); } else if (i >= 0) l[i] = c.v; else l.unshift(c.v);
+      }));
+      if (store.saveNow() === false) return true;
+    }
+    const ups = [];
+    p.res.forEach((c) => {
+      base.set(c.k, { k: c.k, ver: c.x.ver, json: c.room });
+      const e = out.get(c.k);
+      if (e) { Object.assign(e, { base: c.x.ver, op: newOp() }); ups.push(e); }
+      viewSet(c.k, e ? e.json : c.room);
+      shown.delete(c.shelf);
+    });
+    await run(["base", "out", "meta"], "readwrite", (t) => {
+      p.res.forEach((c) => t.objectStore("base").put(base.get(c.k)));
+      ups.forEach((e) => t.objectStore("out").put(e));
+      t.objectStore("meta").put({ k: "takeSeq", v: since });
+      t.objectStore("meta").put({ k: "held", v: p.held });
+    });
+    Object.assign(meta, { takeSeq: since, held: p.held });
+    if (ask && ask.kind === "room") setAsk(null);
+    return true;
+  }
+  /** 取りこむ棚を決める（既定は切る）。開け直すと頭から読む（自分の送った版は飛ばす）。 */
+  async function takeFrom(list) {
+    await putMeta({ take: (list || []).filter((x) => TAKE.has(x)), takeSeq: 0, held: [] });
+    tell();
+    soon(0);
   }
 
   /* ---------------- 照らす（一日に一度） ---------------- */
@@ -525,7 +623,7 @@
     running = true;
     try {
       await keyOut();
-      if (await compare()) {
+      if (await take() && await compare()) {
         await push();
         await check();
       }
@@ -761,7 +859,7 @@
     if (meta.token) { try { await call("DELETE", `/devices/${encodeURIComponent(meta.device || "")}`); } catch (_) { /* 部屋に届かなくても、こちらは忘れる */ } }
     await run(["meta", "base", "out"], "readwrite", (t) => {
       ["url", "token", "device", "room", "joinedAt", "firstDone", "sentAt", "failSince", "checkDay", "checks", "trouble", "redo",
-        "seq", "n", "readRoom", "readAt"]
+        "seq", "n", "readRoom", "readAt", "take", "takeSeq", "held"]
         .forEach((k) => t.objectStore("meta").delete(k));
       t.objectStore("base").clear();
       t.objectStore("out").clear();
@@ -787,14 +885,14 @@
     return {
       phase, reader, joined: !!meta.token, seq: meta.seq || 0, lock: lockHeld, ask, trouble: trouble(), out: out.size, bad: [...out.values()].filter((e) => e.bad).length,
       live, sentAt: meta.sentAt || 0, checks: (meta.checks || []).slice(), keyOut: !!meta.keyOut, firstDone: !!meta.firstDone,
-      redo: meta.redo || 0,
+      redo: meta.redo || 0, take: [...takes()], held: (meta.held || []).length,
     };
   }
   function tell() { listeners.forEach((fn) => { try { fn(); } catch (_) { /* 聞き手の失敗は回すほうへ持ちこまない */ } }); }
   function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
   KN.sync = {
-    start, status, trouble, onChange, setupCode, join, go, leave, pair, read, watch, SCHEMA,
+    start, status, trouble, onChange, setupCode, join, go, leave, pair, read, watch, takeFrom, SCHEMA,
     /* 試験と門のため（棚の分け方・送らない欄・知らない欄）。 */
     shelvesOf, merge3, unknown: () => unknown.slice(), SEND, LOCAL, now: async () => {
       clearTimeout(timer);

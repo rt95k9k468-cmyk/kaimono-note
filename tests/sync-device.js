@@ -11,6 +11,8 @@
    - 照らす：一日に一度、ずれ 0・一件を開いて読み比べる
    - 部屋の約束が上がった（古い版）→ 送るのを止め、歯車の点
    - 三方 merge3（段4）：欄ごとに変えたほう・両方なら部屋・消すと直すは直す
+   - 取りこむ（段4の②）：既定は切る。開ければ控えを取って当て、送り返さない。紙のあいだは当てず 409 は待つ。
+     無い品物を指す一件は持ち越す。多く変わるなら訊く
    段3・読む側（写しの端末が部屋から読む。二つ目の窓）：
    - 二台めの合言葉でつなぐ。出どころは切ったまま（Dropbox の写し）。入れれば部屋の中身（並びも同じ）
    - 知らせ（WebSocket）で続きだけ取る。紙を開いているあいだは当てず、閉じてから
@@ -223,6 +225,88 @@ async function fakeRoom() {
   await page.evaluate(() => KN.sync.go());
   await tick();
   t.check("「送る」で届く", !(await st()).ask && (await st()).out === 0);
+
+  /* ---- 部屋から取りこむ（段4の②）。ほかの端末の代わりに、iPhone の鍵と札で部屋の品物を書く ---- */
+  const other = (edits) => page.evaluate(async ([host, edits]) => {
+    const m = await new Promise((ok) => { const q = indexedDB.open("kaimono-note-sync"); q.onsuccess = () => { const g = q.result.transaction("meta").objectStore("meta").getAll(); g.onsuccess = () => { q.result.close(); ok(Object.fromEntries(g.result.map((r) => [r.k, r.v]))); }; }; });
+    const enc = new TextEncoder(), un = (x) => Uint8Array.from(atob(x.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    const b64 = (u) => btoa(String.fromCharCode(...u)), b64u = (u) => b64(u).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const ikm = await crypto.subtle.importKey("raw", un(m.key), "HKDF", false, ["deriveKey"]);
+    const d = (info, alg, use) => crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: enc.encode("kurashi-sync"), info: enc.encode(info) }, ikm, alg, false, use);
+    const body = await d("body", { name: "AES-GCM", length: 256 }, ["encrypt"]), name = await d("name", { name: "HMAC", hash: "SHA-256", length: 256 }, ["sign"]);
+    const h = async (x) => b64u(new Uint8Array(await crypto.subtle.sign("HMAC", name, enc.encode(x))));
+    const auth = { Authorization: `Bearer ${m.token}`, "Content-Type": "application/json" };
+    const pulled = (await (await fetch(`${host}/pull?since=0&limit=1000`, { headers: auth })).json()).items;
+    const changes = [];
+    for (const [id, rec] of edits) {
+      const sh = await h("s\nitems"), ih = await h("i\nitems\nid:" + id);
+      const cur = pulled.filter((x) => x.shelf === sh && x.item === ih).pop();
+      const c = { op: b64u(crypto.getRandomValues(new Uint8Array(12))), shelf: sh, item: ih, base: cur ? cur.ver : 0 };
+      if (rec === null) c.del = true;
+      else {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(sh + "." + ih) }, body, enc.encode(JSON.stringify({ s: "items", i: "id:" + id, d: rec }))));
+        const o = new Uint8Array(13 + ct.length); o[0] = 1; o.set(iv, 1); o.set(ct, 13); c.body = b64(o);
+      }
+      changes.push(c);
+    }
+    const r = await fetch(`${host}/push`, { method: "POST", headers: auth, body: JSON.stringify({ schema: 1, changes }) });
+    return (await r.json()).results.every((x) => x.ok);
+  }, [HOST, edits]);
+  const items = () => page.evaluate(() => KN.store.get().items.map((x) => ({ ...x })));
+  const itemOf = async (id) => (await items()).find((x) => x.id === id);
+  const memo = (id, text) => page.evaluate(([i, v]) => KN.store.update((s2) => { s2.items.find((x) => x.id === i).memo = v; }), [id, text]);
+  const pushN = () => calls.filter((c) => c === "POST /push").length;
+  const [A, B, C, D] = await items();
+  const wrote = await other([[A.id, { ...A, qty: 9 }]]);
+  await tick();
+  t.check("既定は切る：ほかの端末の版を当てない", wrote && (await itemOf(A.id)).qty === A.qty && !(await st()).take.length);
+  await page.evaluate(() => KN.sync.takeFrom(["items"]));
+  const p0 = pushN();
+  await tick();
+  t.check("開ければ取りこむ・先に控え・送り返さない", (await itemOf(A.id)).qty === 9 && (await st()).out === 0 && pushN() === p0
+    && await page.evaluate(() => KN.backup.list().some((x) => x.reason === "部屋からの取りこみ前")));
+  await memo(A.id, "試験のメモ");
+  await other([[A.id, { ...A, qty: 3 }]]);
+  await tick();
+  let a1 = await itemOf(A.id);
+  t.check("三方：iPhone の直しと部屋の直しを欄ごとに合わせて送る", a1.qty === 3 && a1.memo === "試験のメモ" && (await st()).out === 0, JSON.stringify(a1));
+
+  /* 紙を開いているあいだは当てない。そのあいだの送りの 409 は上書きせず、閉じて取りこんでから。 */
+  await page.evaluate(() => KN.ui.sheet({ title: "試験の紙", as: "dialog", content: document.createElement("div") }));
+  await page.waitForFunction(() => KN.ui.sheetsOpen() > 0, null, { timeout: 3000 }).catch(() => {});
+  await other([[B.id, { ...B, qty: 4 }]]);
+  await memo(B.id, "紙のあいだのメモ");
+  await tick();
+  const b1 = await itemOf(B.id), w1 = (await st()).out;
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => !KN.ui.sheetsOpen(), null, { timeout: 3000 }).catch(() => {});
+  await tick();
+  const b2 = await itemOf(B.id);
+  t.check("紙のあいだは当てず、409 は待って、閉じてから合わせる", b1.qty === B.qty && w1 === 1 && b2.qty === 4 && b2.memo === "紙のあいだのメモ"
+    && (await st()).out === 0, JSON.stringify([b1.qty, w1, b2]));
+
+  /* 消すと直すは直すが勝つ。無い品物を指す一件は持ち越す。 */
+  await memo(D.id, "残すメモ");
+  const nai = { id: "t-nai", productId: "p-nai", qty: 1, memo: "", checked: false, fav: false, addedAt: "2026-11-28" };
+  await other([[C.id, null], [D.id, null], [nai.id, nai]]);
+  await tick();
+  const its = await items();
+  t.check("部屋で消した一件は消え、iPhone で直した一件は残る", !its.some((x) => x.id === C.id) && its.some((x) => x.id === D.id && x.memo === "残すメモ")
+    && (await st()).out === 0);
+  t.check("無い品物を指す一件は持ち越す", !its.some((x) => x.id === nai.id) && (await st()).held === 1);
+  await page.evaluate(() => KN.store.update((s2) => { s2.products.push({ id: "p-nai", name: "試験の品物", categoryId: s2.categories[0].id, order: null, amount: null, unit: "", note: "", prices: [] }); }));
+  await tick();
+  t.check("品物が来れば次の回に当てる", !!(await itemOf(nai.id)) && (await st()).held === 0);
+
+  /* 多く変わるなら訊く。 */
+  await other(Array.from({ length: 25 }, (_, i) => [`t-m${i}`, { ...nai, id: `t-m${i}`, productId: A.productId }]));
+  await tick();
+  s = await st();
+  t.check("多く変わるなら止めて訊く（当てない・送らない）", s.ask && s.ask.kind === "room" && s.ask.n === 25 && !(await itemOf("t-m0")), JSON.stringify(s.ask));
+  await page.evaluate(() => KN.sync.go());
+  await tick();
+  t.check("「取りこむ」で当たる", !(await st()).ask && (await items()).filter((x) => /^t-m/.test(x.id)).length === 25 && (await st()).out === 0);
 
   /* ---- 読む側（段3）：写しの端末（二つ目の窓） ---- */
   const LATEST = "/kurashi-latest.json";

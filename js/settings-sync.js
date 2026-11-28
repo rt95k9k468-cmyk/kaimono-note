@@ -26,6 +26,7 @@
     first: (n) => `最初の中身を置く（${n}件）`,
     bulk: (n) => `入れ替わった ${n} 件を送る`,
     many: (n) => `消した ${n} 件を送る`,
+    room: (n) => `部屋から ${n} 件を取りこむ`,
   };
   const TROUBLE = {
     who: "部屋から切られています", old: "アプリが部屋より古い版です", key: "鍵が Dropbox と合いません",
@@ -74,11 +75,11 @@
     if (st.trouble) rows.push(card(navRow({ ico: "download", tint: TINT.warn, title: TROUBLE[st.trouble], alert: true, act: true, onTap: () => {} })));
     if (st.ask) {
       rows.push(card(navRow({
-        ico: "upload", tint: TINT.data, title: ASK[st.ask.kind](st.ask.n), act: true,
+        ico: st.ask.kind === "room" ? "download" : "upload", tint: TINT.data, title: ASK[st.ask.kind](st.ask.n), act: true,
         onTap: () => KN.ui.confirm({
-          title: st.ask.kind === "first" ? "部屋に最初の中身を置く" : "部屋へ送る",
+          title: st.ask.kind === "first" ? "部屋に最初の中身を置く" : st.ask.kind === "room" ? "部屋から取りこむ" : "部屋へ送る",
           message: st.ask.kind === "first" ? "この端末の記録を、鍵をかけて部屋へ送ります。" : "",
-          okLabel: "送る",
+          okLabel: st.ask.kind === "room" ? "取りこむ" : "送る",
         }).then((ok) => { if (ok) sync.go(); }),
       })));
     }
