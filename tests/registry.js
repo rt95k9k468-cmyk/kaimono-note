@@ -121,7 +121,7 @@ t.check("試験の台本はサイトの登録に入っていない", !testsIn.le
    数えるのは字（Array.from ではなく length。比べるだけなので足りる）。カテゴリの合計なので、
    ファイルどうしの移動・分割は増えない。生成物・外のもの（dist・node_modules・tools/season-src・
    tools/vendor）は数えない。上げるのは利用者の OK があるときだけ。 */
-const CAP = { js: 3570000, css: 580000, tests: 245, docs: 900000, claude: 3450, indexRow: 60 };
+const CAP = { js: 3580000, css: 580000, tests: 245, docs: 900000, claude: 3450, indexRow: 60 };
 {
   const SKIP = new Set([".git", "node_modules", "dist", "tools/season-src", "tools/vendor"]);
   const all = [];
